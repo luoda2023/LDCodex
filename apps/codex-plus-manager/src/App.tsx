@@ -391,7 +391,6 @@ type UpdateResult = CommandResult<{
 }>;
 
 
-}>;
 
 type ScriptMarketItem = {
   id: string;
