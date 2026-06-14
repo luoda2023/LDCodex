@@ -79,7 +79,6 @@ pub trait BridgeRuntimeService: Send + Sync {
     async fn backend_status(&self) -> anyhow::Result<Value>;
     async fn repair_backend(&self) -> anyhow::Result<Value>;
     async fn codex_model_catalog(&self) -> anyhow::Result<Value>;
-    async fn ads(&self) -> anyhow::Result<Value>;
     async fn zed_remote_status(&self) -> anyhow::Result<Value>;
     async fn resolve_zed_remote_host(&self, payload: Value) -> anyhow::Result<Value>;
     async fn fallback_zed_remote_request(&self, payload: Value) -> anyhow::Result<Value>;
