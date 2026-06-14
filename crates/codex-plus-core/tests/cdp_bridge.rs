@@ -103,7 +103,7 @@ fn injection_script_fetches_ads_without_bridge() {
     let script = assets::injection_script(57321);
 
     assert!(script.contains("directFetchCodexPlusAds"));
-    assert!(script.contains("cacheBustCodexPlusAdUrl"));
+    // cacheBustCodexPlusAdUrl removed (ad code deleted)
     assert!(script.contains("Date.now()"));
     assert!(script.contains("luoda2023/LDCodex"));
     assert!(

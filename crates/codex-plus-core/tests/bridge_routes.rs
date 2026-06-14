@@ -35,7 +35,7 @@ async fn bridge_routes_cover_all_current_paths() {
         ("/backend/repair", json!({})),
         ("/codex-model-catalog", json!({})),
         ("/codex-config-model", json!({})),
-        ("/ads", json!({})),
+        
         ("/zed-remote/status", json!({})),
         (
             "/zed-remote/resolve-host",
@@ -302,10 +302,7 @@ async fn runtime_status_devtools_repair_and_ads_routes_are_dispatched() {
         handle_bridge_request(ctx.clone(), "/backend/repair", json!({})).await,
         json!({"status": "ok", "message": "后端已修复", "version": codex_plus_core::version::VERSION})
     );
-    assert_eq!(
-        handle_bridge_request(ctx.clone(), "/ads", json!({})).await,
-        json!({"version": 1, "ads": [{"id": "runtime-ad"}]})
-    );
+
     assert_eq!(
         handle_bridge_request(ctx.clone(), "/zed-remote/status", json!({})).await,
         json!({"status": "ok", "platformSupported": true, "zedAppFound": true, "zedCliFound": false})
