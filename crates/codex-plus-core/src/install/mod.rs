@@ -1,14 +1,14 @@
-﻿use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
 pub mod macos;
 pub mod windows;
 
-pub const SILENT_NAME: &str = "Codex助手";
-pub const MANAGER_NAME: &str = "Codex助手 管理工具";
-pub const SILENT_BINARY: &str = "codex-assist";
-pub const MANAGER_BINARY: &str = "codex-assist-manager";
+pub const SILENT_NAME: &str = "LDCodex";
+pub const MANAGER_NAME: &str = "LDCodex 管理工具";
+pub const SILENT_BINARY: &str = "ldcodex";
+pub const MANAGER_BINARY: &str = "ldcodex-manager";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]

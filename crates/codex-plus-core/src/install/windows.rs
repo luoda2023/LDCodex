@@ -1,7 +1,7 @@
-﻿use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use super::{
-    InstallOptions, MANAGER_BINARY, MANAGER_NAME, SILENT_BINARY, SILENT_NAME,
+    InstallOptions, MANAGER_BINARY, crate::install::MANAGER_NAME, SILENT_BINARY, crate::install::SILENT_NAME,
     install_root_or_default, option_or_current_exe,
 };
 
@@ -143,5 +143,5 @@ fn default_icon_path() -> PathBuf {
 
 #[allow(dead_code)]
 fn _entrypoint_names() -> (&'static str, &'static str) {
-    (SILENT_NAME, MANAGER_NAME)
+    (crate::install::SILENT_NAME, crate::install::MANAGER_NAME)
 }
