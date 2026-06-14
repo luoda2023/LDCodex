@@ -9,7 +9,7 @@ STAGE="$DIST/stage"
 BINARY_DIR="${BINARY_DIR:-$ROOT/target/release}"
 DMG="$DIST/LDCodex-${VERSION}-macos-${ARCH}.dmg"
 ICON_SOURCE="$ROOT/apps/codex-plus-manager/src-tauri/icons/icon.png"
-ICON_NAME="codex-plus-plus.icns"
+ICON_NAME="ldcodex.icns"
 ICON_ICNS="$DIST/$ICON_NAME"
 
 rm -rf "$DIST"
@@ -118,8 +118,8 @@ verify_app() {
 }
 
 prepare_icon
-create_app "LDCodex" "LDCodex" "$BINARY_DIR/ldcodex" "com.luoda.codexplusplus" "true"
-create_app "LDCodex 管理工具" "LDCodexManager" "$BINARY_DIR/codex-plus-plus-manager" "com.luoda.codexplusplus.manager" "false"
+create_app "LDCodex" "LDCodex" "$BINARY_DIR/ldcodex" "com.luoda.ldcodex" "true"
+create_app "LDCodex 管理工具" "LDCodexManager" "$BINARY_DIR/ldcodex-manager" "com.luoda.ldcodex.manager" "false"
 ln -s /Applications "$STAGE/Applications"
 
 sign_app "$STAGE/LDCodex.app"
