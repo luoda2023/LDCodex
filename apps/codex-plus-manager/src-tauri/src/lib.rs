@@ -43,7 +43,7 @@ pub fn run() {
             commands::delete_local_session,
             commands::load_provider_sync_targets,
             commands::sync_providers_now,
-            commands::// load_ads removed
+            // load_ads removed
             
             commands::install_market_script,
             commands::set_user_script_enabled,
