@@ -167,7 +167,6 @@ pub async fn handle_bridge_request(
         "/backend/repair" => ctx.runtime.repair_backend().await,
         "/codex-model-catalog" | "/codex-config-model" => ctx.runtime.codex_model_catalog().await,
         "/diagnostics/log" => diagnostic_log_value(payload.clone()),
-        "/ads" => ctx.runtime.ads().await,
         "/zed-remote/status" => ctx.runtime.zed_remote_status().await,
         "/zed-remote/resolve-host" => ctx.runtime.resolve_zed_remote_host(payload.clone()).await,
         "/zed-remote/fallback-request" => {
