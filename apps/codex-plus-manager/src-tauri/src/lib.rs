@@ -44,7 +44,7 @@ pub fn run() {
             commands::load_provider_sync_targets,
             commands::sync_providers_now,
             commands::// load_ads removed
-            commands::refresh_script_market,
+            
             commands::install_market_script,
             commands::set_user_script_enabled,
             commands::delete_user_script,
