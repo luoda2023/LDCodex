@@ -7,7 +7,7 @@ use crate::settings::BackendSettings;
 
 pub const WRAPPER_EXE: &str = "codex-wrapper.exe";
 pub const WRAPPER_SOURCE: &str = "codex-wrapper.cs";
-const CLI_HOME_DIR: &str = ".codex-plus-plus-cli";
+const CLI_HOME_DIR: &str = ".ldcodex-cli";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WrapperInstall {

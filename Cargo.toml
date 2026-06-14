@@ -1,4 +1,4 @@
-﻿[workspace]
+[workspace]
 resolver = "2"
 members = [
   "crates/codex-plus-core",
@@ -11,7 +11,7 @@ members = [
 version = "1.2.8"
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/LUODA/CodexAssist"
+repository = "https://github.com/luoda2023/LDCodex"
 
 [workspace.dependencies]
 anyhow = "1"

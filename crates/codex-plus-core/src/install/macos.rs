@@ -127,9 +127,9 @@ fn copy_icon(resources: &Path) -> anyhow::Result<()> {
     let source = std::env::current_exe()
         .ok()
         .and_then(|path| path.parent().map(Path::to_path_buf))
-        .map(|path| path.join("codex-plus-plus.png"));
+        .map(|path| path.join("ldcodex.png"));
     if let Some(source) = source.filter(|path| path.exists()) {
-        fs::copy(source, resources.join("codex-plus-plus.png"))?;
+        fs::copy(source, resources.join("ldcodex.png"))?;
     }
     Ok(())
 }
@@ -167,7 +167,7 @@ fn info_plist(display_name: &str, executable_name: &str, identifier_suffix: &str
   <key>CFBundleExecutable</key>
   <string>{executable_name}</string>
   <key>CFBundleIconFile</key>
-  <string>codex-plus-plus.png</string>
+  <string>ldcodex.png</string>
   <key>LSUIElement</key>
   <true/>
   <key>LSMinimumSystemVersion</key>

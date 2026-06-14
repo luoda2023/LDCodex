@@ -19,7 +19,7 @@ fn wrapper_source_embeds_absolute_real_codex_path() {
         &PathBuf::from(
             r"C:\Program Files\WindowsApps\OpenAI.Codex_1.0.0.0_x64__abc\app\resources\codex.exe",
         ),
-        &PathBuf::from(r"C:\Users\me\.codex-plus-plus-cli"),
+        &PathBuf::from(r"C:\Users\me\.ldcodex-cli"),
         &settings,
     );
 

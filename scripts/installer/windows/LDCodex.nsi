@@ -36,8 +36,8 @@ Section "Install"
   File "${ROOT}\dist\windows\app\ldcodex.exe"
   File "${ROOT}\dist\windows\app\ldcodex-manager.exe"
 
-  Delete "$DESKTOP\LDCodex 绠＄悊宸ュ叿.lnk"
-  Delete "$SMPROGRAMS\LDCodex\LDCodex 绠＄悊宸ュ叿.lnk"
+  Delete "$DESKTOP\LDCodex 管理工具.lnk"
+  Delete "$SMPROGRAMS\LDCodex\LDCodex 管理工具.lnk"
 
   CreateShortcut "$DESKTOP\LDCodex.lnk" "$INSTDIR\ldcodex.exe" "" "$INSTDIR\ldcodex.exe"
   CreateShortcut "$DESKTOP\LDCodex 管理工具.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
@@ -64,10 +64,10 @@ Section "Uninstall"
 
   Delete "$DESKTOP\LDCodex.lnk"
   Delete "$DESKTOP\LDCodex 管理工具.lnk"
-  Delete "$DESKTOP\LDCodex 绠＄悊宸ュ叿.lnk"
+  Delete "$DESKTOP\LDCodex 管理工具.lnk"
   Delete "$SMPROGRAMS\LDCodex\LDCodex.lnk"
   Delete "$SMPROGRAMS\LDCodex\LDCodex 管理工具.lnk"
-  Delete "$SMPROGRAMS\LDCodex\LDCodex 绠＄悊宸ュ叿.lnk"
+  Delete "$SMPROGRAMS\LDCodex\LDCodex 管理工具.lnk"
   Delete "$SMPROGRAMS\LDCodex\卸载 LDCodex.lnk"
   RMDir "$SMPROGRAMS\LDCodex"
 
