@@ -1,16 +1,16 @@
 [package]
-name = "codex-plus-manager"
+name = "ldcodex-manager"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
 [lib]
-name = "codex_plus_manager_lib"
+name = "ldcodex_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
-name = "codex-plus-plus-manager"
+name = "ldcodex-manager"
 path = "src/main.rs"
 
 [dependencies]

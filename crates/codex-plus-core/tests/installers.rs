@@ -8,8 +8,8 @@ use codex_plus_core::install::{
 fn windows_entrypoint_plan_contains_silent_and_manager_entrypoints() {
     let options = InstallOptions {
         install_root: Some("C:/Users/A/Desktop".into()),
-        launcher_path: Some("C:/Tools/codex-plus-plus.exe".into()),
-        manager_path: Some("C:/Tools/codex-plus-plus-manager.exe".into()),
+        launcher_path: Some("C:/Tools/ldcodex.exe".into()),
+        manager_path: Some("C:/Tools/ldcodex-manager.exe".into()),
         remove_owned_data: false,
     };
 
@@ -17,12 +17,12 @@ fn windows_entrypoint_plan_contains_silent_and_manager_entrypoints() {
 
     assert!(plan.silent_shortcut.ends_with("LDCodex.lnk"));
     assert!(plan.manager_shortcut.ends_with("LDCodex 管理工具.lnk"));
-    assert_eq!(plan.launcher_path, "C:/Tools/codex-plus-plus.exe");
-    assert_eq!(plan.manager_path, "C:/Tools/codex-plus-plus-manager.exe");
-    assert_eq!(plan.silent_icon_path, "C:/Tools/codex-plus-plus.exe");
+    assert_eq!(plan.launcher_path, "C:/Tools/ldcodex.exe");
+    assert_eq!(plan.manager_path, "C:/Tools/ldcodex-manager.exe");
+    assert_eq!(plan.silent_icon_path, "C:/Tools/ldcodex.exe");
     assert_eq!(
         plan.manager_icon_path,
-        "C:/Tools/codex-plus-plus-manager.exe"
+        "C:/Tools/ldcodex-manager.exe"
     );
     assert_eq!(plan.uninstall_key, "LDCodex");
     assert_eq!(plan.legacy_uninstall_key, "LDCodex");
@@ -48,7 +48,7 @@ fn windows_entrypoint_plan_can_request_owned_data_removal_without_shell_script()
 fn macos_bundle_metadata_contains_silent_and_manager_apps() {
     let options = InstallOptions {
         install_root: Some("/Applications".into()),
-        launcher_path: Some("/opt/LDCodex/codex-plus-plus".into()),
+        launcher_path: Some("/opt/LDCodex/ldcodex".into()),
         manager_path: Some("/opt/LDCodex/codex-plus-plus-manager".into()),
         remove_owned_data: false,
     };
@@ -64,7 +64,7 @@ fn macos_bundle_metadata_contains_silent_and_manager_apps() {
             .info_plist
             .contains("<string>LDCodex 管理工具</string>")
     );
-    assert!(silent.launch_script.contains("codex-plus-plus"));
+    assert!(silent.launch_script.contains("ldcodex"));
     assert!(manager.launch_script.contains("codex-plus-plus-manager"));
 }
 
@@ -89,7 +89,7 @@ fn companion_binary_path_resolves_macos_silent_app_next_to_manager_app() {
     assert_ne!(
         companion,
         std::path::PathBuf::from(
-            "/Applications/LDCodex 管理工具.app/Contents/MacOS/codex-plus-plus"
+            "/Applications/LDCodex 管理工具.app/Contents/MacOS/ldcodex"
         )
     );
 }
@@ -110,7 +110,7 @@ fn macos_bundle_does_not_wrap_the_bundle_executable_in_itself() {
 
     assert!(!silent.launch_script.contains("LDCodex\""));
     assert!(!manager.launch_script.contains("LDCodexManager\""));
-    assert!(silent.launch_script.contains("codex-plus-plus"));
+    assert!(silent.launch_script.contains("ldcodex"));
     assert!(manager.launch_script.contains("codex-plus-plus-manager"));
 }
 

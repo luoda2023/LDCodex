@@ -118,7 +118,7 @@ verify_app() {
 }
 
 prepare_icon
-create_app "LDCodex" "LDCodex" "$BINARY_DIR/codex-plus-plus" "com.luoda.codexplusplus" "true"
+create_app "LDCodex" "LDCodex" "$BINARY_DIR/ldcodex" "com.luoda.codexplusplus" "true"
 create_app "LDCodex 管理工具" "LDCodexManager" "$BINARY_DIR/codex-plus-plus-manager" "com.luoda.codexplusplus.manager" "false"
 ln -s /Applications "$STAGE/Applications"
 

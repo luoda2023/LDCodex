@@ -50,8 +50,8 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist/windows/app | Out-Null
-          Copy-Item target/release/codex-plus-plus.exe dist/windows/app/
-          Copy-Item target/release/codex-plus-plus-manager.exe dist/windows/app/
+          Copy-Item target/release/ldcodex.exe dist/windows/app/
+          Copy-Item target/release/ldcodex-manager.exe dist/windows/app/
 
       - name: Build Windows installer
         shell: pwsh
@@ -134,7 +134,7 @@ jobs:
       - name: Verify macOS bundle structure
         run: |
           set -euo pipefail
-          for app in "dist/macos/stage/Codex++.app" "dist/macos/stage/Codex++ 管理工具.app"; do
+          for app in "dist/macos/stage/LDCodex.app" "dist/macos/stage/LDCodex 管理工具.app"; do
             test -f "$app/Contents/Info.plist"
             test -f "$app/Contents/PkgInfo"
             test -x "$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
