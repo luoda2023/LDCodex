@@ -2014,14 +2014,6 @@
 
         </div>
         <div class="codex-plus-modal-body">
-                    <div class="codex-plus-user-script-actions">
-                <button type="button" class="codex-plus-toggle" data-codex-user-scripts-enabled="true"><span></span></button>
-                <button type="button" class="codex-plus-user-script-reload" data-codex-user-scripts-reload="true">重新加载用户脚本</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     `;
     const closeButton = overlay.querySelector(".codex-plus-modal-close");
     closeButton?.addEventListener("click", (event) => {
