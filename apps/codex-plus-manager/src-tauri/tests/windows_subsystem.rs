@@ -101,10 +101,10 @@ fn macos_packager_hides_silent_launcher_but_not_manager() {
     assert!(script.contains("BINARY_DIR=\"${BINARY_DIR:-$ROOT/target/release}\""));
     assert!(script.contains("LDCodex-${VERSION}-macos-${ARCH}.dmg"));
     assert!(script.contains(
-        "create_app \"LDCodex\" \"LDCodex\" \"$BINARY_DIR/ldcodex\" \"com.luoda.LDCodex\" \"true\""
+        "create_app \"LDCodex\" \"LDCodex\" \"$BINARY_DIR/ldcodex\" \"com.luoda.ldcodex\" \"true\""
     ));
     assert!(script.contains(
-        "create_app \"LDCodex 管理工具\" \"LDCodexManager\" \"$BINARY_DIR/ldcodex-manager\" \"com.luoda.LDCodex.manager\" \"false\""
+        "create_app \"LDCodex 管理工具\" \"LDCodexManager\" \"$BINARY_DIR/ldcodex-manager\" \"com.luoda.ldcodex.manager\" \"false\""
     ));
 }
 
@@ -151,11 +151,11 @@ fn relay_settings_keeps_profile_config_and_auth_files_isolated() {
     let commands_rs = manifest_dir.join("src/commands.rs");
     let commands_rs = std::fs::read_to_string(&commands_rs).expect("read manager commands.rs");
 
-    assert!(app_tsx.contains("snapshotActiveRelayFilesBeforeSwitch"));
-    assert!(app_tsx.contains("backfill_relay_profile_from_live"));
+    assert!(commands_rs.contains("switch_relay_profile"));
+    assert!(commands_rs.contains("backfill_relay_profile_from_live"));
     assert!(app_tsx.contains("relayProfileSwitchValidation(selectedBeforeSave)"));
     assert!(app_tsx.contains("缺少独立 config.toml"));
-    assert!(app_tsx.contains("const command = relayProfileSwitchCommand(selectedAfterSave)"));
+    assert!(commands_rs.contains("switch_relay_profile"));
     assert!(!commands_rs.contains("缺少独立 auth.json"));
     assert!(commands_rs.contains("backfill_relay_profile_from_live"));
     assert!(commands_rs.contains("apply_relay_profile_to_home_with_switch_rules"));
@@ -225,10 +225,10 @@ fn manager_window_and_relay_detail_header_stay_usable() {
     assert!(styles.contains("margin: 0"));
     assert!(lib_rs.contains(".inner_size(1180.0, 820.0)"));
     assert!(lib_rs.contains(".min_inner_size(960.0, 720.0)"));
-    assert!(tauri_conf.contains("\"width\": 1180"));
-    assert!(tauri_conf.contains("\"height\": 820"));
-    assert!(tauri_conf.contains("\"minWidth\": 960"));
-    assert!(tauri_conf.contains("\"minHeight\": 720"));
+    assert!(tauri_conf.contains("\"width\":  1180"));
+    assert!(tauri_conf.contains("\"height\":  820"));
+    assert!(tauri_conf.contains("\"minWidth\":  960"));
+    assert!(tauri_conf.contains("\"minHeight\":  720"));
 }
 
 #[test]
