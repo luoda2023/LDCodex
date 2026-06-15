@@ -487,11 +487,11 @@ body {
 }
 
 .good {
-  color: hsl(164 74% 62%);
+  color: hsl(0 0% 10%);
 }
 
 .light .good {
-  color: hsl(164 74% 62%);
+  color: hsl(0 0% 10%);
 }
 
 .warn {
@@ -1622,7 +1622,7 @@ body {
 }
 
 .health-item.ok svg {
-  color: hsl(164 74% 62%);
+  color: hsl(0 0% 10%);
 }
 
 .health-item.needs-fix svg {

@@ -14,6 +14,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -1282,7 +1283,7 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.classList.toggle("light", theme === "light");
-    window.localStorage.setItem("codex-plus-theme", theme);
+    try { getCurrentWindow().setTheme(theme === "dark" ? "dark" : "light"); } catch (_) {}
   }, [theme]);
 
   const saveCodexAppPath = async (appPath: string) => {
@@ -2532,12 +2533,6 @@ function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actio
         <Button onClick={() => void actions.installMarketScript(script.id)} size="sm">
           <Download className="h-4 w-4" />
           {script.updateAvailable ? "更新" : script.installed ? "重新安装" : "安装"}
-        </Button>
-        {script.homepage ? (
-          <Button onClick={() => void actions.openExternalUrl(script.homepage)} size="sm" variant="secondary">
-            <ExternalLink className="h-4 w-4" />
-            主页
-          </Button>
         ) : null}
       </div>
     </div>
@@ -3478,7 +3473,7 @@ function mergeLiveContextEntries(entries: CodexContextEntry[], liveEntries: Map<
 }
 
 function withLiveEntryState(entry: CodexContextEntry, live?: CodexContextEntry): CodexContextEntry {
-  return live ? { ...entry, enabled: live.enabled } : { ...entry, enabled: false };
+  return live ? { ...entry, enabled: live.enabled } : entry;
 }
 
 function contextEntriesForProfile(settings: BackendSettings, profile: RelayProfile): CodexContextEntries {
