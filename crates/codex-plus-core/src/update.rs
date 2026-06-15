@@ -185,7 +185,7 @@ pub async fn check_for_update(_current_version: &str) -> anyhow::Result<UpdateCh
         asset_name: None,
         asset_url: None,
         update_available: false,
-    }))
+    })
 }
 
 pub async fn perform_update(
@@ -194,6 +194,7 @@ pub async fn perform_update(
 ) -> anyhow::Result<UpdateInstall> {
     anyhow::bail!("自动升级已禁用")
 }
+
 pub fn download_asset_to(
     release: &Release,
     bytes: &[u8],

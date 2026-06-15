@@ -2594,3 +2594,8 @@ body {
   background: hsl(var(--brand-accent));
   color: hsl(var(--primary-foreground));
 }
+
+/* checkbox brand color */
+input[type="checkbox"] {
+  accent-color: hsl(var(--primary));
+}
