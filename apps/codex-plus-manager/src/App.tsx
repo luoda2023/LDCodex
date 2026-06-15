@@ -2533,7 +2533,7 @@ function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actio
         <Button onClick={() => void actions.installMarketScript(script.id)} size="sm">
           <Download className="h-4 w-4" />
           {script.updateAvailable ? "更新" : script.installed ? "重新安装" : "安装"}
-        ) : null}
+        </Button>
       </div>
     </div>
   );
