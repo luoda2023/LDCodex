@@ -177,44 +177,23 @@ pub async fn fetch_latest_release(latest_json_url: &str) -> anyhow::Result<Relea
     release_from_latest_json_payload(&payload)
 }
 
-pub async fn check_for_update(current_version: &str) -> anyhow::Result<UpdateCheck> {
-    let release = fetch_latest_release(DEFAULT_LATEST_JSON_URL).await?;
-    let update_available = is_newer_version(&release.version, current_version)?;
+pub async fn check_for_update(_current_version: &str) -> anyhow::Result<UpdateCheck> {
     Ok(UpdateCheck {
-        current_version: current_version.to_string(),
-        latest_version: Some(release.version),
-        release_summary: release.body,
-        asset_name: release.asset_name,
-        asset_url: release.asset_url,
-        update_available,
-    })
+        current_version: _current_version.to_string(),
+        latest_version: None,
+        release_summary: String::new(),
+        asset_name: None,
+        asset_url: None,
+        update_available: false,
+    }))
 }
 
 pub async fn perform_update(
-    release: &Release,
-    download_dir: &Path,
+    _release: &Release,
+    _download_dir: &Path,
 ) -> anyhow::Result<UpdateInstall> {
-    let url = release
-        .asset_url
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("没有可下载的 Release asset"))?;
-    let bytes =
-        crate::http_client::proxied_client(&format!("LDCodex/{}", crate::version::VERSION))?
-            .get(url)
-            .send()
-            .await?
-            .error_for_status()?
-            .bytes()
-            .await?;
-    let installer_path = download_asset_to(release, &bytes, download_dir)?;
-    launch_installer(&installer_path)?;
-    Ok(UpdateInstall {
-        release: release.clone(),
-        installer_path,
-        launched: true,
-    })
+    anyhow::bail!("自动升级已禁用")
 }
-
 pub fn download_asset_to(
     release: &Release,
     bytes: &[u8],

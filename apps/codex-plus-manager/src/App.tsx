@@ -897,7 +897,7 @@ export function App() {
     if (result) {
       setUpdate(result);
       if (!silent || result.updateAvailable) {
-        showNotice("GitHub Release 检查", result.message, result.status);
+        {} // GitHub Release check disabled
       }
     }
   };
@@ -1444,7 +1444,7 @@ export function App() {
       showMessage: async (title: string, message: string, status?: Status) => showNotice(title, message, status),
       copyLogs: () => copyText(logs?.text ?? "", "日志已复制。"),
       copyDiagnostics: () => copyText(diagnostics?.report ?? "", "诊断报告已复制。"),
-      goLogs: () => navigate("about"),
+      goLogs: () => {},
       checkHealth: async () => {
         await refreshOverview(true);
         await refreshRelay(true);
@@ -3474,9 +3474,6 @@ function routeSubtitle(route: Route) {
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
     enhance: "会话删除、导出、项目移动和脚本能力",
-    zedRemote: "管理 Codex SSH 项目并加入 Zed workspace",
-    userScripts: "内置和用户自定义脚本清单",
-    recommendations: "赞助商推荐与普通推荐",
     maintenance: "入口安装、修复、Watcher 与手动启动",
     about: "版本信息",
     settings: "主题、命令包装器和启动参数",
