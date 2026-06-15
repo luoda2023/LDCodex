@@ -214,7 +214,12 @@ pub fn codex_app_version(app_dir: &Path) -> Option<String> {
     } else {
         app_dir
     };
-    codex_package_version(package_dir)
+    // 先试 MS Store 版本检测
+    if let Some(ver) = codex_package_version(package_dir) {
+        return Some(ver);
+    }
+    // 非 MS Store 安装: 从 package.json 提取
+    standalone_codex_version(package_dir)
 }
 
 pub fn packaged_app_user_model_id(app_dir: &Path) -> Option<String> {
@@ -241,6 +246,7 @@ fn package_name_from_app_dir(app_dir: &Path) -> Option<String> {
 }
 
 fn codex_package_version(package_dir: &Path) -> Option<String> {
+    // MS Store 安装: 从目录名 OpenAI.Codex_version_xxx 中提取
     let path = package_dir.to_string_lossy().replace('\\', "/");
     let name = path
         .split('/')
@@ -253,6 +259,35 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
     } else {
         Some(version.to_string())
     }
+}
+
+fn standalone_codex_version(app_dir: &Path) -> Option<String> {
+    // 非 MS Store 安装: 从 package.json 提取版本
+    // 检查 app
+esources\package.json (Standalone 安装)
+    let app_resources = app_dir.parent()?.join("app").join("resources");
+    let pkg_json = app_resources.join("package.json");
+    if pkg_json.exists() {
+        if let Ok(text) = std::fs::read_to_string(&pkg_json) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+                if let Some(ver) = json.get("version").and_then(|v| v.as_str()) {
+                    return Some(ver.to_string());
+                }
+            }
+        }
+    }
+    // 再试 app 目录本身
+    let pkg_json2 = app_dir.join("package.json");
+    if pkg_json2.exists() {
+        if let Ok(text) = std::fs::read_to_string(&pkg_json2) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+                if let Some(ver) = json.get("version").and_then(|v| v.as_str()) {
+                    return Some(ver.to_string());
+                }
+            }
+        }
+    }
+    None
 }
 
 fn macos_app_version(app_dir: &Path) -> Option<String> {
