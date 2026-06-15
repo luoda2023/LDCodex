@@ -1,4 +1,4 @@
-﻿import {
+import {
   closestCenter,
   DndContext,
   KeyboardSensor,
@@ -389,6 +389,7 @@ type UpdateResult = CommandResult<{
   installedPath?: string;
   progress?: number;
 }>;
+
 
 
 type ScriptMarketItem = {
@@ -891,15 +892,33 @@ export function App() {
     }
   };
 
-  const checkUpdate = async (_silent = false) => {
-    // 升级检查已禁用
+  const checkUpdate = async (silent = false) => {
+    const result = await run(() => call<UpdateResult>("check_update"));
+    if (result) {
+      setUpdate(result);
+      if (!silent || result.updateAvailable) {
+        showNotice("GitHub Release 检查", result.message, result.status);
+      }
+    }
   };
-
 
   const performUpdate = async () => {
-    // 更新功能已禁用
+    const release =
+      update?.latestVersion && update.assetName && update.assetUrl
+        ? {
+            version: update.latestVersion,
+            url: "",
+            body: update.releaseSummary ?? "",
+            asset_name: update.assetName,
+            asset_url: update.assetUrl,
+          }
+        : null;
+    const result = await run(() => call<UpdateResult>("perform_update", { release }));
+    if (result) {
+      setUpdate(result);
+      showNotice("更新安装", result.message, result.status);
+    }
   };
-
 
   const saveSettings = async () => {
     const next = normalizeSettings(settingsForm);
@@ -1425,7 +1444,7 @@ export function App() {
       showMessage: async (title: string, message: string, status?: Status) => showNotice(title, message, status),
       copyLogs: () => copyText(logs?.text ?? "", "日志已复制。"),
       copyDiagnostics: () => copyText(diagnostics?.report ?? "", "诊断报告已复制。"),
-      goLogs: () => {},
+      goLogs: () => navigate("about"),
       checkHealth: async () => {
         await refreshOverview(true);
         await refreshRelay(true);
@@ -1445,10 +1464,23 @@ export function App() {
     <div className={`shell ${theme}`}>
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark"><img src="J:\LOGO.png" alt="LDCodex" className="brand-logo" /></div>
+          <div className="brand-mark">C++</div>
           <div className="brand-copy">
             <div className="brand-title-row">
               <div className="brand-title">LDCodex</div>
+              {hasUpdate ? (
+                <button
+                  className="update-dot"
+                  onClick={() => {
+                    setRoute("about");
+                    void checkUpdate(false);
+                  }}
+                  title={`发现新版本 ${update?.latestVersion ?? ""}`}
+                  type="button"
+                >
+                  <CircleArrowUp className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
             </div>
             <div className="brand-subtitle">管理控制台</div>
           </div>
@@ -1537,6 +1569,7 @@ export function App() {
           {route === "enhance" ? (
             <EnhanceScreen form={settingsForm} onFormChange={setSettingsForm} actions={actions} />
           ) : null}
+
 
 
           {route === "maintenance" ? (
@@ -1868,8 +1901,26 @@ function EnhanceScreen({
             <FeatureToggle title="对话 Timeline" detail="在对话右侧显示用户提问时间线，支持摘要和跳转。" checked={form.codexAppConversationTimeline} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationTimeline", value)} />
             <FeatureToggle title="对话居中宽度" detail="把主对话和输入框限制到固定最大宽度，适合大屏阅读。" checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
             <FeatureToggle title="切换对话保留位置" detail="切换 thread 时恢复上一次浏览位置。" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
+            <FeatureToggle title="Zed Remote open" detail="远程 SSH 文件引用可直接用 Zed Remote Development 打开。" checked={form.codexAppZedRemoteOpen} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppZedRemoteOpen", value)} />
+            <FeatureToggle title="Zed 项目记录" detail="维护 LDCodex 自己的远程项目最近列表。" checked={form.zedRemoteProjectRegistryEnabled} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteProjectRegistryEnabled", value)} />
+            <FeatureToggle title="同步 Zed settings" detail="高级选项，默认关闭；当前实现不主动改写 Zed settings。" checked={form.zedRemoteSyncToZedSettings} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteSyncToZedSettings", value)} />
             <FeatureToggle title="Upstream worktree" detail="从最新 upstream 分支创建 Git worktree。" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
             <FeatureToggle title="原生菜单栏位置" detail="把 LDCodex 菜单插入 Codex 顶部原生菜单栏。" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
+          </div>
+          <div className="zed-remote-settings">
+            <Field label="Zed 默认打开策略">
+              <select
+                className="select-input"
+                disabled={!masterEnabled}
+                onChange={(event) => onFormChange({ ...form, zedRemoteOpenStrategy: event.currentTarget.value as ZedOpenStrategy })}
+                value={form.zedRemoteOpenStrategy}
+              >
+                <option value="addToFocusedWorkspace">加入当前工作区</option>
+                <option value="reuseWindow">复用窗口</option>
+                <option value="newWindow">新窗口</option>
+                <option value="default">Zed 默认行为</option>
+              </select>
+            </Field>
           </div>
           <div className="hint-line">
             <Info className="h-4 w-4" />
@@ -3423,6 +3474,9 @@ function routeSubtitle(route: Route) {
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
     enhance: "会话删除、导出、项目移动和脚本能力",
+    zedRemote: "管理 Codex SSH 项目并加入 Zed workspace",
+    userScripts: "内置和用户自定义脚本清单",
+    recommendations: "赞助商推荐与普通推荐",
     maintenance: "入口安装、修复、Watcher 与手动启动",
     about: "版本信息",
     settings: "主题、命令包装器和启动参数",

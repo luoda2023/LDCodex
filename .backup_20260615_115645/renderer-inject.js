@@ -7940,43 +7940,4 @@
   window.__codexSessionDeleteObserver?.disconnect();
   window.__codexSessionDeleteObserver = new MutationObserver(scheduleScan);
   window.__codexSessionDeleteObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
-
-  // ── 文本格式化：自动检测扁平文本并分段 ──
-  // 解决某些模型返回纯文本无分段的问题（如阿里云3）
-  // 安全设计：只处理纯中文/纯英文的扁平文本，跳过已有格式的文本
-  function formatFlatText(text) {
-    // 已有分段标记 → 跳过
-    if (/\n\n/.test(text) || text.length < 80) return text;
-    // 包含代码块、反引号或链接标记 → 跳过（避免破坏代码/URL）
-    if (/```|`|http:\/\/|https:\/\//.test(text)) return text;
-    let formatted = text
-      .replace(/([。？！！？])/g, '$1\n\n')
-      // 英文句号只在后面有空格时才分段（避免破坏 URL/数字/代码）
-      .replace(/\.(?=\s+)/g, '.\n\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .replace(/^\n+/, '')
-      .replace(/\n+$/, '');
-    return formatted;
-  }
-
-  let formatTimer = null;
-  function runFormat() {
-    if (formatTimer) clearTimeout(formatTimer);
-    formatTimer = setTimeout(() => {
-      document.querySelectorAll('[data-message-author-role="assistant"] [class*="whitespace-pre"]').forEach((el) => {
-        if (el.dataset.codexFlatFixed === "true") return;
-        // 只处理已完成渲染的消息（避免流式输出中误操作）
-        const turn = el.closest('[data-testid="conversation-turn"], [data-message-author-role="assistant"]');
-        if (turn && turn.querySelector('[class*="cursor"], [class*="blinking"], [class*="loading"], [class*="streaming"]')) return;
-        const text = el.textContent || '';
-        const formatted = formatFlatText(text);
-        if (formatted !== text) {
-          el.textContent = formatted;
-        }
-        el.dataset.codexFlatFixed = "true";
-      });
-    }, 1200);
-  }
-  new MutationObserver(runFormat).observe(document.body || document.documentElement, { childList: true, subtree: true });
-  setTimeout(runFormat, 1000);
 })();

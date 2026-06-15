@@ -521,7 +521,7 @@ pub async fn open_chat_completions_proxy_request(
         .get("stream")
         .and_then(Value::as_bool)
         .unwrap_or(false);
-    let upstream = reqwest::Client::new()
+    let upstream = crate::http_client::proxied_client(&relay.user_agent)?
         .post(chat_completions_url(&relay.base_url))
         .bearer_auth(relay.api_key.trim())
         .header(reqwest::header::CONTENT_TYPE, "application/json")
@@ -1186,12 +1186,70 @@ impl ChatSseState {
             return;
         }
         let output_index = self.text.output_index.unwrap_or(0);
+
+        // ── 最终文本自适应格式化 ──
+        // 只在消息完成时对完整文本做检测，不影响流式 delta 的透传
+        // 解决某些模型（如阿里云3）返回纯文本无分段的问题
+        let final_text = if self.text.text.len() > 80 && !self.text.text.contains("\n\n") {
+            let text = &self.text.text;
+            // 包含代码块、URL 或已经像代码的内容 → 跳过（避免破坏格式）
+            if text.contains("```") || text.contains("http://") || text.contains("https://") {
+                self.text.text.clone()
+            } else {
+                let mut formatted = String::with_capacity(text.len() + 64);
+                let chars: Vec<char> = text.chars().collect();
+                let len = chars.len();
+                let mut i = 0;
+                while i < len {
+                    let c = chars[i];
+                    // 中文句末标点后补 \n\n
+                    if matches!(c, '。' | '？' | '！') {
+                        formatted.push(c);
+                        while i + 1 < len && chars[i + 1].is_whitespace() {
+                            i += 1;
+                        }
+                        if i + 1 < len && chars[i + 1] != '\n' && chars[i + 1] != '\r' {
+                            formatted.push_str("\n\n");
+                        }
+                    } else if matches!(c, '.' | '!' | '?') {
+                        // 英文句末标点：只在后面有空格或中文时才分段（避免破坏 URL/代码）
+                        formatted.push(c);
+                        if i + 1 < len && (chars[i + 1] == ' ' || chars[i + 1].is_whitespace()) {
+                            while i + 1 < len && chars[i + 1].is_whitespace() {
+                                i += 1;
+                            }
+                            if i + 1 < len && chars[i + 1] != '\n' && chars[i + 1] != '\r' {
+                                formatted.push_str("\n\n");
+                            }
+                        }
+                    } else if c == '\n' && i + 1 < len && chars[i + 1] == '\n' {
+                        formatted.push_str("\n\n");
+                        i += 1;
+                    } else if c == '\n' {
+                        formatted.push_str("\n\n");
+                    } else {
+                        formatted.push(c);
+                    }
+                    i += 1;
+                }
+                let formatted = formatted.trim().to_string();
+                if formatted == text.trim() {
+                    self.text.text.clone()
+                } else {
+                    formatted
+                }
+            }
+        } else {
+            // 已有分段标记或短文本 → 原样输出（deepseek 等走这里）
+            self.text.text.clone()
+        };
+
         let item = json!({
             "id": self.text.item_id,
             "type": "message",
             "status": "completed",
             "role": "assistant",
-            "content": [{ "type": "output_text", "text": self.text.text, "annotations": [] }]
+            "content": [{ "type": "output_text", "text": &final_text, "annotations": [] }]
         });
         self.output_items.push((output_index, item.clone()));
         self.text.done = true;
@@ -1203,7 +1261,7 @@ impl ChatSseState {
                 "item_id": self.text.item_id,
                 "output_index": output_index,
                 "content_index": 0,
-                "text": self.text.text
+                "text": &final_text
             }),
         );
         push_sse(
@@ -1214,7 +1272,7 @@ impl ChatSseState {
                 "item_id": self.text.item_id,
                 "output_index": output_index,
                 "content_index": 0,
-                "part": { "type": "output_text", "text": self.text.text, "annotations": [] }
+                "part": { "type": "output_text", "text": &final_text, "annotations": [] }
             }),
         );
         push_sse(

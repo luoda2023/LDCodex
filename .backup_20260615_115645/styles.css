@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 @theme {
   --color-background: hsl(var(--background));
@@ -30,7 +30,7 @@
   --card-foreground: 0 0% 94%;
   --popover: 0 0% 12.5%;
   --popover-foreground: 0 0% 94%;
-  --primary: 248 80% 55%;
+  --primary: 151 72% 53%;
   --primary-foreground: 150 42% 8%;
   --secondary: 0 0% 18%;
   --secondary-foreground: 0 0% 94%;
@@ -42,14 +42,14 @@
   --destructive-foreground: 0 0% 98%;
   --border: 0 0% 19%;
   --input: 0 0% 18%;
-  --ring: 210 6% 36%;
+  --ring: 151 72% 53%;
   --shell-bg: 0 0% 9.4%;
   --sidebar-bg: 220 8% 14%;
   --sidebar-muted: 220 6% 24%;
   --sidebar-border: 220 5% 19%;
   --surface-raised: 0 0% 15.5%;
   --surface-sunken: 0 0% 12%;
-  --brand-accent: 248 80% 55%;
+  --brand-accent: 151 72% 53%;
 }
 
 .light {
@@ -59,7 +59,7 @@
   --card-foreground: 220 13% 13%;
   --popover: 0 0% 100%;
   --popover-foreground: 220 13% 13%;
-  --primary: 248 80% 42%;
+  --primary: 151 64% 36%;
   --primary-foreground: 0 0% 100%;
   --secondary: 220 14% 96%;
   --secondary-foreground: 220 13% 13%;
@@ -71,14 +71,14 @@
   --destructive-foreground: 0 0% 98%;
   --border: 220 13% 88%;
   --input: 220 13% 88%;
-  --ring: 210 6% 36%;
+  --ring: 151 64% 36%;
   --shell-bg: 220 20% 96%;
   --sidebar-bg: 220 15% 92%;
   --sidebar-muted: 220 12% 86%;
   --sidebar-border: 220 13% 82%;
   --surface-raised: 0 0% 100%;
   --surface-sunken: 220 20% 96%;
-  --brand-accent: 248 80% 42%;
+  --brand-accent: 151 64% 36%;
 }
 
 :root {
@@ -2593,9 +2593,4 @@ body {
 .dark .preset-btn[data-selected="true"] .preset-btn-icon {
   background: hsl(var(--brand-accent));
   color: hsl(var(--primary-foreground));
-}
-
-/* checkbox brand color */
-input[type="checkbox"] {
-  accent-color: hsl(var(--primary));
 }

@@ -352,7 +352,7 @@ dependencies = [
 
 [[package]]
 name = "codex-plus-core"
-version = "1.2.8"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -375,7 +375,7 @@ dependencies = [
 
 [[package]]
 name = "codex-plus-data"
-version = "1.2.8"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -387,38 +387,6 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "uuid",
-]
-
-[[package]]
-name = "codex-plus-launcher"
-version = "1.2.8"
-dependencies = [
- "anyhow",
- "async-trait",
- "codex-plus-core",
- "codex-plus-data",
- "directories",
- "serde_json",
- "tokio",
- "winresource",
-]
-
-[[package]]
-name = "codex-plus-manager"
-version = "1.2.8"
-dependencies = [
- "anyhow",
- "async-trait",
- "codex-plus-core",
- "codex-plus-data",
- "directories",
- "rusqlite",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tempfile",
 ]
 
 [[package]]
@@ -1809,6 +1777,38 @@ dependencies = [
  "bitflags 2.11.1",
  "serde",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "ldcodex-launcher"
+version = "1.0.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codex-plus-core",
+ "codex-plus-data",
+ "directories",
+ "serde_json",
+ "tokio",
+ "winresource",
+]
+
+[[package]]
+name = "ldcodex-manager"
+version = "1.0.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codex-plus-core",
+ "codex-plus-data",
+ "directories",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tempfile",
 ]
 
 [[package]]
