@@ -112,7 +112,7 @@ type BackendSettings = {
   codexAppConversationTimeline: boolean;
   codexAppConversationView: boolean;
   codexAppThreadScrollRestore: boolean;
-  codexAppZedRemoteOpen: boolean;
+
   zedRemoteOpenStrategy: ZedOpenStrategy;
   zedRemoteProjectRegistryEnabled: boolean;
   zedRemoteSyncToZedSettings: boolean;
@@ -469,7 +469,7 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "zedRemote" | "userScripts" | "maintenance" | "about" | "settings";
+type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "maintenance" | "about" | "settings";
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
@@ -503,10 +503,7 @@ const defaultSettings: BackendSettings = {
   codexAppConversationTimeline: true,
   codexAppConversationView: false,
   codexAppThreadScrollRestore: true,
-  codexAppZedRemoteOpen: true,
-  zedRemoteOpenStrategy: "addToFocusedWorkspace",
-  zedRemoteProjectRegistryEnabled: true,
-  zedRemoteSyncToZedSettings: false,
+
   codexAppUpstreamWorktreeCreate: true,
   codexAppNativeMenuPlacement: true,
   codexAppServiceTierControls: false,
@@ -801,20 +798,14 @@ export function App() {
       await refreshLocalSessions(true);
       await refreshProviderSyncTargets(true);
     }
-    if (next === "zedRemote") {
-      await refreshSettings(true);
-      await refreshZedRemoteProjects(true);
-    }
+    
     if (next === "context") {
       await refreshSettings(true);
       await refreshRelayFiles(true);
       await refreshLiveContextEntries(true);
     }
     if (next === "settings") await refreshSettings(true);
-    if (next === "userScripts") {
-      await refreshSettings(true);
-      await refreshScriptMarket(true);
-    }
+
     
     if (next === "about") {
       await refreshOverview(true);

@@ -76,7 +76,7 @@ fn resolves_packaged_resources_when_user_runtime_is_missing() {
 }
 
 #[test]
-fn wrapper_dir_uses_roaming_codex_plus_plus() {
+fn wrapper_dir_uses_roaming_ldcodex() {
     assert_eq!(
         wrapper_dir_from_roaming(&PathBuf::from(r"C:\Users\me\AppData\Roaming")),
         PathBuf::from(r"C:\Users\me\AppData\Roaming\LDCodex")

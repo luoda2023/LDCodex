@@ -262,34 +262,24 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
 }
 
 fn standalone_codex_version(app_dir: &Path) -> Option<String> {
-    // 非 MS Store 安装: 从 package.json 提取版本
-    // 检查 app
-esources\package.json (Standalone 安装)
-    let app_resources = app_dir.parent()?.join("app").join("resources");
-    let pkg_json = app_resources.join("package.json");
-    if pkg_json.exists() {
-        if let Ok(text) = std::fs::read_to_string(&pkg_json) {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
-                if let Some(ver) = json.get("version").and_then(|v| v.as_str()) {
-                    return Some(ver.to_string());
-                }
-            }
-        }
-    }
-    // 再试 app 目录本身
-    let pkg_json2 = app_dir.join("package.json");
-    if pkg_json2.exists() {
-        if let Ok(text) = std::fs::read_to_string(&pkg_json2) {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
-                if let Some(ver) = json.get("version").and_then(|v| v.as_str()) {
-                    return Some(ver.to_string());
+    // 非 MS Store 安装: 从 package.json 提取版本号
+    let try_paths = [
+        app_dir.parent().map(|p| p.join("app").join("resources").join("package.json")),
+        Some(app_dir.join("package.json")),
+    ];
+    for p in try_paths.into_iter().flatten() {
+        if p.exists() {
+            if let Ok(text) = std::fs::read_to_string(&p) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+                    if let Some(ver) = json.get("version").and_then(|v| v.as_str()) {
+                        return Some(ver.to_string());
+                    }
                 }
             }
         }
     }
     None
 }
-
 fn macos_app_version(app_dir: &Path) -> Option<String> {
     let plist = std::fs::read_to_string(app_dir.join("Contents").join("Info.plist")).ok()?;
     plist_string_value(&plist, "CFBundleShortVersionString")
