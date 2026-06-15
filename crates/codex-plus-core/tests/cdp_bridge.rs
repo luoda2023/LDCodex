@@ -1,4 +1,4 @@
-ï»¿use base64::Engine;
+use base64::Engine;
 use codex_plus_core::assets;
 use codex_plus_core::bridge::{self, BRIDGE_BINDING_NAME};
 use codex_plus_core::cdp::{
@@ -122,20 +122,20 @@ fn injection_script_times_out_backend_bridge_calls_and_falls_back_to_helper() {
 fn injection_script_explains_plugin_patch_is_unneeded_in_relay_mode() {
     let script = assets::injection_script(57321);
 
-    assert!(script.contains("å…¼å®¹å¢å¼ºæ¨¡å¼ä¸‹æ— éœ€å¼€å¯"));
+    assert!(script.contains("¼æÈİÔöÇ¿Ä£Ê½ÏÂÎŞĞè¿ªÆô"));
 }
 
 #[test]
 fn injection_script_menu_exposes_three_independent_plugin_switches() {
     let script = assets::injection_script(57321);
 
-    assert!(script.contains("æ’ä»¶å¸‚åœºè§£é”"));
+    assert!(script.contains("²å¼şÊĞ³¡½âËø"));
     assert!(script.contains("data-codex-plus-setting=\"pluginMarketplaceUnlock\""));
-    assert!(script.contains("å¼ºåˆ¶è§£é”å…¥å£"));
+    assert!(script.contains("Ç¿ÖÆ½âËøÈë¿Ú"));
     assert!(script.contains("data-codex-plus-setting=\"pluginEntryUnlock\""));
-    assert!(script.contains("ç‰¹æ®Šæ’ä»¶å¼ºåˆ¶å®‰è£…"));
+    assert!(script.contains("ÌØÊâ²å¼şÇ¿ÖÆ°²×°"));
     assert!(script.contains("data-codex-plus-setting=\"forcePluginInstall\""));
-    assert!(script.contains("æ¢å¤ 1.1.9 çš„å…¥å£è§£é”æ–¹å¼"));
+    assert!(script.contains("»Ö¸´ 1.1.9 µÄÈë¿Ú½âËø·½Ê½"));
 }
 
 #[test]
@@ -186,7 +186,7 @@ fn injection_script_restores_legacy_plugin_sidebar_entry_unlock() {
     assert!(script.contains("if (!codexPlusSettings().pluginEntryUnlock) return"));
     assert!(script.contains("pluginButton.addEventListener(\"click\", () => {"));
     assert!(script.contains("spoofChatGPTAuthMethod(pluginButton);"));
-    assert!(script.contains("æ’ä»¶ - å·²è§£é”"));
+    assert!(script.contains("²å¼ş - ÒÑ½âËø"));
     assert!(script.contains("Plugins - Unlocked"));
 }
 
@@ -223,7 +223,7 @@ fn injection_script_keeps_bundled_marketplace_name_for_default_filter() {
     assert!(
         !script.contains("if (name === \"openai-bundled\") return \"codex-plus-openai-bundled\"")
     );
-    assert!(script.contains("if (name === \"openai-bundled\" || name === \"codex-plus-openai-bundled\") return \"OpenAIæ’ä»¶1(LDCodex)\""));
+    assert!(script.contains("if (name === \"openai-bundled\" || name === \"codex-plus-openai-bundled\") return \"OpenAI²å¼ş1(LDCodex)\""));
 }
 
 #[test]
@@ -272,9 +272,9 @@ fn injection_script_expands_api_key_plugin_marketplace_requests() {
     assert!(script.contains(
         "if (name === \"openai-primary-runtime\") return \"codex-plus-openai-primary-runtime\""
     ));
-    assert!(script.contains("OpenAIæ’ä»¶1(LDCodex)"));
-    assert!(script.contains("OpenAIæ’ä»¶2(LDCodex)"));
-    assert!(script.contains("OpenAIæ’ä»¶3(LDCodex)"));
+    assert!(script.contains("OpenAI²å¼ş1(LDCodex)"));
+    assert!(script.contains("OpenAI²å¼ş2(LDCodex)"));
+    assert!(script.contains("OpenAI²å¼ş3(LDCodex)"));
     assert!(script.contains("method === \"install-plugin\""));
     assert!(script.contains("plugin_marketplace_response_expanded"));
     assert!(script.contains("plugin_build_flavor_filter_bypassed"));
@@ -341,7 +341,7 @@ fn injection_script_exposes_conversation_view_width_control() {
     assert!(script.contains("conversationView: false"));
     assert!(script.contains("conversationView"));
     assert!(script.contains("conversationViewMaxWidth"));
-    assert!(script.contains("å¯¹è¯å±…ä¸­å®½åº¦"));
+    assert!(script.contains("¶Ô»°¾ÓÖĞ¿í¶È"));
     assert!(script.contains("data-codex-plus-conversation-view-width"));
     assert!(script.contains("conversationViewWidth()"));
     assert!(script.contains("normalizeConversationViewWidth"));
@@ -363,9 +363,9 @@ fn injection_script_moves_export_and_project_move_into_more_menu() {
 
     assert!(script.contains("moreButtonClass = \"codex-session-more-button\""));
     assert!(script.contains("moreMenuClass = \"codex-session-more-menu\""));
-    assert!(script.contains("configureActionButton(moreButton, \"æ›´å¤šæ“ä½œ\", \"â€¦\")"));
-    assert!(script.contains("createSessionMoreMenuItem(\"å¯¼å‡º\""));
-    assert!(script.contains("createSessionMoreMenuItem(\"ç§»åŠ¨\""));
+    assert!(script.contains("configureActionButton(moreButton, \"¸ü¶à²Ù×÷\", \"¡­\")"));
+    assert!(script.contains("createSessionMoreMenuItem(\"µ¼³ö\""));
+    assert!(script.contains("createSessionMoreMenuItem(\"ÒÆ¶¯\""));
     assert!(script.contains("group.appendChild(moreButton)"));
     assert!(script.contains("installMoreButtonEvents(row, moreButton, openMoreMenu)"));
     assert!(script.contains("installSessionMoreMenuAutoClose(row, moreMenu)"));
@@ -396,7 +396,7 @@ fn injection_script_does_not_add_delete_controls_on_archived_page() {
     assert!(script.contains("dataset.codexArchiveRowAction = \"export\""));
     assert!(!script.contains("dataset.codexArchiveRowAction = \"delete\""));
     assert!(!script.contains("installArchivedDeleteAllButton"));
-    assert!(!script.contains("åˆ é™¤å…¨éƒ¨å½’æ¡£"));
+    assert!(!script.contains("É¾³ıÈ«²¿¹éµµ"));
 }
 
 #[test]
@@ -441,7 +441,7 @@ fn injection_script_exposes_fast_service_tier_control() {
     assert!(script.contains("data-codex-service-tier-controls"));
     assert!(script.contains("removeCodexServiceTierBadges"));
     assert!(script.contains("installCodexServiceTierDispatcherPatch"));
-    assert!(script.contains("æœåŠ¡æ¨¡å¼"));
+    assert!(script.contains("·şÎñÄ£Ê½"));
     assert!(script.contains("data-codex-service-tier-status"));
     assert!(script.contains("data-codex-service-tier-inherit"));
     assert!(script.contains("data-codex-service-tier-standard"));
@@ -457,8 +457,8 @@ fn injection_script_exposes_fast_service_tier_control() {
     assert!(script.contains("codexServiceTierDefaultModeForControlMode"));
     assert!(script.contains("normalizeCodexServiceTierControlMode(state.mode) !== \"custom\""));
     assert!(script.contains("state.draft = null"));
-    assert!(script.contains("åç«¯æœªè¿æ¥ï¼Œæ— æ³•åˆ‡æ¢æœåŠ¡æ¨¡å¼"));
-    assert!(script.contains("æœªè¿æ¥"));
+    assert!(script.contains("ºó¶ËÎ´Á¬½Ó£¬ÎŞ·¨ÇĞ»»·şÎñÄ£Ê½"));
+    assert!(script.contains("Î´Á¬½Ó"));
     assert!(script.contains("thread/start"));
     assert!(script.contains("thread/resume"));
     assert!(script.contains("turn/start"));
@@ -480,10 +480,10 @@ fn injection_script_exposes_fast_service_tier_control() {
     assert!(script.contains("codexServiceTierBadgeWired"));
     assert!(script.contains("setAttribute(\"role\", \"button\")"));
     assert!(script.contains("setAttribute(\"tabindex\", \"0\")"));
-    assert!(script.contains("ç»§æ‰¿ config.toml"));
+    assert!(script.contains("¼Ì³Ğ config.toml"));
     assert!(script.contains("service_tier=\\\"priority\\\""));
-    assert!(script.contains("Fast ä»…æ”¯æŒ"));
-    assert!(script.contains("å½“å‰ thread"));
+    assert!(script.contains("Fast ½öÖ§³Ö"));
+    assert!(script.contains("µ±Ç° thread"));
     assert!(script.contains("standard"));
     assert!(script.contains("fast"));
 }
@@ -556,11 +556,13 @@ globalThis.window = globalThis;
 window.__CODEX_PLUS_TEST_SERVICE_TIER__ = true;
 globalThis.document = {{
   scripts: [],
+  readyState: "complete",
   documentElement: node(),
   body: node(),
   createElement: () => node(),
   querySelector: () => null,
   querySelectorAll: () => [],
+  getElementById: () => null,
   addEventListener() {{}},
   removeEventListener() {{}},
 }};
@@ -717,7 +719,7 @@ fn injection_script_prevents_switching_to_branches_used_by_other_worktrees() {
     assert!(script.contains("data-codex-branch-worktree-path"));
     assert!(script.contains("annotateBranchMenuWorktreeUsage"));
     assert!(script.contains("branchWorktreePathFromMenuItem"));
-    assert!(script.contains("è¯¥åˆ†æ”¯å·²åœ¨å¦ä¸€ä¸ª worktree ä½¿ç”¨"));
+    assert!(script.contains("¸Ã·ÖÖ§ÒÑÔÚÁíÒ»¸ö worktree Ê¹ÓÃ"));
     assert!(script.contains("event.stopImmediatePropagation?.()"));
 }
 
@@ -743,8 +745,8 @@ fn manager_ui_exposes_pure_api_relay_mode_button() {
     let commands =
         std::fs::read_to_string(repo.join("apps/codex-plus-manager/src-tauri/src/lib.rs")).unwrap();
 
-    assert!(source.contains("å®˜æ–¹æ··å…¥ API Key"));
-    assert!(source.contains("çº¯ API"));
+    assert!(source.contains("¹Ù·½»ìÈë API Key"));
+    assert!(source.contains("´¿ API"));
     assert!(source.contains("apply_pure_api_injection"));
     assert!(commands.contains("commands::apply_pure_api_injection"));
 }
