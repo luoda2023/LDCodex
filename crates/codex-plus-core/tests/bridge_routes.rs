@@ -1073,9 +1073,6 @@ impl BridgeRuntimeService for FakeRuntime {
         }))
     }
 
-    async fn ads(&self) -> anyhow::Result<Value> {
-        Ok(json!({"version": 1, "ads": [{"id": "runtime-ad"}]}))
-    }
 
     async fn zed_remote_status(&self) -> anyhow::Result<Value> {
         Ok(json!({

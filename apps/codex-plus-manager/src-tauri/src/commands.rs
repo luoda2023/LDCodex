@@ -1149,7 +1149,6 @@ pub async fn check_update() -> CommandResult<Value> {
 }
 #[tauri::command]
 pub async fn perform_update(
-pub async fn perform_update(
     _release: Option<codex_plus_core::update::Release>,
 ) -> CommandResult<Value> {
     failed(
@@ -2967,18 +2966,6 @@ model_reasoning_effort = "high"
                 .relay_context_config_contents
                 .contains("[mcp_servers.context7]")
         );
-    }
-
-    #[test]
-    fn ads_payload_keeps_version_and_ad_items() {
-        let payload = ads_payload(json!({
-            "version": 1,
-            "ads": [{"id": "ad-1", "type": "normal", "title": "Ad"}]
-        }));
-
-        assert_eq!(payload.version, 1);
-        assert_eq!(payload.ads.len(), 1);
-        assert_eq!(payload.ads[0]["id"], json!("ad-1"));
     }
 
     #[test]

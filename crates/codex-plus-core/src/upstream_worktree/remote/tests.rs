@@ -1,4 +1,4 @@
-use std::path::Path;
+﻿use std::path::Path;
 use std::process::Command;
 
 use crate::zed_remote::SshTarget;
@@ -75,6 +75,7 @@ fn remote_defaults_snapshot_script_collects_defaults_with_one_ssh_command() {
     assert!(script.contains("git worktree list --porcelain"));
 }
 
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn remote_defaults_snapshot_script_is_valid_posix_shell() {
     let script = remote_defaults_snapshot_script("/Users/longnv/bin/repo/project");
