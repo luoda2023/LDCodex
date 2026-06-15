@@ -391,7 +391,6 @@ type UpdateResult = CommandResult<{
 }>;
 
 
-
 type ScriptMarketItem = {
   id: string;
   name: string;
@@ -892,33 +891,15 @@ export function App() {
     }
   };
 
-  const checkUpdate = async (silent = false) => {
-    const result = await run(() => call<UpdateResult>("check_update"));
-    if (result) {
-      setUpdate(result);
-      if (!silent || result.updateAvailable) {
-        {} // GitHub Release check disabled
-      }
-    }
+  const checkUpdate = async (_silent = false) => {
+    // 升级检查已禁用
   };
 
+
   const performUpdate = async () => {
-    const release =
-      update?.latestVersion && update.assetName && update.assetUrl
-        ? {
-            version: update.latestVersion,
-            url: "",
-            body: update.releaseSummary ?? "",
-            asset_name: update.assetName,
-            asset_url: update.assetUrl,
-          }
-        : null;
-    const result = await run(() => call<UpdateResult>("perform_update", { release }));
-    if (result) {
-      setUpdate(result);
-      showNotice("更新安装", result.message, result.status);
-    }
+    // 更新功能已禁用
   };
+
 
   const saveSettings = async () => {
     const next = normalizeSettings(settingsForm);
@@ -1569,7 +1550,6 @@ export function App() {
           {route === "enhance" ? (
             <EnhanceScreen form={settingsForm} onFormChange={setSettingsForm} actions={actions} />
           ) : null}
-
 
 
           {route === "maintenance" ? (
