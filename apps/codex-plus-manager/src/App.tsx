@@ -3487,7 +3487,7 @@ function routeSubtitle(route: Route) {
     userScripts: "内置和用户自定义脚本清单",
     recommendations: "赞助商推荐与普通推荐",
     maintenance: "入口安装、修复、Watcher 与手动启动",
-    about: "版本信息、项目链接、GitHub Release 更新、日志与诊断",
+    about: "版本信息",
     settings: "主题、命令包装器和启动参数",
   };
   return subtitles[route];
