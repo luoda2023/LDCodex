@@ -255,7 +255,7 @@ pub struct StartupPayload {
 }
 
 #[tauri::command]
-            show_update: false,
+pub fn backend_version() -> CommandResult<VersionPayload> {
     ok(
         "后端版本已读取。",
         VersionPayload {
