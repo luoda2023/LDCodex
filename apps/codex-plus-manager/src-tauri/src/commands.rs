@@ -2509,7 +2509,7 @@ mod tests {
         let result = tauri::async_runtime::block_on(perform_update(None));
 
         assert_eq!(result.status, "failed");
-        assert!(result.message.contains("请先检查更新"));
+        assert!(result.message.contains("升级功能已禁用"));
     }
 
     #[test]
