@@ -1,4 +1,4 @@
-name: PR build artifacts
+﻿name: PR build artifacts
 
 on:
   pull_request:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: apps/codex-plus-manager
-        run: npm install --package-lock=false
+        run: npm install
 
       #- name: TypeScript check (skipped - use vite:build instead)
       #  working-directory: apps/codex-plus-manager
@@ -112,7 +112,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: apps/codex-plus-manager
-        run: npm install --package-lock=false
+        run: npm install
 
       - name: Build frontend
         working-directory: apps/codex-plus-manager

@@ -1,4 +1,4 @@
-name: Release assets
+﻿name: Release assets
 
 on:
   release:
@@ -29,7 +29,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: apps/codex-plus-manager
-        run: npm install --package-lock=false
+        run: npm install
 
       - name: Build frontend
         working-directory: apps/codex-plus-manager
@@ -94,7 +94,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: apps/codex-plus-manager
-        run: npm install --package-lock=false
+        run: npm install
 
       - name: Build frontend
         working-directory: apps/codex-plus-manager
