@@ -1995,7 +1995,7 @@
     document.querySelectorAll("[data-codex-plus-panel]").forEach((panel) => {
       panel.hidden = panel.getAttribute("data-codex-plus-panel") !== tab;
     });
-    if (tab === "userScripts") loadUserScripts();
+    if (tab === "userScripts") loadUserScripts(); // userScripts tab removed
   }
 
   function openCodexPlusModal() {
@@ -2014,8 +2014,7 @@
 
         </div>
         <div class="codex-plus-modal-body">
-          <!-- home-panel removed -->
-          <!-- userScripts-panel removed -->              <div class="codex-plus-user-script-actions">
+                    <div class="codex-plus-user-script-actions">
                 <button type="button" class="codex-plus-toggle" data-codex-user-scripts-enabled="true"><span></span></button>
                 <button type="button" class="codex-plus-user-script-reload" data-codex-user-scripts-reload="true">重新加载用户脚本</button>
               </div>
@@ -2130,8 +2129,7 @@
       }
     }, true);
     document.body.appendChild(overlay);
-    if (!codexPlusAdsLoaded) fetchCodexPlusAds();
-    selectCodexPlusTab("home");
+    // home tab removed, default to first existing panel
     renderCodexPlusMenu();
     refreshCodexPlusBackendToggles();
     renderBackendStatus();
