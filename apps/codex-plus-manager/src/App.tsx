@@ -1445,6 +1445,14 @@ export function App() {
   return (
     <div className={`shell ${theme}`}>
       <aside className="sidebar">
+      <div className="titlebar" data-tauri-drag-region>
+        <span className="titlebar-title">LDCodex 管理控制台</span>
+        <div className="titlebar-controls">
+          <button className="titlebar-btn" onClick={() => window.__TAURI__?.window?.getCurrent()?.minimize()}>—</button>
+          <button className="titlebar-btn" onClick={() => window.__TAURI__?.window?.getCurrent()?.toggleMaximize()}>□</button>
+          <button className="titlebar-btn titlebar-close" onClick={() => window.__TAURI__?.window?.getCurrent()?.close()}>✕</button>
+        </div>
+      </div>
         <div className="brand">
           <div className="brand-mark"><img src="/logo.png" alt="LDCodex" className="brand-logo" /></div>
           <div className="brand-copy">

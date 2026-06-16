@@ -19,7 +19,7 @@
                 "height": 820,
                 "minWidth": 960,
                 "minHeight": 720,
-                "decorations": true
+                "decorations": false
             }
         ],
         "security": {
@@ -27,7 +27,7 @@
         }
     },
     "bundle": {
-        "active": false,
+        "active": true,
         "targets": "all",
         "icon": [
             "icons/icon.ico"
