@@ -1243,11 +1243,14 @@ export function App() {
       showNotice("复制失败", stringifyError(error), "failed");
     }
   };
-
   const openExternalUrl = async (url: string) => {
-    const result = await run(() => call<CommandResult<Record<string, unknown>>>("open_external_url", { url }));
-    if (result) {
-      showResultNotice("打开链接", result, { silentSuccess: true });
+    try {
+      const result = await run(() => call<CommandResult<Record<string, unknown>>>("open_external_url", { url }));
+      if (result) {
+        showResultNotice("打开链接", result, { silentSuccess: true });
+      }
+    } catch (_) {
+      window.open(url, "_blank");
     }
   };
 
@@ -1467,7 +1470,7 @@ const closeWindow = async () => {
       <aside className="sidebar">
 
         <div className="brand">
-          <div className="brand-mark"><img src="/logo.png" alt="LDCodex" className="brand-logo" /></div>
+          <div className="brand-mark"><img src="/logo.png" alt="LDCodex" className="brand-logo" style={{ background: "transparent" }} /></div>
           <div className="brand-copy">
             <div className="brand-title-row">
               <div className="brand-title">LDCodex</div>
