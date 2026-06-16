@@ -1474,7 +1474,7 @@ export function App() {
           })}
         </nav>
         <div className="sidebar-footer">
-          <a href="https://Dicad.cn" target="_blank" rel="noopener noreferrer" className="sidebar-footer-link">Dicad.cn</a>
+          <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="sidebar-footer-link" style="cursor:pointer">Dicad.cn</span>
           <div className="sidebar-footer-text">AI赋能工程设计</div>
           <div className="sidebar-footer-en">LET IMAGINATION BECOME REALITY</div>
         </div>
@@ -2160,7 +2160,7 @@ function AboutScreen({
       <Panel>
         <CardContent>
           <div className="about-footer">
-            <a href="https://Dicad.cn" target="_blank" rel="noopener noreferrer" className="about-footer-link">Dicad.cn</a>
+            <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="about-footer-link" style="cursor:pointer">Dicad.cn</span>
             <div className="about-footer-text">AI赋能工程设计</div>
             <div className="about-footer-en">LET IMAGINATION BECOME REALITY</div>
           </div>
