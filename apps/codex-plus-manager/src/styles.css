@@ -219,6 +219,7 @@ body {
   padding: 16px 0;
 }
 .about-footer-link {
+  cursor: pointer;
   color: hsl(var(--brand-accent));
   text-decoration: none;
   font-weight: 600;

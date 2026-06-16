@@ -1283,17 +1283,19 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.classList.toggle("light", theme === "light");
-    try { getCurrentWindow().setTheme(theme == "dark" ? "dark" : "light"); } catch (_) {}
+    (async () => {
+      try { await getCurrentWindow().setTheme(theme == "dark" ? "dark" : "light"); } catch (_) {}
+    })();
   }, [theme]);
 
-const minimize = () => {
-  try { getCurrentWindow().minimize(); } catch (_) {}
+const minimize = async () => {
+  try { await getCurrentWindow().minimize(); } catch (_) {}
 };
-const maximize = () => {
-  try { getCurrentWindow().toggleMaximize(); } catch (_) {}
+const maximize = async () => {
+  try { await getCurrentWindow().toggleMaximize(); } catch (_) {}
 };
-const closeWindow = () => {
-  try { getCurrentWindow().close(); } catch (_) {}
+const closeWindow = async () => {
+  try { await getCurrentWindow().close(); } catch (_) {}
 };
 
   const saveCodexAppPath = async (appPath: string) => {
