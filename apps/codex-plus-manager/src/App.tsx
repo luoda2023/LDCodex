@@ -1458,8 +1458,8 @@ const closeWindow = async () => {
 
   return (
     <div className={`shell ${theme}`}>
-      <header className="titlebar" data-tauri-drag-region>
-        <span className="titlebar-title">LDCodex</span>
+      <header className="titlebar">
+        <span className="titlebar-title" data-tauri-drag-region>LDCodex</span>
         <div className="titlebar-controls">
           <button className="titlebar-btn" onClick={(e) => { e.stopPropagation(); minimize(); }} title="最小化">_</button>
           <button className="titlebar-btn" onClick={(e) => { e.stopPropagation(); maximize(); }} title="最大化">&#x25A1;</button>

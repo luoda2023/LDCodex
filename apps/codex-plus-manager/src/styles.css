@@ -146,6 +146,7 @@ body {
   opacity: 0.85;
 }
 .titlebar-controls {
+  pointer-events: auto;
   display: flex;
   gap: 0;
   align-items: center;
