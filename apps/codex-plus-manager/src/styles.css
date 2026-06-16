@@ -127,8 +127,8 @@ body {
 
 .shell {
   display: grid;
-  grid-template-rows: 32px 1fr;
   grid-template-columns: 208px minmax(0, 1fr);
+  width: 100vw;
   height: 100vh;
   overflow: hidden;
   background: hsl(var(--shell-bg));
@@ -2659,69 +2659,15 @@ input[type="checkbox"] {
 }
 
 /* ��������ɫģʽ */
-/* ?????? - ????/???? */
 .dark .titlebar,
 .dark header.titlebar,
 .dark div[class*="titlebar"] {
   background: hsl(0 0% 12%);
   border-bottom: 1px solid hsl(0 0% 19%);
-  color: hsl(0 0% 90%);
-  grid-column: 1 / -1;
-}
-
-.light .titlebar,
-.light header.titlebar,
-.light div[class*="titlebar"] {
-  background: hsl(0 0% 96%);
-  border-bottom: 1px solid hsl(0 0% 85%);
-  color: hsl(0 0% 10%);
 }
 
 .titlebar,
 header.titlebar {
   -webkit-app-region: drag;
   user-select: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 32px;
-  padding: 0 8px;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.titlebar-title {
-  -webkit-app-region: drag;
-  margin-left: 8px;
-}
-
-.titlebar-controls {
-  -webkit-app-region: no-drag;
-  display: flex;
-  gap: 4px;
-}
-
-.titlebar-btn {
-  -webkit-app-region: no-drag;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border-radius: 4px;
-  font-size: 14px;
-  color: inherit;
-  transition: background 100ms;
-}
-
-.titlebar-btn:hover {
-  background: hsl(var(--brand-accent) / 0.2);
-}
-
-.titlebar-close:hover {
-  background: hsl(0 80% 50%);
-  color: white;
 }
