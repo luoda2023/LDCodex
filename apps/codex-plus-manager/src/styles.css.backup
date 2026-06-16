@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 @theme {
   --color-background: hsl(var(--background));
@@ -125,53 +125,9 @@ body {
   background: hsl(var(--shell-bg));
 }
 
-.titlebar {
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  background: hsl(var(--sidebar-bg));
-  border-bottom: 1px solid hsl(var(--sidebar-border));
-  user-select: none;
-  grid-column: 1 / -1;
-}
-.titlebar-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  opacity: 0.85;
-}
-.titlebar-controls {
-  display: flex;
-  gap: 0;
-  align-items: center;
-}
-.titlebar-btn {
-  width: 36px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: hsl(var(--foreground));
-  opacity: 0.7;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  transition: background 0.1s, opacity 0.1s;
-}
-.titlebar-btn:hover {
-  background: hsl(var(--sidebar-muted));
-  opacity: 1;
-}
-.titlebar-close:hover {
-  background: #e81123;
-  color: #fff;
-}
 .shell {
   display: grid;
-  
+  grid-template-rows: 32px 1fr;
   grid-template-columns: 208px minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
@@ -195,7 +151,6 @@ body {
   text-align: center;
 }
 .sidebar-footer-link {
-  cursor: pointer;
   color: hsl(var(--brand-accent));
   text-decoration: none;
   font-weight: 600;
@@ -260,18 +215,14 @@ body {
 }
 
 .brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .brand-logo {
   width: 36px;
   height: 36px;
   object-fit: cover;
   border-radius: 6px;
 }
-
+  display: grid;
+  place-items: center;
   width: 36px;
   height: 36px;
   border-radius: 6px;
@@ -610,11 +561,11 @@ body {
 }
 
 .bad {
-  color: hsl(0 72% 61%);
+  color: #f87171;
 }
 
 .light .bad {
-  color: hsl(0 72% 40%);
+  color: #b91c1c;
 }
 
 .path-line {
@@ -1683,7 +1634,7 @@ body {
   height: 100%;
   border-radius: inherit;
   background: hsl(var(--brand-accent));
-  transition: transform 220ms var(--motion-ease), opacity 220ms var(--motion-ease);
+  transition: width 220ms var(--motion-ease);
 }
 
 .guide-list {
@@ -1729,7 +1680,7 @@ body {
 }
 
 .health-item.ok svg {
-  color: hsl(152 55% 45%);
+  color: hsl(0 0% 10%);
 }
 
 .health-item.needs-fix svg {
@@ -2033,8 +1984,7 @@ body {
 }
 
 .session-row:hover {
-  border-color: hsl(var(--primary) / 0.25);
-  box-shadow: 0 2px 6px hsl(0 0% 0% / 0.05);
+  border-color: hsl(var(--primary) / 0.32);
   background: hsl(var(--accent) / 0.45);
 }
 
@@ -2710,43 +2660,68 @@ input[type="checkbox"] {
 
 /* ��������ɫģʽ */
 /* ?????? - ????/???? */
-
+.dark .titlebar,
+.dark header.titlebar,
+.dark div[class*="titlebar"] {
+  background: hsl(0 0% 12%);
+  border-bottom: 1px solid hsl(0 0% 19%);
   color: hsl(0 0% 90%);
   grid-column: 1 / -1;
 }
 
-.light 
-
-
-
-
-
-
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.light .titlebar,
+.light header.titlebar,
+.light div[class*="titlebar"] {
+  background: hsl(0 0% 96%);
+  border-bottom: 1px solid hsl(0 0% 85%);
+  color: hsl(0 0% 10%);
 }
-::-webkit-scrollbar-track {
+
+.titlebar,
+header.titlebar {
+  -webkit-app-region: drag;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.titlebar-title {
+  -webkit-app-region: drag;
+  margin-left: 8px;
+}
+
+.titlebar-controls {
+  -webkit-app-region: no-drag;
+  display: flex;
+  gap: 4px;
+}
+
+.titlebar-btn {
+  -webkit-app-region: no-drag;
+  border: none;
   background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--border) / 0.5);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--border) / 0.8);
-}
-
-
-.screen-enter {
-  animation: screen-fade-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes screen-fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  font-size: 14px;
+  color: inherit;
+  transition: background 100ms;
 }
 
+.titlebar-btn:hover {
+  background: hsl(var(--brand-accent) / 0.2);
+}
 
-
-
+.titlebar-close:hover {
+  background: hsl(0 80% 50%);
+  color: white;
+}

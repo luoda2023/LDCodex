@@ -1,4 +1,4 @@
-﻿import {
+import {
   closestCenter,
   DndContext,
   KeyboardSensor,
@@ -1283,18 +1283,8 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.classList.toggle("light", theme === "light");
-    try { getCurrentWindow().setTheme(theme == "dark" ? "dark" : "light"); } catch (_) {}
+    try { getCurrentWindow().setTheme(theme === "dark" ? "dark" : "light"); } catch (_) {}
   }, [theme]);
-
-const minimize = () => {
-  try { getCurrentWindow().minimize(); } catch (_) {}
-};
-const maximize = () => {
-  try { getCurrentWindow().toggleMaximize(); } catch (_) {}
-};
-const closeWindow = () => {
-  try { getCurrentWindow().close(); } catch (_) {}
-};
 
   const saveCodexAppPath = async (appPath: string) => {
     const next = { ...settingsForm, codexAppPath: appPath };
@@ -1454,16 +1444,15 @@ const closeWindow = () => {
 
   return (
     <div className={`shell ${theme}`}>
-      <header className="titlebar" data-tauri-drag-region>
-        <span className="titlebar-title">LDCodex</span>
-        <div className="titlebar-controls">
-          <button className="titlebar-btn" onClick={minimize} title="最小化">_</button>
-          <button className="titlebar-btn" onClick={maximize} title="最大化">&#x25A1;</button>
-          <button className="titlebar-btn titlebar-close" onClick={closeWindow} title="关闭">&#x2A2F;</button>
-        </div>
-      </header>
       <aside className="sidebar">
-
+      <div className="titlebar" data-tauri-drag-region>
+        <span className="titlebar-title">LDCodex 管理控制台</span>
+        <div className="titlebar-controls">
+          <button className="titlebar-btn" onClick={() => window.__TAURI__?.window?.getCurrent()?.minimize()}>—</button>
+          <button className="titlebar-btn" onClick={() => window.__TAURI__?.window?.getCurrent()?.toggleMaximize()}>□</button>
+          <button className="titlebar-btn titlebar-close" onClick={() => window.__TAURI__?.window?.getCurrent()?.close()}>✕</button>
+        </div>
+      </div>
         <div className="brand">
           <div className="brand-mark"><img src="/logo.png" alt="LDCodex" className="brand-logo" /></div>
           <div className="brand-copy">
@@ -1493,7 +1482,7 @@ const closeWindow = () => {
           })}
         </nav>
         <div className="sidebar-footer">
-          <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="sidebar-footer-link">Dicad.cn</span>
+          <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="sidebar-footer-link" style="cursor:pointer">Dicad.cn</span>
           <div className="sidebar-footer-text">AI赋能工程设计</div>
           <div className="sidebar-footer-en">LET IMAGINATION BECOME REALITY</div>
         </div>
@@ -2179,7 +2168,7 @@ function AboutScreen({
       <Panel>
         <CardContent>
           <div className="about-footer">
-            <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="about-footer-link">Dicad.cn</span>
+            <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="about-footer-link" style="cursor:pointer">Dicad.cn</span>
             <div className="about-footer-text">AI赋能工程设计</div>
             <div className="about-footer-en">LET IMAGINATION BECOME REALITY</div>
           </div>
@@ -4808,5 +4797,3 @@ function loadInitialRoute(): Route {
   }
   return "overview";
 }
-
-
