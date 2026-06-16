@@ -1448,9 +1448,9 @@ export function App() {
       <div className="titlebar" data-tauri-drag-region>
         <span className="titlebar-title">LDCodex 管理控制台</span>
         <div className="titlebar-controls">
-          <button className="titlebar-btn" onClick={() => window.__TAURI__?.window?.getCurrent()?.minimize()}>—</button>
-          <button className="titlebar-btn" onClick={() => window.__TAURI__?.window?.getCurrent()?.toggleMaximize()}>□</button>
-          <button className="titlebar-btn titlebar-close" onClick={() => window.__TAURI__?.window?.getCurrent()?.close()}>✕</button>
+          <button className="titlebar-btn" onClick={() => getCurrentWindow().minimize()}>—</button>
+          <button className="titlebar-btn" onClick={() => getCurrentWindow().toggleMaximize()}>□</button>
+          <button className="titlebar-btn titlebar-close" onClick={() => getCurrentWindow().close()}>✕</button>
         </div>
       </div>
         <div className="brand">
