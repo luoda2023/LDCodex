@@ -142,6 +142,58 @@ body {
   background: hsl(var(--sidebar-bg));
   padding: 14px 10px;
 }
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 8px 8px;
+  border-top: 1px solid hsl(var(--sidebar-border));
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+}
+.sidebar-footer-link {
+  color: hsl(var(--brand-accent));
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 12px;
+}
+.sidebar-footer-link:hover {
+  text-decoration: underline;
+}
+.sidebar-footer-text {
+  color: hsl(var(--muted-foreground));
+  margin-top: 2px;
+}
+.sidebar-footer-en {
+  color: hsl(var(--muted-foreground) / 0.7);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.about-footer {
+  text-align: center;
+  padding: 16px 0;
+}
+.about-footer-link {
+  color: hsl(var(--brand-accent));
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+.about-footer-link:hover {
+  text-decoration: underline;
+}
+.about-footer-text {
+  color: hsl(var(--foreground) / 0.7);
+  margin-top: 4px;
+  font-size: 13px;
+}
+.about-footer-en {
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
 
 .brand {
   display: flex;
@@ -2606,7 +2658,7 @@ input[type="checkbox"] {
   accent-color: hsl(var(--primary));
 }
 
-/* 标题栏深色模式 */
+/* 锟斤拷锟斤拷锟斤拷锟斤拷色模式 */
 .dark .titlebar,
 .dark header.titlebar,
 .dark div[class*="titlebar"] {
