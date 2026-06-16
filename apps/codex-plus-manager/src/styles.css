@@ -272,13 +272,6 @@ body {
   border-radius: 6px;
 }
 
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  /* background removed for clean icon */
-  color: hsl(var(--primary-foreground));
-  font-weight: 700;
-}
 
 .brand-title {
   font-weight: 700;
@@ -2707,21 +2700,6 @@ body {
 input[type="checkbox"] {
   accent-color: hsl(var(--primary));
 }
-
-/* ��������ɫģʽ */
-/* ?????? - ????/???? */
-
-  color: hsl(0 0% 90%);
-  grid-column: 1 / -1;
-}
-
-.light 
-
-
-
-
-
-
 
 ::-webkit-scrollbar {
   width: 6px;
