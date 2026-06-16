@@ -1,4 +1,4 @@
-use std::ffi::OsStr;
+﻿use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 pub fn find_latest_codex_app_dir(root: &Path) -> Option<PathBuf> {
@@ -125,6 +125,20 @@ pub fn find_standalone_codex_app_dir() -> Option<PathBuf> {
         if let Some(path) = normalize_codex_app_path(candidate) {
             if build_codex_executable(&path).exists() {
                 return Some(path);
+            }
+        }
+    }
+    // Also search hash-named subdirectories under bin/ (standalone installer layout)
+    let bin_dir = PathBuf::from(&local_appdata).join("OpenAI").join("Codex").join("bin");
+    if let Ok(entries) = std::fs::read_dir(&bin_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(normalized) = normalize_codex_app_path(&path) {
+                    if build_codex_executable(&normalized).exists() {
+                        return Some(normalized);
+                    }
+                }
             }
         }
     }
