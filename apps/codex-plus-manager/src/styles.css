@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 @theme {
   --color-background: hsl(var(--background));
@@ -135,6 +135,9 @@ body {
   border-bottom: 1px solid hsl(var(--sidebar-border));
   user-select: none;
   grid-column: 1 / -1;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
 }
 .titlebar-title {
   font-size: 12px;
