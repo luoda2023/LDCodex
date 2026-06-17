@@ -228,7 +228,7 @@ pub fn codex_app_version(app_dir: &Path) -> Option<String> {
     } else {
         app_dir
     };
-    // ���� MS Store �汾���
+    // ���� MS Store �汾���?
     if let Some(ver) = codex_package_version(package_dir) {
         return Some(ver);
     }
@@ -250,7 +250,7 @@ pub fn packaged_app_user_model_id(app_dir: &Path) -> Option<String> {
 }
 
 fn package_name_from_app_dir(app_dir: &Path) -> Option<String> {
-    let path = app_dir.to_string_lossy().replace('\\', "/");
+    let path = app_dir.to_string_lossy().replace("\\", "/");
     let mut parts = path.split('/').filter(|part| !part.is_empty());
     let mut package_name = parts.next_back()?;
     if package_name.eq_ignore_ascii_case("app") {
@@ -276,7 +276,7 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
 }
 
 fn standalone_codex_version(app_dir: &Path) -> Option<String> {
-    // �� MS Store ��װ: �� package.json ��ȡ�汾��
+    // 非MS Store安装: 先尝试从 package.json 获取版本号
     let try_paths = [
         Some(app_dir.join("resources").join("package.json")),
         app_dir.parent().map(|p| p.join("app").join("resources").join("package.json")),
@@ -293,7 +293,37 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
             }
         }
     }
+    // Windows回退: 从 Codex.exe 读取文件版本信息 (通过 PowerShell)
+    #[cfg(windows)]
+    {
+        let exe_candidates = [
+            app_dir.join("Codex.exe"),
+            app_dir.join("codex.exe"),
+        ];
+        for exe in &exe_candidates {
+            if exe.exists() {
+                if let Some(ver) = file_version_via_powershell(exe) {
+                    return Some(ver);
+                }
+            }
+        }
+    }
     None
+}
+
+#[cfg(windows)]
+fn file_version_via_powershell(exe_path: &Path) -> Option<String> {
+    let path_str = exe_path.to_string_lossy().to_string();
+    let script = format!("(Get-Item '{}').VersionInfo.FileVersion", path_str);
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-Command", &script])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let ver = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if ver.is_empty() { None } else { Some(ver) }
 }
 fn macos_app_version(app_dir: &Path) -> Option<String> {
     let plist = std::fs::read_to_string(app_dir.join("Contents").join("Info.plist")).ok()?;
@@ -340,4 +370,5 @@ fn version_tuple(path: &Path) -> Option<Vec<u32>> {
         .ok()?;
     if parts.is_empty() { None } else { Some(parts) }
 }
+
 
