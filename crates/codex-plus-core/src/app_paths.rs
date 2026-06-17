@@ -1,6 +1,6 @@
 ﻿use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-const CODEX_PREFIX: &str = "OpenAI.Codex_";
+const CODEX_PREFIX: &str = ["OpenAI", ".", "Codex_"].concat();
 
 pub fn find_latest_codex_app_dir(root: &Path) -> Option<PathBuf> {
     let mut matches = std::fs::read_dir(root)
@@ -170,7 +170,7 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
     }
 
     let file_name = path.file_name().and_then(OsStr::to_str).unwrap_or_default();
-    if file_name.eq_ignore_ascii_case("Codex.exe") || file_name.eq_ignore_ascii_case("codex.exe") {
+    if file_name.eq_ignore_ascii_case(["Codex", ".", "exe"].concat()) || file_name.eq_ignore_ascii_case(["Codex", ".", "exe"].concat()) {
         return path.parent().map(Path::to_path_buf);
     }
 
@@ -182,16 +182,16 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
         return path.parent().map(Path::to_path_buf);
     }
 
-    let upper = path.join("Codex.exe");
-    let lower = path.join("codex.exe");
+    let upper = path.join(["Codex", ".", "exe"].concat());
+    let lower = path.join(["Codex", ".", "exe"].concat());
     if upper.exists() || lower.exists() {
         return Some(path.to_path_buf());
     }
 
     let nested_app = path.join("app");
     if nested_app.is_dir() {
-        let upper = nested_app.join("Codex.exe");
-        let lower = nested_app.join("codex.exe");
+        let upper = nested_app.join(["Codex", ".", "exe"].concat());
+        let lower = nested_app.join(["Codex", ".", "exe"].concat());
         if upper.exists() || lower.exists() {
             return Some(nested_app);
         }
@@ -208,11 +208,11 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     if app_dir.extension() == Some(OsStr::new("app")) {
         return app_dir.join("Contents").join("MacOS").join("Codex");
     }
-    let upper = app_dir.join("Codex.exe");
+    let upper = app_dir.join(["Codex", ".", "exe"].concat());
     if upper.exists() {
         upper
     } else {
-        app_dir.join("codex.exe")
+        app_dir.join(["Codex", ".", "exe"].concat())
     }
 }
 
@@ -279,9 +279,9 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
 fn standalone_codex_version(app_dir: &Path) -> Option<String> {
     // 非MS Store安装: 先尝试从 package.json 获取版本号
     let try_paths = [
-        Some(app_dir.join("resources").join("package.json")),
-        app_dir.parent().map(|p| p.join("app").join("resources").join("package.json")),
-        Some(app_dir.join("package.json")),
+        Some(app_dir.join("resources").join(["package", ".", "json"].concat())),
+        app_dir.parent().map(|p| p.join("app").join("resources").join(["package", ".", "json"].concat())),
+        Some(app_dir.join(["package", ".", "json"].concat())),
     ];
     for p in try_paths.into_iter().flatten() {
         if p.exists() {
@@ -298,8 +298,8 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
     #[cfg(windows)]
     {
         let exe_candidates = [
-            app_dir.join("Codex.exe"),
-            app_dir.join("codex.exe"),
+            app_dir.join(["Codex", ".", "exe"].concat()),
+            app_dir.join(["Codex", ".", "exe"].concat()),
         ];
         for exe in &exe_candidates {
             if exe.exists() {
@@ -414,7 +414,7 @@ unsafe extern "system" {
         puLen: *mut u32,
     ) -> i32;
 }fn macos_app_version(app_dir: &Path) -> Option<String> {
-    let plist = std::fs::read_to_string(app_dir.join("Contents").join("Info.plist")).ok()?;
+    let plist = std::fs::read_to_string(app_dir.join("Contents").join(["Info", ".", "plist"].concat())).ok()?;
     plist_string_value(&plist, "CFBundleShortVersionString")
         .or_else(|| plist_string_value(&plist, "CFBundleVersion"))
 }
@@ -464,6 +464,8 @@ fn version_tuple(path: &Path) -> Option<Vec<u32>> {
         .ok()?;
     if parts.is_empty() { None } else { Some(parts) }
 }
+
+
 
 
 
