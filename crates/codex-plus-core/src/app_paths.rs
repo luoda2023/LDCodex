@@ -312,18 +312,27 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
 }
 
 #[cfg(windows)]
+#[cfg(windows)]
 fn file_version_via_powershell(exe_path: &Path) -> Option<String> {
-    let path_str = exe_path.to_string_lossy().to_string();
-    let script = format!("(Get-Item '{}').VersionInfo.FileVersion", path_str);
+    let path_str = exe_path.to_string_lossy().to_string().replace("'", "''");
+    let script = format!(
+        "try {{ (Get-Item '{}').VersionInfo.FileVersion }}\ncatch {{ '' }}",
+        path_str
+    );
     let output = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-Command", &script])
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
         .output()
         .ok()?;
     if !output.status.success() {
         return None;
     }
-    let ver = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if ver.is_empty() { None } else { Some(ver) }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let trimmed = stdout.trim();
+    if trimmed.is_empty() || trimmed == "''" {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 fn macos_app_version(app_dir: &Path) -> Option<String> {
     let plist = std::fs::read_to_string(app_dir.join("Contents").join("Info.plist")).ok()?;

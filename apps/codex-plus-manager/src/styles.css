@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 @theme {
   --color-background: hsl(var(--background));
@@ -31,7 +31,7 @@
   --popover: 0 0% 12.5%;
   --popover-foreground: 0 0% 94%;
   --primary: 248 80% 55%;
-  --primary-foreground: 150 42% 8%;
+  --primary-foreground: 0 0% 100%;
   --secondary: 0 0% 18%;
   --secondary-foreground: 0 0% 94%;
   --muted: 0 0% 16%;
@@ -196,30 +196,37 @@ body {
 }
 .sidebar-footer {
   margin-top: auto;
-  padding: 16px 8px 8px;
+  padding: 14px 8px 10px;
   border-top: 1px solid hsl(var(--sidebar-border));
   font-size: 11px;
-  line-height: 1.6;
+  line-height: 1.5;
   text-align: center;
 }
 .sidebar-footer-link {
   cursor: pointer;
   color: hsl(var(--brand-accent));
   text-decoration: none;
-  font-weight: 600;
-  font-size: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-block;
+  margin-bottom: 4px;
 }
 .sidebar-footer-link:hover {
   text-decoration: underline;
+  opacity: 0.85;
 }
 .sidebar-footer-text {
   color: hsl(var(--muted-foreground));
+  font-size: 11px;
   margin-top: 2px;
+  letter-spacing: 0.3px;
 }
 .sidebar-footer-en {
-  color: hsl(var(--muted-foreground) / 0.7);
-  font-size: 10px;
-  letter-spacing: 0.5px;
+  color: hsl(var(--muted-foreground) / 0.6);
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  margin-top: 3px;
+  text-transform: uppercase;
 }
 
 .about-footer {
@@ -598,6 +605,10 @@ body {
 
 .good {
   color: hsl(0 0% 10%);
+}
+
+.dark .good {
+  color: hsl(0 0% 100%);
 }
 
 .light .good {
@@ -2734,6 +2745,8 @@ input[type="checkbox"] {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
 
 
 
