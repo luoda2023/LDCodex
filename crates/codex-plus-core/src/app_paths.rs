@@ -86,6 +86,7 @@ pub fn user_data_candidates_from(local: Option<&Path>, roaming: Option<&Path>) -
 }
 
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "macos")]
 pub fn find_macos_codex_app(search_roots: &[PathBuf]) -> Option<PathBuf> {
     for root in search_roots {
         for candidate in macos_app_candidates(root) {
@@ -97,6 +98,7 @@ pub fn find_macos_codex_app(search_roots: &[PathBuf]) -> Option<PathBuf> {
     None
 }
 
+#[cfg(target_os = "macos")]
 #[cfg(target_os = "macos")]
 pub fn find_macos_codex_app_default() -> Option<PathBuf> {
     let mut roots = vec![PathBuf::from("/Applications")];
@@ -110,7 +112,8 @@ pub fn resolve_codex_app_dir(app_dir: Option<&Path>) -> Option<PathBuf> {
     if let Some(app_dir) = app_dir {
         return normalize_codex_app_path(app_dir);
     }
-    if cfg!(target_os = "macos") {
+    #[cfg(target_os = "macos")]
+    {
         return find_macos_codex_app_default();
     }
     // Windows: try MS Store version first, then standalone install
@@ -430,12 +433,14 @@ unsafe extern "system" {
         puLen: *mut u32,
     ) -> i32;
 }#[cfg(target_os = "macos")]
+#[cfg(target_os = "macos")]
 fn macos_app_version(app_dir: &Path) -> Option<String> {
     let plist = std::fs::read_to_string(app_dir.join("Contents").join(vec!["Info", &dot_char(), "plist"].concat())).ok()?;
     plist_string_value(&plist, "CFBundleShortVersionString")
         .or_else(|| plist_string_value(&plist, "CFBundleVersion"))
 }
 
+#[cfg(target_os = "macos")]
 #[cfg(target_os = "macos")]
 fn plist_string_value(plist: &str, key: &str) -> Option<String> {
     let (_, after_key) = plist.split_once(&format!("<key>{key}</key>"))?;
@@ -455,6 +460,7 @@ fn append_user_data_variants(candidates: &mut Vec<PathBuf>, base: &Path) {
     candidates.push(base.join("Codex"));
 }
 
+#[cfg(target_os = "macos")]
 #[cfg(target_os = "macos")]
 fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
     if root.extension() == Some(OsStr::new("app")) {
@@ -483,6 +489,10 @@ fn version_tuple(path: &Path) -> Option<Vec<u32>> {
         .ok()?;
     if parts.is_empty() { None } else { Some(parts) }
 }
+
+
+
+
 
 
 
