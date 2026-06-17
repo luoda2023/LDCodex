@@ -382,6 +382,7 @@ struct VS_FIXEDFILEINFO {
     dwFileDateLS: u32,
 }
 
+#[cfg(windows)]
 #[link(name = "version")]
 unsafe extern "system" {
     fn GetFileVersionInfoSizeW(
