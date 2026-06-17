@@ -289,6 +289,31 @@ where
     args.into_iter().any(|arg| arg.as_ref() == "--show-update") || env_value == Some("1")
 }
 
+
+fn load_overview_sync() -> CommandResult<OverviewPayload> {
+    let (codex_app_path, entrypoints, latest_launch) = load_overview_payload();
+    ok(
+        "概览已加载。",
+        OverviewPayload {
+            codex_version: codex_app_path
+                .as_deref()
+                .and_then(codex_plus_core::app_paths::codex_app_version),
+            codex_app: path_state(codex_app_path),
+            silent_shortcut: shortcut_state(entrypoints.silent_shortcut),
+            management_shortcut: shortcut_state(entrypoints.management_shortcut),
+            latest_launch,
+            current_version: codex_plus_core::version::VERSION.to_string(),
+            update_status: "not_checked".to_string(),
+            settings_path: codex_plus_core::paths::default_settings_path()
+                .to_string_lossy()
+                .to_string(),
+            logs_path: codex_plus_core::paths::default_diagnostic_log_path()
+                .to_string_lossy()
+                .to_string(),
+        },
+    )
+}
+
 #[tauri::command]
 pub async fn load_overview() -> CommandResult<OverviewPayload> {
     let payload = tauri::async_runtime::spawn_blocking(load_overview_payload).await;
@@ -2482,7 +2507,7 @@ mod tests {
 
     #[test]
     fn overview_contains_expected_operational_fields() {
-        let result = tauri::async_runtime::block_on(load_overview());
+        let result = load_overview_sync();
 
         assert_eq!(result.status, "ok");
         assert!(!result.payload.current_version.is_empty());
@@ -2976,3 +3001,4 @@ model_reasoning_effort = "high"
         assert!(result.message.contains("只允许打开 http 或 https 链接"));
     }
 }
+
