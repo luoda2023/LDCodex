@@ -1,11 +1,9 @@
 ﻿use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-const CODEX_PREFIX: &str = vec!["OpenAI", &dot_char(), "Codex_"].concat();
-
-fn dot_char() -> String {
-    char::from(46u8).to_string()
+fn codex_prefix_str() -> String {
+    let d = dot_char();
+    vec!["OpenAI", &d, "Codex_"].concat()
 }
-
 
 fn dot_char() -> String {
     char::from(46u8).to_string()
@@ -86,9 +84,6 @@ pub fn user_data_candidates_from(local: Option<&Path>, roaming: Option<&Path>) -
 }
 
 #[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
 pub fn find_macos_codex_app(search_roots: &[PathBuf]) -> Option<PathBuf> {
     for root in search_roots {
         for candidate in macos_app_candidates(root) {
@@ -100,9 +95,6 @@ pub fn find_macos_codex_app(search_roots: &[PathBuf]) -> Option<PathBuf> {
     None
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
 #[cfg(target_os = "macos")]
 pub fn find_macos_codex_app_default() -> Option<PathBuf> {
     let mut roots = vec![PathBuf::from("/Applications")];
@@ -372,7 +364,7 @@ fn get_exe_version(exe_path: &Path) -> Option<String> {
 
         let mut len: u32 = 0;
         let mut subblock_ptr: *mut std::ffi::c_void = ptr::null_mut();
-        let subblock: Vec<u16> = OsStr::new("\")
+        let subblock: Vec<u16> = OsStr::new("\\")
             .encode_wide()
             .chain(std::iter::once(0))
             .collect();
@@ -436,9 +428,8 @@ unsafe extern "system" {
         lplpBuffer: *mut *mut std::ffi::c_void,
         puLen: *mut u32,
     ) -> i32;
-}#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
+}
+
 #[cfg(target_os = "macos")]
 fn macos_app_version(app_dir: &Path) -> Option<String> {
     let plist = std::fs::read_to_string(app_dir.join("Contents").join(vec!["Info", &dot_char(), "plist"].concat())).ok()?;
@@ -446,9 +437,6 @@ fn macos_app_version(app_dir: &Path) -> Option<String> {
         .or_else(|| plist_string_value(&plist, "CFBundleVersion"))
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
 #[cfg(target_os = "macos")]
 fn plist_string_value(plist: &str, key: &str) -> Option<String> {
     let (_, after_key) = plist.split_once(&format!("<key>{key}</key>"))?;
@@ -468,9 +456,6 @@ fn append_user_data_variants(candidates: &mut Vec<PathBuf>, base: &Path) {
     candidates.push(base.join("Codex"));
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
 #[cfg(target_os = "macos")]
 fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
     if root.extension() == Some(OsStr::new("app")) {
@@ -499,18 +484,3 @@ fn version_tuple(path: &Path) -> Option<Vec<u32>> {
         .ok()?;
     if parts.is_empty() { None } else { Some(parts) }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
