@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
+const CODEX_PREFIX: &str = "OpenAI.Codex_";
 
 pub fn find_latest_codex_app_dir(root: &Path) -> Option<PathBuf> {
     let mut matches = std::fs::read_dir(root)
@@ -238,7 +239,7 @@ pub fn codex_app_version(app_dir: &Path) -> Option<String> {
 
 pub fn packaged_app_user_model_id(app_dir: &Path) -> Option<String> {
     let package_name = package_name_from_app_dir(app_dir)?;
-    if !package_name.starts_with("OpenAI.Codex_") || !package_name.contains("__") {
+    if !package_name.starts_with(CODEX_PREFIX) || !package_name.contains("__") {
         return None;
     }
     let identity_name = package_name.split_once('_')?.0;
@@ -265,8 +266,8 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
     let name = path
         .split('/')
         .rev()
-        .find(|part| part.starts_with("OpenAI.Codex_"))?;
-    let rest = name.strip_prefix("OpenAI.Codex_")?;
+        .find(|part| part.starts_with(CODEX_PREFIX))?;
+    let rest = name.strip_prefix(CODEX_PREFIX)?;
     let version = rest.split_once('_')?.0;
     if version.is_empty() {
         None
@@ -448,7 +449,7 @@ fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
 
 fn version_tuple(path: &Path) -> Option<Vec<u32>> {
     let name = path.file_name()?.to_str()?;
-    let rest = name.strip_prefix("OpenAI.Codex_")?;
+    let rest = name.strip_prefix(CODEX_PREFIX)?;
     let version = rest.split_once('_')?.0;
     let parts = version
         .split('.')
