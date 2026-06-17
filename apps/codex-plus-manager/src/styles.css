@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 @theme {
   --color-background: hsl(var(--background));
@@ -146,6 +146,10 @@ body {
   opacity: 0.85;
 }
 .titlebar-controls {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+
   pointer-events: auto;
   display: flex;
   gap: 0;
