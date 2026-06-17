@@ -329,34 +329,45 @@ fn get_exe_version(exe_path: &Path) -> Option<String> {
         .collect();
 
     unsafe {
-        let size = GetFileVersionInfoSizeW(path_wide.as_ptr(), ptr::null_mut());
+        let mut dummy: u32 = 0;
+        let size = GetFileVersionInfoSizeW(path_wide.as_ptr(), &mut dummy);
         if size == 0 {
             return None;
         }
 
         let mut buffer = vec![0u8; size as usize];
-        if GetFileVersionInfoW(path_wide.as_ptr(), 0, size, buffer.as_mut_ptr() as *mut _) == 0 {
+        let ret = GetFileVersionInfoW(
+            path_wide.as_ptr(),
+            0,
+            size,
+            buffer.as_mut_ptr() as *mut std::ffi::c_void,
+        );
+        if ret == 0 {
             return None;
         }
 
         let mut len: u32 = 0;
         let mut subblock_ptr: *mut std::ffi::c_void = ptr::null_mut();
-        let subblock: Vec<u16> = OsStr::new("\\")
+        let subblock: Vec<u16> = OsStr::new("\")
             .encode_wide()
             .chain(std::iter::once(0))
             .collect();
 
-        if VerQueryValueW(
-            buffer.as_ptr() as *const _,
+        let ret2 = VerQueryValueW(
+            buffer.as_ptr() as *const std::ffi::c_void,
             subblock.as_ptr(),
             &mut subblock_ptr,
             &mut len,
-        ) == 0 || len == 0 {
+        );
+        if ret2 == 0 || len == 0 || len < 52 || subblock_ptr.is_null() {
             return None;
         }
 
-        // Read the VS_FIXEDFILEINFO structure
         let info = &*(subblock_ptr as *const VS_FIXEDFILEINFO);
+        // VS_FIXEDFILEINFO.dwSignature must be 0xFEEF04BD
+        if info.dwSignature != 0xFEEF04BD {
+            return None;
+        }
         let major = (info.dwFileVersionMS >> 16) & 0xFFFF;
         let minor = info.dwFileVersionMS & 0xFFFF;
         let patch = (info.dwFileVersionLS >> 16) & 0xFFFF;
@@ -387,22 +398,21 @@ struct VS_FIXEDFILEINFO {
 unsafe extern "system" {
     fn GetFileVersionInfoSizeW(
         lptstrFilename: *const u16,
-        lpdwHandle: *mut std::ffi::c_void,
+        lpdwHandle: *mut u32,
     ) -> u32;
     fn GetFileVersionInfoW(
         lptstrFilename: *const u16,
         dwHandle: u32,
         dwLen: u32,
         lpData: *mut std::ffi::c_void,
-    ) -> u32;
+    ) -> i32;
     fn VerQueryValueW(
         pBlock: *const std::ffi::c_void,
         lpSubBlock: *const u16,
         lplpBuffer: *mut *mut std::ffi::c_void,
         puLen: *mut u32,
-    ) -> u32;
-}
-fn macos_app_version(app_dir: &Path) -> Option<String> {
+    ) -> i32;
+}fn macos_app_version(app_dir: &Path) -> Option<String> {
     let plist = std::fs::read_to_string(app_dir.join("Contents").join("Info.plist")).ok()?;
     plist_string_value(&plist, "CFBundleShortVersionString")
         .or_else(|| plist_string_value(&plist, "CFBundleVersion"))
