@@ -138,6 +138,8 @@ body {
   transition:
     background-color var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 .titlebar-title {
   font-size: 12px;
@@ -146,10 +148,8 @@ body {
   opacity: 0.85;
 }
 .titlebar-controls {
-    -webkit-app-region: no-drag;
-    app-region: no-drag;
-  }
-
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
   pointer-events: auto;
   display: flex;
   gap: 0;
