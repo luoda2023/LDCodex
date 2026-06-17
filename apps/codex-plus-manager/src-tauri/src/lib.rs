@@ -1,4 +1,4 @@
-﻿pub mod commands;
+pub mod commands;
 pub mod install;
 
 pub fn run() {
@@ -24,6 +24,8 @@ pub fn run() {
             tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App(url.into()))
                 .title("LDCodex 管理工具").decorations(false).inner_size(1180.0, 820.0)
                 .min_inner_size(960.0, 720.0)
+                .center()
+                .visible(true)
                 .build()?;
             Ok(())
         })
