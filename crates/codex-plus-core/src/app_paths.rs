@@ -313,26 +313,94 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
 
 #[cfg(windows)]
 #[cfg(windows)]
+#[cfg(windows)]
 fn file_version_via_powershell(exe_path: &Path) -> Option<String> {
-    let path_str = exe_path.to_string_lossy().to_string().replace("'", "''");
-    let script = format!(
-        "try {{ (Get-Item '{}').VersionInfo.FileVersion }}\ncatch {{ '' }}",
-        path_str
-    );
-    let output = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
+    // 直接使用 Windows API 读取 EXE 文件版本信息
+    get_exe_version(exe_path)
+}
+
+#[cfg(windows)]
+fn get_exe_version(exe_path: &Path) -> Option<String> {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use std::ptr;
+
+    let path_wide: Vec<u16> = OsStr::new(exe_path.as_os_str())
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    unsafe {
+        let size = GetFileVersionInfoSizeW(path_wide.as_ptr(), ptr::null_mut());
+        if size == 0 {
+            return None;
+        }
+
+        let mut buffer = vec![0u8; size as usize];
+        if GetFileVersionInfoW(path_wide.as_ptr(), 0, size, buffer.as_mut_ptr() as *mut _) == 0 {
+            return None;
+        }
+
+        let mut len: u32 = 0;
+        let mut subblock_ptr: *mut std::ffi::c_void = ptr::null_mut();
+        let subblock: Vec<u16> = OsStr::new("\\")
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+
+        if VerQueryValueW(
+            buffer.as_ptr() as *const _,
+            subblock.as_ptr(),
+            &mut subblock_ptr,
+            &mut len,
+        ) == 0 || len == 0 {
+            return None;
+        }
+
+        // Read the VS_FIXEDFILEINFO structure
+        let info = &*(subblock_ptr as *const VS_FIXEDFILEINFO);
+        let major = (info.dwFileVersionMS >> 16) & 0xFFFF;
+        let minor = info.dwFileVersionMS & 0xFFFF;
+        let patch = (info.dwFileVersionLS >> 16) & 0xFFFF;
+        Some(format!("{}.{}.{}", major, minor, patch))
     }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let trimmed = stdout.trim();
-    if trimmed.is_empty() || trimmed == "''" {
-        None
-    } else {
-        Some(trimmed.to_string())
-    }
+}
+
+#[cfg(windows)]
+#[repr(C)]
+struct VS_FIXEDFILEINFO {
+    dwSignature: u32,
+    dwStrucVersion: u32,
+    dwFileVersionMS: u32,
+    dwFileVersionLS: u32,
+    dwProductVersionMS: u32,
+    dwProductVersionLS: u32,
+    dwFileFlagsMask: u32,
+    dwFileFlags: u32,
+    dwFileOS: u32,
+    dwFileType: u32,
+    dwFileSubtype: u32,
+    dwFileDateMS: u32,
+    dwFileDateLS: u32,
+}
+
+unsafe extern "system" {
+    fn GetFileVersionInfoSizeW(
+        lptstrFilename: *const u16,
+        lpdwHandle: *mut std::ffi::c_void,
+    ) -> u32;
+    fn GetFileVersionInfoW(
+        lptstrFilename: *const u16,
+        dwHandle: u32,
+        dwLen: u32,
+        lpData: *mut std::ffi::c_void,
+    ) -> u32;
+    fn VerQueryValueW(
+        pBlock: *const std::ffi::c_void,
+        lpSubBlock: *const u16,
+        lplpBuffer: *mut *mut std::ffi::c_void,
+        puLen: *mut u32,
+    ) -> u32;
 }
 fn macos_app_version(app_dir: &Path) -> Option<String> {
     let plist = std::fs::read_to_string(app_dir.join("Contents").join("Info.plist")).ok()?;
