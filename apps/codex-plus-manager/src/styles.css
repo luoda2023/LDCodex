@@ -126,21 +126,30 @@ body {
 }
 
 .titlebar {
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  background: hsl(var(--sidebar-bg));
-  border-bottom: 1px solid hsl(var(--sidebar-border));
-  user-select: none;
-  grid-column: 1 / -1;
-  transition:
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    background: hsl(var(--sidebar-bg));
+    border-bottom: 1px solid hsl(var(--sidebar-border));
+    user-select: none;
+    grid-column: 1 / -1;
+    transition:
     background-color var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
-  -webkit-app-region: drag;
-  app-region: drag;
-}
+  }
+
+.titlebar-drag {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+  
+
 .titlebar-icon {
   width: 18px;
   height: 18px;
@@ -2761,4 +2770,7 @@ input[type="checkbox"] {
 .dark button[class*="primary"] {
   color: #fff !important;
 }
+
+
+
 
