@@ -24,7 +24,7 @@ pub fn run() {
                 "index.html"
             };
             tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App(url.into()))
-                .title("LDCodex 绠＄悊宸ュ叿").decorations(false).inner_size(1180.0, 820.0)
+                .title("LDCodex 管理工具").decorations(false).inner_size(1180.0, 820.0)
                 .min_inner_size(960.0, 720.0)
                 .center()
                 .visible(true)
@@ -37,9 +37,31 @@ pub fn run() {
                     let _ = main_window_clone.hide();
                 }
             });
+            // 构建托盘菜单
+            let show_item = tauri::menu::MenuItemBuilder::with_id("show", "打开").build(app)?;
+            let quit_item = tauri::menu::MenuItemBuilder::with_id("quit", "退出").build(app)?;
+            let tray_menu = tauri::menu::MenuBuilder::new(app)
+                .item(&show_item)
+                .item(&quit_item)
+                .build()?;
             tauri::tray::TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("LDCodex 绠＄悊宸ュ叿")
+                .tooltip("LDCodex 管理工具")
+                .menu(&tray_menu)
+                .on_menu_event(move |app_handle, event| {
+                    match event.id().as_ref() {
+                        "show" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app_handle.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
                 .on_tray_icon_event(|tray, event| {
                     if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
                         if let Some(window) = tray.app_handle().get_webview_window("main") {
