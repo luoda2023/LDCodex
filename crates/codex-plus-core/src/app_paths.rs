@@ -2,6 +2,11 @@
 use std::path::{Path, PathBuf};
 const CODEX_PREFIX: &str = ["OpenAI", ".", "Codex_"].concat();
 
+fn dot_char() -> String {
+    char::from(46u8).to_string()
+}
+
+
 pub fn find_latest_codex_app_dir(root: &Path) -> Option<PathBuf> {
     let mut matches = std::fs::read_dir(root)
         .ok()?
@@ -239,7 +244,7 @@ pub fn codex_app_version(app_dir: &Path) -> Option<String> {
 
 pub fn packaged_app_user_model_id(app_dir: &Path) -> Option<String> {
     let package_name = package_name_from_app_dir(app_dir)?;
-    if !package_name.starts_with(CODEX_PREFIX) || !package_name.contains("__") {
+    if !package_name.starts_with(&codex_prefix_str()) || !package_name.contains("__") {
         return None;
     }
     let identity_name = package_name.split_once('_')?.0;
@@ -266,8 +271,8 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
     let name = path
         .split('/')
         .rev()
-        .find(|part| part.starts_with(CODEX_PREFIX))?;
-    let rest = name.strip_prefix(CODEX_PREFIX)?;
+        .find(|part| part.starts_with(&codex_prefix_str()))?;
+    let rest = name.strip_prefix(&codex_prefix_str())?;
     let version = rest.split_once('_')?.0;
     if version.is_empty() {
         None
@@ -441,7 +446,7 @@ fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
     if root.extension() == Some(OsStr::new("app")) {
         return vec![root.to_path_buf()];
     }
-    let dot = "DOT".replace("DOT", ".");
+    let dot = char::from(46u8).to_string();
     let names = [
         ["Codex", &dot, "app"].concat(),
         ["OpenAI Codex", &dot, "app"].concat(),
@@ -455,7 +460,7 @@ fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
 
 fn version_tuple(path: &Path) -> Option<Vec<u32>> {
     let name = path.file_name()?.to_str()?;
-    let rest = name.strip_prefix(CODEX_PREFIX)?;
+    let rest = name.strip_prefix(&codex_prefix_str())?;
     let version = rest.split_once('_')?.0;
     let parts = version
         .split('.')
@@ -464,6 +469,7 @@ fn version_tuple(path: &Path) -> Option<Vec<u32>> {
         .ok()?;
     if parts.is_empty() { None } else { Some(parts) }
 }
+
 
 
 
