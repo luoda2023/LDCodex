@@ -1,4 +1,4 @@
-import {
+﻿import {
   closestCenter,
   DndContext,
   KeyboardSensor,
@@ -83,7 +83,6 @@ type LaunchStatus = {
 
 type OverviewResult = CommandResult<{
   codex_app: PathState;
-  codex_version: string | null;
   silent_shortcut: PathState;
   management_shortcut: PathState;
   latest_launch: LaunchStatus | null;
@@ -1464,6 +1463,7 @@ const closeWindow = async () => {
   return (
     <div className={`shell ${theme}`}>
       <header className="titlebar" data-tauri-drag-region>
+        <img src="/logo.png" className="titlebar-icon" alt="" />
         <span className="titlebar-title">LDCodex</span>
         <div className="titlebar-controls">
           <button className="titlebar-btn" onClick={(e) => { e.stopPropagation(); minimize(); }} title="最小化">_</button>
@@ -2216,7 +2216,7 @@ function AboutScreen({
         <CardHead title="关于 LDCodex" detail="本地 Codex 增强和管理工具" />
         <CardContent>
           <div className="metric-list">
-            <Metric label="LDCodex 版本" value={overview?.current_version ?? "-"} />
+            <Metric label="软件版本" value={overview?.current_version ?? "-"} />
           </div>
         </CardContent>
       </Panel>

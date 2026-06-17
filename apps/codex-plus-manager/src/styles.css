@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 @theme {
   --color-background: hsl(var(--background));
@@ -2747,8 +2747,8 @@ input[type="checkbox"] {
   to { opacity: 1; transform: translateY(0); }
 }
 
-
-
-
-
-
+.dark .brand-accent-btn,
+.dark .btn-primary,
+.dark button[class*="primary"] {
+  color: #fff !important;
+}
