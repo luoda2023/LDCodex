@@ -7,14 +7,7 @@ fn codex_prefix_str() -> String {
 
 fn dot_char() -> String {
     char::from(46u8).to_string()
-}
-
-fn codex_prefix_str() -> String {
-    let d = dot_char();
-    vec!["OpenAI", &d, "Codex_"].concat()
-}
-
-pub fn find_latest_codex_app_dir(root: &Path) -> Option<PathBuf> {
+}pub fn find_latest_codex_app_dir(root: &Path) -> Option<PathBuf> {
     let mut matches = std::fs::read_dir(root)
         .ok()?
         .filter_map(Result::ok)
