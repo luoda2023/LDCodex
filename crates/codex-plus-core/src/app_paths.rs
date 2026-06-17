@@ -1,4 +1,4 @@
-﻿use std::ffi::OsStr;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 pub fn find_latest_codex_app_dir(root: &Path) -> Option<PathBuf> {
@@ -228,11 +228,11 @@ pub fn codex_app_version(app_dir: &Path) -> Option<String> {
     } else {
         app_dir
     };
-    // 先试 MS Store 版本检测
+    // ���� MS Store �汾���
     if let Some(ver) = codex_package_version(package_dir) {
         return Some(ver);
     }
-    // 非 MS Store 安装: 从 package.json 提取
+    // �� MS Store ��װ: �� package.json ��ȡ
     standalone_codex_version(package_dir)
 }
 
@@ -260,7 +260,7 @@ fn package_name_from_app_dir(app_dir: &Path) -> Option<String> {
 }
 
 fn codex_package_version(package_dir: &Path) -> Option<String> {
-    // MS Store 安装: 从目录名 OpenAI.Codex_version_xxx 中提取
+    // MS Store ��װ: ��Ŀ¼�� OpenAI.Codex_version_xxx ����ȡ
     let path = package_dir.to_string_lossy().replace('\\', "/");
     let name = path
         .split('/')
@@ -276,8 +276,9 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
 }
 
 fn standalone_codex_version(app_dir: &Path) -> Option<String> {
-    // 非 MS Store 安装: 从 package.json 提取版本号
+    // �� MS Store ��װ: �� package.json ��ȡ�汾��
     let try_paths = [
+        app_dir.join("resources").join("package.json"),
         app_dir.parent().map(|p| p.join("app").join("resources").join("package.json")),
         Some(app_dir.join("package.json")),
     ];
@@ -339,3 +340,4 @@ fn version_tuple(path: &Path) -> Option<Vec<u32>> {
         .ok()?;
     if parts.is_empty() { None } else { Some(parts) }
 }
+

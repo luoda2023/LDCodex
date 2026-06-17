@@ -27,6 +27,25 @@ pub fn run() {
                 .center()
                 .visible(true)
                 .build()?;
+            let main_window = app.get_webview_window("main").unwrap();
+            main_window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = main_window.hide();
+                }
+            });
+            tauri::tray::TrayIconBuilder::new("tray-main")
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("LDCodex 管理工具")
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
+                        if let Some(window) = tray.app_handle().get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build()?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
