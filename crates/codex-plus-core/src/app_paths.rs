@@ -178,7 +178,7 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
     }
 
     let file_name = path.file_name().and_then(OsStr::to_str).unwrap_or_default();
-    if file_name.eq_ignore_ascii_case(vec!["Codex", &dot_char(), "exe"].concat()) || file_name.eq_ignore_ascii_case(vec!["Codex", &dot_char(), "exe"].concat()) {
+    if file_name.eq_ignore_ascii_case(&vec!["Codex", &dot_char(), "exe"].concat()) || file_name.eq_ignore_ascii_case(&vec!["Codex", &dot_char(), "exe"].concat()) {
         return path.parent().map(Path::to_path_buf);
     }
 
