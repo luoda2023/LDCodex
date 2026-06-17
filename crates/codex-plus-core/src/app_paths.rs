@@ -468,9 +468,9 @@ fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
     }
     let dot = char::from(46u8).to_string();
     let names = [
-        ["Codex", &dot, "app"].concat(),
-        ["OpenAI Codex", &dot, "app"].concat(),
-        ["OpenAI", &dot, "Codex", &dot, "app"].concat(),
+        vec!["Codex", &dot, "app"].concat(),
+        vec!["OpenAI Codex", &dot, "app"].concat(),
+        vec!["OpenAI", &dot, "Codex", &dot, "app"].concat(),
     ];
     names
         .into_iter()
@@ -489,6 +489,7 @@ fn version_tuple(path: &Path) -> Option<Vec<u32>> {
         .ok()?;
     if parts.is_empty() { None } else { Some(parts) }
 }
+
 
 
 
