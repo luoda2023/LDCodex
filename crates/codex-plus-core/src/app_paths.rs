@@ -312,8 +312,6 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
 }
 
 #[cfg(windows)]
-#[cfg(windows)]
-#[cfg(windows)]
 fn file_version_via_powershell(exe_path: &Path) -> Option<String> {
     // 直接使用 Windows API 读取 EXE 文件版本信息
     get_exe_version(exe_path)
@@ -384,6 +382,7 @@ struct VS_FIXEDFILEINFO {
     dwFileDateLS: u32,
 }
 
+#[link(name = "version")]
 unsafe extern "system" {
     fn GetFileVersionInfoSizeW(
         lptstrFilename: *const u16,
