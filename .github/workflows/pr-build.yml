@@ -3,7 +3,7 @@
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -149,3 +149,4 @@ jobs:
           name: ldcodex-macos-${{ matrix.arch }}-dmg
           path: dist/macos/*.dmg
           if-no-files-found: error
+
