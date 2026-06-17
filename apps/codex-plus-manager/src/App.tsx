@@ -469,7 +469,7 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "maintenance" | "about" | "settings";
+type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "maintenance" | "about" | "settings" | "proxy";
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
@@ -480,6 +480,7 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
   { id: "enhance", label: "页面增强", icon: Hammer },
   { id: "maintenance", label: "安装维护", icon: Wrench },
   { id: "settings", label: "设置", icon: Settings },
+  { id: "proxy", label: "代理服务器", icon: ShieldCheck },
   { id: "about", label: "关于", icon: Info },
 ];
 
@@ -803,6 +804,10 @@ export function App() {
       await refreshSettings(true);
       await refreshRelayFiles(true);
       await refreshLiveContextEntries(true);
+    }
+    if (next === "proxy") {
+      await refreshOverview(true);
+      await refreshWatcher(true);
     }
     if (next === "settings") await refreshSettings(true);
 
@@ -1580,6 +1585,15 @@ const closeWindow = async () => {
               actions={actions}
             />
           ) : null}
+          {route === "proxy" ? (
+            <ProxyScreen
+              overview={overview}
+              launchForm={launchForm}
+              onLaunchFormChange={onLaunchFormChange}
+              actions={actions}
+              settings={settings}
+            />
+          ) : null}
           {route === "about" ? <AboutScreen overview={overview} actions={actions} /> : null}
           {route === "settings" ? (
             <SettingsScreen settings={settings} theme={theme} form={settingsForm} onFormChange={setSettingsForm} actions={actions} />
@@ -1707,7 +1721,7 @@ function OverviewScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="最近启动" detail={overview?.logs_path ?? "暂无状态文件"} />
+        <CardHead title="代理服务器启动状态" detail={overview?.logs_path ?? "暂无状态文件"} />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
@@ -2118,6 +2132,40 @@ function MaintenanceScreen({
           </Toolbar>
         </CardContent>
       </Panel>
+    </>
+  );
+}
+function ProxyScreen({
+  overview,
+  launchForm,
+  onLaunchFormChange,
+  actions,
+  settings,
+}: {
+  overview: OverviewResult | null;
+  launchForm: { appPath: string; debugPort: string; helperPort: string };
+  onLaunchFormChange: (next: { appPath: string; debugPort: string; helperPort: string }) => void;
+  actions: Actions;
+  settings: SettingsResult | null;
+}) {
+  const savedCodexAppPath = settings?.settings.codexAppPath ?? "";
+  return (
+    <>
+      <Panel>
+        <CardHead title="代理服务器" detail="代理服务器启动状态与配置" />
+        <CardContent>
+          <LatestLaunch status={overview?.latest_launch ?? null} />
+          <Toolbar>
+            <Button onClick={() => void actions.launch()}>
+              <Rocket className="h-4 w-4" />
+              启动 LDCodex
+            </Button>
+            <Button variant="secondary" onClick={() => void actions.goLogs()}>
+              打开关于
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
       <Panel>
         <CardHead title="手动启动" detail="应用路径留空时使用已保存路径；没有保存路径时使用自动探测" />
         <CardContent>
@@ -2153,6 +2201,7 @@ function MaintenanceScreen({
     </>
   );
 }
+
 
 function AboutScreen({
   overview,
@@ -3446,7 +3495,8 @@ function routeSubtitle(route: Route) {
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
     enhance: "会话删除、导出、项目移动和脚本能力",
-    maintenance: "入口安装、修复、Watcher 与手动启动",
+    maintenance: "入口安装、修复、Watcher",
+    proxy: "代理服务器配置与手动启动",
     about: "版本信息",
     settings: "主题、命令包装器和启动参数",
   };
