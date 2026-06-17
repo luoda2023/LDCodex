@@ -1,4 +1,4 @@
-use tauri::Manager;
+﻿use tauri::Manager;
 
 pub mod commands;
 pub mod install;
@@ -24,21 +24,22 @@ pub fn run() {
                 "index.html"
             };
             tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App(url.into()))
-                .title("LDCodex 管理工具").decorations(false).inner_size(1180.0, 820.0)
+                .title("LDCodex 绠＄悊宸ュ叿").decorations(false).inner_size(1180.0, 820.0)
                 .min_inner_size(960.0, 720.0)
                 .center()
                 .visible(true)
                 .build()?;
             let main_window = app.get_webview_window("main").unwrap();
+            let main_window_clone = main_window.clone();
             main_window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
-                    let _ = main_window.hide();
+                    let _ = main_window_clone.hide();
                 }
             });
             tauri::tray::TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("LDCodex 管理工具")
+                .tooltip("LDCodex 绠＄悊宸ュ叿")
                 .on_tray_icon_event(|tray, event| {
                     if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
                         if let Some(window) = tray.app_handle().get_webview_window("main") {
@@ -121,7 +122,7 @@ fn install_panic_logger() {
             .downcast_ref::<&str>()
             .map(|message| (*message).to_string())
             .or_else(|| panic_info.payload().downcast_ref::<String>().cloned())
-            .unwrap_or_else(|| "非字符串 panic payload".to_string());
+            .unwrap_or_else(|| "闈炲瓧绗︿覆 panic payload".to_string());
         let location = panic_info.location().map(|location| {
             serde_json::json!({
                 "file": location.file(),
@@ -198,3 +199,4 @@ fn acquire_single_instance_guard() -> Option<codex_plus_core::ports::LoopbackPor
         }
     }
 }
+
