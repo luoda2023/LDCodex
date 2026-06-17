@@ -141,6 +141,15 @@ body {
   -webkit-app-region: drag;
   app-region: drag;
 }
+.titlebar-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
 .titlebar-title {
   font-size: 12px;
   font-weight: 600;
