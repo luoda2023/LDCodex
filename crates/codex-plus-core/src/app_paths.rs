@@ -278,7 +278,7 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
 fn standalone_codex_version(app_dir: &Path) -> Option<String> {
     // �� MS Store ��װ: �� package.json ��ȡ�汾��
     let try_paths = [
-        app_dir.join("resources").join("package.json"),
+        Some(app_dir.join("resources").join("package.json")),
         app_dir.parent().map(|p| p.join("app").join("resources").join("package.json")),
         Some(app_dir.join("package.json")),
     ];
