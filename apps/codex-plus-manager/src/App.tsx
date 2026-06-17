@@ -1462,10 +1462,12 @@ const closeWindow = async () => {
 
   return (
     <div className={`shell ${theme}`}>
-      <header className="titlebar" data-tauri-drag-region>
-        <img src="/logo.png" className="titlebar-icon" alt="" />
-        <span className="titlebar-title">LDCodex</span>
-        <div className="titlebar-controls">
+      <header className="titlebar">
+          <div className="titlebar-drag" data-tauri-drag-region>
+            <img src="/logo.png" className="titlebar-icon" alt="" />
+            <span className="titlebar-title">LDCodex</span>
+          </div>
+          <div className="titlebar-controls">
           <button className="titlebar-btn" onClick={(e) => { e.stopPropagation(); minimize(); }} title="最小化">_</button>
           <button className="titlebar-btn" onClick={(e) => { e.stopPropagation(); maximize(); }} title="最大化">&#x25A1;</button>
           <button className="titlebar-btn titlebar-close" onClick={(e) => { e.stopPropagation(); closeWindow(); }} title="关闭">&#x2A2F;</button>
@@ -4853,5 +4855,7 @@ function loadInitialRoute(): Route {
   }
   return "overview";
 }
+
+
 
 
