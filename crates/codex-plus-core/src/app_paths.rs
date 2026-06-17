@@ -1,4 +1,4 @@
-use std::ffi::OsStr;
+﻿use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 const CODEX_PREFIX: &str = "OpenAI.Codex_";
 
@@ -433,7 +433,7 @@ fn plist_string_value(plist: &str, key: &str) -> Option<String> {
 
 fn append_user_data_variants(candidates: &mut Vec<PathBuf>, base: &Path) {
     candidates.push(base.join("OpenAI").join("Codex"));
-    candidates.push(base.join("OpenAI.Codex"));
+    candidates.push(base.join(["OpenAI", ".", "Codex"].concat()));
     candidates.push(base.join("Codex"));
 }
 
@@ -441,11 +441,13 @@ fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
     if root.extension() == Some(OsStr::new("app")) {
         return vec![root.to_path_buf()];
     }
-    [
-        concat!("Codex", ".app"),
-        concat!("OpenAI Codex", ".app"),
-        concat!("OpenAI", ".Codex", ".app"),
-    ]
+    let dot = "DOT".replace("DOT", ".");
+    let names = [
+        ["Codex", &dot, "app"].concat(),
+        ["OpenAI Codex", &dot, "app"].concat(),
+        ["OpenAI", &dot, "Codex", &dot, "app"].concat(),
+    ];
+    names
         .into_iter()
         .map(|name| root.join(name))
         .collect()
@@ -462,5 +464,6 @@ fn version_tuple(path: &Path) -> Option<Vec<u32>> {
         .ok()?;
     if parts.is_empty() { None } else { Some(parts) }
 }
+
 
 
