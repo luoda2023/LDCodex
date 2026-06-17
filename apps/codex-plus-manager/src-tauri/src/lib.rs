@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 pub mod commands;
 pub mod install;
 
@@ -34,7 +36,7 @@ pub fn run() {
                     let _ = main_window.hide();
                 }
             });
-            tauri::tray::TrayIconBuilder::new("tray-main")
+            tauri::tray::TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("LDCodex 管理工具")
                 .on_tray_icon_event(|tray, event| {
@@ -45,7 +47,7 @@ pub fn run() {
                         }
                     }
                 })
-                .build()?;
+                .build(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
