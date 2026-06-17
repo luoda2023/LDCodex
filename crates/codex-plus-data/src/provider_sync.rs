@@ -793,10 +793,11 @@ fn restore_file_mtime(path: &Path, mtime: Option<SystemTime>) {
 }
 
 fn table_columns(db: &Connection, table: &str) -> anyhow::Result<HashSet<String>> {
-    let mut stmt = db.prepare(&format!(
+    let sql = format!(
         "PRAGMA table_info(\"{}\")",
         table.replace('"', "\"\"")
-    ))?;
+    );
+    let mut stmt = db.prepare(&sql)?;
     Ok(stmt
         .query_map([], |row| row.get::<_, String>(1))?
         .collect::<rusqlite::Result<HashSet<_>>>()?)
