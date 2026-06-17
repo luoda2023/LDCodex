@@ -798,9 +798,9 @@ fn table_columns(db: &Connection, table: &str) -> anyhow::Result<HashSet<String>
         table.replace('"', "\"\"")
     );
     let mut stmt = db.prepare(&sql)?;
-    Ok(stmt
-        .query_map([], |row| row.get::<_, String>(1))?
-        .collect::<rusqlite::Result<HashSet<_>>>()?)
+    let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+    let result: HashSet<String> = rows.collect::<rusqlite::Result<HashSet<_>>>()?;
+    Ok(result)
 }
 
 fn sqlite_provider_ids(path: &Path) -> anyhow::Result<Vec<String>> {
