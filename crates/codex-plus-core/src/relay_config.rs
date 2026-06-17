@@ -1226,14 +1226,12 @@ fn normalize_duplicate_toml_text(contents: &str) -> String {
             continue;
         }
 
-        if in_root
-            && !trimmed.is_empty()
-            && !trimmed.starts_with('#')
-            && let Some((key, _)) = trimmed.split_once('=')
-        {
-            let key = key.trim();
-            if !key.is_empty() && !key.contains('.') && !seen_root_keys.insert(key.to_string()) {
-                continue;
+        if in_root && !trimmed.is_empty() && !trimmed.starts_with('#') {
+            if let Some((key, _)) = trimmed.split_once('=') {
+                let key = key.trim();
+                if !key.is_empty() && !key.contains('.') && !seen_root_keys.insert(key.to_string()) {
+                    continue;
+                }
             }
         }
 
@@ -1268,12 +1266,12 @@ fn strip_common_config_text_fallback(config_text: &str, common_config: &str) -> 
             continue;
         }
 
-        if !trimmed.is_empty()
-            && !trimmed.starts_with('#')
-            && let Some((key, _)) = trimmed.split_once('=')
-            && anchors.root_keys.contains(key.trim())
-        {
-            continue;
+        if !trimmed.is_empty() && !trimmed.starts_with('#') {
+            if let Some((key, _)) = trimmed.split_once('=') {
+                if anchors.root_keys.contains(key.trim()) {
+                    continue;
+                }
+            }
         }
 
         kept.push(line);
@@ -1300,14 +1298,12 @@ fn common_config_anchors(common_config: &str) -> CommonConfigAnchors {
             continue;
         }
 
-        if in_root
-            && !trimmed.is_empty()
-            && !trimmed.starts_with('#')
-            && let Some((key, _)) = trimmed.split_once('=')
-        {
-            let key = key.trim();
-            if !key.is_empty() {
-                root_keys.insert(key.to_string());
+        if in_root && !trimmed.is_empty() && !trimmed.starts_with('#') {
+            if let Some((key, _)) = trimmed.split_once('=') {
+                let key = key.trim();
+                if !key.is_empty() {
+                    root_keys.insert(key.to_string());
+                }
             }
         }
     }
