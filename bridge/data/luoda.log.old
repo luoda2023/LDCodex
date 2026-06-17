@@ -1,0 +1,941 @@
+
+╔══════════════════════════════════════════╗
+║        LuoDaBridge v3 — Proxy Gateway    ║
+║        Development Mode                  ║
+╚══════════════════════════════════════════╝
+
+[boot] registering providers...
+[builtin] registered MiMo (skywork-ai/skyclaw-v1)
+[custom] registered "shangtang1" → https://token.sensenova.cn/v1
+[custom] registered "shangtang2" → https://token.sensenova.cn/v1
+[custom] registered "shangtang3" → https://token.sensenova.cn/v1
+[custom] registered "shangtang4" → https://token.sensenova.cn/v1
+[custom] registered "shangtang5" → https://token.sensenova.cn/v1
+[custom] registered "shangtang6" → https://token.sensenova.cn/v1
+[custom] registered "shangtang33" → https://token.sensenova.cn/v1
+[custom] registered "智谱1" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱2" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱4" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱5" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱7" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "阿里云1" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云2" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云3" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云4" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云5" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "移动" → https://zhenze-huhehaote.cmecloud.cn/v1
+[custom] registered "移动2" → https://zhenze-huhehaote.cmecloud.cn/v1
+[custom] registered "ApiFree" → https://api.apifree.ai/agent/v1
+[custom] registered "ST40" → https://token.sensenova.cn/v1
+[custom] registered "ST41" → https://token.sensenova.cn/v1
+[custom] registered "ST43" → https://token.sensenova.cn/v1
+[custom] registered "Cloud1" → https://api.cloudflare.com/client/v4/accounts/e9ac56dfe63fa72143a7cd7b9c539b8f/ai/v1
+[custom] registered "免费1" → https://free.v36.cm
+[custom] registered "ApiFree2" → https://api.apifree.ai/agent/v1
+[custom] registered "AgnesAI" → https://apihub.agnes-ai.com/v1
+[custom] registered "ST44" → https://token.sensenova.cn/v1
+[custom] registered "ST45" → https://token.sensenova.cn/v1
+[custom] registered "ST46" → https://token.sensenova.cn/v1
+[custom] registered "cline.bot" → https://api.cline.bot/api/v1
+[boot] providers: 1 built-in, 31 custom
+[boot] applied builtin override for "mimo"
+[boot] initializing fallback...
+[fallback] initialized with 28 providers, enabled=true
+[boot] initializing health checks...
+[health] health check started (interval: 30s)
+[boot] token tracking enabled
+[boot] starting servers...
+[boot] ready — proxy on :40000, config-api on :40001
+[boot] admin panel served separately on :40002
+[admin-server] serving on http://127.0.0.1:40002
+[admin-server] admin root: /root/codex-bridge-main/admin
+[proxy] running on http://localhost:40000
+[proxy] providers: 32 registered
+[proxy] models: 32 in catalog
+[config-api] running on http://localhost:40001
+[access] POST /v1/responses
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] GET /v1/models
+[access] GET /api/dyn-metrics
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] GET /v1/models
+[access] GET /api/dyn-metrics
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[access] GET /v1/models
+[access] GET /api/dyn-metrics
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] upstream error: timeout stack=Error: timeout
+    at ClientRequest.<anonymous> (file:///root/codex-bridge-main/lib/protocol/openai-responses.mjs:1236:43)
+    at ClientRequest.emit (node:events:519:28)
+    at TLSSocket.emitRequestTi
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] GET /v1/models
+[access] GET /api/dyn-metrics
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] GET /v1/models
+[access] GET /api/dyn-metrics
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] upstream error: timeout stack=Error: timeout
+    at ClientRequest.<anonymous> (file:///root/codex-bridge-main/lib/protocol/openai-responses.mjs:1236:43)
+    at ClientRequest.emit (node:events:519:28)
+    at TLSSocket.emitRequestTi
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] upstream error: timeout stack=Error: timeout
+    at ClientRequest.<anonymous> (file:///root/codex-bridge-main/lib/protocol/openai-responses.mjs:1236:43)
+    at ClientRequest.emit (node:events:519:28)
+    at TLSSocket.emitRequestTi
+[access] POST /v1/responses
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] GET /v1/models
+[access] GET /api/dyn-metrics
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (11), forcing non-streaming to preserve arguments
+[responses] tools=10 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,request_user_input,apply_patch,view_image,mcp__codex_auto_memory,mcp__node_repl] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are Codex, a coding agent based on GPT-5. You and the user share the same workspace and collaborate to achieve the user's goals.\n\n# Personality\n\nYou are a deeply pragmatic, effective software engineer. Y
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] GET /v1/models
+[access] GET /api/dyn-metrics
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[proxy] "shangtang1" quota exhausted
+[fallback] CODEX switched to "ST40" (idx=4)
+[proxy] fallback advanced to "ST40"
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] GET /v1/models
+[access] GET /api/dyn-metrics
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[responses] stream: skipping malformed tool_call (no id, no name)
+[access] POST /v1/responses
+[responses] images detected in input, keeping streaming mode
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] GET /v1/models
+[access] GET /api/dyn-metrics
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:
+[access] POST /v1/responses
+[responses] tools present (15), forcing non-streaming to preserve arguments
+[responses] tools=14 names=[shell_command,list_mcp_resources,list_mcp_resource_templates,read_mcp_resource,update_plan,get_goal,create_goal,update_goal,request_user_input,view_image,multi_agent_v1,mcp__codex_auto_memory,mcp__node_repl,codex_app] choice="auto"
+[responses] upstream body sample: {"model":"deepseek-v4-flash","messages":[{"role":"user","content":"[System Instructions] You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:

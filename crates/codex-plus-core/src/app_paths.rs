@@ -225,8 +225,13 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
 }
 
 pub fn codex_app_version(app_dir: &Path) -> Option<String> {
+    #[cfg(target_os = "macos")]
     if app_dir.extension() == Some(OsStr::new("app")) {
         return macos_app_version(app_dir);
+    }
+    #[cfg(not(target_os = "macos"))]
+    if app_dir.extension() == Some(OsStr::new("app")) {
+        return None;
     }
     let package_dir = if app_dir
         .file_name()

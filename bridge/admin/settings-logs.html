@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LUODA中转路由 · 查看日志</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --font-display:'PingFang SC','Microsoft YaHei','SimHei',sans-serif;
+  --font-body:'PingFang SC','Microsoft YaHei','SimHei',sans-serif;
+  --mono:'JetBrains Mono','SF Mono',monospace;
+  --primary:#165DFF;--primary-hover:#0E4FD0;--primary-light:#4080FF;--primary-subtle:rgba(22,101,255,0.08);
+  --bg:#F2F4F8;--surface:#FFFFFF;--sidebar-bg:#F8F9FC;
+  --text:#181B24;--text-2:#484E5E;--text-3:#8890A4;
+  --border:#E3E6ED;--border-light:#EBEEF4;
+  --success:#00B42A;--danger:#F53F3F;--warning:#FF7D00;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.04);--shadow-md:0 4px 20px rgba(0,0,0,0.06);--shadow-lg:0 8px 32px rgba(0,0,0,0.08);
+  --radius:14px;--radius-sm:10px;--radius-xs:6px;
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+[data-theme="dark"]{--bg:#0C0E15;--surface:#171A24;--sidebar-bg:#11131D;--text:#E2E6F0;--text-2:#949CAE;--text-3:#5D647A;--border:#262B38;--border-light:#1E2230;--primary-subtle:rgba(22,101,255,0.12);--shadow-sm:0 1px 2px rgba(0,0,0,0.2);--shadow-md:0 4px 20px rgba(0,0,0,0.25);--shadow-lg:0 8px 32px rgba(0,0,0,0.35);}
+html,body{height:100%;overflow:hidden;font-family:var(--font-body);font-size:14px;line-height:1.5;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;}
+.app{display:flex;height:100vh;width:100vw;}
+/* sidebar minimal */
+.sidebar{width:228px;min-width:228px;background:var(--sidebar-bg);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;}
+.sidebar-logo{display:flex;align-items:center;gap:10px;padding:18px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sidebar-logo .logo-mrk{width:28px;height:28px;border-radius:8px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:15px;flex-shrink:0;}
+.sidebar-logo .logo-nm{white-space:nowrap;font-family:var(--font-display);font-size:1.1rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);}
+.sidebar-logo .logo-bd{margin-left:auto;font-size:10px;font-weight:700;color:var(--primary);background:var(--primary-subtle);padding:2px 8px;border-radius:20px;margin-right:2px;}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 8px;}.sidebar-nav::-webkit-scrollbar{width:0}
+.nav-sec{margin-bottom:18px;}.nav-sec-title{font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-3);padding:0 10px 8px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-xs);color:var(--text-2);text-decoration:none;font-size:13px;font-weight:500;transition:all 0.15s;cursor:pointer;}
+.nav-item i{width:18px;text-align:center;font-size:14px;color:var(--text-3);transition:color 0.15s;}
+.nav-item:hover{background:var(--primary-subtle);color:var(--text);}.nav-item:hover i{color:var(--primary);}
+.nav-item.active{background:var(--primary-subtle);color:var(--primary);font-weight:600;}.nav-item.active i{color:var(--primary);}
+.nav-sub{padding-left:34px!important;font-size:12px;}
+.nav-badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(0,180,42,0.1);color:var(--success);}
+.sidebar-cta{margin:8px;padding:14px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--primary),#1A4FBF);color:#fff;flex-shrink:0;position:relative;overflow:hidden;}
+.sidebar-cta::before{content:'';position:absolute;top:-50%;right:-50%;width:100%;height:100%;background:radial-gradient(circle,rgba(255,255,255,0.1)0%,transparent 70%);pointer-events:none;}
+.sidebar-cta .cta-icon{font-size:1.3rem;margin-bottom:6px;}.sidebar-cta .cta-title{font-weight:700;font-size:13px;margin-bottom:4px;}
+.sidebar-cta .cta-desc{font-size:11px;opacity:0.8;margin-bottom:10px;line-height:1.4;}
+.sidebar-cta .cta-btn{width:100%;padding:7px;background:rgba(255,255,255,0.2);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius-xs);color:#fff;font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;}
+.sidebar-cta .cta-btn:hover{background:rgba(255,255,255,0.3);}
+.sidebar-footer{padding:6px 8px;border-top:1px solid var(--border);flex-shrink:0;}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;height:54px;}
+.hl{display:flex;align-items:center;gap:20px;}.hr{display:flex;align-items:center;gap:16px;}
+.ha{display:flex;align-items:center;gap:8px;}
+.hb{width:32px;height:32px;border-radius:var(--radius-xs);border:none;background:transparent;color:var(--text-3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.hb:hover{background:var(--bg);color:var(--text);}
+.av{width:30px;height:30px;border-radius:50%;overflow:hidden;border:2px solid var(--border);flex-shrink:0;cursor:pointer;}
+.av img{width:100%;height:100%;object-fit:cover;}
+.ct{flex:1;overflow-y:hidden;display:flex;flex-direction:column;padding:20px 24px 24px;}
+.ph{margin-bottom:16px;flex-shrink:0;}
+.ph h1{font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.ph p{font-size:14px;color:var(--text-3);line-height:1.5;}
+
+/* Log controls */
+.log-ctrl{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-shrink:0;flex-wrap:wrap;}
+.log-ctrl-left{display:flex;align-items:center;gap:10px;}
+.log-ctrl-right{display:flex;align-items:center;gap:8px;}
+.log-ctrl select{padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:13px;font-family:var(--font-body);color:var(--text);background:var(--surface);outline:none;}
+.log-ctrl select:focus{border-color:var(--primary);}
+.log-ctrl .log-count{font-size:13px;color:var(--text-3);font-family:var(--mono);}
+.btn{padding:7px 16px;border-radius:var(--radius-xs);border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-subtle);}
+.btn-p{background:var(--primary);border-color:var(--primary);color:#fff;}
+.btn-p:hover{background:var(--primary-hover);color:#fff;}
+.btn-d{background:transparent;border-color:var(--danger);color:var(--danger);}
+.btn-d:hover{background:var(--danger);color:#fff;}
+
+/* Log viewer */
+.log-wrap{flex:1;overflow-y:auto;background:#1A1D28;border-radius:var(--radius-sm);border:1px solid var(--border);padding:12px 16px;font-family:var(--mono);font-size:12px;line-height:1.7;}
+.log-wrap::-webkit-scrollbar{width:6px;}
+.log-wrap::-webkit-scrollbar-track{background:transparent;}
+.log-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px;}
+.log-line{display:flex;gap:10px;padding:1px 0;white-space:pre-wrap;word-break:break-all;}
+.log-time{color:#5D647A;flex-shrink:0;}
+.log-level{width:50px;flex-shrink:0;font-weight:600;}
+.log-level.info{color:#4080FF;}
+.log-level.warn{color:#FF7D00;}
+.log-level.err{color:#F53F3F;}
+.log-level.ok{color:#00B42A;}
+.log-msg{color:#C8CCD6;flex:1;}
+.log-msg .hl{color:#00BCD4;}
+.log-msg .err{color:#F53F3F;}
+.log-msg .key{color:#FFD54F;}
+.log-line:hover{background:rgba(255,255,255,0.03);border-radius:2px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.ph,.log-ctrl{animation:fadeUp 0.4s var(--ease) both;}
+@media(prefers-reduced-motion:reduce){.ph,.log-ctrl{animation:none;}}
+</style>
+</head>
+<body><script>if(!sessionStorage.getItem("luoda-token")){location.href="login.html";}else{try{var x=new XMLHttpRequest();x.open("GET","/api/auth/check",false);x.send();if(x.status!==200)location.href="login.html";}catch(e){location.href="login.html";}}</script>
+<div class="app">
+<div id="sidebarRoot"></div>
+<main class="main">
+  <header class="hdr"><div class="hl"><span style="font-family:var(--font-display);font-size:15px;font-weight:700;">查看日志</span></div><div class="hr"><div class="ha"><button class="hb" onclick="toggleTheme()"><i class="fa-solid fa-moon" id="themeIcon"></i></button><button class="hb"><i class="fa-solid fa-bell"></i></button><div class="av"><img src="https://picsum.photos/id/1005/200/200" alt="avatar"></div></div></div></header>
+  <div class="ct">
+    <div class="ph"><h1>系统日志</h1><p>实时查看 LUODA 中转代理运行日志，支持筛选和搜索。</p></div>
+
+    <div class="log-ctrl">
+      <div class="log-ctrl-left">
+        <select id="logLevel" onchange="filterLogs()"><option value="all">全部级别</option><option value="info">INFO</option><option value="warn">WARN</option><option value="err">ERROR</option><option value="ok">SUCCESS</option></select>
+        <select id="logSource" onchange="filterLogs()"><option value="all">全部来源</option><option value="proxy">proxy</option><option value="fallback">fallback</option><option value="access">access</option><option value="reload">reload</option></select>
+        <span class="log-count" id="logCount">显示 50 条</span>
+      </div>
+      <div class="log-ctrl-right">
+        <button class="btn" onclick="toggleAutoRefresh(this)"><i class="fa-solid fa-play"></i> 自动刷新</button>
+        <button class="btn" onclick="clearLogs()"><i class="fa-solid fa-trash-can"></i> 清空</button>
+        <button class="btn btn-p" onclick="fetchLogs()"><i class="fa-solid fa-rotate"></i> 刷新</button>
+      </div>
+    </div>
+
+    <div class="log-wrap" id="logContainer"></div>
+  </div>
+</main>
+</div>
+<script src="shared/state.js"></script>
+<script src="shared/sidebar.js"></script>
+<script src="shared/auth.js"></script>
+<script>
+(function(){var t=localStorage.getItem('luoda-theme')||'light';document.documentElement.setAttribute('data-theme',t);document.getElementById('themeIcon').className=t==='dark'?'fa-solid fa-sun':'fa-solid fa-moon';LUODA_SIDEBAR.inject('settings-logs');})();
+function toggleTheme(){var h=document.documentElement;var c=h.getAttribute('data-theme');var n=c==='dark'?'light':'dark';h.setAttribute('data-theme',n);localStorage.setItem('luoda-theme',n);document.getElementById('themeIcon').className=n==='dark'?'fa-solid fa-sun':'fa-solid fa-moon';}
+
+var allLogs=[];
+var autoRefresh=null;
+
+var mockLogs = [
+  {ts:'00:01:23',level:'info',src:'proxy',msg:'[proxy] chat/completions shangtang1(deepseek-v4-flash) | stream=true | messages=12'},
+  {ts:'00:01:25',level:'ok',src:'proxy',msg:'[proxy] stored response a1b2c3 (provider=shangtang1, store size: 142)'},
+  {ts:'00:01:30',level:'info',src:'access',msg:'[access] /v1/responses probe short-circuit (provider=shangtang1)'},
+  {ts:'00:02:15',level:'warn',src:'fallback',msg:'[fallback] trying provider=[shangtang2] cfgKey=true model=deepseek-v4-flash'},
+  {ts:'00:02:16',level:'ok',src:'fallback',msg:'[fallback] switch CODEX to shangtang2 (idx=2) — 429 from shangtang1'},
+  {ts:'00:03:00',level:'err',src:'proxy',msg:'[proxy] HTTP 429 Too Many Requests (provider=shangtang1) — quota exhausted'},
+  {ts:'00:03:02',level:'info',src:'proxy',msg:'[proxy] advanceFallback: provider=shangtang1, status=429, chain=[shangtang2...]'},
+  {ts:'00:03:45',level:'info',src:'reload',msg:'[reload] models.json changed — reloading providers...'},
+  {ts:'00:03:46',level:'ok',src:'reload',msg:'[reload] done. 27 providers ready.'},
+  {ts:'00:04:12',level:'warn',src:'proxy',msg:'[proxy] providerHealth[shangtang1] consecutiveFailures=3 status=unhealthy'},
+  {ts:'00:04:30',level:'info',src:'access',msg:'[access] /v1/responses hermesAPI | model=hermesAPI | token count=2842'},
+  {ts:'00:05:00',level:'info',src:'proxy',msg:'[proxy] chat/completions 智谱1(GLM-5) | stream=true | messages=8'},
+  {ts:'00:05:02',level:'ok',src:'proxy',msg:'[proxy] stored response d4e5f6 (provider=智谱1, store size: 143)'},
+  {ts:'00:05:30',level:'info',src:'proxy',msg:'[proxy] chat/completions 阿里云1(deepseek-v4-pro) | stream=true | messages=5'},
+  {ts:'00:06:15',level:'err',src:'proxy',msg:'[proxy] connection timeout (provider=ApiFree, ms=30000) — retrying...'},
+  {ts:'00:06:45',level:'ok',src:'proxy',msg:'[proxy] retry success (provider=ApiFree, attempt=2)'},
+  {ts:'00:07:00',level:'info',src:'proxy',msg:'[proxy] chat/completions shangtang6(sensenova-6.7-flash-lite)'},
+  {ts:'00:08:12',level:'info',src:'access',msg:'[access] /v1/responses codexAPI | model=| token count=1562'},
+  {ts:'00:09:00',level:'warn',src:'fallback',msg:'[fallback] trying provider=[智谱5] cfgKey=true model=GLM-4.6V'},
+  {ts:'00:09:30',level:'info',src:'proxy',msg:'[proxy] chat/completions shangtang33(sensenova-6.7-flash-lite) | stream=false'},
+];
+
+function fetchLogs(){
+  var logC=document.getElementById('logContainer');
+  logC.innerHTML='<div style="color:#5D647A;text-align:center;padding:20px;">正在加载日志...</div>';
+  try{
+    fetch('/api/logs?lines=100').then(function(r){return r.json();}).then(function(d){
+      allLogs=d.logs||[];
+      renderLogs();
+      if(!d.logs||!d.logs.length)throw'empty';
+    }).catch(function(){
+      allLogs=mockLogs;
+      renderLogs();
+    });
+  }catch(e){allLogs=mockLogs;renderLogs();}
+}
+
+function renderLogs(){
+  var level=document.getElementById('logLevel').value;
+  var source=document.getElementById('logSource').value;
+  var filtered=allLogs.filter(function(l){
+    if(level!=='all'&&l.level!==level)return false;
+    if(source!=='all'&&l.src!==source)return false;
+    return true;
+  });
+  var container=document.getElementById('logContainer');
+  if(!filtered.length){container.innerHTML='<div style="color:#5D647A;text-align:center;padding:30px;">没有匹配的日志条目</div>';document.getElementById('logCount').textContent='显示 0 条';return;}
+  container.innerHTML=filtered.map(function(l){
+    var lvlClass=l.level==='info'?'info':l.level==='warn'?'warn':l.level==='err'?'err':'ok';
+    var lvlTxt=l.level.toUpperCase();
+    var msg=l.msg.replace(/\[([^\]]+)\]/g,'<span class="hl">[$1]</span>').replace(/provider=([^\s\]]+)/g,'provider=<span class="key">$1</span>');
+    return '<div class="log-line"><span class="log-time">'+l.ts+'</span><span class="log-level '+lvlClass+'">'+lvlTxt+'</span><span class="log-msg">'+msg+'</span></div>';
+  }).join('');
+  document.getElementById('logCount').textContent='显示 '+filtered.length+' 条';
+  container.scrollTop=container.scrollHeight;
+}
+
+function filterLogs(){renderLogs();}
+function clearLogs(){allLogs=[];renderLogs();}
+function toggleAutoRefresh(btn){
+  if(autoRefresh){clearInterval(autoRefresh);autoRefresh=null;btn.innerHTML='<i class="fa-solid fa-play"></i> 自动刷新';btn.className='btn';}
+  else{autoRefresh=setInterval(fetchLogs,5000);btn.innerHTML='<i class="fa-solid fa-pause"></i> 刷新中';btn.className='btn btn-p';}
+}
+
+fetchLogs();
+</script>
+</body>
+</html>

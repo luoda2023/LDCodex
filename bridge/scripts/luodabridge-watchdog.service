@@ -1,0 +1,47 @@
+# ═══════════════════════════════════════════════════════════════
+# luodabridge-watchdog.service – systemd 服务
+# VPS 监控与自动恢复（内存不足自动重启 VPS）
+# ═══════════════════════════════════════════════════════════════
+#
+# 安装：
+#   sudo cp luodabridge-watchdog.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable luodabridge-watchdog
+#   sudo systemctl start luodabridge-watchdog
+#
+# 查看状态：
+#   sudo systemctl status luodabridge-watchdog
+#   sudo journalctl -u luodabridge-watchdog -f
+
+[Unit]
+Description=LuoDaBridge VPS Watchdog – Monitor & Auto-Recovery
+Documentation=https://github.com/luoda2023/LuoDaBridge
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/1panel/LuoDaBridge
+ExecStart=/usr/local/bin/luodabridge-monitor
+Restart=always
+RestartSec=10
+
+# 环境变量
+Environment=MEM_FREE_MIN_MB=100
+Environment=PROXY_MEM_LIMIT_MB=2048
+Environment=CHECK_INTERVAL=60
+Environment=PROXY_PORT=40000
+Environment=CONFIG_PORT=40001
+Environment=PROXY_DIR=/opt/1panel/LuoDaBridge
+Environment=LOG_FILE=/var/log/luodabridge-monitor.log
+
+# 资源限制
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

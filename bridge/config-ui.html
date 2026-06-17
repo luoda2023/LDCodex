@@ -1,0 +1,1800 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LUODA中转路由 配置中心</title>
+<style>
+/* ─── Reset & Base ─────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#111520;
+  --surface:#181c28;
+  --card:#1e2333;
+  --card2:#161925;
+  --border:#2a2f42;
+  --border2:#353d55;
+  --text:#d8dff0;
+  --text-dim:#8b93aa;
+  --text-muted:#5c6478;
+  --blue:#5b9cf6;
+  --blue-dim:#3a6db5;
+  --green:#4dce82;
+  --green-dim:#2d8a52;
+  --red:#f05858;
+  --red-dim:#a33;
+  --yellow:#f0b440;
+  --yellow-dim:#9a7020;
+  --pulse:#ff3a5c;
+  --radius:10px;
+  --radius-sm:6px;
+}
+body{
+  font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  line-height:1.5;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden
+}
+
+/* ─── Header ────────────────────────────────────────────── */
+h1{
+  font-size:18px;font-weight:700;color:#fff;
+  padding:13px 20px 11px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+  display:flex;align-items:center;gap:10px;
+  letter-spacing:.2px
+}
+h1 .sub{color:var(--blue);font-size:13px;font-weight:400}
+h1 .sub a{color:var(--blue);text-decoration:none}
+
+/* ─── Messages ─────────────────────────────────────────── */
+.msg{padding:8px 14px;border-radius:var(--radius-sm);margin:8px 16px;font-size:13px;flex-shrink:0}
+.msg.ok{background:#162b1e;border:1px solid #264d32;color:var(--green)}
+.msg.err{background:#2a1515;border:1px solid #4d2828;color:var(--red)}
+
+/* ─── Status Bar ────────────────────────────────────────── */
+#status-bar{
+  display:flex;align-items:center;gap:16px;
+  padding:7px 20px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;flex-wrap:wrap;
+}
+#codex-status{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-dim)}
+#codex-status .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+#codex-status .dot.on{background:var(--red);box-shadow:0 0 5px var(--red)}
+#codex-status .dot.off{background:#404558}
+#codex-status .dot.blink{background:var(--red);animation:blink-red 1s infinite}
+@keyframes blink-red{0%,100%{opacity:1}50%{opacity:0.3}}
+#hermes-status{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-dim)}
+#hermes-status .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+#hermes-status .dot.on{background:var(--yellow);box-shadow:0 0 5px var(--yellow)}
+#hermes-status .dot.off{background:#404558}
+#hermes-status .dot.blink{background:var(--yellow);animation:blink-yellow 1s infinite}
+@keyframes blink-yellow{0%,100%{opacity:1}50%{opacity:0.3}}
+.sb-sep{width:1px;height:16px;background:var(--border)}
+.sb-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);white-space:nowrap}
+.sb-item .val{color:var(--text);font-weight:600;font-size:13px}
+
+/* ─── Fallback Bar ─────────────────────────────────────── */
+#fbk-bar{
+  display:flex;flex-direction:column;gap:0;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.fbk-header{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 20px 8px;
+  flex-wrap:wrap;
+}
+.fbk-label{font-size:14px;color:var(--blue);font-weight:700;white-space:nowrap;letter-spacing:.3px}
+
+/* Toggle switch */
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{
+  position:absolute;cursor:pointer;
+  top:0;left:0;right:0;bottom:0;
+  background:#2d3348;transition:.3s;border-radius:24px;
+}
+.toggle-slider:before{
+  position:absolute;content:"";
+  height:20px;width:20px;left:2px;bottom:2px;
+  background:#fff;transition:.3s;border-radius:50%;
+}
+.toggle input:checked+.toggle-slider{background:var(--blue)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(20px)}
+
+#fbk-state-lbl{font-size:14px;font-weight:700;white-space:nowrap}
+.fbk-interval-input{width:50px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:13px;text-align:center;margin-left:4px}
+#fbk-info{font-size:13px;color:var(--text-muted);flex:0 1 auto;min-width:0}
+
+/* Virtual ID input */
+.virtual-id-label{font-size:13px;color:var(--text-muted);white-space:nowrap}
+.virtual-id-input{
+  background:var(--card2);border:1px solid var(--border2);
+  border-radius:var(--radius-sm);
+  color:var(--yellow);font-size:13px;padding:4px 9px;width:90px;
+  font-family:inherit;
+}
+.virtual-id-input:focus{outline:none;border-color:var(--blue)}
+
+/* Badges row */
+#fbk-badges-row{
+  display:flex;align-items:center;
+  flex-wrap:nowrap;overflow-x:auto;min-height:38px;
+  justify-content:flex-start;
+  /* Same horizontal scrollbar style as other scrollable areas */
+  scrollbar-width:thin;
+  scrollbar-color:#2a3a5a transparent;
+}
+#fbk-badges-row::-webkit-scrollbar{height:5px}
+#fbk-badges-row::-webkit-scrollbar-track{background:transparent}
+#fbk-badges-row::-webkit-scrollbar-thumb{background:#2a3a5a;border-radius:3px}
+
+/* Single model section (inside header-right) */
+.header-right{
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  flex-wrap:wrap;margin-left:auto;
+}
+.fbk-header > .header-right{display:none !important}
+.header-right-sm{
+  display:none;align-items:center;gap:8px;
+}
+.sm-label{font-size:14px;font-weight:700;white-space:nowrap}
+.sm-select{
+  background:var(--card2);border:1px solid var(--border2);
+  border-radius:var(--radius-sm);
+  color:var(--text);font-size:13px;padding:4px 8px;min-width:55px;
+  cursor:pointer;font-family:inherit;
+}
+.sm-select:focus{outline:none;border-color:var(--blue)}
+.sm-tag{font-size:12px;padding:2px 7px;border-radius:10px;white-space:nowrap;font-weight:600}
+.sm-tag.cx{background:rgba(231,76,60,0.15);color:#ef5350}
+.sm-tag.hm{background:rgba(41,128,185,0.15);color:#5dade2}
+
+/* Fallback bar mode classes */
+#fbk-bar.fallback-off #fbk-badges-row{display:none !important}
+#fbk-bar.fallback-off .header-right-sm{display:flex}
+#fbk-bar.fallback-off .header-right{display:flex !important}
+#fbk-bar:not(.fallback-off) .header-right{display:none !important}
+
+/* ─── Badges ───────────────────────────────────────────── */
+.fbk-badge-item{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px 4px 5px;
+  border-radius:20px;
+  font-size:13px;cursor:pointer;
+  white-space:nowrap;transition:all .2s;user-select:none;
+  border:1px solid transparent;
+  flex-shrink:0
+}
+#fbk-badges-row.pad20{padding-left:0;gap:6px}
+#fbk-badges-row.no-pad{padding-left:0;gap:4px}
+#fbk-error-row{display:none!important;padding:4px 20px;min-height:24px;flex-wrap:wrap;gap:6px;align-items:center}
+.fbk-badge-item:active{cursor:grabbing;opacity:.7}
+.fbk-badge-item.dragging{opacity:.4}
+.fbk-badge-item.drag-over{outline:2px dashed var(--blue);outline-offset:2px}
+
+.fbk-badge-circle{
+  width:28px;height:28px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.badge-name{max-width:100px;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+
+/* Badge color classes */
+.fbk-badge-item.b1 .fbk-badge-circle{background:#8e44ad}
+.fbk-badge-item.b2 .fbk-badge-circle{background:#2980b9}
+.fbk-badge-item.b3 .fbk-badge-circle{background:#27ae60}
+.fbk-badge-item.b4 .fbk-badge-circle{background:#d35400}
+.fbk-badge-item.b5 .fbk-badge-circle{background:#c0392b}
+.fbk-badge-item.b6 .fbk-badge-circle{background:#16a085}
+.fbk-badge-item.b7 .fbk-badge-circle{background:#2c3e50}
+.fbk-badge-item.b8 .fbk-badge-circle{background:#7f8c8d}
+.fbk-badge-item.b9 .fbk-badge-circle{background:#e67e22}
+.fbk-badge-item.b10 .fbk-badge-circle{background:#1abc9c}
+
+/* Active / Hermes active (pulse animation) */
+.fbk-badge-item.badge-codex-active{
+  animation:badge-pulse 1.5s ease-in-out infinite;
+  border-color:var(--red,#ff4444);
+  background:rgba(255,23,68,0.20) !important;
+}
+.fbk-badge-item.badge-codex-active .fbk-badge-circle{
+  background:var(--red) !important;
+  box-shadow:0 0 12px rgba(255,23,68,0.7) !important;
+}
+.fbk-badge-item.badge-hermes-active{
+  animation:badge-pulse 1.5s ease-in-out infinite;
+  border-color:var(--yellow,#ffcc00);
+}
+.fbk-badge-item.badge-active{
+  animation:badge-pulse 1.5s ease-in-out infinite;
+  border-color:var(--pulse) !important;
+  background:rgba(255,23,68,0.35) !important;
+}
+.fbk-badge-item.badge-active .fbk-badge-circle{
+  background:var(--pulse) !important;
+  box-shadow:0 0 12px rgba(255,23,68,0.7) !important;
+}
+.fbk-badge-item.badge-hermes-active{
+  animation:badge-pulse-h 1.5s ease-in-out infinite;
+  border-color:var(--yellow) !important;
+  background:rgba(240,180,64,0.25) !important;
+}
+.fbk-badge-item.badge-hermes-active .fbk-badge-circle{
+  background:var(--yellow) !important;
+  box-shadow:0 0 12px rgba(240,180,64,0.7) !important;
+}
+@keyframes badge-pulse{0%,100%{box-shadow:0 0 6px rgba(255,23,68,0.4)}50%{box-shadow:0 0 16px rgba(255,23,68,0.8)}}
+@keyframes badge-pulse-h{0%,100%{box-shadow:0 0 6px rgba(240,180,64,0.4)}50%{box-shadow:0 0 16px rgba(240,180,64,0.8)}}
+.fbk-badge-item.badge-idle{border-color:transparent;background:rgba(58,74,106,0.12)}
+.fbk-badge-item.badge-idle .badge-name{color:#7a8194}
+
+/* ─── Both CODEX and HERMES active on same badge (overlap warning) ─── */
+.fbk-badge-item.badge-codex-active.badge-hermes-active{
+  background:linear-gradient(135deg,rgba(220,60,60,.18),rgba(240,180,64,.18));
+  border:2px solid transparent;
+  background-clip:padding-box;
+  box-shadow:0 0 14px rgba(220,60,60,.35),0 0 14px rgba(240,180,64,.35);
+  animation:badge-pulse-overlap 1.5s ease-in-out infinite}
+.fbk-badge-item.badge-codex-active.badge-hermes-active .badge-name{color:#fff}
+.fbk-badge-item.badge-codex-active.badge-hermes-active .fbk-badge-circle{
+  background:linear-gradient(135deg,var(--red),var(--yellow));
+  box-shadow:0 0 12px rgba(255,255,255,.3)}
+@keyframes badge-pulse-overlap{0%,100%{box-shadow:0 0 6px rgba(220,60,60,.4),0 0 6px rgba(240,180,64,.4)}50%{box-shadow:0 0 16px rgba(220,60,60,.6),0 0 16px rgba(240,180,64,.6)}}
+
+/* ─── Buttons ───────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  padding:6px 14px;border:none;border-radius:var(--radius-sm);
+  cursor:pointer;font-size:13px;font-weight:600;
+  transition:all .15s;white-space:nowrap;font-family:inherit;
+}
+.btn-primary{background:var(--blue);color:#000}
+.btn-primary:hover{opacity:.85}
+.btn-sm{padding:5px 12px;font-size:13px}
+.btn-warn{background:#c06020;color:#fff}
+.btn-warn:hover{opacity:.85}
+.btn-edit{background:#2c3e50;color:var(--text)}
+.btn-edit:hover{opacity:.85}
+.btn-danger{background:#b03030;color:#fff}
+.btn-danger:hover{opacity:.85}
+.btn-outline-red{background:transparent;color:#b03030;border:1px solid #b03030}
+.btn-outline-red:hover{background:#b03030;color:#fff}
+.btn-outline-blue{background:transparent;color:#3498db;border:1px solid #3498db}
+.btn-outline-blue:hover{background:#3498db;color:#fff}
+.btn-save{background:#1a7d36;color:#fff}
+.btn-save:hover{opacity:.85}
+
+/* ─── Main layout ──────────────────────────────────────── */
+#main{
+  display:flex;gap:14px;padding:14px 16px;
+  flex:1;min-height:0;overflow:auto;
+}
+.col{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+
+/* ─── Cards ─────────────────────────────────────────────── */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+}
+.card-grow{flex:1;display:flex;flex-direction:column;min-height:0}
+
+.card h2{
+  font-size:15px;font-weight:600;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+  color:var(--text);
+}
+
+/* ─── Form elements ────────────────────────────────────── */
+.form-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.form-grid label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:3px}
+.form-grid input{
+  width:100%;padding:7px 10px;font-size:13px;
+  background:var(--card2);border:1px solid var(--border2);
+  border-radius:var(--radius-sm);color:var(--text);
+  font-family:inherit;
+}
+.form-grid input:focus{outline:none;border-color:var(--blue)}
+.form-grid input::placeholder{color:var(--text-muted)}
+
+/* ─── Model list ───────────────────────────────────────── */
+.model-list-wrap{
+  max-height:260px;overflow-y:auto;
+  display:flex;flex-direction:column;gap:6px;
+}
+.model-list-wrap::-webkit-scrollbar,.code-area::-webkit-scrollbar{width:5px}
+.model-list-wrap::-webkit-scrollbar-track,.code-area::-webkit-scrollbar-track{background:transparent}
+.model-list-wrap::-webkit-scrollbar-thumb,.code-area::-webkit-scrollbar-thumb{background:#2a3a5a;border-radius:3px}
+
+.model-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);font-size:13px;
+}
+.model-item .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.model-item .name{font-weight:600;display:flex;align-items:center;gap:6px}
+.model-item .detail{font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.model-item .actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+
+.section-tag{font-size:12px;padding:2px 6px;border-radius:4px;font-weight:600}
+.section-tag.builtin{background:rgba(91,156,246,.12);color:var(--blue)}
+.section-tag.custom{background:rgba(240,180,64,.12);color:var(--yellow)}
+
+.badge{font-size:12px;padding:2px 6px;border-radius:4px;font-weight:600}
+.badge.ok{background:rgba(77,206,130,.12);color:var(--green)}
+.badge.off{background:rgba(240,88,88,.12);color:var(--red)}
+
+/* ─── Custom model cards ───────────────────────────────── */
+.custom-card{
+  display:flex;gap:12px;padding:11px 14px;
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);align-items:center;
+}
+.custom-card .cc-left{flex-shrink:0}
+.custom-card .cc-badge{
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:#fff;
+}
+.custom-card .cc-badge.b1{background:#8e44ad}
+.custom-card .cc-badge.b2{background:#2980b9}
+.custom-card .cc-badge.b3{background:#27ae60}
+.custom-card .cc-badge.b4{background:#d35400}
+.custom-card .cc-badge.b5{background:#c0392b}
+.custom-card .cc-badge.b6{background:#16a085}
+.custom-card .cc-badge.b7{background:#2c3e50}
+.custom-card .cc-badge.b8{background:#7f8c8d}
+.custom-card .cc-badge.b9{background:#e67e22}
+.custom-card .cc-badge.b10{background:#1abc9c}
+
+.cc-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cc-name{font-weight:600;font-size:13px}
+.cc-detail{font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc-model{font-size:12px;color:var(--blue)}
+.cc-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ─── Code area ────────────────────────────────────────── */
+.code-area{
+  width:100%;min-height:130px;flex:1;
+  background:#0c0f1a;border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  color:#d8dff0;
+  font-family:Consolas,"Courier New",monospace;
+  font-size:13px;padding:10px 12px;
+  resize:vertical;line-height:1.6;tab-size:2;
+}
+.code-area:focus{outline:none;border-color:var(--blue)}
+.code-hint{font-size:12px;color:var(--text-muted);margin-bottom:5px}
+.file-path{font-size:12px;color:var(--text-muted);margin-top:6px;word-break:break-all}
+
+/* ─── Builtin note ─────────────────────────────────────── */
+.builtin-note{font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.5}
+.empty{font-size:13px;color:var(--text-muted);text-align:center;padding:24px 0}
+
+/* ─── HERMES card ───────────────────────────────────────── */
+.hm-tabbar{
+  display:flex;gap:0;
+  border-bottom:1px solid var(--border2);
+  margin-bottom:10px;
+  flex-shrink:0;flex-wrap:wrap;
+}
+.hm-tab{
+  padding:7px 16px;font-size:13px;
+  color:var(--text-muted);cursor:pointer;
+  border:1px solid transparent;border-bottom:none;
+  border-radius:6px 6px 0 0;margin-bottom:-1px;
+  white-space:nowrap;font-weight:500;
+  transition:all .15s;
+}
+.hm-tab:hover{color:var(--text);background:#141825}
+.hm-tab.active{color:#7ec8f0;border-color:var(--border2);background:#141825}
+
+.hm-pane{display:none;background:#0e1120;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px}
+.hm-pane.active{display:flex;flex-direction:column;flex:1;min-height:0}
+
+.hm-pane .hm-desc{font-size:13px;color:var(--text-dim);margin:0 0 5px;line-height:1.5}
+.hm-pane .hm-row{display:flex;align-items:baseline;gap:8px;padding:3px 0}
+.hm-pane .hm-label{font-size:12px;color:var(--text-muted);width:70px;flex-shrink:0;font-weight:500}
+.hm-pane .hm-val{font-size:13px;color:var(--yellow);font-family:Consolas,monospace;word-break:break-all}
+.hm-pane .hm-val.dim{color:var(--text-muted)}
+
+.hm-notice{
+  display:block;font-size:12px;
+  color:#e06060;margin-top:8px;
+  padding:6px 10px;background:rgba(224,96,96,.08);
+  border-radius:5px;border:1px solid rgba(224,96,96,.2);
+}
+
+/* ─── Dialog ───────────────────────────────────────────── */
+.dialog-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);justify-content:center;align-items:center;z-index:1000}
+.dialog-overlay.open{display:flex}
+.dialog{
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:12px;padding:22px;
+  max-width:520px;width:90%;max-height:82vh;overflow:auto;
+}
+.dialog h3{font-size:15px;font-weight:600;margin-bottom:14px}
+.dialog-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
+
+<style>
+#top-switch-wrap{position:fixed;top:12px;right:16px;z-index:9999;display:flex;align-items:center;gap:8px;font-size:13px;color:#aaa;background:rgba(10,10,10,.75);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:5px 14px 5px 10px;backdrop-filter:blur(6px);box-shadow:0 2px 12px rgba(0,0,0,.4)}
+#top-switch-wrap .sw-label{flex:1;line-height:1}
+#top-switch-wrap .sw-label strong{color:#e0e0e0;font-weight:500}
+#top-switch-wrap .sw-label small{display:block;color:#666;font-size:11px;margin-top:1px}
+.toggle-switch{position:relative;width:51px;height:27px;flex-shrink:0}
+.toggle-switch input{display:none}
+.toggle-slider{position:absolute;inset:0;border-radius:27px;background:#333;cursor:pointer;transition:.2s}
+.toggle-slider::before{content:'';position:absolute;width:27px;height:27px;left:0;top:0;border-radius:50%;background:#888;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:#27ae60}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(24px);background:#fff}
+</style>
+
+</head>
+<body>
+<div id="top-switch-wrap">
+  <span class="sw-label">
+    <strong>自动切换</strong>
+    <small>模型异常时自动换下一个</small>
+  </span>
+  <label class="toggle-switch">
+    <input type="checkbox" id="condToggle" checked>
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+
+
+<h1>&#128293; LUODA中转路由 <span class="sub" id="service-status">检测中...</span> <button class="btn btn-outline-blue" onclick="restartServices()">🔄 重启服务</button></h1>
+
+<div id="msg"></div>
+
+<!-- ─── TOP STATUS BAR ─────────────────────────────────── -->
+<div id="status-bar">
+  <div id="codex-status"><span class="dot off" id="codex-dot"></span> <span id="codex-label">CODEX 当前模型:</span> <span id="codex-cur-model" style="color:var(--red);font-weight:700">-</span></div>
+  <div class="sb-sep"></div>
+  <div id="hermes-status"><span class="dot off" id="hermes-dot"></span> <span id="hermes-label">HERMES 当前模型:</span> <span id="hermes-cur-model" style="color:var(--yellow);font-weight:700">-</span></div>
+  <div class="sb-sep"></div>
+  <div class="sb-item">内置 <span class="val" id="stat-builtin">-</span></div>
+  <div class="sb-sep"></div>
+  <div class="sb-item">自定义 <span class="val" id="stat-custom">-</span></div>
+  <div class="sb-sep"></div>
+  <div class="sb-item">可用 <span class="val" id="stat-active">-</span></div>
+  <div class="sb-sep"></div>
+  <div class="sb-item" id="switch-countdown" style="color:var(--text-muted)">距下次切换: <span class="val" id="countdown-val" style="color:var(--cyan);font-weight:700">-</span></div>
+</div>
+
+<!-- ─── FALLBACK BAR ───────────────────────────────────── -->
+<div id="fbk-bar">
+  <div class="fbk-header">
+    <span class="fbk-label">▼ 自动轮循</span>
+      <span style="margin-left:12px;font-size:13px">强制切换模型间隔时间：</span>
+      <input type="number" id="fbk-interval" class="fbk-interval-input" value="30" min="1" max="43200" style="width:70px" onblur="onIntervalBlur()" oninput="onIntervalChange()">
+      <span style="font-size:13px">分钟</span>
+
+    <span class="virtual-id-label">CODEX虚拟模型ID：</span>
+    <input id="fbk-virtual-id" class="virtual-id-input" type="text" value="" placeholder="codexAPI" style="width:90px" onblur="onVirtualIdBlur()" />
+    <span class="virtual-id-label">HERMES虚拟模型ID：</span>
+    <input id="fbk-hermes-virtual-id" class="virtual-id-input" type="text" value="" placeholder="hermesAPI" style="width:90px" onblur="onVirtualIdBlur()" />
+
+    <span id="fbk-empty-hint"></span>
+  </div>
+  <div id="fbk-badges-row" class="pad20" style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;min-height:38px;justify-content:flex-start">
+    <span id="fbk-info" style="font-size:13px;color:var(--text-muted)"></span>
+  </div>
+  <div id="fbk-error-row" style="display:none;padding:4px 20px;min-height:24px;flex-wrap:wrap;gap:6px;align-items:center;">
+    <span id="fbk-error-codex" style="font-size:12px;color:var(--yellow)"></span>
+    <span id="fbk-error-hermes" style="font-size:12px;color:var(--yellow)"></span>
+  </div>
+</div>
+
+<!-- ─── MAIN ────────────────────────────────── -->
+<div id="main">
+<div class="col">
+  <!-- 模型配置 (moved to first position) -->
+  <div class="card" id="models-card">
+    <h2>模型配置</h2>
+    <div class="hm-tabbar" id="models-tabbar">
+      <div class="hm-tab active" onclick="switchModelsTab(0,this)">添加自定义模型</div>
+      <div class="hm-tab" onclick="switchModelsTab(1,this)">内置模型</div>
+    </div>
+    <div class="hm-pane active" id="models-pane-0">
+      <div class="form-grid" style="grid-template-columns:auto 1fr auto 1fr;gap:6px 8px;align-items:center">
+        <div><label style="margin:0">序号</label></div><div><input id="f-idx" type="number" min="1" placeholder="auto" style="width:80px" /><span style="font-size:12px;color:var(--text-muted);margin-left:6px">轮循优先级</span></div>
+        <div><label style="margin:0">模型名称</label></div><div><input id="f-name" placeholder="如:硅基流动 Qwen" style="width:100%" /></div>
+        <div><label style="margin:0">API 地址</label></div><div><input id="f-base" placeholder="https://api.siliconflow.cn/v1" style="width:100%" /></div>
+        <div><label style="margin:0">API 密钥</label></div><div><input id="f-key" type="password" placeholder="sk-xxxxxxxx" style="width:100%" /></div>
+        <div><label style="margin:0">模型 ID</label></div><div style="display:flex;gap:8px;align-items:center;grid-column:2/-1"><input id="f-model" placeholder="Qwen/Qwen2.5-72B-Instruct" style="flex:1" /><button class="btn btn-primary" id="btn-add-model" onclick="addModel()">保存模型</button></div>
+      </div>
+      <span id="add-hint" style="font-size:12px;color:var(--text-muted)"></span>
+    </div>
+    <div class="hm-pane" id="models-pane-1">
+      <div id="builtin-list" class="model-list-wrap" style="flex:1;overflow:auto"><div class="empty">加载中...</div></div>
+      <div class="builtin-note">点击「禁用」将从列表中移除（不会删除 .env 配置）</div>
+    </div>
+  </div>
+
+  <!-- CODEX config -->
+  <div class="card">
+    <h2>CODEX 配置</h2>
+    <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="code-hint">config.toml 编辑器</div>
+      <textarea id="cx-config-code" class="code-area" spellcheck="false"></textarea>
+    </div>
+    <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;color:var(--text-muted)">复制后粘贴至：C:\Users\Administrator\.codex\config.toml</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn" style="background:rgba(12,15,26,0.6);color:#6CA9CD;font-weight:400;padding:8px 16px" onclick="copyCodexCfg()">复制</button>
+        <span id="cx-msg" style="font-size:12px;color:var(--text-muted)"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HERMES config -->
+  <div class="card card-grow" id="hermes-card">
+    <h2>HERMES 配置 <span style="font-size:12px;color:var(--text-muted);font-weight:400">3 个文件需保持一致</span></h2>
+
+    <!-- Tab bar -->
+    <div class="hm-tabbar">
+      <div class="hm-tab active" onclick="switchHmTab(0,this)">cli-config.yaml</div>
+      <div class="hm-tab" onclick="switchHmTab(1,this)">.env</div>
+      <div class="hm-tab" onclick="switchHmTab(2,this)">~/.hermes/config.yaml</div>
+    </div>
+
+    <!-- Tab 1 -->
+    <div class="hm-pane active">
+      <p class="hm-desc">&#128193; <b>cli-config.yaml</b> — CLI 默认模型和代理地址，将请求路由到 proxy。</p>
+      <p class="hm-desc" style="color:#7ec8f0;margin-top:4px">&#9654; 需修改以下字段：</p>
+      <div class="hm-row"><span class="hm-label">default</span><span class="hm-val" id="hm-cur-model">hermesAPI</span><span class="hm-val dim" style="margin-left:6px;font-size:12px">hermesAPI，由 proxy 决定</span></div>
+      <div class="hm-row"><span class="hm-label">provider</span><span class="hm-val" id="hm-cur-provider">custom</span></div>
+      <div class="hm-row"><span class="hm-label">base_url</span><span class="hm-val" id="hm-base">http://localhost:40000/v1</span></div>
+      <div class="hm-row"><span class="hm-label">api_key</span><span class="hm-val dim">sk-proxy-local-...</span></div>
+      <div class="file-path">C:\...\hermes\hermes-agent\cli-config.yaml</div>
+    </div>
+
+    <!-- Tab 2 -->
+    <div class="hm-pane" style="overflow-y:auto">
+      <p class="hm-desc">&#128193; <b>.env</b> — Agent 进程环境变量，路由所有 OpenAI 请求到 proxy。</p>
+      <p class="hm-desc" style="color:#7ec8f0;margin-top:4px">&#9654; 需修改以下变量（必须与 cli-config.yaml 一致）：</p>
+      <div class="hm-row"><span class="hm-label">base_url</span><span class="hm-val">http://localhost:40000/v1</span></div>
+      <div class="hm-row"><span class="hm-label">api_key</span><span class="hm-val dim">sk-proxy-local-...</span></div>
+      <div class="hm-notice">&#9888; 这两项必须与 cli-config.yaml 完全一致</div>
+      <div class="file-path">C:\...\hermes\hermes-agent\.env</div>
+    </div>
+
+    <!-- Tab 3 -->
+    <div class="hm-pane">
+      <p class="hm-desc">&#128193; <b>config.yaml（用户配置）</b> — 覆盖默认值。</p>
+      <p class="hm-desc" style="color:#7ec8f0;margin-top:4px">&#9654; 确保以下字段与 Tab 1 一致：</p>
+      <div class="hm-row"><span class="hm-label">default</span><span class="hm-val">hermesAPI</span></div>
+      <div class="hm-row"><span class="hm-label">provider</span><span class="hm-val">custom</span></div>
+      <div class="hm-row"><span class="hm-label">base_url</span><span class="hm-val">http://localhost:40000/v1</span></div>
+      <div class="hm-row"><span class="hm-label">api_key</span><span class="hm-val dim">sk-proxy-local-...</span></div>
+      <div class="hm-notice">&#9888; 这里修改不会影响 Tab 1，需分别保存</div>
+      <div class="file-path">C:\Users\Administrator\.hermes\config.yaml</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="col">
+  <!-- Custom models (fills remaining space) -->
+  <div class="card card-grow">
+    <h2>自定义模型 <span id="custom-count" style="font-size:12px;color:var(--text-muted)"></span></h2>
+    <div class="hm-tabbar" id="custom-tabbar">
+      <div class="hm-tab active" id="custom-tab-normal" onclick="switchCustomTab(0,this)">正常模型</div>
+      <div class="hm-tab" id="custom-tab-abnormal" onclick="switchCustomTab(1,this)">异常模型 <span id="abnormal-badge" style="background:var(--red);color:#fff;border-radius:8px;padding:0 6px;font-size:11px;display:none">0</span></div>
+    </div>
+    <div class="hm-pane active" id="custom-pane-0">
+      <div id="model-list" class="model-list-wrap" style="flex:1;max-height:none;min-height:0;overflow:auto"><div class="empty">暂无,上方表单添加</div></div>
+    </div>
+    <div class="hm-pane" id="custom-pane-1">
+      <div id="abnormal-list" class="model-list-wrap" style="flex:1;max-height:none;min-height:0;overflow:auto"><div class="empty">无异常模型，请在自定义模型列表中点击「标记异常」</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Edit Dialog -->
+<div id="edit-dialog" class="dialog-overlay">
+  <div class="dialog">
+    <h3 id="edit-dialog-title">修改模型</h3>
+    <div id="edit-dialog-body"></div>
+    <div class="dialog-actions">
+      <button class="btn btn-edit" onclick="closeDialog()">取消</button>
+      <button class="btn btn-primary" id="edit-dialog-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!--
+╔══════════════════════════════════════════════════════════════════╗
+║               LUODA中转路由 配置中心  ·  平台逻辑               ║
+╠══════════════════════════════════════════════════════════════════╣
+║  模式A: 自动轮循 (FALLBACK_ENABLED = true)                       ║
+║    CODEX Desktop 请求虚拟模型ID (默认"auto")→ proxy 收到请求  ║
+║    → isVirtual=true → tryFallbackChain() 启动                  ║
+║    → 按 badge 顺序依次尝试自定义 provider                      ║
+║    → 某 provider 返回 429/配额耗尽 → advanceFallback(true)     ║
+║    → 自动跳到下一个，不成功不跳                                 ║
+║    → 全部耗尽 → fallback 到内置 deepseek                       ║
+║  模式B: 单模型模式 (FALLBACK_ENABLED = false)                  ║
+║    CODEX Desktop 请求任意模型 → proxy 直接路由到               ║
+║    single_model_codex 指定的 provider, 不走 fallback 链        ║
+║  Badge 高亮: CODEX 活跃亮红🔴, HERMES 活跃亮黄🟡            ║
+║  状态刷新: 每 3 秒轮询 /api/status                            ║
+╚══════════════════════════════════════════════════════════════════╝
+-->
+<script>
+var API_BASE = ''; // Use same origin (40001 serves both UI and API)
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escAttr(s){return (s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');}
+function chineseToPinyin(s){
+  var m={'\u5c1a':'shang','\u7cd6':'tang','\u5802':'tang','\u7845':'gui','\u57fa':'ji','\u6d41':'liu','\u52a8':'dong','\u6a21':'mo','\u578b':'xing','\u6df1':'shen','\u5ea6':'du','\u95ea':'shan','\u706b':'huo','\u6708':'yue','\u661f':'xing','\u4e91':'yun','\u5c71':'shan','\u8c37':'gu','\u963f':'a','\u91cc':'li','\u817e':'teng','\u7f51':'wang','\u8c61':'xiang'};
+  var r='';
+  for(var i=0;i<s.length;i++){var ch=s.charAt(i);if(m[ch]!==undefined)r+=m[ch];else if(/[a-zA-Z0-9]/.test(ch))r+=ch;else r+='\\u'+ch.charCodeAt(0).toString(16).toUpperCase().padStart(4,'0');}
+  return r;
+}
+function slugify(str){return chineseToPinyin((str||'').toLowerCase()).replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,24);}
+function maskKey(k){if(!k||k.length<10)return'***';return k.slice(0,6)+'...'+k.slice(-4);}
+function show(m,t){document.getElementById('msg').innerHTML='<div class="msg '+t+'">'+m+'</div>';if(t==='ok')setTimeout(function(){document.getElementById('msg').innerHTML='';},4000);}
+
+var gBuiltins=[],gCustoms=[],allModels=[],disabledBuiltins=[];
+var badgeColors=['b1','b2','b3','b4','b5','b6','b7','b8','b9','b10'];
+var _lastFirstClickTime=0,_firstClickSlug='',_saveInProgress=false;
+
+// ─── HERMES refresh ────────────────────────────────────────
+async function refreshHermesStatus(){
+  var el=document.getElementById('hm-msg');if(!el)return;
+  el.textContent='刷新中...';
+  try{
+    var cliPath='C:\\Users\\Administrator\\AppData\\Local\\hermes\\hermes-agent\\cli-config.yaml';
+    var userPath='C:\\Users\\Administrator\\.hermes\\config.yaml';
+    var r=await fetch('/api/files/download?path='+encodeURIComponent(cliPath));
+    if(r.ok){
+      var txt=await r.text();
+      var m=txt.match(/default:\s*"([^"]+)"/);
+      var p=txt.match(/provider:\s*"([^"]+)"/);
+      var b=txt.match(/base_url:\s*"([^"]+)"/);
+      if(m)document.getElementById('hm-cur-model').textContent=m[1];
+      if(p)document.getElementById('hm-cur-provider').textContent=p[1];
+      if(b)document.getElementById('hm-base').textContent=b[1];
+    }
+    var u=await fetch('/api/files/download?path='+encodeURIComponent(userPath));
+    if(u.ok){
+      var utxt=await u.text();
+      document.getElementById('hm-config-code').value=utxt;
+    }
+    el.textContent='已刷新';
+    setTimeout(function(){el.textContent='';},3000);
+  }catch(e){el.textContent=''+e.message;}
+}
+function downloadHermesCfg(){
+  var txt=document.getElementById('hm-config-code').value;
+  var blob=new Blob([txt],{type:'text/plain'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='config.yaml';a.click();
+  URL.revokeObjectURL(url);
+}
+function switchHmTab(idx,el){
+  var parent=document.getElementById('hermes-card');
+  var tabs=parent.querySelectorAll('.hm-tab');
+  var panes=parent.querySelectorAll('.hm-pane');
+  tabs.forEach(function(t){t.classList.remove('active');});
+  panes.forEach(function(p){p.classList.remove('active');});
+  el.classList.add('active');
+  if(panes[idx])panes[idx].classList.add('active');
+}
+function switchModelsTab(idx,el){
+  var parent=document.getElementById('models-card');
+  var tabs=parent.querySelectorAll('.hm-tab');
+  var panes=parent.querySelectorAll('.hm-pane');
+  tabs.forEach(function(t){t.classList.remove('active');});
+  panes.forEach(function(p){
+    p.classList.remove('active');
+    p.style.display='none';
+  });
+  el.classList.add('active');
+  if(panes[idx]){
+    panes[idx].classList.add('active');
+    panes[idx].style.display='';
+  }
+}
+function switchCustomTab(idx,el){
+  var card=el.closest('.card');
+  var tabs=card.querySelectorAll('.hm-tab');
+  var panes=card.querySelectorAll('.hm-pane');
+  tabs.forEach(function(t){t.classList.remove('active');});
+  panes.forEach(function(p){
+    p.classList.remove('active');
+    p.style.display='none';
+  });
+  el.classList.add('active');
+  if(panes[idx]){
+    panes[idx].classList.add('active');
+    panes[idx].style.display='';
+  }
+}
+
+// ─── Fallback UI logic ─────────────────────────────────────
+function onFallbackToggle(){
+  var fbkSwitch=document.getElementById('fbk-switch');
+  if(!fbkSwitch) return;
+  var on=fbkSwitch.checked;
+  var lbl=document.getElementById('fbk-state-lbl');
+  if(lbl){
+    lbl.textContent=on?'已开启':'已关闭';
+    lbl.style.color=on?'var(--green)':'var(--red)';
+  }
+  // Auto-save on toggle
+  fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fallback_enabled:on})}).then(function(r){if(r.ok)console.log('Fallback:',on);}).catch(function(){show('保存失败','err');});
+}
+// Restart proxy service
+async function restartProxy(){
+  var btn=document.querySelector('.btn-restart');
+  if(btn){btn.textContent='重启中...';btn.disabled=true;}
+  show('正在重启代理服务...','info');
+  try{
+    var r=await fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({_trigger_restart:true})});
+    if(r.ok){
+      show('代理已重启，请刷新页面','ok');
+      setTimeout(function(){location.reload();},1500);
+    }else{
+      show('重启失败','err');
+    }
+  }catch(e){
+    show('重启失败: '+e.message,'err');
+  }
+  if(btn){btn.textContent='🔄 重启';btn.disabled=false;}
+}
+async function restartServices(){
+  if(!confirm('确定要重启 40000 和 40001 服务吗？\n点击确认后将关闭并重新启动服务。'))return;
+  show('正在重启，请稍候...','info');
+  // Try to trigger restart via config server
+  fetch('http://localhost:40001/api/restart',{method:'POST'}).then(function(){
+    setTimeout(function(){location.reload();},2000);
+  }).catch(function(){
+    show('请手动重启：关闭终端后重新运行 node proxy.mjs','warn');
+  });
+}
+function onVirtualIdBlur(){
+  var vid=document.getElementById('fbk-virtual-id').value.trim()||'auto';
+  var hvid=document.getElementById('fbk-hermes-virtual-id').value.trim()||'auto';
+  fetch('/api/codex/config',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({virtual_model_id:vid,hermes_virtual_model_id:hvid})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.error)show('保存失败:'+d.error,'err');
+    else show('虚拟模型ID已保存','ok');
+  }).catch(function(){show('保存失败','err');});
+}
+function onIntervalBlur(){
+  var val=parseInt(document.getElementById('fbk-interval').value,10);
+  if(val<1)val=1;if(val>43200)val=43200;
+  document.getElementById('fbk-interval').value=val;
+  console.log('onIntervalBlur: saving', val, 'to fallback_interval_minutes via /api/fallback/set-interval');
+  // Save to fallback_interval_minutes via set-interval endpoint, resetting lastProviderSwitch so countdown recalculates
+  fetch('/api/fallback/set-interval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({minutes:val})}).then(function(r){return r.json();}).then(function(d){
+    if(d.error)show(d.error,'err');
+    else{show('间隔已设为 '+val+' 分钟','ok');if(typeof refreshStatus==='function')refreshStatus();
+      // Also force-update the countdown display immediately
+      var cdEl=document.getElementById('countdown-val');
+      if(cdEl){cdEl.textContent=val+'min 0s';window.__lastCountdownData=null;}}
+  }).catch(function(e){console.error('save error:', e);show('保存失败','err');});
+}
+function onSingleModelChange(){
+  var codexVal=document.getElementById('sm-codex').value;
+  var hermesVal=document.getElementById('sm-hermes').value;
+  // 互斥检测
+  if(codexVal && hermesVal && codexVal===hermesVal){
+    show('CODEX和HERMES不能使用同一模型','err');
+    return;
+  }
+  fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({single_model_codex:codexVal,single_model_hermes:hermesVal})}).catch(function(){});
+}
+function onIntervalChange(){
+  var val=parseInt(document.getElementById('fbk-interval').value,10);
+  if(val<1)val=1;if(val>43200)val=43200;
+  document.getElementById('fbk-interval').value=val;
+  // Also save max_provider_use_minutes so the countdown uses the same value
+  fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max_provider_use_minutes:val})}).then(function(r){return r.json();}).then(function(d){
+    if(d.error)show(d.error,'err');
+    else show('间隔已设为 '+val+' 分钟','ok');
+  }).catch(function(){show('保存失败','err');});
+}
+function getBadgeSlugsOrder(){
+  // Badges are in DOM order.
+  // Build idx→entry map from gChain for direct O(1) lookup by data-idx.
+  var gChain=window.gChain||[];
+  var nameMap={};
+  var chainByIdx={};
+  gChain.forEach(function(e){
+    if(e.name) nameMap[e.name]=e;
+    if(e.displayIdx != null) chainByIdx[String(e.displayIdx)] = e;
+  });
+  var vals=[];
+  document.querySelectorAll('.fbk-badge-item').forEach(function(badge){
+    var dataIdx=badge.getAttribute('data-idx')||'';
+    var chainEntry=dataIdx && chainByIdx[dataIdx];
+    if(chainEntry && chainEntry.raw) { vals.push(chainEntry.raw); }
+    else {
+      var slug=badge.getAttribute('data-slug')||'';
+      var name=badge.getAttribute('data-name')||'';
+      var entry=nameMap[name] || nameMap[slug];
+      if(entry && entry.raw) { vals.push(entry.raw); }
+      else if(slug) { vals.push(slug); }
+      else if(name) { vals.push(name); }
+    }
+  });
+  return vals;
+}
+function onBadgeDragStart(e){_draggedItem=this;this.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',this.getAttribute('data-slug'));}
+function onBadgeDragEnd(e){this.classList.remove('dragging');document.querySelectorAll('.fbk-badge-item').forEach(function(i){i.classList.remove('drag-over');});_draggedItem=null;}
+function onBadgeDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';if(this!==_draggedItem)this.classList.add('drag-over');}
+function onBadgeDragLeave(e){this.classList.remove('drag-over');}
+function onBadgeDblClick(e){
+  e.stopPropagation();
+  // Prefer data-name (always set, works for Chinese models); fall back to data-slug
+  var nameAttr=this.getAttribute('data-name')||'';
+  var slugAttr=this.getAttribute('data-slug')||'';
+  // Use name for set-index since backend matches by name or model, slug may be empty for Chinese
+  var slug=nameAttr || slugAttr;
+  var nameEl=this.querySelector('.badge-name');
+  var name=nameEl?nameEl.textContent:(slug||'');
+  if(!slug)return;
+  var now=Date.now();
+  var TEN_SECONDS=10000;
+  // 10秒窗口内双击第二次 -> HERMES
+  if(_lastFirstClickTime>0 && now-_lastFirstClickTime<TEN_SECONDS && _firstClickSlug && slug!==_firstClickSlug){
+    var payload={slug:slug,target:'HERMES',force:true};
+    fetch('/api/fallback/set-index',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(function(r){return r.json();}).then(function(d){
+      if(d.error){show(d.error+' (HERMES)','err');}
+      else{show('HERMES已切换到: '+name,'ok');_lastFirstClickTime=0;_firstClickSlug='';setTimeout(function(){refreshStatus();},300);}
+    }).catch(function(){show('切换失败','err');});
+  }else{
+    // 第一次或超时 -> CODEX
+    _lastFirstClickTime=now;
+    _firstClickSlug=slug;
+    var payload={slug:slug,target:'CODEX'};
+    fetch('/api/fallback/set-index',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(function(r){return r.json();}).then(function(d){
+      if(d.error){show(d.error+' (CODEX)','err');}
+      else{show('CODEX已切换到: '+name,'ok');setTimeout(function(){refreshStatus();},300);}
+    }).catch(function(){show('切换失败','err');});
+  }
+}
+function onBadgeDrop(e){
+  e.preventDefault();this.classList.remove('drag-over');
+  if(this===_draggedItem)return;
+  // Guard: prevent concurrent saves (e.g. rapid successive drags)
+  if(_saveInProgress){ show('上一次拖拽尚未完成，请稍后再试','warn'); return; }
+  _saveInProgress=true;
+  var parent=document.getElementById('fbk-badges-row');
+  var all=[].slice.call(parent.children);
+  var dIdx=all.indexOf(_draggedItem),tIdx=all.indexOf(this);
+  if(dIdx<tIdx)parent.insertBefore(_draggedItem,this.nextSibling);
+  else parent.insertBefore(_draggedItem,this);
+  // 重新编号：按当前DOM顺序用1,2,3...更新每个badge的圆圈数字（视觉辅助，不改变data-idx）
+  var badges=[].slice.call(parent.children).filter(function(i){return i.classList.contains('fbk-badge-item');});
+  badges.forEach(function(badge,newIdx){
+    var circle=badge.querySelector('.fbk-badge-circle');
+    if(circle) circle.textContent=newIdx+1;
+    badge.setAttribute('data-pos', newIdx);
+    // data-pos tracks DOM position; data-idx (c.idx) stays stable for gChain lookup.
+  });
+  var gChain=window.gChain||[];
+  var nameMap={};
+  var chainByIdx={};
+  gChain.forEach(function(e){
+    if(e.name) nameMap[e.name]=e;
+    if(e.displayIdx != null) chainByIdx[String(e.displayIdx)] = e;
+  });
+  var newOrder=[];
+  badges.forEach(function(badge){
+    var dataIdx=badge.getAttribute('data-idx')||'';
+    var chainEntry=dataIdx && chainByIdx[dataIdx];
+    if(chainEntry && chainEntry.raw) { newOrder.push(chainEntry.raw); }
+    else {
+      var slug=badge.getAttribute('data-slug')||'';
+      var name=badge.getAttribute('data-name')||'';
+      var entry=nameMap[name] || nameMap[slug];
+      if(entry && entry.raw) { newOrder.push(entry.raw); }
+      else if(slug) { newOrder.push(slug); }
+      else if(name) { newOrder.push(name); }
+    }
+  });
+  var droppedNameEl=_draggedItem.querySelector('.badge-name');
+  var droppedName=droppedNameEl?droppedNameEl.textContent:'';
+  var droppedSlug=_draggedItem.getAttribute('data-slug')||'';
+
+  // Step 1: save order
+  fetch('/api/codex/config',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({fallback_sequence:newOrder.join(';')})
+  }).then(function(r){
+    // Use .text() then manual parse — avoids JSON error → outer .catch confusion
+    return r.text().then(function(txt){
+      var ok=r.ok;
+      var saved=false;
+      try{ var d=JSON.parse(txt); saved=d && (d.status==='saved'||d.status==='ok'); }catch(e){}
+      return {ok:ok,saved:saved,httpStatus:r.status};
+    });
+  }).then(function(result){
+    if(!result.ok){
+      show('保存顺序失败: HTTP '+result.httpStatus,'err');
+    }else if(result.saved){
+      show('顺序已保存','ok');
+      // Step 2 removed: drag-and-drop only reorders the chain, never switches the active
+      // CODEX provider. Use badge dblclick to switch provider. The backend set-index
+      // handler has complex reset+restore logic that can cause unwanted CODEX jumps when
+      // a new fallback_sequence is supplied (it resets codexIdx=0 before restoring).
+    }else{
+      show('保存顺序失败: '+result.httpStatus,'err');
+    }
+  }).catch(function(e){
+    // Only true network/DNS failures reach here — save may have actually succeeded
+    show('顺序已保存（切换当前模型失败）','warn');
+  }).finally(function(){
+    _saveInProgress=false;
+  });
+}
+function resetFallbackBadges(){
+  var parent=document.getElementById('fbk-badges-row');
+  var items=[].slice.call(parent.children).filter(function(i){return i.classList.contains('fbk-badge-item');});
+  items.sort(function(a,b){
+    var idxA=parseInt(a.querySelector('.fbk-badge-circle').textContent,10)||999;
+    var idxB=parseInt(b.querySelector('.fbk-badge-circle').textContent,10)||999;
+    return idxA-idxB;
+  });
+  items.forEach(function(i){parent.appendChild(i);});
+  show('序号已恢复从小到大排列','ok');
+  fetch('/api/fallback/reset',{method:'POST'}).catch(function(){});
+}
+
+// ─── Status refresh (poll every 3s) ────────────────────────
+function refreshStatus(){
+  fetch('/api/status').then(function(r){return r.json();}).then(function(s){
+    // Sync max_provider_use_minutes from server (persist while UI shows countdown)
+    if(s.max_provider_use_minutes){
+      var intInput=document.getElementById('fbk-interval');
+      if(intInput) intInput.value=s.max_provider_use_minutes;
+    }
+    // Sync cond_switch toggle from server on page load
+    (function syncCondToggle(){
+      if(!window.__COND_TOGGLE_INITIALIZED__){
+        var ctrl=document.getElementById('condToggle');
+        if(ctrl){
+          // true (checked) = condition switch ON, false (unchecked) = OFF
+          // COND_SWITCH_ENABLED=true → switch ON (checked); COND_SWITCH_ENABLED=false → switch OFF (unchecked)
+          ctrl.checked=s.cond_switch_enabled!==false;
+          window.__QCLAW_COND_DISABLED__=s.cond_switch_enabled===false;
+          window.__COND_TOGGLE_INITIALIZED__=true;
+        }
+      }
+    })();
+    // Update switch countdown — prefer fallback_interval_minutes if available, fall back to max_provider_use_minutes
+    (function updateCountdown(){
+      var cdEl=document.getElementById('countdown-val');
+      if(!cdEl)return;
+      if(window.__lastCountdownData && !window.__countdownTimer){
+        // Use last known data for real-time ticking
+        var d=window.__lastCountdownData;
+        if(d.cond_switch_enabled===false){cdEl.textContent=d.im+'min';return;}
+        var r=Math.max(0,Math.ceil((d.switchMs-Date.now())/1000));
+        if(r>60) cdEl.textContent=Math.floor(r/60)+'min '+((r%60)?(r%60)+'s':'');
+        else cdEl.textContent=r+'s';
+        return;
+      }
+      if(s.cond_switch_enabled===false){var im=s.fallback_interval_minutes||s.max_provider_use_minutes||30;cdEl.textContent=im+'min';return;}
+            var fs=s.fallback_state||{};
+      var lastSwitch=fs.lastSwitch||Date.now();
+      // Use fallback_interval_minutes from server if present, fall back to max_provider_use_minutes
+      var intervalMin=s.fallback_interval_minutes||s.max_provider_use_minutes||30;
+      var switchMs=lastSwitch+intervalMin*60000;
+      // Store for real-time ticking
+      window.__lastCountdownData={cond_switch_enabled:s.cond_switch_enabled,switchMs:switchMs,im:intervalMin+'min'};
+      var remaining=Math.max(0,Math.ceil((switchMs-Date.now())/1000));
+      if(remaining>60) cdEl.textContent=Math.floor(remaining/60)+'min '+((remaining%60)?(remaining%60)+'s':'');
+      else cdEl.textContent=remaining+'s';
+    })();
+    // Start real-time countdown ticker (1s interval, client-side only)
+    if(!window.__countdownTimer){
+      window.__countdownTimer=setInterval(function(){
+        var cdEl=document.getElementById('countdown-val');
+        if(!cdEl||!window.__lastCountdownData)return;
+        var d=window.__lastCountdownData;
+        if(d.cond_switch_enabled===false){cdEl.textContent=d.im;return;}
+        var r=Math.max(0,Math.ceil((d.switchMs-Date.now())/1000));
+        if(r>60) cdEl.textContent=Math.floor(r/60)+'min '+((r%60)?(r%60)+'s':'');
+        else cdEl.textContent=r+'s';
+      },1000);
+    }
+
+    var cl=s.clients||{};
+    var codexSlug=s.codex_actual_model||(cl.CODEX?cl.CODEX.model:null);
+    var hermesSlug=s.hermes_actual_model||(cl.HERMES?cl.HERMES.model:null);
+
+    function findName(slug){
+      if(!slug)return null;
+      var c=gCustoms.find(function(x){return x.slug===slug;});
+      return c?(c.name||c.slug||slug):slug;
+    }
+    var cxName=findName(codexSlug);
+    var hmName=findName(hermesSlug);
+
+    function timeAgo(ts){
+      if(!ts||ts<=0)return '';
+      var a=Math.round((Date.now()-ts)/1000);
+      return a<60?a+'s':Math.round(a/60)+'m';
+    }
+    function fmtTs(ts){
+      if(!ts||ts<=0)return '';
+      var d=new Date(ts);
+      var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+      var h=String(d.getHours()).padStart(2,'0'),min=String(d.getMinutes()).padStart(2,'0'),s=String(d.getSeconds()).padStart(2,'0');
+      return y+'-'+m+'-'+day+' '+h+':'+min+':'+s;
+    }
+
+    // Update service status in header
+    var svcStatus=document.getElementById('service-status');
+    if(svcStatus){
+      var ph=s.provider_health||{};
+      var total=Object.keys(ph).length;
+      var unhealthy=Object.keys(ph).filter(function(k){return ph[k].status==='unhealthy';});
+      var failCount=Object.keys(ph).filter(function(k){return ph[k].consecutiveFailures>0;}).length;
+      if(unhealthy.length>0){
+        svcStatus.textContent='异常'+unhealthy.length+'/'+total;
+        svcStatus.style.color='var(--red)';
+      }else if(failCount>0){
+        svcStatus.textContent='警告'+failCount+'/'+total;
+        svcStatus.style.color='var(--yellow)';
+      }else{
+        svcStatus.textContent='正常'+total+'/'+total;
+        svcStatus.style.color='var(--green)';
+      }
+    }
+
+    // Get current providers from status — use chain array index from fallback_state (not top-level s.codexIdx/hermesIdx)
+    var chain=s.fallback_chain||[];
+    var codexIdx=s.fallback_state? s.fallback_state.codexIdx: s.codexIdx;
+    var hermesIdx=s.fallback_state? s.fallback_state.hermesIdx: s.hermesIdx;
+    var codexProvider=(chain[codexIdx]||{}).name||null;
+    var hermesProvider=(chain[hermesIdx]||{}).name||null;
+
+    // Update CODEX status
+    var cxDot=document.getElementById('codex-dot');
+    var cxModel=document.getElementById('codex-cur-model');
+    if(cxDot && cxModel){
+      if(codexProvider){
+        cxDot.className='dot on';
+        cxModel.textContent=codexProvider;
+      }else{
+        cxDot.className='dot off';
+        cxModel.textContent='-';
+      }
+    }
+
+    // Update HERMES status
+    var hmDot=document.getElementById('hermes-dot');
+    var hmModel=document.getElementById('hermes-cur-model');
+    if(hmDot && hmModel){
+      if(hermesProvider){
+        hmDot.className='dot on';
+        hmModel.textContent=hermesProvider;
+      }else{
+        hmDot.className='dot off';
+        hmModel.textContent='-';
+      }
+    }
+
+    // Continue with rest of status logic for badge highlighting...
+    var fbkEnabled=s.fallback_enabled;
+    var badgesEl=document.getElementById('fbk-badges-row');
+    if(!badgesEl) return;
+    var fs=s.fallback_state||{};
+    var codexIdx=fs.codexIdx;
+    var hermesIdx=fs.hermesIdx;
+    window.gChain=chain; // share with onBadgeDrop for name|modelId reconstruction
+
+    // Build slug+name -> chainIdx lookup (chain now includes chainIdx field)
+    var nameToChainIdx={};
+    // Store the entire chain entry (not just array index) so callers can access .displayIdx
+    chain.forEach(function(e,idx){
+      if(e.name) nameToChainIdx[e.name.toLowerCase()]=chain[idx];
+    });
+    // Also index by slug for models where name differs from slug
+    chain.forEach(function(e,idx){
+      var m=gCustoms.find(function(c){return c.name===e.name;});
+      if(m&&m.slug) nameToChainIdx[m.slug.toLowerCase()]=chain[idx];
+    });
+    var items=badgesEl.querySelectorAll('.fbk-badge-item');
+    items.forEach(function(item){
+      item.classList.remove('badge-codex-active','badge-hermes-active','badge-idle');
+      // FIX: codexIdx/hermesIdx from server are ARRAY INDICES (0-based positions in fallback_chain),
+      // not displayIdx (badge circle numbers). Must compare chainIdx (also array index) to get correct highlight.
+      var badgeName=(item.getAttribute('data-name')||'').toLowerCase();
+      var chainEntry=nameToChainIdx[badgeName];
+      var isCodexActive=fbkEnabled&&chainEntry&&chainEntry.chainIdx===codexIdx;
+      var isHermesActive=fbkEnabled&&chainEntry&&chainEntry.chainIdx===hermesIdx;
+      if (isCodexActive) {
+        item.classList.add('badge-codex-active');
+      }
+      if (isHermesActive) {
+        item.classList.add('badge-hermes-active');
+      }
+      if (!isCodexActive && !isHermesActive) {
+        item.classList.add('badge-idle');
+      }
+    });
+
+    // Update error display row
+    var errRow=document.getElementById('fbk-error-row');
+    var errCodex=document.getElementById('fbk-error-codex');
+    var errHermes=document.getElementById('fbk-error-hermes');
+    var errs=s.last_errors||{};
+    var cxErrs=errs.CODEX||[];
+    var hmErrs=errs.HERMES||[];
+    if(cxErrs.length>0){
+      var e=cxErrs[0];
+      var age=timeAgo(e.ts);
+      errCodex.textContent='CODEX ← '+e.provider+' ['+e.status+'] '+e.message+(age?' ('+age+')':'');
+    }else{
+      errCodex.textContent='';
+    }
+    if(hmErrs.length>0){
+      var e=hmErrs[0];
+      var age=timeAgo(e.ts);
+      errHermes.textContent='HERMES ← '+e.provider+' ['+e.status+'] '+e.message+(age?' ('+age+')':'');
+    }else{
+      errHermes.textContent='';
+    }
+    var hasErr=cxErrs.length>0||hmErrs.length>0;
+    if(errRow) errRow.style.display=hasErr?'flex':'none';
+  }).catch(function(){});
+}
+
+// ─── Load models ───────────────────────────────────────────
+async function load(){
+  var builtins=[],customs=[];
+  try{
+    var r=await fetch('/api/all');
+    var data=await r.json();
+    builtins=data.builtin||[];customs=data.custom||[];
+    disabledBuiltins=data.disabled_builtins||[];
+    gBuiltins=builtins;gCustoms=customs;
+    allModels=[];
+    builtins.filter(function(b){return b.enabled;}).forEach(function(b){(b.models||[]).forEach(function(id){allModels.push({id:id,owned_by:b.name,isBuiltin:true,base:b.base,key:b.keyRaw||''});});});
+    customs.forEach(function(c){(c.models||[]).forEach(function(id){allModels.push({id:id,owned_by:c.name||c.slug,isBuiltin:false,isCustom:true,base:c.base,key:c.keyRaw||c.key||''});});});
+  }catch(e){show('无法加载:'+e.message,'err');return;}
+  // Pre-populate gChain from /api/codex/config so badge drag/drop work on first interaction
+  try{
+    var cr=await fetch('/api/codex/config');
+    var cdata=await cr.json();
+    window.gChain=(cdata.fallback_chain||[]);
+  }catch(e){}
+
+  document.getElementById('stat-builtin').textContent=builtins.filter(function(b){return b.enabled;}).length+'/'+builtins.length;
+  document.getElementById('stat-custom').textContent=customs.length;
+  document.getElementById('stat-active').textContent=allModels.length;
+  document.getElementById('custom-count').textContent='('+customs.length+'个)';
+
+  // Built-in list
+  var bEl=document.getElementById('builtin-list');
+  if(!builtins.length){bEl.innerHTML='<div class="empty">无内置模型配置</div>';}
+  else{
+    bEl.innerHTML=builtins.map(function(b){
+      var models=(b.models||[]).join(', ')||'未配置';
+      return '<div class="model-item"><div class="info"><div class="name"><span class="section-tag builtin">内置</span>'+esc(b.name)+'</div><div class="detail">'+esc(b.base)+' | key:'+esc(maskKey(b.key))+'</div><div class="detail">'+esc(models)+'</div></div><div class="actions"><button class="btn btn-edit btn-sm" onclick="editBuiltin(\''+escAttr(b.name)+'\')">改</button><button class="btn btn-danger btn-sm" onclick="askDisableBuiltin(\''+escAttr(b.name)+'\')">禁用</button></div></div>';
+    }).join('');
+  }
+
+  // Custom list
+  var cEl=document.getElementById('model-list');
+  if(!customs.length){cEl.innerHTML='<div class="empty">暂无,上方表单添加</div>';}
+  else{
+    cEl.innerHTML=customs.map(function(x){
+      var models=(x.models||[]).join(', ')||x.id||'';
+      var bc=badgeColors[(x.idx?x.idx-1:0)%badgeColors.length];
+      var isAbn = gAbnormalModels.some(function(a){return a.key===x.slug||a.key===x.name;});
+      return '<div class="custom-card"><div class="cc-left"><div class="cc-badge '+bc+'">'+(x.idx||'?')+'</div></div><div class="cc-body"><div class="cc-name">'+esc(x.name||x.slug||'')+(isAbn?' <span style="color:var(--red);font-size:12px">⚠异常</span>':'')+'</div><div class="cc-detail">'+esc(x.base)+'</div><div class="cc-detail">key:'+esc(maskKey(x.key))+'</div><div class="cc-model">'+esc(models)+'</div></div><div class="cc-actions"><button class="btn btn-edit btn-sm" onclick="editCustom(\''+escAttr(x.slug||x.name)+'\')">改</button><button class="btn btn-edit btn-sm" onclick="del(\''+escAttr(x.slug||x.name)+'\')">删</button><button class="btn btn-sm '+(isAbn?'btn-danger':'btn-outline-red')+'" onclick="toggleAbnormal(\''+escAttr(x.slug||x.name)+'\','+!isAbn+')">'+(isAbn?'取消异常':'标记异常')+'</button></div></div>';
+    }).join('');
+  }
+  document.getElementById('add-hint').textContent='';
+
+  // Load abnormal models FIRST so we can filter them out of the custom list
+  await fetch('/api/fallback/abnormal').then(function(r){return r.json();}).then(function(d){
+    gAbnormalModels=d.abnormalModels||[];
+    renderAbnormalModels();
+  }).catch(function(e){console.error('loadAbnormalModels:',e);});
+
+  // Custom list — filter out abnormal models
+  var normalCustoms=customs.filter(function(x){
+    return !gAbnormalModels.some(function(a){return a.key===x.slug||a.key===x.name;});
+  });
+  var cEl=document.getElementById('model-list');
+  if(!normalCustoms.length){cEl.innerHTML='<div class="empty">暂无,上方表单添加'+(gAbnormalModels.length?'（'+gAbnormalModels.length+'个异常模型已隐藏）':'')+'</div>';}
+  else{
+    cEl.innerHTML=normalCustoms.map(function(x){
+      var models=(x.models||[]).join(', ')||x.id||'';
+      var bc=badgeColors[(x.idx?x.idx-1:0)%badgeColors.length];
+      return '<div class="custom-card"><div class="cc-left"><div class="cc-badge '+bc+'">'+(x.idx||'?')+'</div></div><div class="cc-body"><div class="cc-name">'+esc(x.name||x.slug||'')+'</div><div class="cc-detail">'+esc(x.base)+'</div><div class="cc-detail">key:'+esc(maskKey(x.key))+'</div><div class="cc-model">'+esc(models)+'</div></div><div class="cc-actions"><button class="btn btn-edit btn-sm" onclick="editCustom(\''+escAttr(x.slug||x.name)+'\')">改</button><button class="btn btn-edit btn-sm" onclick="del(\''+escAttr(x.slug||x.name)+'\')">删</button><button class="btn btn-sm btn-outline-red" onclick="toggleAbnormal(\''+escAttr(x.slug||x.name)+'\',true)">标记异常</button></div></div>';
+    }).join('');
+    if(gAbnormalModels.length)cEl.innerHTML+='<div style="text-align:center;color:var(--gray);font-size:12px;padding:6px">'+gAbnormalModels.length+'个异常模型已隐藏，点击上方「异常模型」tab查看</div>';
+  }
+
+  refreshStatus();
+  setInterval(refreshStatus,3000);
+}
+
+// ─── Abnormal models ───────────────────────────────────────
+var gAbnormalModels=[];
+
+function loadAbnormalModels(){
+  fetch('/api/fallback/abnormal').then(function(r){return r.json();}).then(function(d){
+    gAbnormalModels=d.abnormalModels||[];
+    renderAbnormalModels();
+  }).catch(function(e){console.error('loadAbnormalModels:',e);});
+}
+
+function renderAbnormalModels(){
+  var badge=document.getElementById('abnormal-badge');
+  if(gAbnormalModels.length>0){
+    badge.style.display='inline';
+    badge.textContent=gAbnormalModels.length;
+  }else{
+    badge.style.display='none';
+  }
+  var el=document.getElementById('abnormal-list');
+  if(!gAbnormalModels.length){
+    el.innerHTML='<div class="empty">无异常模型（48小时内失败&lt;5次的模型都在正常模型中）</div>';
+    return;
+  }
+  el.innerHTML=gAbnormalModels.map(function(x){
+    var failTime=x.firstFailureAt?new Date(x.firstFailureAt).toLocaleString('zh-CN'):'未知';
+    var num=(x.idx!=null)?x.idx:'?';
+    var bc=badgeColors[(num!=='?'?num-1:0)%badgeColors.length];
+    return '<div class="custom-card"><div class="cc-left"><div class="cc-badge '+bc+'">'+num+'</div></div><div class="cc-body"><div class="cc-name" style="color:var(--red)">'+esc(x.name||x.key)+'</div><div class="cc-detail">连续失败: <strong>'+x.consecutiveFailures+'</strong> 次</div><div class="cc-detail">首次失败: '+failTime+'</div></div><div class="cc-actions"><button class="btn btn-primary btn-sm" onclick="restoreAbnormal(\''+escAttr(x.key)+'\')">恢复</button><button class="btn btn-edit btn-sm" onclick="editAbnormal(\''+escAttr(x.key)+'\')">编辑</button><button class="btn btn-del btn-sm" onclick="del(\''+escAttr(x.key)+'\')">删除</button></div></div>';
+  }).join('');
+}
+
+function restoreAbnormal(key){
+  if(!confirm('恢复模型「'+key+'」到正常状态？'))return;
+  fetch('/api/fallback/abnormal/restore',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({key:key})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.status==='restored'){
+      show('模型已恢复','ok');
+      loadAbnormalModels();
+      load();
+    }else{
+      show('恢复失败:'+JSON.stringify(d),'err');
+    }
+  }).catch(function(e){show('恢复失败:'+e.message,'err');});
+}
+function editAbnormal(key){
+  var x=gAbnormalModels.find(function(m){return m.key===key;});
+  if(!x){show('未找到异常模型: '+key,'err');return;}
+  var h='<div class="form-grid">'+
+    '<div><label>序号</label><input id="d-idx" type="number" min="1" value="'+(x.idx||'')+'" style="width:80px" /></div>'+
+    '<div><label>模型名称</label><input id="d-name" value="'+escAttr(x.name||x.key||'')+'" /></div>'+
+    '<div><label>API 地址</label><input id="d-base" value="'+escAttr(x.base||'')+'" /></div>'+
+    '<div><label>API 密钥</label><input id="d-key" value="'+escAttr(x.keyRaw||x.key||'')+'" /></div>'+
+    '<div style="grid-column:1/-1"><label>模型 ID</label><input id="d-model" value="'+escAttr(x.id||'')+'" /></div></div>'+
+    '<div style="margin-top:10px;font-size:12px;color:#888">提示：点击「保存」仅修改信息；点击「保存并恢复正常」会将模型移出异常列表</div>';
+  var title='编辑异常模型: '+(x.name||key);
+  openDialog(title,h,function(){saveAbnormal(key);});
+}
+async function saveAbnormal(key){
+  var n=document.getElementById('d-name').value.trim(),
+      ba=document.getElementById('d-base').value.trim(),
+      k=document.getElementById('d-key').value.trim(),
+      m=document.getElementById('d-model').value.trim(),
+      iv=document.getElementById('d-idx').value.trim(),
+      idx=parseInt(iv,10);
+  if(!n){show('请填写模型名称','err');return;}
+  var moveToNormal=confirm('是否同时将此模型恢复正常状态？\n「确定」= 保存并恢复正常\n「取消」= 仅保存修改');
+  var body={key:key,name:n,base:ba,apiKey:k,modelId:m,idx:idx,moveToNormal:moveToNormal};
+  try{
+    var r=await fetch('/api/abnormal/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var d=await r.json();
+    if(d.status==='restored'){
+      show('模型已保存并恢复正常','ok');
+      closeDialog();
+      loadAbnormalModels();
+      load();
+    }else if(d.status==='updated'){
+      show('模型信息已更新（仍为异常状态）','ok');
+      closeDialog();
+      loadAbnormalModels();
+    }else{
+      show('保存失败: '+JSON.stringify(d),'err');
+    }
+  }catch(e){show('保存失败:'+e.message,'err');}
+}
+
+function toggleAbnormal(key, markAbnormal){
+  var label=markAbnormal?'标记异常':'取消异常';
+  if(markAbnormal&&!confirm('将模型「'+key+'」标记为异常？异常模型将从轮循队列中移除。'))return;
+  if(!markAbnormal&&!confirm('取消模型「'+key+'」的异常标记？'))return;
+  fetch('/api/fallback/abnormal/toggle',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({key:key,abnormal:markAbnormal})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.status==='marked_abnormal'||d.status==='cleared'){
+      show('模型已'+label,'ok');
+      loadAbnormalModels();
+      load();
+    }else{
+      show(label+'失败:'+JSON.stringify(d),'err');
+    }
+  }).catch(function(e){show(label+'失败:'+e.message,'err');});
+}
+
+// ─── Load Codex Settings ───────────────────────────────────
+async function loadCodexSettings(){
+  // Ensure gCustoms is populated first
+  if(!gCustoms.length){await load();}
+  var cfg={};
+  try{
+    console.log('Fetching /api/codex/config...');
+    var r=await fetch('/api/codex/config');
+    console.log('Response status:', r.status);
+    cfg=await r.json();
+    console.log('cfg loaded:', JSON.stringify(cfg));
+  }catch(e){console.error('loadCodexSettings error:', e);cfg={};}
+
+  var codeEl=document.getElementById('cx-config-code');
+  // Use hardcoded config content instead of reading from file
+  codeEl.value = `model_provider = "LUODA"
+model = "gpt-5.5"
+review_model = "codexAPI"
+model_reasoning_effort = "high"
+disable_response_storage = true
+network_access = "enabled"
+windows_wsl_setup_acknowledged = true
+model_context_window = 1050000
+model_auto_compact_token_limit = 900000
+approvals_reviewer = "user"
+sandbox_mode = "danger-full-access"
+approval_policy = "never"
+web_search = "live"
+service_tier = "fast"
+
+[model_providers]
+[model_providers.LUODA]
+name = "LUODA"
+wire_api = "responses"
+requires_openai_auth = true
+base_url = "http://127.0.0.1:40000/v1"
+experimental_bearer_token = "sk-proxy-local-51f5bd4b9797f2620bc55460946802711cf7312b38c24794"
+
+[agents]
+max_threads = 2
+max_depth = 2
+
+[notice]
+hide_full_access_warning = true
+
+[windows]
+sandbox = "elevated"
+
+[marketplaces.openai-bundled]
+last_updated = "2026-05-28T14:02:27Z"
+source_type = "local"
+source = '\\?\\C:\\Users\\Administrator\\.codex\\.tmp\\bundled-marketplaces\\openai-bundled'
+
+[marketplaces.openai-primary-runtime]
+last_updated = "2026-05-27T16:25:46Z"
+source_type = "local"
+source = '\\?\\C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\plugins\\openai-primary-runtime'
+
+[plugins."browser@openai-bundled"]
+enabled = true
+
+[plugins."documents@openai-primary-runtime"]
+enabled = true
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = true
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = true
+
+[plugins."github@openai-curated"]
+enabled = true
+
+[features]
+js_repl = false
+
+[mcp_servers.node_repl]
+args = []
+command = 'C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\Codex\\bin\\3c238e29bbc930ff\\node_repl.exe'
+startup_timeout_sec = 120
+
+[mcp_servers.node_repl.env]
+NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
+NODE_REPL_NODE_MODULE_DIRS = ""
+NODE_REPL_NODE_PATH = 'C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\Codex\\bin\\5b9024f90663758b\\node.exe'
+NODE_REPL_TRUSTED_CODE_PATHS = 'C:\\Users\\Administrator\\.codex'
+CODEX_HOME = 'C:\\Users\\Administrator\\.codex'
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "496c7b3cb95b4bc20cff49b513150606e0da0000c92bf752206bee5a6c248423"
+BROWSER_USE_AVAILABLE_BACKENDS = "iab"
+BROWSER_USE_MARKETPLACE_NAME = "openai-bundled"
+NODE_REPL_UNTRUSTED_ENV_ALLOWLIST = "BROWSER_USE_MARKETPLACE_NAME"
+CODEX_CLI_PATH = 'C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\Codex\\bin\\958d608b5e0546a5\\codex.exe'
+
+[projects.'c:\\users\\administrator\\documents\\codex\\2026-05-28\\eee']
+trust_level = "trusted"
+
+[projects.'c:\\users\\administrator\\documents\\codex\\2026-05-28\\new-chat']
+trust_level = "trusted"
+
+[projects.'c:\\users\\administrator\\documents\\codex\\2026-05-28\\new-chat-2']
+trust_level = "trusted"
+
+[projects.'c:\\users\\administrator\\documents\\codex\\2026-05-28\\1panel-api']
+trust_level = "trusted"
+
+[desktop]
+localeOverride = "zh-CN"
+notifications-turn-mode = "off"
+followUpQueueMode = "queue"`;
+
+  // Render badges
+  var badgesEl=document.getElementById('fbk-badges-row');
+  // Remove only badge-item children, keep the info span intact
+  [].slice.call(badgesEl.children).forEach(function(c){if(c.classList.contains('fbk-badge-item'))badgesEl.removeChild(c);});
+  var fbkOn=document.getElementById('fbk-switch')&&document.getElementById('fbk-switch').checked;
+  badgesEl.classList.toggle('no-pad',fbkOn);
+  badgesEl.classList.toggle('pad20',!fbkOn);
+
+  // Show empty hint in header (next to virtual-id input)
+  var emptyHint=document.getElementById('fbk-empty-hint');
+  if(emptyHint) emptyHint.textContent=gCustoms.length?'':'无自定义模型(上方添加)';
+
+  if(gCustoms.length){
+    var rawSeq=cfg.fallback_sequence||'';
+    var seqSlugs=rawSeq?rawSeq.split(';').map(function(s){return s.trim();}).filter(function(s){return s;}):[];
+    var ordered=[];
+    // First: match by slug (exact match)
+    seqSlugs.forEach(function(slug){
+      var c=gCustoms.find(function(x){return (x.slug||'')===slug;});
+      if(c&&!ordered.includes(c))ordered.push(c);
+    });
+    // Second: for unmatched seq items, try name match (handles chinese name vs slug mismatch)
+    seqSlugs.forEach(function(slug){
+      if(ordered.some(function(x){return (x.slug||'')===slug;}))return;
+      var c=gCustoms.find(function(x){return x.name===slug;});
+      if(c&&!ordered.includes(c))ordered.push(c);
+    });
+    // Third: append all remaining gCustoms by idx order
+    var orderedSlugs=ordered.map(function(x){return x.slug||'';});
+    // Filter out abnormal models from the badge list
+    var abnormalSlugs={};
+    gAbnormalModels.forEach(function(a){abnormalSlugs[a.key]=true;abnormalSlugs[(a.name||'').toLowerCase()]=true;});
+    // Actually remove abnormal models from the displayed badge sequence
+    ordered = ordered.filter(function(c){ return !abnormalSlugs[c.slug] && !abnormalSlugs[(c.name||'').toLowerCase()]; });
+    var remaining=gCustoms.filter(function(c){return orderedSlugs.indexOf(c.slug||'')===-1;});
+    remaining.sort(function(a,b){return (a.idx||999)-(b.idx||999);});
+    remaining.forEach(function(c){ordered.push(c);});
+    // Build idx→chainEntry map for drag-drop (idx is stable, unique per custom provider, no name encoding issues)
+    var chainByIdx = {};
+    if(gChain && gChain.length){
+      gChain.forEach(function(e){ if(e.idx != null) chainByIdx[e.idx] = e; });
+    }
+    ordered.forEach(function(c, badgeI){
+      var bc=badgeColors[(c.idx?c.idx-1:0)%badgeColors.length];
+      var div=document.createElement('div');
+      div.className='fbk-badge-item '+bc;
+      div.setAttribute('draggable','true');
+      div.setAttribute('data-name', c.name || c.slug || '');
+      div.setAttribute('data-slug', (c.slug || '').toLowerCase());
+      div.setAttribute('data-idx', c.idx || '');
+      div.setAttribute('data-pos', badgeI);
+      // Stable key for drag-drop: data-idx = c.idx (numeric, unique per custom provider).
+      // onBadgeDrop uses this to look up the chain entry by idx, bypassing name encoding entirely.
+      div.setAttribute('title','拖拽调整顺序，双击切换');
+      div.ondblclick=onBadgeDblClick;
+      div.innerHTML='<div class="fbk-badge-circle">'+(c.idx||'?')+'</div><span class="badge-name">'+esc(c.name||c.slug||'')+'</span>';
+      div.addEventListener('dragstart',onBadgeDragStart);
+      div.addEventListener('dragend',onBadgeDragEnd);
+      div.addEventListener('dragover',onBadgeDragOver);
+      div.addEventListener('dragleave',onBadgeDragLeave);
+      div.addEventListener('drop',onBadgeDrop);
+      badgesEl.appendChild(div);
+    });
+  }
+
+  
+ked=cfg.fallback_enabled!==false;
+  if(fbkSwitch) onFallbackToggle();
+  var cxFilePath=document.getElementById('cx-file-path');
+  if(cxFilePath) cxFilePath.textContent=cfg.file||'C:\\Users\\Administrator\\.codex\\config.toml';
+
+  function populateSm(id,savedVal){
+    var el=document.getElementById(id);if(!el)return;
+    console.log('populateSm called, gCustoms:', gCustoms.length, 'gBuiltins:', gBuiltins.length);
+    el.innerHTML='<option value="">--</option>';
+    // Built-in providers first (marked with 内置: prefix)
+    gBuiltins.filter(function(b){return b.enabled;}).forEach(function(b){
+      var midList = b.models || [];
+      midList.forEach(function(mid){
+        var o=document.createElement('option');
+        o.value=(b.name||'')+'|'+mid;
+        o.textContent='内置: '+(b.name||'')+' / '+mid;
+        el.appendChild(o);
+      });
+    });
+    // Custom providers
+    gCustoms.forEach(function(c){
+      var midList = c.models || (c.id ? [c.id] : []);
+      midList.forEach(function(mid){
+        var o=document.createElement('option');
+        // Use name (like "智谱7") as value, NOT slug ("7"), so saved config is always correct
+        o.value=(c.name||c.slug)+'|'+mid;
+        o.textContent=(c.name||c.slug)+' / '+mid;
+        el.appendChild(o);
+      });
+    });
+    if(savedVal){
+      var tv=savedVal;
+      var opts=el.querySelectorAll('option');
+      for(var i=0;i<opts.length;i++){if(opts[i].value===tv){opts[i].selected=true;break;}}
+    }
+  }
+  populateSm('sm-codex',cfg.single_model_codex||'');
+  populateSm('sm-hermes',cfg.single_model_hermes||'');
+  // Load fallback max use minutes
+  var maxUseInput=document.getElementById('fbk-max-use-min');
+  if(maxUseInput && cfg.max_provider_use_minutes) maxUseInput.value=cfg.max_provider_use_minutes;
+  // Load virtual model IDs
+  var vInput=document.getElementById('fbk-virtual-id');
+  if(vInput && cfg.virtual_model_id) vInput.value=cfg.virtual_model_id;
+  var hvInput=document.getElementById('fbk-hermes-virtual-id');
+  if(hvInput && cfg.hermes_virtual_model_id) hvInput.value=cfg.hermes_virtual_model_id;
+  // Load interval
+  var intInput=document.getElementById('fbk-interval');
+  if(intInput) intInput.value=cfg.max_provider_use_minutes || cfg.fallback_interval_minutes || 30;
+}
+
+// ─── Save fallback ─────────────────────────────────────────
+async function saveFallback(){
+  try {
+    var enabled=document.getElementById('fbk-switch').checked;
+    var slugOrder=getBadgeSlugsOrder();
+    var virtualModelId=document.getElementById('fbk-virtual-id').value.trim()||'auto';
+    var hermesVirtualModelId=document.getElementById('fbk-hermes-virtual-id').value.trim()||'auto';
+    var codexVal=document.getElementById('sm-codex').value;
+    var hermesVal=document.getElementById('sm-hermes').value;
+    var maxUseMin=parseInt(document.getElementById('fbk-max-use-min').value)||30;
+    var r=await fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      fallback_enabled:enabled,fallback_sequence:slugOrder.join(';'),
+      virtual_model_id:virtualModelId,hermes_virtual_model_id:hermesVirtualModelId,
+      max_provider_use_minutes:maxUseMin,
+      single_model_codex:codexVal,single_model_hermes:hermesVal
+    })});
+    if(r.ok){show('轮循已保存','ok');setTimeout(loadCodexSettings,300);}
+    else{var e=await r.json();show('保存失败: '+(e.error||r.status),'err');}
+  } catch(e) {
+    show('保存失败: '+e.message,'err');
+  }
+}
+
+// ─── CRUD ──────────────────────────────────────────────────
+async function addModel(){
+  var n=document.getElementById('f-name').value.trim();
+  var b=document.getElementById('f-base').value.trim();
+  var k=document.getElementById('f-key').value.trim();
+  var m=document.getElementById('f-model').value.trim();
+  var idxVal=document.getElementById('f-idx').value.trim();
+  if(!n||!b||!k||!m){show('请填写所有字段','err');return;}
+  var idx=idxVal?parseInt(idxVal,10):1;
+  if(idxVal&&gCustoms.some(function(x){return Number(x.idx)===idx;})){show('序号'+idx+'已存在，换一个','err');return;}
+  if(!idxVal&&gCustoms.length)idx=Math.max.apply(Math,gCustoms.map(function(x){return x.idx||0;}))+1;
+  var r=await fetch('/api/models',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,base:b,key:k,id:m,idx:idx})});
+  if(r.ok){show('模型已添加(序号='+idx+')','ok');['f-name','f-base','f-key','f-model','f-idx'].forEach(function(id){document.getElementById(id).value='';});load();setTimeout(loadCodexSettings,500);}
+  else{var e=await r.json();show(''+e.error,'err');}
+}
+async function del(id){
+  if(!confirm('删除自定义模型「'+id+'」?'))return;
+  var r=await fetch('/api/models/'+encodeURIComponent(id),{method:'DELETE'});
+  if(r.ok){show('已删除','ok');load();setTimeout(loadCodexSettings,500);}
+  else{var e=await r.json();show(''+e.error,'err');}
+}
+async function delBuiltin(name){
+  var r=await fetch('/api/builtins/'+encodeURIComponent(name),{method:'DELETE'});
+  if(r.ok){var d=await r.json();show(d.status==='disabled'?'已禁用「'+name+'」':'已恢复「'+name+'」','ok');load();setTimeout(loadCodexSettings,500);}
+  else{var e=await r.json();show(''+e.error,'err');}
+}
+async function toggleDisableBuiltin(name){
+  await delBuiltin(name);
+}
+async function askDelBuiltin(name){
+  if(!confirm('确定要移除内置模型「'+name+'」吗？'))return;
+  var r=await fetch('/api/builtins/'+encodeURIComponent(name),{method:'DELETE'});
+  if(r.ok){show('已移除「'+name+'」','ok');load();}else{var e=await r.json();show(''+e.error,'err');}
+}
+function editBuiltin(name){
+  var b=gBuiltins.find(function(x){return x.name===name;});if(!b)return;
+  var h='<div class="form-grid"><div><label>名称</label><input id="d-name" value="'+escAttr(b.name)+'" placeholder="如 deepseek" /></div><div><label>API 地址</label><input id="d-base" value="'+escAttr(b.base)+'" /></div><div><label>API 密钥</label><input id="d-key" value="'+escAttr(b.keyRaw||'')+'" placeholder="sk-..." /></div><div style="grid-column:1/-1"><label>模型 ID(逗号分隔)</label><input id="d-models" value="'+escAttr((b.models||[]).join(','))+'" placeholder="model-a,model-b" /></div></div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">修改立即生效，无需重启（修改名称会自动同步更新所有引用）</div>';
+  openDialog('修改内置模型:'+esc(b.name),h,function(){saveBuiltin(name);});
+}
+async function saveBuiltin(originalName){
+  var n=document.getElementById('d-name').value.trim();
+  var k=document.getElementById('d-key').value.trim(),ba=document.getElementById('d-base').value.trim(),mo=document.getElementById('d-models').value.trim();
+  if(!n){show('请输入名称','err');return;}
+  var body={base:ba,key:k,models:mo};
+  if(n!==originalName) body.name=n; // signal rename to backend
+  var r=await fetch('/api/builtins/'+encodeURIComponent(originalName),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.ok){
+    var d=await r.json();
+    show(d.status==='ok'?'已保存并实时生效':'已保存并实时生效','ok');
+    closeDialog();
+    load();
+  }else{var e=await r.json();show(''+e.error,'err');}
+}
+async function askDisableBuiltin(name){
+  if(!confirm('确定要从内置列表中移除「'+name+'」吗？'))return;
+  var r=await fetch('/api/builtins/'+encodeURIComponent(name),{method:'DELETE'});
+  if(r.ok){show('已移除「'+name+'」','ok');load();}else{var e=await r.json();show(''+e.error,'err');}
+}
+function editCustom(slug){
+  var c=gCustoms.find(function(x){return(x.slug||x.name)===slug;});if(!c)return;
+  var h='<div class="form-grid"><div><label>序号</label><input id="d-idx" type="number" min="1" value="'+(c.idx||'')+'" style="width:80px" /></div><div><label>模型名称</label><input id="d-name" value="'+escAttr(c.name||'')+'" /></div><div><label>API 地址</label><input id="d-base" value="'+escAttr(c.base)+'" /></div><div><label>API 密钥</label><input id="d-key" value="'+escAttr(c.keyRaw||c.key||'')+'" /></div><div style="grid-column:1/-1"><label>模型 ID</label><input id="d-model" value="'+escAttr(c.models&&c.models[0]||c.id||'')+'" /></div></div>';
+  openDialog('修改自定义模型:'+esc(c.name||slug),h,function(){saveCustom(slug);});
+}
+async function saveCustom(slug){
+  var n=document.getElementById('d-name').value.trim(),ba=document.getElementById('d-base').value.trim(),k=document.getElementById('d-key').value.trim(),m=document.getElementById('d-model').value.trim(),iv=document.getElementById('d-idx').value.trim(),idx=parseInt(iv,10);
+  if(!n||!ba||!k||!m||!iv||isNaN(idx)){show('请填写所有字段(含序号)','err');return;}
+  if(gCustoms.some(function(x){return Number(x.idx)===idx&&(x.slug||x.name)!==slug;})){show('序号'+idx+'已被其他模型使用','err');return;}
+  var r=await fetch('/api/models/'+encodeURIComponent(slug),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,base:ba,key:k,id:m,idx:idx})});
+  if(r.ok){show('模型已更新','ok');closeDialog();load();setTimeout(loadCodexSettings,500);}else{var e=await r.json();show(''+e.error,'err');}
+}
+function openDialog(title,bodyHtml,onSave){
+  document.getElementById('edit-dialog-title').textContent=title;
+  document.getElementById('edit-dialog-body').innerHTML=bodyHtml;
+  document.getElementById('edit-dialog').classList.add('open');
+  var sb=document.getElementById('edit-dialog-save');
+  var nb=sb.cloneNode(true);
+  sb.parentNode.replaceChild(nb,sb);
+  nb.addEventListener('click',function(){onSave();});
+}
+function closeDialog(){document.getElementById('edit-dialog').classList.remove('open');}
+async function copyCodexCfg(){
+  var txt=document.getElementById('cx-config-code').value;
+  try{
+    await navigator.clipboard.writeText(txt);
+    document.getElementById('cx-msg').textContent='已复制到剪贴板';
+    setTimeout(()=>document.getElementById('cx-msg').textContent='',2000);
+  }catch(e){
+    document.getElementById('cx-msg').textContent='复制失败: '+e.message;
+  }
+}
+async function downloadCodexCfg(){
+  var txt=document.getElementById('cx-config-code').value;
+  var blob=new Blob([txt],{type:'text/plain'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='config.toml';a.click();
+  URL.revokeObjectURL(url);
+}
+function saveCodexCfg(){
+  saveFileTo('C:\\Users\\Administrator\\.codex\\config.toml','cx-msg');
+}
+function saveHermesCfg(){
+  saveFileTo('C:\\Users\\Administrator\\.hermes\\config.yaml','hm-msg');
+}
+async function saveFileTo(path,msgId){
+  var el=document.getElementById(msgId);if(!el)return;
+  var isCx=msgId==='cx-msg';
+  var txt=document.getElementById(isCx?'cx-config-code':'hm-config-code').value;
+  el.textContent='保存中...';
+  try{
+    var r=await fetch('/api/files/upload?path='+encodeURIComponent(path),{method:'POST',body:txt});
+    if(r.ok){
+      el.textContent='已保存!';
+      setTimeout(function(){el.textContent='';},3000);
+      if(isCx)setTimeout(loadCodexSettings,500);
+      else setTimeout(refreshHermesStatus,500);
+    }else{
+      var e=await r.json();el.textContent='保存失败:'+(e.error||r.status);
+    }
+  }catch(e){el.textContent='保存失败:'+e.message;}
+}
+
+// ─── Init ──────────────────────────────────────────────────
+(function init(){
+  load().then(function(){
+    setTimeout(loadCodexSettings,200);
+    setTimeout(refreshHermesStatus,500);
+  }).catch(function(e){
+    show('加载失败:'+e.message+', 3秒后重试','err');
+    setTimeout(load,3000);
+  });
+  // Re-render badges every 10s — also refresh gCustoms first so badges survive proxy restarts
+  setInterval(function(){
+    load().then(function(){ setTimeout(loadCodexSettings,100); });
+  },10000);
+  setInterval(function(){refreshHermesStatus();},30000);
+})();
+
+window.onload=load;
+
+// === DISABLE AUTO-SWITCH-ON-CONDITION TOGGLE ===
+(function __qclawCondModeInit(){
+  // Load saved state from localStorage (set by UI clicks)
+  var isDisabledAutoSwitch = localStorage.getItem('__qclaw_cond_disabled_toggle') === 'true';
+  
+  // Global flag used by proxy.mjs advanceFallback checks
+  window.__QCLAW_COND_DISABLED__ = !isDisabledAutoSwitch;
+  
+  function refreshBadgeBadges(){
+    // Visual feedback on model badges when mode is disabled
+    document.querySelectorAll('.badge-name').forEach(function(el){
+      el.title = window.__QCLAW_COND_DISABLED__ 
+        ? 'Auto-switch DISABLED — click manually to switch providers'
+        : '';
+    });
+  }
+  
+  function bindCondToggle(controlId, labelId){
+    var ctrl = document.getElementById(controlId);
+    var lbl = document.getElementById(labelId);
+    if(!ctrl) return;
+    ctrl.addEventListener('change', function(){
+      var val = ctrl.checked; // true = ON (auto switch enabled), false = OFF
+      localStorage.setItem('condSwitch', val ? '1' : '0');
+      window.__QCLAW_COND_DISABLED__ = !val;
+      // 修复: 用 cond_switch_enabled 直接传递，val=true 表示开启自动切换
+      try{ fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cond_switch_enabled:val})}); }catch(e){}
+      if(lbl){
+        if(val){lbl.textContent='自动切换ON';lbl.style.color='#aaa';}
+        else{lbl.textContent='已关闭自动切换 (需手动选择)';lbl.style.color='#ff9';}
+      }
+    });
+    // bindCondToggle 由 refreshStatus 中的 syncCondToggle 调用一次完成初始化
+  }
+
+  // 初始化：先从 localStorage 恢复toggle状态（避免闪烁）
+  (function initToggleFromStorage(){
+    var ctrl = document.getElementById('condToggle');
+    if(!ctrl) return;
+    var stored = localStorage.getItem('condSwitch');
+    if(stored !== null) ctrl.checked = stored === '1';
+  })();
+
+  // Bind to our new UI element
+  setTimeout(function(){
+    bindCondToggle('condToggle','fbk-cond-state-lbl');
+    refreshBadgeBadges();
+    // Horizontal scroll with mouse wheel over badges row
+    var badgesRow = document.getElementById('fbk-badges-row');
+    if (badgesRow) {
+      badgesRow.addEventListener('wheel', function(e) {
+        this.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }, { passive: false });
+    }
+  }, 200);
+})();
+
+</script>
+</body>
+</html>

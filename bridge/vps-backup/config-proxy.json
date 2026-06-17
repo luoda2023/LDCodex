@@ -1,0 +1,31 @@
+{
+  "single_model_codex": "",
+  "single_model_hermes": "shangtang3",
+  "max_provider_use_minutes": 61,
+  "_fallbackState": {
+    "codexIdx": 8,
+    "hermesIdx": 21,
+    "lastSwitch": 0
+  },
+  "fallback_enabled": true,
+  "builtin_reset_minutes": 5,
+  "fallback_sequence": "agnesai;shangtang1;shangtang2;st44;shangtang5;ST40;shangtang4;shangtang3;shangtang6;ST41;ST43;st45;ApiFree;st46;Cloud1;shangtang33;ApiFree2;zhipu2;zhipu4;zhipu5;zhipu7;aliyun1;aliyun2;aliyun3;aliyun4;aliyun5;yidong;yidong2;mianfei1;zhipu1",
+  "config_source_marker": "J_DRIVE_CONFIG",
+  "hermes_virtual_model_id": "hermesAPI",
+  "_abnormalModels": [
+    "ST41",
+    "ST43",
+    "Cloud1"
+  ],
+  "_chainPositionMigration": true,
+  "virtual_model_id": "auto",
+  "disable_condition_switch": false,
+  "fallback_interval_minutes": 95,
+  "cond_switch_enabled": true,
+  "disabled_builtins": [
+    "mimo",
+    "deepseek",
+    "openai"
+  ],
+  "_providerHealth": {}
+}

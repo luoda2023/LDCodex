@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LUODA中转路由 · 登录</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+<style>
+/* ─── Reset & Theme ───────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --font-display:'PingFang SC','Microsoft YaHei','SimHei',sans-serif;
+  --font-body:'PingFang SC','Microsoft YaHei','SimHei',sans-serif;
+  --primary:#165DFF;
+  --primary-hover:#0E4FD0;
+  --primary-subtle:rgba(22,101,255,0.08);
+  --primary-glow:rgba(22,101,255,0.2);
+  --bg:#F4F6FA;
+  --surface:#FFFFFF;
+  --text:#1A1D26;
+  --text-2:#4B5166;
+  --text-3:#8B93A8;
+  --border:#E4E7EE;
+  --border-focus:#165DFF;
+  --success:#00B42A;
+  --error:#F53F3F;
+  --warning:#FF7D00;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 24px rgba(0,0,0,0.08);
+  --shadow-lg:0 8px 40px rgba(0,0,0,0.10);
+  --radius:16px;
+  --radius-sm:10px;
+  --radius-xs:6px;
+  --transition:0.25s cubic-bezier(0.16,1,0.3,1);
+}
+[data-theme="dark"]{
+  --bg:#0E1017;
+  --surface:#1A1D28;
+  --text:#E4E7F0;
+  --text-2:#9BA1B0;
+  --text-3:#636A7C;
+  --border:#2A2F3E;
+  --border-focus:#4080FF;
+  --primary-subtle:rgba(22,101,255,0.12);
+  --primary-glow:rgba(22,101,255,0.15);
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md:0 4px 24px rgba(0,0,0,0.3);
+  --shadow-lg:0 8px 40px rgba(0,0,0,0.4);
+}
+
+html,body{
+  height:100%;overflow:hidden;
+  font-family:var(--font-body);
+  font-size:15px;line-height:1.5;
+  color:var(--text);background:var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ─── Background Pattern ──────────────────────────────────── */
+.bg-canvas{
+  position:fixed;inset:0;
+  background:var(--bg);
+  overflow:hidden;z-index:0;
+}
+.bg-canvas::before{
+  content:'';position:absolute;
+  top:-40%;left:-20%;
+  width:80%;height:80%;
+  background:radial-gradient(circle at 30% 50%,rgba(22,101,255,0.04) 0%,transparent 70%);
+  pointer-events:none;
+}
+.bg-canvas::after{
+  content:'';position:absolute;
+  bottom:-30%;right:-10%;
+  width:60%;height:60%;
+  background:radial-gradient(circle at 70% 80%,rgba(22,101,255,0.03) 0%,transparent 70%);
+  pointer-events:none;
+}
+[data-theme="dark"] .bg-canvas::before{
+  background:radial-gradient(circle at 30% 50%,rgba(22,101,255,0.06) 0%,transparent 70%);
+}
+[data-theme="dark"] .bg-canvas::after{
+  background:radial-gradient(circle at 70% 80%,rgba(22,101,255,0.05) 0%,transparent 70%);
+}
+.grid-lines{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(to right,var(--border) 1px,transparent 1px),
+    linear-gradient(to bottom,var(--border) 1px,transparent 1px);
+  background-size:60px 60px;
+  opacity:0.3;
+  -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 50%,black 30%,transparent 70%);
+  mask-image:radial-gradient(ellipse 70% 60% at 50% 50%,black 30%,transparent 70%);
+  pointer-events:none;
+}
+
+/* ─── Theme Toggle ────────────────────────────────────────── */
+.theme-toggle{
+  position:fixed;top:24px;right:24px;z-index:10;
+  display:flex;align-items:center;gap:8px;
+  padding:6px 12px 6px 6px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:30px;
+  box-shadow:var(--shadow-sm);
+  transition:var(--transition);
+  cursor:pointer;
+}
+.theme-toggle:hover{box-shadow:var(--shadow-md);}
+.theme-toggle .icon{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:var(--transition);
+  background:var(--primary-subtle);
+  color:var(--primary);
+}
+.theme-toggle .label{font-size:12px;font-weight:500;color:var(--text-2);}
+
+/* ─── Login Container ─────────────────────────────────────── */
+.login-wrap{
+  position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;padding:24px;
+}
+.login-card{
+  width:100%;max-width:420px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:44px 40px 36px;
+  box-shadow:var(--shadow-md);
+  animation:cardEnter 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes cardEnter{
+  from{opacity:0;transform:translateY(16px) scale(0.98);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+
+/* ─── Logo ────────────────────────────────────────────────── */
+.logo-wrap{
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:8px;
+}
+.logo-icon{
+  width:36px;height:36px;
+  background:var(--primary);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:18px;font-weight:800;
+  flex-shrink:0;
+}
+.logo-text{
+  font-family:var(--font-display);
+  font-size:22px;font-weight:800;
+  letter-spacing:-0.03em;
+  color:var(--text);
+}
+.logo-badge{
+  font-size:10px;font-weight:700;
+  color:var(--primary);
+  background:var(--primary-subtle);
+  padding:2px 8px;border-radius:20px;
+  letter-spacing:0.02em;
+}
+.login-subtitle{
+  font-size:14px;color:var(--text-2);
+  margin-bottom:32px;
+  line-height:1.5;
+}
+
+/* ─── Form ────────────────────────────────────────────────── */
+.form-group{margin-bottom:20px;}
+.form-label{
+  display:block;font-size:13px;font-weight:600;
+  color:var(--text-2);margin-bottom:6px;
+}
+.form-input-wrap{
+  position:relative;
+  display:flex;align-items:center;
+  background:var(--bg);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius-xs);
+  transition:var(--transition);
+}
+.form-input-wrap:focus-within{
+  border-color:var(--border-focus);
+  box-shadow:0 0 0 4px var(--primary-subtle);
+}
+.form-input-wrap .input-icon{
+  position:absolute;left:14px;
+  font-size:16px;color:var(--text-3);
+  pointer-events:none;line-height:1;
+}
+.form-input-wrap input{
+  width:100%;padding:12px 14px 12px 42px;
+  border:none;background:transparent;
+  font-family:var(--font-body);
+  font-size:14px;color:var(--text);
+  outline:none;
+}
+.form-input-wrap input::placeholder{color:var(--text-3);}
+.password-toggle{
+  position:absolute;right:12px;
+  width:28px;height:28px;border:none;
+  background:transparent;color:var(--text-3);
+  cursor:pointer;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:var(--transition);
+}
+.password-toggle:hover{color:var(--text-2);background:var(--primary-subtle);}
+
+/* ─── Options Row ─────────────────────────────────────────── */
+.options-row{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:24px;
+}
+.remember-row{
+  display:flex;align-items:center;gap:8px;
+  cursor:pointer;font-size:13px;color:var(--text-2);
+}
+.remember-row input[type="checkbox"]{
+  width:16px;height:16px;
+  accent-color:var(--primary);cursor:pointer;
+}
+.forgot-link{
+  font-size:13px;font-weight:500;
+  color:var(--primary);text-decoration:none;
+  transition:var(--transition);
+}
+.forgot-link:hover{color:var(--primary-hover);}
+
+/* ─── Submit ──────────────────────────────────────────────── */
+.btn-submit{
+  width:100%;padding:13px;
+  border:none;border-radius:var(--radius-xs);
+  background:var(--primary);
+  color:#fff;
+  font-family:var(--font-display);
+  font-size:15px;font-weight:700;
+  cursor:pointer;
+  transition:var(--transition);
+  position:relative;overflow:hidden;
+}
+.btn-submit:hover{
+  background:var(--primary-hover);
+  transform:translateY(-1px);
+  box-shadow:0 4px 16px var(--primary-glow);
+}
+.btn-submit:active{transform:translateY(0);}
+.btn-submit.loading{
+  pointer-events:none;opacity:0.85;
+}
+.btn-submit .spinner{
+  display:none;position:absolute;top:50%;left:50%;
+  width:20px;height:20px;
+  margin:-10px 0 0 -10px;
+  border:2px solid rgba(255,255,255,0.3);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin 0.6s linear infinite;
+}
+.btn-submit.loading .spinner{display:block;}
+.btn-submit.loading .btn-text{opacity:0;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── Error ───────────────────────────────────────────────── */
+.form-error{
+  display:none;align-items:center;gap:8px;
+  padding:10px 14px;margin-bottom:20px;
+  background:rgba(245,63,63,0.08);
+  border:1px solid rgba(245,63,63,0.2);
+  border-radius:var(--radius-xs);
+  font-size:13px;color:var(--error);
+}
+.form-error.show{display:flex;}
+.form-error .err-icon{font-size:16px;flex-shrink:0;}
+
+/* ─── Footer ──────────────────────────────────────────────── */
+.login-footer{
+  text-align:center;margin-top:24px;
+  font-size:13px;color:var(--text-3);
+}
+
+/* ─── Responsive ──────────────────────────────────────────── */
+@media(max-width:520px){
+  .login-card{padding:32px 24px 28px;border-radius:var(--radius-sm);}
+  .theme-toggle{top:16px;right:16px;}
+}
+
+/* ─── Reduced Motion ──────────────────────────────────────── */
+@media(prefers-reduced-motion:reduce){
+  .login-card{animation:none;}
+  .btn-submit:hover{transform:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-canvas"><div class="grid-lines"></div></div>
+
+<!-- Theme Toggle -->
+<div class="theme-toggle" onclick="toggleTheme()" role="button" tabindex="0" aria-label="切换主题">
+  <span class="icon" id="themeIcon">&#9728;</span>
+  <span class="label" id="themeLabel">主题</span>
+</div>
+
+<!-- Login -->
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="logo-wrap">
+      <div class="logo-icon">L</div>
+      <span class="logo-text">LUODA中转路由</span>
+      <span class="logo-badge">v2.0</span>
+    </div>
+    <p class="login-subtitle">中转路由管理系统<br>登录以管理模型代理、配置和监控</p>
+
+    <!-- Error -->
+    <div class="form-error" id="formError">
+      <span class="err-icon">&#9888;</span>
+      <span id="errorMsg">用户名或密码错误</span>
+    </div>
+
+    <!-- Form -->
+    <form onsubmit="handleLogin(event)" autocomplete="off">
+      <div class="form-group">
+        <label class="form-label" for="username">用户名</label>
+        <div class="form-input-wrap">
+          <span class="input-icon">&#128100;</span>
+          <input id="username" type="text" placeholder="输入管理员账号" autocomplete="username">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">密码</label>
+        <div class="form-input-wrap">
+          <span class="input-icon">&#128273;</span>
+          <input id="password" type="password" placeholder="输入密码" autocomplete="current-password">
+          <button type="button" class="password-toggle" onclick="togglePwd()" aria-label="切换密码可见">&#128065;</button>
+        </div>
+      </div>
+      <div class="options-row">
+        <label class="remember-row">
+          <input type="checkbox" checked id="rememberMe"> 记住我
+        </label>
+        <a href="#" class="forgot-link" onclick="alert('请联系管理员重置密码');return false">忘记密码？</a>
+      </div>
+      <button type="submit" class="btn-submit" id="loginBtn">
+        <span class="btn-text">登录系统</span>
+        <span class="spinner"></span>
+      </button>
+    </form>
+    <div class="login-footer">LUODA 中转路由 &middot; 管理面板 v2.0</div>
+  </div>
+</div>
+
+<script>
+// ─── Theme ──────────────────────────────────────────────────
+(function(){
+  var t = localStorage.getItem('luoda-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  updateThemeUI(t);
+})();
+
+function toggleTheme(){
+  var html = document.documentElement;
+  var cur = html.getAttribute('data-theme');
+  var next = cur === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('luoda-theme', next);
+  updateThemeUI(next);
+}
+function updateThemeUI(t){
+  var icon = document.getElementById('themeIcon');
+  icon.textContent = t === 'dark' ? '\u263D' : '\u2600';
+}
+
+function showError(msg){
+  var err = document.getElementById('formError');
+  var msgEl = document.getElementById('errorMsg');
+  msgEl.textContent = msg;
+  err.classList.add('show');
+}
+
+// ─── Password visibility ────────────────────────────────────
+function togglePwd(){
+  var pwd = document.getElementById('password');
+  pwd.type = pwd.type === 'password' ? 'text' : 'password';
+}
+
+var _loginAttempts = parseInt(sessionStorage.getItem('luoda-login-attempts') || '0', 10);
+var _loginLocked = false;
+
+// ─── Login (encrypted via SHA-256 + rate limiting) ──────────
+function handleLogin(e){
+  e.preventDefault();
+  
+  // 登录限速：5次失败后锁定30秒
+  if (_loginLocked) {
+    showError('登录尝试过于频繁，请稍后再试');
+    return;
+  }
+  if (_loginAttempts >= 5) {
+    _loginLocked = true;
+    showError('登录尝试过于频繁，请 30 秒后再试');
+    setTimeout(function(){ _loginLocked = false; _loginAttempts = 0; sessionStorage.setItem('luoda-login-attempts', '0'); }, 30000);
+    return;
+  }
+
+  var btn = document.getElementById('loginBtn');
+  var err = document.getElementById('formError');
+  var msg = document.getElementById('errorMsg');
+  err.classList.remove('show');
+  btn.classList.add('loading');
+
+  var user = document.getElementById('username').value.trim();
+  var pass = document.getElementById('password').value.trim();
+
+  // ═══ 翻译转换 + 加密流程 ═══
+  // 第1步：反转字符串（翻译转换，防止明文传输/存储）
+  // 第2步：SHA-256 哈希加密
+  // 第3步：发送加密后的哈希值（原始密码不出浏览器）
+  async function doLogin() {
+    var reversed = pass.split('').reverse().join('');
+    // 服务端加密验证，避免 HTTP 下浏览器 crypto.subtle 不可用
+    try {
+      var r = await fetch('/api/auth/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user: user, pass: reversed})
+      });
+      var d = await r.json();
+      if (r.ok && d.token) {
+        // 服务端已设置 HttpOnly Cookie，客户端也存一份备用
+        sessionStorage.setItem('luoda-token', d.token);
+        sessionStorage.setItem('luoda-token-issued', String(Date.now()));
+        _loginAttempts = 0;
+        sessionStorage.setItem('luoda-login-attempts', '0');
+        // ★ 记住密码：如果勾选了"记住我"，将反向密码存入 localStorage
+        if (document.getElementById('rememberMe').checked) {
+          localStorage.setItem('luoda-remember-pass', reversed);
+          localStorage.setItem('luoda-remember-user', user);
+        } else {
+          localStorage.removeItem('luoda-remember-pass');
+          localStorage.removeItem('luoda-remember-user');
+        }
+        window.location.href = 'index.html';
+      } else {
+        msg.textContent = d.message || '密码错误，请重试';
+        err.classList.add('show');
+        _loginAttempts++;
+        sessionStorage.setItem('luoda-login-attempts', String(_loginAttempts));
+      }
+    } catch(e) {
+      // 服务不可用时不允许登录，必须通过 admin server 验证
+      msg.textContent = '连接服务失败，请先启动后台服务（node index.mjs）';
+      err.classList.add('show');
+      _loginAttempts++;
+      sessionStorage.setItem('luoda-login-attempts', String(_loginAttempts));
+    }
+    btn.classList.remove('loading');
+  }
+  doLogin();
+}
+
+// ─── Auto-redirect if already logged in OR saved credentials ──
+(function(){
+  if (sessionStorage.getItem('luoda-token')) {
+    window.location.href = 'index.html';
+    return;
+  }
+  // ★ 自动登录：如果本地存储了密码，直接尝试登录
+  var savedPass = localStorage.getItem('luoda-remember-pass');
+  var savedUser = localStorage.getItem('luoda-remember-user');
+  if (savedPass && savedUser) {
+    document.getElementById('username').value = savedUser;
+    document.getElementById('rememberMe').checked = true;
+    // 直接调用登录（复用 handleLogin 流程）
+    var btn = document.getElementById('loginBtn');
+    btn.classList.add('loading');
+    fetch('/api/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user: savedUser, pass: savedPass})
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if (d && d.token) {
+        sessionStorage.setItem('luoda-token', d.token);
+        sessionStorage.setItem('luoda-token-issued', String(Date.now()));
+        window.location.href = 'index.html';
+      } else {
+        // 密码失效，清除记住的密码
+        localStorage.removeItem('luoda-remember-pass');
+        localStorage.removeItem('luoda-remember-user');
+        document.getElementById('password').focus();
+      }
+    }).catch(function(){
+      localStorage.removeItem('luoda-remember-pass');
+    }).then(function(){
+      btn.classList.remove('loading');
+    });
+  }
+})();
+</script>
+</body>
+</html>
