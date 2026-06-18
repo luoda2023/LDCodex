@@ -1759,7 +1759,7 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
                 );
                 // Auto-start bridge for ChatCompletions protocol
                 if relay.protocol == codex_plus_core::settings::RelayProtocol::ChatCompletions {
-                    log::info!("ChatCompletions profile detected, auto-starting bridge");
+                    eprintln!("ChatCompletions profile detected, auto-starting bridge");
                     let _ = start_bridge(Some(40000));
                 }
                 ok(
