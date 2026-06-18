@@ -1,12 +1,8 @@
-{
+﻿{
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -21,14 +17,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    },
-    "ignoreDeprecations": "6.0"
+      "@/*": ["./src/*"]
+    }
   },
-  "include": [
-    "src"
-  ],
-  "references": []
+  "include": ["src"]
 }

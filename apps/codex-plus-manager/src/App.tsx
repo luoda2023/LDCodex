@@ -160,6 +160,10 @@ type RelayProfile = {
   autoCompactLimit: string;
   modelList: string;
   userAgent: string;
+  modelInsertMode: RelayModelInsertMode;
+  visionBaseUrl: string;
+  visionApiKey: string;
+  visionModel: string;
 };
 
 type RelayContextSelection = {
@@ -185,6 +189,7 @@ type CodexContextEntries = {
   plugins: CodexContextEntry[];
 };
 
+type RelayModelInsertMode = "modelCatalog" | "patch";
 type RelayProtocol = "responses" | "chatCompletions";
 type RelayMode = "official" | "mixedApi" | "pureApi";
 const PROTOCOL_PROXY_BASE_URL = "http://127.0.0.1:37000/v1";
@@ -244,16 +249,6 @@ type BridgeStatusPayload = {
 };
 
 
-type LogsPayload = {
-  text: string;
-  path: string;
-};
-
-type BridgeStatusPayload = {
-  running: boolean;
-  port: number;
-  message: string;
-};
 
 type RelayPayload = Omit<RelayResult, "status" | "message">;
 
@@ -530,6 +525,9 @@ const defaultSettings: BackendSettings = {
 
   codexAppUpstreamWorktreeCreate: true,
   codexAppNativeMenuPlacement: true,
+  zedRemoteOpenStrategy: "addToFocusedWorkspace" as ZedOpenStrategy,
+  zedRemoteProjectRegistryEnabled: true,
+  zedRemoteSyncToZedSettings: false,
   codexAppServiceTierControls: false,
   codexAppImageOverlayEnabled: false,
   codexAppImageOverlayPath: "",
@@ -559,6 +557,10 @@ const defaultSettings: BackendSettings = {
       autoCompactLimit: "",
       modelList: "",
       userAgent: "",
+      modelInsertMode: "patch",
+      visionBaseUrl: "",
+      visionApiKey: "",
+      visionModel: "",
     },
   ],
   relayCommonConfigContents: "",
@@ -593,6 +595,8 @@ export function App() {
   });
   const prevLaunchStatusRef = useRef<string | null>(null);
   const [settingsForm, setSettingsForm] = useState<BackendSettings>({ ...defaultSettings });
+  const [scriptMarket, setScriptMarket] = useState<any>(null);
+  const [zedRemoteProjects, setZedRemoteProjects] = useState<any>(null);
   const [providerSyncProgress, setProviderSyncProgress] = useState<ProviderSyncProgress>({
     active: false,
     percent: 0,
@@ -672,7 +676,7 @@ export function App() {
     const result = await run(() => call<SettingsResult>("set_user_script_enabled", { key, enabled }));
     if (result) {
       setSettings(result);
-      setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
+      setScriptMarket((current: any) => syncMarketInstalledState(current, result.user_scripts));
       showResultNotice("本地脚本", result);
     }
   };
@@ -684,7 +688,7 @@ export function App() {
     const result = await run(() => call<SettingsResult>("delete_user_script", { key }));
     if (result) {
       setSettings(result);
-      setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
+      setScriptMarket((current: any) => syncMarketInstalledState(current, result.user_scripts));
       showResultNotice("本地脚本", result);
     }
   };
@@ -1468,7 +1472,7 @@ const closeWindow = async () => {
       showMessage: async (title: string, message: string, status?: Status) => showNotice(title, message, status),
       copyLogs: () => copyText(logs?.text ?? "", "日志已复制。"),
       copyDiagnostics: () => copyText(diagnostics?.report ?? "", "诊断报告已复制。"),
-      goLogs: () => {},
+      goLogs: async () => {},
       checkHealth: async () => {
         await refreshOverview(true);
         await refreshRelay(true);
@@ -1481,6 +1485,7 @@ const closeWindow = async () => {
       disableWatcher: () => watcherAction("disable_watcher"),
       toggleTheme: () => setTheme((current) => (current === "dark" ? "light" : "dark")),
     }),
+    []
   );
   const hasUpdate = update?.updateAvailable === true;
 
@@ -1615,7 +1620,7 @@ const closeWindow = async () => {
             <ProxyScreen
               overview={overview}
               launchForm={launchForm}
-              onLaunchFormChange={onLaunchFormChange}
+              onLaunchFormChange={setLaunchForm}
               actions={actions}
               settings={settings}
             />
@@ -2192,7 +2197,7 @@ function ProxyScreen({
   const refreshBridgeStatus = async () => {
     try {
       const result = await run(() => call<CommandResult<BridgeStatusPayload>>('bridge_status'));
-      if (result) setBridgeRunning(result.payload.running);
+      if (result && typeof (result).running === "boolean") setBridgeRunning(result.running);
     } catch (_) {}
   };
   useEffect(() => { refreshBridgeStatus(); }, []);
@@ -2202,7 +2207,7 @@ function ProxyScreen({
       const result = await run(() => call<CommandResult<BridgeStatusPayload>>('start_bridge', { port: 40000 }));
       if (result) {
         setLocalNotice({title:'代理服务器', message: result.message, status: result.status});
-        if (result.status === 'ok' || result.payload?.running) setBridgeRunning(true);
+        if (result.status === 'ok' || (result).running) setBridgeRunning(true);
       }
     } catch (_) { setLocalNotice({title:'代理服务器', message: '启动失败', status: 'failed'}); }
     setChecking(false);
@@ -2223,7 +2228,7 @@ function ProxyScreen({
   const handleReadLogs = async () => {
     try {
       const result = await run(() => call<CommandResult<LogsPayload>>('read_bridge_logs'));
-      if (result) setBridgeLogs(result.payload.text);
+      if (result && (result).text) setBridgeLogs(result.text);
     } catch (_) {}
   };
   return (
@@ -2525,7 +2530,7 @@ function RelayProfileList({
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    }),
+    })
   );
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -2726,7 +2731,7 @@ function RelayProfileDetail({
   actions: Actions;
 }) {
   const [draft, setDraft] = useState<RelayProfile>(profile);
-  const isActive = !isNew && profile.id === form.activeRelayId;
+const isActive = !isNew && profile.id === form.activeRelayId;
   useEffect(() => {
     setDraft(
       deriveRelayProfileFromFiles(
@@ -4285,6 +4290,10 @@ function normalizeSettings(settings: BackendSettings): BackendSettings {
             autoCompactLimit: "",
             modelList: "",
             userAgent: "",
+            modelInsertMode: "patch" as RelayModelInsertMode,
+            visionBaseUrl: "",
+            visionApiKey: "",
+            visionModel: "",
           },
         ];
   const activeRelayId = profiles.some((profile) => profile.id === settings.activeRelayId)
@@ -4408,6 +4417,7 @@ function relayProfileModeSwitchedText(profile: RelayProfile): string {
 }
 
 function withGeneratedRelayFiles(profile: RelayProfile): RelayProfile {
+  const castInsertMode = profile.modelInsertMode as RelayModelInsertMode;
   if (profile.relayMode === "official") {
     return {
       ...profile,
@@ -4463,6 +4473,7 @@ function buildOfficialRelayAuthJson(contents: string): string {
 }
 
 function deriveRelayProfileFromFiles(profile: RelayProfile): RelayProfile {
+  const modelInsertMode = profile.modelInsertMode as RelayModelInsertMode;
   const configContents = profile.configContents || "";
   const authContents = profile.relayMode === "official" ? buildOfficialRelayAuthJson(profile.authContents || "") : profile.authContents || "";
   const configBaseUrl = codexBaseUrlFromConfig(configContents);
@@ -4819,6 +4830,10 @@ function createRelayProfile(settings: BackendSettings): RelayProfile {
     autoCompactLimit: "",
     modelList: "",
     userAgent: "",
+    modelInsertMode: "patch" as RelayModelInsertMode,
+    visionBaseUrl: "",
+    visionApiKey: "",
+    visionModel: "",
   };
   return withGeneratedRelayFiles(next);
 }

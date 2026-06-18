@@ -1,4 +1,5 @@
 ﻿#![cfg_attr(windows, windows_subsystem = "windows")]
+#![allow(dead_code)]
 
 use anyhow::{Context, Result};
 use codex_plus_core::launcher::{

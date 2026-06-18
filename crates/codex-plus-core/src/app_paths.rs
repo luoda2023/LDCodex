@@ -391,6 +391,7 @@ fn get_exe_version(exe_path: &Path) -> Option<String> {
 
 #[cfg(windows)]
 #[repr(C)]
+#[allow(non_snake_case)]
 struct VS_FIXEDFILEINFO {
     dwSignature: u32,
     dwStrucVersion: u32,
