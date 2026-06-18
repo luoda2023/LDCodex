@@ -2187,7 +2187,7 @@ function ProxyScreen({
   const savedCodexAppPath = settings?.settings.codexAppPath ?? '';
   const refreshBridgeStatus = async () => {
     try {
-      const result = await invoke<CommandResult<BridgeStatusPayload>>('bridge_status'));
+      const result = await invoke<CommandResult<BridgeStatusPayload>>('bridge_status');
       if (result) setBridgeRunning(result.payload.running);
     } catch (_) {}
   };
@@ -2207,7 +2207,7 @@ function ProxyScreen({
   const handleStop = async () => {
     setChecking(true);
     try {
-      const result = await invoke<CommandResult<BridgeStatusPayload>>('stop_bridge'));
+      const result = await invoke<CommandResult<BridgeStatusPayload>>('stop_bridge');
       if (result) {
         setLocalNotice({title:'代理服务器', message: result.message, status: result.status});
         setBridgeRunning(false);
@@ -2218,7 +2218,7 @@ function ProxyScreen({
   };
   const handleReadLogs = async () => {
     try {
-      const result = await invoke<CommandResult<LogsPayload>>('read_bridge_logs'));
+      const result = await invoke<CommandResult<LogsPayload>>('read_bridge_logs');
       if (result) setBridgeLogs(result.payload.text);
     } catch (_) {}
   };
