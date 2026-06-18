@@ -2184,6 +2184,10 @@ function ProxyScreen({
       return () => clearTimeout(timer);
     }
   }, [localNotice]);
+  const call = <T,>(command: string, args?: Record<string, unknown>) => invoke<T>(command, args);
+  const run = async <T,>(task: () => Promise<T>): Promise<T | null> => {
+    try { return await task(); } catch { return null; }
+  };
   const savedCodexAppPath = settings?.settings.codexAppPath ?? '';
   const refreshBridgeStatus = async () => {
     try {
