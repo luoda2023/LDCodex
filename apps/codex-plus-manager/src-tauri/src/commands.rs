@@ -293,8 +293,8 @@ where
 fn load_overview_sync() -> CommandResult<OverviewPayload> {
     let (codex_app_path, entrypoints, latest_launch) = load_overview_payload();
     ok(
-        "姒傝宸插姞杞姐€?,
-        OverviewPayload {
+        "概览已加载。,
+        "概览已加载。",
 
             codex_app: path_state(codex_app_path),
             silent_shortcut: shortcut_state(entrypoints.silent_shortcut),
@@ -317,8 +317,8 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
     let payload = tauri::async_runtime::spawn_blocking(load_overview_payload).await;
     let Ok((codex_app_path, entrypoints, latest_launch)) = payload else {
         return failed(
-            "姒傝鍚庡彴浠诲姟澶辫触銆?,
-            OverviewPayload {
+            "概览后台任务失败銆?,
+            "概览后台任务失败。",
 
                 management_shortcut: path_state(None),
                 latest_launch: None,
@@ -334,7 +334,7 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
         );
     };
     ok(
-        "姒傝宸插姞杞姐€?,
+        "概览已加载。,
         OverviewPayload {
 
             silent_shortcut: shortcut_state(entrypoints.silent_shortcut),
@@ -535,7 +535,7 @@ pub fn open_zed_remote(payload: Value) -> CommandResult<ZedRemoteOpenPayload> {
         .to_string();
     if result.get("status").and_then(Value::as_str) == Some("ok") {
         return ok(
-            "宸插湪 Zed Remote 鎵撳紑椤圭洰銆?,
+            "宸插湪 Zed Remote 打开椤圭洰銆?,
             ZedRemoteOpenPayload { url, strategy },
         );
     }
@@ -543,7 +543,7 @@ pub fn open_zed_remote(payload: Value) -> CommandResult<ZedRemoteOpenPayload> {
         result
             .get("message")
             .and_then(Value::as_str)
-            .unwrap_or("鏃犳硶鍦?Zed Remote 鎵撳紑椤圭洰銆?),
+            .unwrap_or("鏃犳硶鍦?Zed Remote 打开椤圭洰銆?),
         ZedRemoteOpenPayload { url, strategy },
     )
 }
@@ -1110,11 +1110,11 @@ pub fn delete_user_script(key: String) -> CommandResult<SettingsPayload> {
 pub fn open_external_url(url: String) -> CommandResult<Value> {
     let trimmed = url.trim();
     if !(trimmed.starts_with("https://") || trimmed.starts_with("http://")) {
-        return failed("鍙厑璁告墦寮€ http 鎴?https 閾炬帴銆?, json!({}));
+        return failed("只允许打开 http 或 https 链接銆?, json!({}));
     }
     match open_url(trimmed) {
-        Ok(()) => ok("宸插湪绯荤粺娴忚鍣ㄦ墦寮€閾炬帴銆?, json!({ "url": trimmed })),
-        Err(error) => failed(&format!("鎵撳紑閾炬帴澶辫触锛歿error}"), json!({ "url": trimmed })),
+        Ok(()) => ok("已在系统浏览器打开链接銆?, json!({ "url": trimmed })),
+        Err(error) => failed(&format!("打开閾炬帴澶辫触锛歿error}"), json!({ "url": trimmed })),
     }
 }
 
@@ -2326,7 +2326,7 @@ fn builtin_user_scripts_dir() -> PathBuf {
 fn diagnostics_report() -> String {
     let (codex_app_path, entrypoints, latest_launch) = load_overview_payload();
     let overview = ok(
-        "姒傝宸插姞杞姐€?,
+        "概览已加载。,
         OverviewPayload {
 
             latest_launch,
@@ -2595,10 +2595,10 @@ mod tests {
         assert_eq!(result.status, "ok");
         assert!(!result.payload.current_version.is_empty());
         assert!(
-
+        assert!(matches!(
+            result.payload.silent_shortcut.status.as_str(),
             "installed" | "missing"
         ));
-    }
 
     #[test]
     fn update_install_requires_release_payload() {
@@ -3069,7 +3069,7 @@ model_reasoning_effort = "high"
         let result = open_external_url("file:///C:/Windows/win.ini".to_string());
 
         assert_eq!(result.status, "failed");
-        assert!(result.message.contains("鍙厑璁告墦寮€ http 鎴?https 閾炬帴"));
+        assert!(result.message.contains("只允许打开 http 或 https 链接"));
     }
 }
 
