@@ -40,8 +40,7 @@ pub struct PathState {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct OverviewPayload {
-
-    
+    pub codex_app: PathState,
     pub silent_shortcut: PathState,
     pub management_shortcut: PathState,
     pub latest_launch: Option<LaunchStatus>,
@@ -257,7 +256,7 @@ pub struct StartupPayload {
 #[tauri::command]
 pub fn backend_version() -> CommandResult<VersionPayload> {
     ok(
-        "鍚庣鐗堟湰宸茶鍙栥€?,
+        "后端版本已读取。",
         VersionPayload {
             version: codex_plus_core::version::VERSION.to_string(),
         },
@@ -267,7 +266,7 @@ pub fn backend_version() -> CommandResult<VersionPayload> {
 #[tauri::command]
 pub fn startup_options() -> CommandResult<StartupPayload> {
     ok(
-        "鍚姩鍙傛暟宸茶鍙栥€?,
+        "启动参数已读取。",
         StartupPayload {
             show_update: startup_should_show_update(),
         },
@@ -293,9 +292,8 @@ where
 fn load_overview_sync() -> CommandResult<OverviewPayload> {
     let (codex_app_path, entrypoints, latest_launch) = load_overview_payload();
     ok(
-        "概览已加载。,
         "概览已加载。",
-
+        OverviewPayload {
             codex_app: path_state(codex_app_path),
             silent_shortcut: shortcut_state(entrypoints.silent_shortcut),
             management_shortcut: shortcut_state(entrypoints.management_shortcut),
@@ -317,9 +315,10 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
     let payload = tauri::async_runtime::spawn_blocking(load_overview_payload).await;
     let Ok((codex_app_path, entrypoints, latest_launch)) = payload else {
         return failed(
-            "概览后台任务失败銆?,
             "概览后台任务失败。",
-
+            OverviewPayload {
+                codex_app: path_state(None),
+                silent_shortcut: path_state(None),
                 management_shortcut: path_state(None),
                 latest_launch: None,
                 current_version: codex_plus_core::version::VERSION.to_string(),
@@ -334,9 +333,9 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
         );
     };
     ok(
-        "概览已加载。,
+        "概览已加载。",
         OverviewPayload {
-
+            codex_app: path_state(codex_app_path),
             silent_shortcut: shortcut_state(entrypoints.silent_shortcut),
             management_shortcut: shortcut_state(entrypoints.management_shortcut),
             latest_launch,
@@ -354,14 +353,14 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
 
 #[tauri::command]
 pub fn launch_codex_plus(request: LaunchRequest) -> CommandResult<Value> {
-    spawn_codex_plus_launch(request, "鍚姩浠诲姟宸插湪鍚庡彴寮€濮嬶紝鍙◢鍚庢煡鐪嬫瑙堢姸鎬併€?)
+    spawn_codex_plus_launch(request, "启动任务已在后台开始，可稍后查看概览状态。")
 }
 
 #[tauri::command]
 pub fn restart_codex_plus(request: LaunchRequest) -> CommandResult<Value> {
     codex_plus_core::watcher::stop_launcher_processes();
     codex_plus_core::watcher::stop_codex_processes();
-    spawn_codex_plus_launch(request, "Codex 宸茶姹傞噸鍚紝鍚姩浠诲姟姝ｅ湪鍚庡彴杩愯銆?)
+    spawn_codex_plus_launch(request, "Codex 已请求重启，启动任务正在后台运行。")
 }
 
 fn spawn_codex_plus_launch(request: LaunchRequest, accepted_message: &str) -> CommandResult<Value> {
@@ -385,7 +384,7 @@ fn spawn_codex_plus_launch(request: LaunchRequest, accepted_message: &str) -> Co
             }),
         },
         Err(error) => failed(
-            &format!("鍚姩闈欓粯鍏ュ彛澶辫触锛歿error}"),
+            &format!("启动静默入口失败：{error}"),
             json!({
                 "debugPort": debug_port,
                 "helperPort": helper_port
@@ -413,12 +412,12 @@ fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
     command
         .spawn()
         .map(|_| ())
-        .map_err(|error| anyhow::anyhow!("鏃犳硶鍚姩 {}锛歿error}", launcher.to_string_lossy()))
+        .map_err(|error| anyhow::anyhow!("无法启动 {}：{error}", launcher.to_string_lossy()))
 }
 
 #[tauri::command]
 pub fn load_settings() -> CommandResult<SettingsPayload> {
-    settings_payload("璁剧疆宸插姞杞姐€?, "璁剧疆璇诲彇澶辫触")
+    settings_payload("设置已加载。", "设置读取失败")
 }
 
 #[tauri::command]
@@ -428,12 +427,12 @@ pub fn save_settings(settings: BackendSettings) -> CommandResult<SettingsPayload
         Ok(()) => {
             let wrapper_message = refresh_cli_wrapper_after_settings_save(&settings);
             settings_payload(
-                &format!("璁剧疆宸蹭繚瀛樸€倇wrapper_message}"),
-                "璁剧疆淇濆瓨鍚庨噸鏂拌鍙栧け璐?,
+                &format!("设置已保存。{wrapper_message}"),
+                "设置保存后重新读取失败",
             )
         }
         Err(error) => failed(
-            &format!("淇濆瓨璁剧疆澶辫触锛歿error}"),
+            &format!("保存设置失败：{error}"),
             SettingsPayload {
                 settings,
                 settings_path: codex_plus_core::paths::default_settings_path()
@@ -482,12 +481,12 @@ pub fn list_local_sessions() -> CommandResult<LocalSessionsPayload> {
     };
     if errors.is_empty() {
         ok(
-            &format!("宸茶鍙?{} 涓湰鍦颁細璇濄€?, payload.sessions.len()),
+            &format!("已读取 {} 个本地会话。", payload.sessions.len()),
             payload,
         )
     } else {
         failed(
-            &format!("璇诲彇閮ㄥ垎鏈湴浼氳瘽澶辫触锛歿}", errors.join("; ")),
+            &format!("读取部分本地会话失败：{}", errors.join("; ")),
             payload,
         )
     }
@@ -505,7 +504,7 @@ pub fn list_zed_remote_projects() -> CommandResult<ZedRemoteProjectsPayload> {
         )
         .unwrap_or_default();
         return ok(
-            &format!("宸茶鍙?{} 涓?Zed 杩滅▼椤圭洰銆?, projects.len()),
+            &format!("已读取 {} 个 Zed 远程项目。", projects.len()),
             ZedRemoteProjectsPayload { projects },
         );
     }
@@ -513,7 +512,7 @@ pub fn list_zed_remote_projects() -> CommandResult<ZedRemoteProjectsPayload> {
         result
             .get("message")
             .and_then(Value::as_str)
-            .unwrap_or("璇诲彇 Zed 杩滅▼椤圭洰澶辫触銆?),
+            .unwrap_or("读取 Zed 远程项目失败。"),
         ZedRemoteProjectsPayload {
             projects: Vec::new(),
         },
@@ -535,7 +534,7 @@ pub fn open_zed_remote(payload: Value) -> CommandResult<ZedRemoteOpenPayload> {
         .to_string();
     if result.get("status").and_then(Value::as_str) == Some("ok") {
         return ok(
-            "宸插湪 Zed Remote 打开椤圭洰銆?,
+            "已在 Zed Remote 打开项目。",
             ZedRemoteOpenPayload { url, strategy },
         );
     }
@@ -543,7 +542,7 @@ pub fn open_zed_remote(payload: Value) -> CommandResult<ZedRemoteOpenPayload> {
         result
             .get("message")
             .and_then(Value::as_str)
-            .unwrap_or("鏃犳硶鍦?Zed Remote 打开椤圭洰銆?),
+            .unwrap_or("无法在 Zed Remote 打开项目。"),
         ZedRemoteOpenPayload { url, strategy },
     )
 }
@@ -557,7 +556,7 @@ pub fn forget_zed_remote_project(id: String) -> CommandResult<ZedRemoteProjectsP
             result
                 .get("message")
                 .and_then(Value::as_str)
-                .unwrap_or("绉婚櫎 Zed 杩滅▼椤圭洰澶辫触銆?),
+                .unwrap_or("移除 Zed 远程项目失败。"),
             ZedRemoteProjectsPayload {
                 projects: Vec::new(),
             },
@@ -571,11 +570,11 @@ pub fn delete_local_session(request: DeleteLocalSessionRequest) -> CommandResult
     let session_id = request.session_id.trim();
     if session_id.is_empty() {
         return failed(
-            "浼氳瘽 ID 涓嶈兘涓虹┖銆?,
+            "会话 ID 不能为空。",
             DeleteResult {
                 status: codex_plus_core::models::DeleteStatus::Failed,
                 session_id: String::new(),
-                message: "浼氳瘽 ID 涓嶈兘涓虹┖銆?.to_string(),
+                message: "会话 ID 不能为空。".to_string(),
                 undo_token: None,
                 backup_path: None,
             },
@@ -890,11 +889,11 @@ pub async fn load_provider_sync_targets() -> CommandResult<Value> {
                 .collect::<Vec<_>>();
             merge_manual_provider_sync_targets(&mut targets, &manual, &settings);
             ok(
-                "Provider 鍚屾鐩爣宸插姞杞姐€?,
+                "Provider 同步目标已加载。",
                 serde_json::to_value(targets).unwrap_or_else(|_| json!({})),
             )
         }
-        Err(error) => failed(&format!("Provider 鍚屾鐩爣鍔犺浇澶辫触锛歿error}"), json!({})),
+        Err(error) => failed(&format!("Provider 同步目标加载失败：{error}"), json!({})),
     }
 }
 
@@ -958,7 +957,7 @@ pub async fn sync_providers_now(target_provider: Option<String>) -> CommandResul
             }
             ok(
                 &format!(
-                    "渚涘簲鍟嗗凡鍚屾涓€娆★細{} 涓細璇濇枃浠讹紝{} 琛岀储寮曪紝璺宠繃 {} 涓崰鐢ㄦ枃浠躲€?,
+                    "供应商已同步一次：{} 个会话文件，{} 行索引，跳过 {} 个占用文件。",
                     sync.changed_session_files,
                     sync.sqlite_rows_updated,
                     sync.skipped_locked_rollout_files.len()
@@ -979,7 +978,7 @@ pub async fn sync_providers_now(target_provider: Option<String>) -> CommandResul
                 }),
             )
         }
-        Err(error) => failed(&format!("渚涘簲鍟嗗悓姝ュけ璐ワ細{error}"), json!({})),
+        Err(error) => failed(&format!("供应商同步失败：{error}"), json!({})),
     }
 }
 
@@ -1015,12 +1014,12 @@ fn persist_provider_sync_selection(provider: &str) {
 pub async fn refresh_script_market() -> CommandResult<ScriptMarketPayload> {
     match script_market::fetch_market_manifest(script_market::DEFAULT_MARKET_INDEX_URL).await {
         Ok(manifest) => ok(
-            "鑴氭湰甯傚満宸插埛鏂般€?,
-            script_market_payload_from_manifest(&manifest, "ok", "鑴氭湰甯傚満宸插埛鏂般€?),
+            "脚本市场已刷新。",
+            script_market_payload_from_manifest(&manifest, "ok", "脚本市场已刷新。"),
         ),
         Err(error) => failed(
-            &format!("鑴氭湰甯傚満鍔犺浇澶辫触锛歿error}"),
-            failed_script_market_payload(&format!("鑴氭湰甯傚満鍔犺浇澶辫触锛歿error}")),
+            &format!("脚本市场加载失败：{error}"),
+            failed_script_market_payload(&format!("脚本市场加载失败：{error}")),
         ),
     }
 }
@@ -1030,8 +1029,8 @@ pub async fn install_market_script(id: String) -> CommandResult<ScriptMarketPayl
     let trimmed = id.trim();
     if trimmed.is_empty() {
         return failed(
-            "鑴氭湰 id 涓嶈兘涓虹┖銆?,
-            failed_script_market_payload("鑴氭湰 id 涓嶈兘涓虹┖銆?),
+            "脚本 id 不能为空。",
+            failed_script_market_payload("脚本 id 不能为空。"),
         );
     }
     let manifest =
@@ -1039,29 +1038,29 @@ pub async fn install_market_script(id: String) -> CommandResult<ScriptMarketPayl
             Ok(manifest) => manifest,
             Err(error) => {
                 return failed(
-                    &format!("鑴氭湰甯傚満鍔犺浇澶辫触锛歿error}"),
-                    failed_script_market_payload(&format!("鑴氭湰甯傚満鍔犺浇澶辫触锛歿error}")),
+                    &format!("脚本市场加载失败：{error}"),
+                    failed_script_market_payload(&format!("脚本市场加载失败：{error}")),
                 );
             }
         };
     let Some(script) = manifest.scripts.iter().find(|script| script.id == trimmed) else {
         return failed(
-            "甯傚満娓呭崟涓湭鎵惧埌璇ヨ剼鏈€?,
-            script_market_payload_from_manifest(&manifest, "failed", "甯傚満娓呭崟涓湭鎵惧埌璇ヨ剼鏈€?),
+            "市场清单中未找到该脚本。",
+            script_market_payload_from_manifest(&manifest, "failed", "市场清单中未找到该脚本。"),
         );
     };
     let manager = default_user_script_manager();
     match script_market::install_market_script(&manager, script).await {
         Ok(()) => ok(
-            "鑴氭湰宸插畨瑁呫€?,
-            script_market_payload_from_manifest(&manifest, "ok", "鑴氭湰宸插畨瑁呫€?),
+            "脚本已安装。",
+            script_market_payload_from_manifest(&manifest, "ok", "脚本已安装。"),
         ),
         Err(error) => failed(
-            &format!("瀹夎鑴氭湰澶辫触锛歿error}"),
+            &format!("安装脚本失败：{error}"),
             script_market_payload_from_manifest(
                 &manifest,
                 "failed",
-                &format!("瀹夎鑴氭湰澶辫触锛歿error}"),
+                &format!("安装脚本失败：{error}"),
             ),
         ),
     }
@@ -1071,20 +1070,20 @@ pub async fn install_market_script(id: String) -> CommandResult<ScriptMarketPayl
 pub fn set_user_script_enabled(key: String, enabled: bool) -> CommandResult<SettingsPayload> {
     let trimmed = key.trim();
     if trimmed.is_empty() {
-        return failed("鑴氭湰 key 涓嶈兘涓虹┖銆?, fallback_settings_payload());
+        return failed("脚本 key 不能为空。", fallback_settings_payload());
     }
     let manager = default_user_script_manager();
     match manager.set_script_enabled(trimmed, enabled) {
         Ok(_) => settings_payload(
             if enabled {
-                "鑴氭湰宸插惎鐢ㄣ€?
+                "脚本已启用。"
             } else {
-                "鑴氭湰宸茬鐢ㄣ€?
+                "脚本已禁用。"
             },
-            "鑴氭湰鍚仠澶辫触",
+            "脚本启停失败",
         ),
         Err(error) => failed(
-            &format!("鑴氭湰鍚仠澶辫触锛歿error}"),
+            &format!("脚本启停失败：{error}"),
             fallback_settings_payload(),
         ),
     }
@@ -1094,13 +1093,13 @@ pub fn set_user_script_enabled(key: String, enabled: bool) -> CommandResult<Sett
 pub fn delete_user_script(key: String) -> CommandResult<SettingsPayload> {
     let trimmed = key.trim();
     if trimmed.is_empty() {
-        return failed("鑴氭湰 key 涓嶈兘涓虹┖銆?, fallback_settings_payload());
+        return failed("脚本 key 不能为空。", fallback_settings_payload());
     }
     let manager = default_user_script_manager();
     match manager.delete_user_script(trimmed) {
-        Ok(_) => settings_payload("鑴氭湰宸插垹闄ゃ€?, "鑴氭湰鍒犻櫎澶辫触"),
+        Ok(_) => settings_payload("脚本已删除。", "脚本删除失败"),
         Err(error) => failed(
-            &format!("鑴氭湰鍒犻櫎澶辫触锛歿error}"),
+            &format!("脚本删除失败：{error}"),
             fallback_settings_payload(),
         ),
     }
@@ -1110,11 +1109,11 @@ pub fn delete_user_script(key: String) -> CommandResult<SettingsPayload> {
 pub fn open_external_url(url: String) -> CommandResult<Value> {
     let trimmed = url.trim();
     if !(trimmed.starts_with("https://") || trimmed.starts_with("http://")) {
-        return failed("只允许打开 http 或 https 链接銆?, json!({}));
+        return failed("只允许打开 http 或 https 链接。", json!({}));
     }
     match open_url(trimmed) {
-        Ok(()) => ok("已在系统浏览器打开链接銆?, json!({ "url": trimmed })),
-        Err(error) => failed(&format!("打开閾炬帴澶辫触锛歿error}"), json!({ "url": trimmed })),
+        Ok(()) => ok("已在系统浏览器打开链接。", json!({ "url": trimmed })),
+        Err(error) => failed(&format!("打开链接失败：{error}"), json!({ "url": trimmed })),
     }
 }
 
@@ -1122,21 +1121,21 @@ pub fn open_external_url(url: String) -> CommandResult<Value> {
 pub async fn install_entrypoints() -> InstallActionResult {
     tauri::async_runtime::spawn_blocking(install::install_entrypoints)
         .await
-        .unwrap_or_else(|error| install_background_failure("瀹夎鍏ュ彛", error))
+        .unwrap_or_else(|error| install_background_failure("安装入口", error))
 }
 
 #[tauri::command]
 pub async fn uninstall_entrypoints(options: InstallOptions) -> InstallActionResult {
     tauri::async_runtime::spawn_blocking(move || install::uninstall_entrypoints(options))
         .await
-        .unwrap_or_else(|error| install_background_failure("鍗歌浇鍏ュ彛", error))
+        .unwrap_or_else(|error| install_background_failure("卸载入口", error))
 }
 
 #[tauri::command]
 pub async fn repair_shortcuts() -> InstallActionResult {
     tauri::async_runtime::spawn_blocking(install::repair_shortcuts)
         .await
-        .unwrap_or_else(|error| install_background_failure("淇蹇嵎鏂瑰紡", error))
+        .unwrap_or_else(|error| install_background_failure("修复快捷方式", error))
 }
 
 #[tauri::command]
@@ -1144,18 +1143,18 @@ pub fn repair_backend() -> CommandResult<SettingsPayload> {
     let settings = SettingsStore::default().load().unwrap_or_default();
     let message = match codex_plus_core::cli_wrapper::ensure_cli_wrapper(&settings) {
         Ok(Some(install)) => format!(
-            "鍚庣宸蹭慨澶嶏紝鍛戒护鍖呰鍣ㄥ凡鎸囧悜 {}銆?,
+            "后端已修复，命令包装器已指向 {}。",
             install.real_codex.to_string_lossy()
         ),
-        Ok(None) => "鍚庣宸蹭慨澶嶏紝鍛戒护鍖呰鍣ㄥ綋鍓嶆湭鍚敤銆?.to_string(),
-        Err(error) => format!("鍚庣淇閮ㄥ垎澶辫触锛歿error}"),
+        Ok(None) => "后端已修复，命令包装器当前未启用。".to_string(),
+        Err(error) => format!("后端修复部分失败：{error}"),
     };
-    settings_payload(&message, "淇鍚庨噸鏂拌鍙栬缃け璐?)
+    settings_payload(&message, "修复后重新读取设置失败")
 }
 
 #[tauri::command]
 pub async fn check_update() -> CommandResult<Value> {
-    ok("鍗囩骇鍔熻兘宸茬鐢?, json!({
+    ok("升级功能已禁用", json!({
         "currentVersion": codex_plus_core::version::VERSION,
         "latestVersion": Value::Null,
         "releaseSummary": "",
@@ -1170,7 +1169,7 @@ pub async fn perform_update(
     _release: Option<codex_plus_core::update::Release>,
 ) -> CommandResult<Value> {
     failed(
-        "鍗囩骇鍔熻兘宸茬鐢?,
+        "升级功能已禁用",
         json!({
             "currentVersion": codex_plus_core::version::VERSION,
             "progress": 0
@@ -1179,7 +1178,7 @@ pub async fn perform_update(
 }
 #[tauri::command]
 pub fn load_watcher_state() -> CommandResult<WatcherPayload> {
-    ok("watcher 鐘舵€佸凡鍔犺浇銆?, watcher_payload())
+    ok("watcher 状态已加载。", watcher_payload())
 }
 
 #[tauri::command]
@@ -1187,32 +1186,32 @@ pub fn install_watcher() -> CommandResult<WatcherPayload> {
     let launcher_path =
         codex_plus_core::install::companion_binary_path(codex_plus_core::install::SILENT_BINARY);
     match codex_plus_core::watcher::install_watcher(&launcher_path, default_debug_port()) {
-        Ok(()) => ok("watcher 宸插畨瑁呫€?, watcher_payload()),
-        Err(error) => failed(&format!("瀹夎 watcher 澶辫触锛歿error}"), watcher_payload()),
+        Ok(()) => ok("watcher 已安装。", watcher_payload()),
+        Err(error) => failed(&format!("安装 watcher 失败：{error}"), watcher_payload()),
     }
 }
 
 #[tauri::command]
 pub fn uninstall_watcher() -> CommandResult<WatcherPayload> {
     match codex_plus_core::watcher::uninstall_watcher() {
-        Ok(()) => ok("watcher 宸茬Щ闄ゃ€?, watcher_payload()),
-        Err(error) => failed(&format!("绉婚櫎 watcher 澶辫触锛歿error}"), watcher_payload()),
+        Ok(()) => ok("watcher 已移除。", watcher_payload()),
+        Err(error) => failed(&format!("移除 watcher 失败：{error}"), watcher_payload()),
     }
 }
 
 #[tauri::command]
 pub fn enable_watcher() -> CommandResult<WatcherPayload> {
     match codex_plus_core::watcher::enable_watcher() {
-        Ok(()) => ok("watcher 宸插惎鐢ㄣ€?, watcher_payload()),
-        Err(error) => failed(&format!("鍚敤 watcher 澶辫触锛歿error}"), watcher_payload()),
+        Ok(()) => ok("watcher 已启用。", watcher_payload()),
+        Err(error) => failed(&format!("启用 watcher 失败：{error}"), watcher_payload()),
     }
 }
 
 #[tauri::command]
 pub fn disable_watcher() -> CommandResult<WatcherPayload> {
     match codex_plus_core::watcher::disable_watcher() {
-        Ok(()) => ok("watcher 宸茬鐢ㄣ€?, watcher_payload()),
-        Err(error) => failed(&format!("绂佺敤 watcher 澶辫触锛歿error}"), watcher_payload()),
+        Ok(()) => ok("watcher 已禁用。", watcher_payload()),
+        Err(error) => failed(&format!("禁用 watcher 失败：{error}"), watcher_payload()),
     }
 }
 
@@ -1221,7 +1220,7 @@ pub fn read_latest_logs(request: LogRequest) -> CommandResult<LogsPayload> {
     let path = codex_plus_core::paths::default_diagnostic_log_path();
     match read_tail(&path, request.lines) {
         Ok(text) => ok(
-            "鏃ュ織宸茶鍙栥€?,
+            "日志已读取。",
             LogsPayload {
                 path: path.to_string_lossy().to_string(),
                 text,
@@ -1229,7 +1228,7 @@ pub fn read_latest_logs(request: LogRequest) -> CommandResult<LogsPayload> {
             },
         ),
         Err(error) => failed(
-            &format!("璇诲彇鏃ュ織澶辫触锛歿error}"),
+            &format!("读取日志失败：{error}"),
             LogsPayload {
                 path: path.to_string_lossy().to_string(),
                 text: String::new(),
@@ -1242,7 +1241,7 @@ pub fn read_latest_logs(request: LogRequest) -> CommandResult<LogsPayload> {
 #[tauri::command]
 pub fn copy_diagnostics() -> CommandResult<DiagnosticsPayload> {
     ok(
-        "璇婃柇鎶ュ憡宸茬敓鎴愩€?,
+        "诊断报告已生成。",
         DiagnosticsPayload {
             report: diagnostics_report(),
         },
@@ -1253,9 +1252,9 @@ pub fn copy_diagnostics() -> CommandResult<DiagnosticsPayload> {
 pub fn reset_settings() -> CommandResult<SettingsPayload> {
     let settings = BackendSettings::default();
     match SettingsStore::default().save(&settings) {
-        Ok(()) => settings_payload("璁剧疆宸查噸缃负榛樿鍊笺€?, "璁剧疆閲嶇疆鍚庨噸鏂拌鍙栧け璐?),
+        Ok(()) => settings_payload("设置已重置为默认值。", "设置重置后重新读取失败"),
         Err(error) => failed(
-            &format!("閲嶇疆璁剧疆澶辫触锛歿error}"),
+            &format!("重置设置失败：{error}"),
             SettingsPayload {
                 settings,
                 settings_path: codex_plus_core::paths::default_settings_path()
@@ -1271,9 +1270,9 @@ pub fn reset_settings() -> CommandResult<SettingsPayload> {
 pub fn relay_status() -> CommandResult<RelayPayload> {
     let status = codex_plus_core::relay_config::default_relay_status();
     let message = if status.authenticated {
-        "宸叉娴嬪埌 ChatGPT 鐧诲綍鐘舵€併€?
+        "已检测到 ChatGPT 登录状态。"
     } else {
-        "鏈娴嬪埌 ChatGPT 鐧诲綍鐘舵€侊紝璇峰厛鍦?Codex/ChatGPT 涓甯哥櫥褰曘€?
+        "未检测到 ChatGPT 登录状态，请先在 Codex/ChatGPT 中正常登录。"
     };
     ok(message, relay_payload(status, None))
 }
@@ -1282,9 +1281,9 @@ pub fn relay_status() -> CommandResult<RelayPayload> {
 pub fn read_relay_files() -> CommandResult<RelayFilesPayload> {
     let home = codex_plus_core::relay_config::default_codex_home_dir();
     match relay_files_payload_from_home(&home) {
-        Ok(payload) => ok("閰嶇疆鏂囦欢鍐呭宸茶鍙栥€?, payload),
+        Ok(payload) => ok("配置文件内容已读取。", payload),
         Err(error) => failed(
-            &format!("璇诲彇閰嶇疆鏂囦欢澶辫触锛歿error}"),
+            &format!("读取配置文件失败：{error}"),
             RelayFilesPayload {
                 config_path: home.join("config.toml").to_string_lossy().to_string(),
                 auth_path: home.join("auth.json").to_string_lossy().to_string(),
@@ -1301,9 +1300,9 @@ pub fn save_relay_file(request: SaveRelayFileRequest) -> CommandResult<RelayFile
     match save_relay_file_in_home(&home, &request.kind, &request.contents)
         .and_then(|_| relay_files_payload_from_home(&home))
     {
-        Ok(payload) => ok("閰嶇疆鏂囦欢宸蹭繚瀛樸€?, payload),
+        Ok(payload) => ok("配置文件已保存。", payload),
         Err(error) => failed(
-            &format!("淇濆瓨閰嶇疆鏂囦欢澶辫触锛歿error}"),
+            &format!("保存配置文件失败：{error}"),
             relay_files_payload_from_home(&home).unwrap_or_else(|_| RelayFilesPayload {
                 config_path: home.join("config.toml").to_string_lossy().to_string(),
                 auth_path: home.join("auth.json").to_string_lossy().to_string(),
@@ -1329,7 +1328,7 @@ pub fn switch_relay_profile(
     let Ok(_guard) = relay_switch_mutex().lock() else {
         let status = codex_plus_core::relay_config::default_relay_status();
         return failed(
-            "渚涘簲鍟嗗垏鎹㈤攣宸叉崯鍧忥紝璇烽噸鍚鐞嗗櫒鍚庡啀璇曘€?,
+            "供应商切换锁已损坏，请重启管理器后再试。",
             relay_switch_payload(
                 SettingsStore::default().load().unwrap_or_default(),
                 status,
@@ -1365,7 +1364,7 @@ pub fn switch_relay_profile(
                 }),
             );
             ok(
-                "渚涘簲鍟嗗凡鍒囨崲銆?,
+                "供应商已切换。",
                 relay_switch_payload(result.settings, status, result.backup_path),
             )
         }
@@ -1381,7 +1380,7 @@ pub fn switch_relay_profile(
                 }),
             );
             failed(
-                &format!("渚涘簲鍟嗗垏鎹㈠け璐ワ細{error}"),
+                &format!("供应商切换失败：{error}"),
                 relay_switch_payload(settings, status, None),
             )
         }
@@ -1392,8 +1391,8 @@ pub fn switch_relay_profile(
 pub fn write_diagnostic_event(event: String, detail: Value) -> CommandResult<Value> {
     let event = sanitize_manager_event(&event);
     match codex_plus_core::diagnostic_log::append_diagnostic_log(&event, detail) {
-        Ok(()) => ok("璇婃柇鏃ュ織宸插啓鍏ャ€?, json!({})),
-        Err(error) => failed(&format!("鍐欏叆璇婃柇鏃ュ織澶辫触锛歿error}"), json!({})),
+        Ok(()) => ok("诊断日志已写入。", json!({})),
+        Err(error) => failed(&format!("写入诊断日志失败：{error}"), json!({})),
     }
 }
 
@@ -1423,7 +1422,7 @@ pub fn backfill_relay_profile_from_live(
             }),
         );
         return failed(
-            "褰撳墠渚涘簲鍟嗗凡涓嶅湪閰嶇疆鍒楄〃涓紝宸插仠姝㈠垏鎹互閬垮厤瑕嗙洊鐢ㄦ埛鏀瑰姩銆?,
+            "当前供应商已不在配置列表中，已停止切换以避免覆盖用户改动。",
             SettingsBackfillPayload { settings },
         );
     };
@@ -1441,7 +1440,7 @@ pub fn backfill_relay_profile_from_live(
                 }),
             );
             ok(
-                "褰撳墠渚涘簲鍟嗛厤缃凡浠?live 鏂囦欢鍥炲～銆?,
+                "当前供应商配置已从 live 文件回填。",
                 SettingsBackfillPayload { settings },
             )
         }
@@ -1454,7 +1453,7 @@ pub fn backfill_relay_profile_from_live(
                 }),
             );
             failed(
-                &format!("鍥炲～褰撳墠渚涘簲鍟嗛厤缃け璐ワ細{error}"),
+                &format!("回填当前供应商配置失败：{error}"),
                 SettingsBackfillPayload { settings },
             )
         }
@@ -1469,14 +1468,14 @@ pub fn list_context_entries(
         &request.settings.relay_context_config_contents,
     ) {
         Ok(entries) => ok(
-            "宸ュ叿涓庢彃浠跺垪琛ㄥ凡璇诲彇銆?,
+            "工具与插件列表已读取。",
             ContextEntriesPayload {
                 settings: request.settings,
                 entries,
             },
         ),
         Err(error) => failed(
-            &format!("璇诲彇宸ュ叿涓庢彃浠跺垪琛ㄥけ璐ワ細{error}"),
+            &format!("读取工具与插件列表失败：{error}"),
             ContextEntriesPayload {
                 settings: request.settings,
                 entries: empty_context_entries(),
@@ -1492,11 +1491,11 @@ pub fn read_live_context_entries() -> CommandResult<LiveContextEntriesPayload> {
     let config = read_optional_text_file(&config_path).unwrap_or_default();
     match codex_plus_core::relay_config::list_context_entries_from_common_config(&config) {
         Ok(entries) => ok(
-            "live 宸ュ叿涓庢彃浠跺凡璇诲彇銆?,
+            "live 工具与插件已读取。",
             LiveContextEntriesPayload { entries },
         ),
         Err(error) => failed(
-            &format!("璇诲彇 live 宸ュ叿涓庢彃浠跺け璐ワ細{error}"),
+            &format!("读取 live 工具与插件失败：{error}"),
             LiveContextEntriesPayload {
                 entries: empty_context_entries(),
             },
@@ -1518,7 +1517,7 @@ pub fn upsert_context_entry(request: ContextEntryRequest) -> CommandResult<Conte
             list_context_entries(ContextSettingsRequest { settings })
         }
         Err(error) => failed(
-            &format!("淇濆瓨宸ュ叿涓庢彃浠跺け璐ワ細{error}"),
+            &format!("保存工具与插件失败：{error}"),
             ContextEntriesPayload {
                 settings,
                 entries: empty_context_entries(),
@@ -1537,7 +1536,7 @@ pub fn sync_live_context_entries(
         Ok(config) => config,
         Err(error) => {
             return failed(
-                &format!("璇诲彇 live config.toml 澶辫触锛歿error}"),
+                &format!("读取 live config.toml 失败：{error}"),
                 LiveContextEntriesPayload {
                     entries: empty_context_entries(),
                 },
@@ -1551,7 +1550,7 @@ pub fn sync_live_context_entries(
         Ok(config) => config,
         Err(error) => {
             return failed(
-                &format!("鍚屾 live 宸ュ叿涓庢彃浠跺け璐ワ細{error}"),
+                &format!("同步 live 工具与插件失败：{error}"),
                 LiveContextEntriesPayload {
                     entries: empty_context_entries(),
                 },
@@ -1561,7 +1560,7 @@ pub fn sync_live_context_entries(
     if let Some(parent) = config_path.parent() {
         if let Err(error) = std::fs::create_dir_all(parent) {
             return failed(
-                &format!("鍒涘缓 Codex 閰嶇疆鐩綍澶辫触锛歿error}"),
+                &format!("创建 Codex 配置目录失败：{error}"),
                 LiveContextEntriesPayload {
                     entries: empty_context_entries(),
                 },
@@ -1570,7 +1569,7 @@ pub fn sync_live_context_entries(
     }
     if let Err(error) = std::fs::write(&config_path, &updated_config) {
         return failed(
-            &format!("鍐欏叆 live config.toml 澶辫触锛歿error}"),
+            &format!("写入 live config.toml 失败：{error}"),
             LiveContextEntriesPayload {
                 entries: empty_context_entries(),
             },
@@ -1578,11 +1577,11 @@ pub fn sync_live_context_entries(
     }
     match codex_plus_core::relay_config::list_context_entries_from_common_config(&updated_config) {
         Ok(entries) => ok(
-            "live 宸ュ叿涓庢彃浠跺凡鍚屾銆?,
+            "live 工具与插件已同步。",
             LiveContextEntriesPayload { entries },
         ),
         Err(error) => failed(
-            &format!("璇诲彇鍚屾鍚庣殑 live 宸ュ叿涓庢彃浠跺け璐ワ細{error}"),
+            &format!("读取同步后的 live 工具与插件失败：{error}"),
             LiveContextEntriesPayload {
                 entries: empty_context_entries(),
             },
@@ -1603,7 +1602,7 @@ pub fn delete_context_entry(request: ContextDeleteRequest) -> CommandResult<Cont
             list_context_entries(ContextSettingsRequest { settings })
         }
         Err(error) => failed(
-            &format!("鍒犻櫎宸ュ叿涓庢彃浠跺け璐ワ細{error}"),
+            &format!("删除工具与插件失败：{error}"),
             ContextEntriesPayload {
                 settings,
                 entries: empty_context_entries(),
@@ -1628,9 +1627,9 @@ pub fn extract_relay_common_config(
                 profile_config_contents,
             })
         }) {
-        Ok(payload) => ok("閫氱敤閰嶇疆宸叉寜鍏煎鍒囨崲瑙勫垯鎻愬彇銆?, payload),
+        Ok(payload) => ok("通用配置已按兼容切换规则提取。", payload),
         Err(error) => failed(
-            &format!("鎻愬彇閫氱敤閰嶇疆澶辫触锛歿error}"),
+            &format!("提取通用配置失败：{error}"),
             ExtractRelayCommonConfigPayload {
                 common_config_contents: String::new(),
                 profile_config_contents: request.config_contents,
@@ -1642,19 +1641,19 @@ pub fn extract_relay_common_config(
 #[tauri::command]
 pub async fn test_relay_profile(profile: RelayProfile) -> CommandResult<RelayProfileTestPayload> {
     let profile_name = if profile.name.trim().is_empty() {
-        "鏈懡鍚嶄緵搴斿晢"
+        "未命名供应商"
     } else {
         profile.name.trim()
     };
     let settings = SettingsStore::default().load().unwrap_or_default();
     let test_model: String = if !profile.test_model.trim().is_empty() {
-        // 1. 浣跨敤鑰呭湪瑭蹭緵鎳夊晢鏄庣⒑濉殑娓│妯″瀷
+        // 1. 使用者在該供應商明確填的測試模型
         profile.test_model.trim().to_string()
     } else {
-        // 2. 瑭蹭緵鎳夊晢鑷繁 config.toml 瑁＄殑 model锛堥伩鍏嶄覆鍛筹級
+        // 2. 該供應商自己 config.toml 裡的 model（避免串味）
         let from_profile = codex_plus_core::relay_config::relay_profile_model(&profile);
         if from_profile.trim().is_empty() {
-            // 3. 鏈€寰屾墠鐢ㄥ叏鍩熼爯瑷?
+            // 3. 最後才用全域預設
             settings.relay_test_model.trim().to_string()
         } else {
             from_profile
@@ -1669,14 +1668,14 @@ pub async fn test_relay_profile(profile: RelayProfile) -> CommandResult<RelayPro
             };
             let preview = result.response_preview.trim();
             let detail = if preview.is_empty() {
-                "鍝嶅簲鍐呭涓虹┖".to_string()
+                "响应内容为空".to_string()
             } else {
-                format!("鍝嶅簲锛歿preview}")
+                format!("响应：{preview}")
             };
             CommandResult {
                 status: status.to_string(),
                 message: format!(
-                    "宸插悜銆寋profile_name}銆嶇敤妯″瀷銆寋test_model}銆嶅彂閫?hi锛孒TTP {}銆倇detail}",
+                    "已向「{profile_name}」用模型「{test_model}」发送 hi，HTTP {}。{detail}",
                     result.http_status
                 ),
                 payload: RelayProfileTestPayload {
@@ -1687,7 +1686,7 @@ pub async fn test_relay_profile(profile: RelayProfile) -> CommandResult<RelayPro
             }
         }
         Err(error) => failed(
-            &format!("娴嬭瘯銆寋profile_name}銆嶅け璐ワ細{error}"),
+            &format!("测试「{profile_name}」失败：{error}"),
             RelayProfileTestPayload {
                 http_status: 0,
                 endpoint: String::new(),
@@ -1702,17 +1701,17 @@ pub async fn fetch_relay_profile_models(
     profile: RelayProfile,
 ) -> CommandResult<RelayProfileModelsPayload> {
     let profile_name = if profile.name.trim().is_empty() {
-        "鏈懡鍚嶄緵搴斿晢"
+        "未命名供应商"
     } else {
         profile.name.trim()
     };
     match codex_plus_core::model_catalog::fetch_relay_profile_model_ids(&profile).await {
         Ok((models, endpoint)) => ok(
-            &format!("宸蹭粠銆寋profile_name}銆嶈幏鍙?{} 涓ā鍨嬨€?, models.len()),
+            &format!("已从「{profile_name}」获取 {} 个模型。", models.len()),
             RelayProfileModelsPayload { models, endpoint },
         ),
         Err(error) => failed(
-            &format!("浠庛€寋profile_name}銆嶈幏鍙栨ā鍨嬪け璐ワ細{error}"),
+            &format!("从「{profile_name}」获取模型失败：{error}"),
             RelayProfileModelsPayload {
                 models: Vec::new(),
                 endpoint: String::new(),
@@ -1728,7 +1727,7 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
     if !settings.relay_profiles_enabled {
         let status = codex_plus_core::relay_config::relay_status_from_home(&home);
         return failed(
-            "渚涘簲鍟嗛厤缃€诲紑鍏冲凡鍏抽棴锛屾湭鍐欏叆 config.toml / auth.json銆?,
+            "供应商配置总开关已关闭，未写入 config.toml / auth.json。",
             relay_payload(status, None),
         );
     }
@@ -1756,7 +1755,7 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
                     let _ = start_bridge(Some(37000));
                 }
                 ok(
-                    "宸叉寜鍏煎鍒囨崲瑙勫垯鍒囨崲渚涘簲鍟嗐€?,
+                    "已按兼容切换规则切换供应商。",
                     relay_payload(status, result.backup_path),
                 )
             }
@@ -1770,7 +1769,7 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
                     Some(error.to_string()),
                 );
                 failed(
-                    &format!("鍒囨崲瀹屾暣涓浆閰嶇疆澶辫触锛歿error}"),
+                    &format!("切换完整中转配置失败：{error}"),
                     relay_payload(status, None),
                 )
             }
@@ -1785,10 +1784,10 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
             &relay,
             &status,
             None,
-            Some("鏈娴嬪埌 ChatGPT 鐧诲綍鐘舵€?.to_string()),
+            Some("未检测到 ChatGPT 登录状态".to_string()),
         );
         return failed(
-            "鏈娴嬪埌 ChatGPT 鐧诲綍鐘舵€侊紝宸插仠姝㈠啓鍏ヤ腑杞厤缃€?,
+            "未检测到 ChatGPT 登录状态，已停止写入中转配置。",
             relay_payload(status, None),
         );
     }
@@ -1810,7 +1809,7 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
                 None,
             );
             ok(
-                "涓浆閰嶇疆宸插啓鍏ワ紝瀵嗛挜鏈湪鐣岄潰鏄庢枃鏄剧ず銆?,
+                "中转配置已写入，密钥未在界面明文显示。",
                 relay_payload(status, result.backup_path),
             )
         }
@@ -1824,7 +1823,7 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
                 Some(error.to_string()),
             );
             failed(
-                &format!("鍐欏叆涓浆閰嶇疆澶辫触锛歿error}"),
+                &format!("写入中转配置失败：{error}"),
                 relay_payload(status, None),
             )
         }
@@ -1838,7 +1837,7 @@ pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
     if !settings.relay_profiles_enabled {
         let status = codex_plus_core::relay_config::relay_status_from_home(&home);
         return failed(
-            "渚涘簲鍟嗛厤缃€诲紑鍏冲凡鍏抽棴锛屾湭鍐欏叆 config.toml / auth.json銆?,
+            "供应商配置总开关已关闭，未写入 config.toml / auth.json。",
             relay_payload(status, None),
         );
     }
@@ -1862,12 +1861,12 @@ pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
                 );
                 if !status.configured {
                     return failed(
-                        "绾?API 閰嶇疆鍐欏叆鍚庢湭妫€娴嬪埌瀹屾暣 custom provider锛岃妫€鏌?config.toml 鍜屼緵搴斿晢 API Key銆?,
+                        "纯 API 配置写入后未检测到完整 custom provider，请检查 config.toml 和供应商 API Key。",
                         relay_payload(status, result.backup_path),
                     );
                 }
                 ok(
-                    "宸叉寜鍏煎鍒囨崲瑙勫垯鍒囨崲渚涘簲鍟嗐€?,
+                    "已按兼容切换规则切换供应商。",
                     relay_payload(status, result.backup_path),
                 )
             }
@@ -1881,7 +1880,7 @@ pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
                     Some(error.to_string()),
                 );
                 failed(
-                    &format!("鍒囨崲绾?API 閰嶇疆澶辫触锛歿error}"),
+                    &format!("切换纯 API 配置失败：{error}"),
                     relay_payload(status, None),
                 )
             }
@@ -1906,12 +1905,12 @@ pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
             );
             if !status.configured {
                 return failed(
-                    "绾?API 閰嶇疆鍐欏叆鍚庢湭妫€娴嬪埌瀹屾暣 custom provider锛岃妫€鏌?config.toml 鍜屼緵搴斿晢 API Key銆?,
+                    "纯 API 配置写入后未检测到完整 custom provider，请检查 config.toml 和供应商 API Key。",
                     relay_payload(status, result.backup_path),
                 );
             }
             ok(
-                "绾?API 妯″紡宸插啓鍏ワ細config.toml 宸插啓鍏?custom provider锛宎uth.json 宸插垏鎹负褰撳墠渚涘簲鍟嗐€?,
+                "纯 API 模式已写入：config.toml 已写入 custom provider，auth.json 已切换为当前供应商。",
                 relay_payload(status, result.backup_path),
             )
         }
@@ -1925,7 +1924,7 @@ pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
                 Some(error.to_string()),
             );
             failed(
-                &format!("鍐欏叆绾?API 妯″紡澶辫触锛歿error}"),
+                &format!("写入纯 API 模式失败：{error}"),
                 relay_payload(status, None),
             )
         }
@@ -1954,7 +1953,7 @@ pub fn clear_relay_injection() -> CommandResult<RelayPayload> {
                 }),
             );
             ok(
-                "宸叉竻闄?custom 涓浆 API 妯″紡锛屽苟鍒囨崲鍒板畼鏂?ChatGPT 鐧诲綍妯″紡銆?,
+                "已清除 custom 中转 API 模式，并切换到官方 ChatGPT 登录模式。",
                 relay_payload(status, result.backup_path),
             )
         }
@@ -1968,7 +1967,7 @@ pub fn clear_relay_injection() -> CommandResult<RelayPayload> {
                 }),
             );
             failed(
-                &format!("娓呴櫎涓浆閰嶇疆澶辫触锛歿error}"),
+                &format!("清除中转配置失败：{error}"),
                 relay_payload(status, None),
             )
         }
@@ -2057,11 +2056,11 @@ fn sanitize_manager_event(event: &str) -> String {
 fn refresh_cli_wrapper_after_settings_save(settings: &BackendSettings) -> String {
     match codex_plus_core::cli_wrapper::ensure_cli_wrapper(settings) {
         Ok(Some(install)) => format!(
-            " 鍛戒护鍖呰鍣ㄥ凡鏇存柊锛歿}銆?,
+            " 命令包装器已更新：{}。",
             install.real_codex.to_string_lossy()
         ),
         Ok(None) => String::new(),
-        Err(error) => format!(" 浣嗗懡浠ゅ寘瑁呭櫒鏇存柊澶辫触锛歿error}銆?),
+        Err(error) => format!(" 但命令包装器更新失败：{error}。"),
     }
 }
 
@@ -2128,7 +2127,7 @@ fn save_relay_file_in_home(
     let path = match kind {
         "config" => home.join("config.toml"),
         "auth" => home.join("auth.json"),
-        other => anyhow::bail!("鏈煡閰嶇疆鏂囦欢绫诲瀷锛歿other}"),
+        other => anyhow::bail!("未知配置文件类型：{other}"),
     };
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -2158,14 +2157,14 @@ fn open_url(url: &str) -> anyhow::Result<()> {
             .arg(url)
             .spawn()
             .map(|_| ())
-            .map_err(|error| anyhow::anyhow!("鍚姩绯荤粺娴忚鍣ㄥけ璐ワ細{error}"))
+            .map_err(|error| anyhow::anyhow!("启动系统浏览器失败：{error}"))
     }
 }
 
 fn settings_payload(message: &str, failure_context: &str) -> CommandResult<SettingsPayload> {
     match settings_payload_value() {
         Ok(payload) => ok(message, payload),
-        Err((error, payload)) => failed(&format!("{failure_context}锛歿error}"), payload),
+        Err((error, payload)) => failed(&format!("{failure_context}：{error}"), payload),
     }
 }
 
@@ -2326,9 +2325,11 @@ fn builtin_user_scripts_dir() -> PathBuf {
 fn diagnostics_report() -> String {
     let (codex_app_path, entrypoints, latest_launch) = load_overview_payload();
     let overview = ok(
-        "概览已加载。,
+        "概览已加载。",
         OverviewPayload {
-
+            codex_app: path_state(codex_app_path),
+            silent_shortcut: shortcut_state(entrypoints.silent_shortcut),
+            management_shortcut: shortcut_state(entrypoints.management_shortcut),
             latest_launch,
             current_version: codex_plus_core::version::VERSION.to_string(),
             update_status: "not_checked".to_string(),
@@ -2359,7 +2360,7 @@ fn diagnostics_report() -> String {
             "arch": std::env::consts::ARCH
         }
     }))
-    .unwrap_or_else(|error| format!("璇婃柇鎶ュ憡搴忓垪鍖栧け璐ワ細{error}"))
+    .unwrap_or_else(|error| format!("诊断报告序列化失败：{error}"))
 }
 
 fn load_overview_payload() -> (
@@ -2382,7 +2383,7 @@ fn install_background_failure(action: &str, error: impl std::fmt::Display) -> In
     let state = install::inspect_entrypoints();
     InstallActionResult {
         status: "failed".to_string(),
-        message: format!("{action}鍚庡彴浠诲姟澶辫触锛歿error}"),
+        message: format!("{action}后台任务失败：{error}"),
         silent_shortcut: state.silent_shortcut,
         management_shortcut: state.management_shortcut,
     }
@@ -2456,7 +2457,7 @@ fn default_log_lines() -> usize {
 }
 
 
-// 鈹€鈹€ Bridge (LuoDaBridge) process management 鈹€鈹€
+// ── Bridge (LuoDaBridge) process management ──
 static BRIDGE_CHILD: std::sync::Mutex<Option<std::process::Child>> = std::sync::Mutex::new(None);
 
 #[derive(Debug, Clone, Serialize)]
@@ -2479,12 +2480,12 @@ pub fn start_bridge(port: Option<u16>) -> CommandResult<BridgeStatusPayload> {
     ];
     let bridge_path = bridge_paths.iter().find(|p| p.exists()).cloned();
     let Some(bridge_path) = bridge_path else {
-        return failed("鏈壘鍒癰ridge/index.mjs", BridgeStatusPayload { running: false, port, message: "bridge鐩綍涓嶅瓨鍦?.into() });
+        return failed("未找到bridge/index.mjs", BridgeStatusPayload { running: false, port, message: "bridge目录不存在".into() });
     };
 
     let mut guard = BRIDGE_CHILD.lock().unwrap();
     if guard.as_mut().map(|c| c.try_wait().unwrap_or(None).is_none()).unwrap_or(false) {
-        return ok("浠ｇ悊鏈嶅姟鍣ㄥ凡鍦ㄨ繍琛屼腑", BridgeStatusPayload { running: true, port, message: "宸插湪杩愯".into() });
+        return ok("代理服务器已在运行中", BridgeStatusPayload { running: true, port, message: "已在运行".into() });
     }
 
     match std::process::Command::new("node")
@@ -2496,10 +2497,10 @@ pub fn start_bridge(port: Option<u16>) -> CommandResult<BridgeStatusPayload> {
     {
         Ok(child) => {
             *guard = Some(child);
-            ok("浠ｇ悊鏈嶅姟鍣ㄥ凡鍚姩", BridgeStatusPayload { running: true, port, message: "宸插惎鍔?.into() })
+            ok("代理服务器已启动", BridgeStatusPayload { running: true, port, message: "已启动".into() })
         }
         Err(e) => {
-            failed(&format!("鍚姩浠ｇ悊鏈嶅姟鍣ㄥけ璐? {e}"), BridgeStatusPayload { running: false, port, message: e.to_string() })
+            failed(&format!("启动代理服务器失败: {e}"), BridgeStatusPayload { running: false, port, message: e.to_string() })
         }
     }
 }
@@ -2510,9 +2511,9 @@ pub fn stop_bridge() -> CommandResult<BridgeStatusPayload> {
     if let Some(mut child) = guard.take() {
         let _ = child.kill();
         let _ = child.wait();
-        ok("浠ｇ悊鏈嶅姟鍣ㄥ凡鍋滄", BridgeStatusPayload { running: false, port: 37000, message: "宸插仠姝?.into() })
+        ok("代理服务器已停止", BridgeStatusPayload { running: false, port: 37000, message: "已停止".into() })
     } else {
-        ok("浠ｇ悊鏈嶅姟鍣ㄦ湭鍦ㄨ繍琛?, BridgeStatusPayload { running: false, port: 37000, message: "鏈繍琛?.into() })
+        ok("代理服务器未在运行", BridgeStatusPayload { running: false, port: 37000, message: "未运行".into() })
     }
 }
 
@@ -2523,7 +2524,7 @@ pub fn bridge_status() -> CommandResult<BridgeStatusPayload> {
     if !running {
         *guard = None;
     }
-    let msg = if running { "杩愯涓? } else { "宸插仠姝? };
+    let msg = if running { "运行中" } else { "已停止" };
     ok(msg, BridgeStatusPayload { running, port: 37000, message: msg.into() })
 }
 
@@ -2536,12 +2537,12 @@ pub fn read_bridge_logs() -> CommandResult<LogsPayload> {
     for path in &log_paths {
         if path.exists() {
             match read_tail(&path, 200) {
-                Ok(text) => return ok("鏃ュ織宸茶鍙?, LogsPayload { text, path: path.to_string_lossy().to_string(), lines: 0 }),
-                Err(e) => return failed(&format!("璇诲彇鏃ュ織澶辫触: {e}"), LogsPayload { text: String::new(), path: path.to_string_lossy().to_string(), lines: 0 }),
+                Ok(text) => return ok("日志已读取", LogsPayload { text, path: path.to_string_lossy().to_string(), lines: 0 }),
+                Err(e) => return failed(&format!("读取日志失败: {e}"), LogsPayload { text: String::new(), path: path.to_string_lossy().to_string(), lines: 0 }),
             }
         }
     }
-    ok("鏆傛棤鏃ュ織", LogsPayload { text: String::new(), path: String::new(), lines: 0 })
+    ok("暂无日志", LogsPayload { text: String::new(), path: String::new(), lines: 0 })
 }
 
 
@@ -2594,18 +2595,22 @@ mod tests {
 
         assert_eq!(result.status, "ok");
         assert!(!result.payload.current_version.is_empty());
-        assert!(
+        assert!(matches!(
+            result.payload.codex_app.status.as_str(),
+            "found" | "missing"
+        ));
         assert!(matches!(
             result.payload.silent_shortcut.status.as_str(),
             "installed" | "missing"
         ));
+    }
 
     #[test]
     fn update_install_requires_release_payload() {
         let result = tauri::async_runtime::block_on(perform_update(None));
 
         assert_eq!(result.status, "failed");
-        assert!(result.message.contains("鍗囩骇鍔熻兘宸茬鐢?));
+        assert!(result.message.contains("升级功能已禁用"));
     }
 
     #[test]
