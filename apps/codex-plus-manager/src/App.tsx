@@ -1615,7 +1615,7 @@ const closeWindow = async () => {
             <ProxyScreen
               overview={overview}
               launchForm={launchForm}
-              onLaunchFormChange={setLaunchForm}
+              onLaunchFormChange={onLaunchFormChange}
               actions={actions}
               settings={settings}
             />
@@ -2184,10 +2184,14 @@ function ProxyScreen({
       return () => clearTimeout(timer);
     }
   }, [localNotice]);
+  const call = <T,>(command: string, args?: Record<string, unknown>) => invoke<T>(command, args);
+  const run = async <T,>(task: () => Promise<T>): Promise<T | null> => {
+    try { return await task(); } catch { return null; }
+  };
   const savedCodexAppPath = settings?.settings.codexAppPath ?? '';
   const refreshBridgeStatus = async () => {
     try {
-      const result = await invoke<CommandResult<BridgeStatusPayload>>('bridge_status');
+      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('bridge_status'));
       if (result) setBridgeRunning(result.payload.running);
     } catch (_) {}
   };
@@ -2195,7 +2199,7 @@ function ProxyScreen({
   const handleStart = async () => {
     setChecking(true);
     try {
-      const result = await invoke<CommandResult<BridgeStatusPayload>>('start_bridge', { port: 37000 });
+      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('start_bridge', { port: 40000 }));
       if (result) {
         setLocalNotice({title:'代理服务器', message: result.message, status: result.status});
         if (result.status === 'ok' || result.payload?.running) setBridgeRunning(true);
@@ -2207,7 +2211,7 @@ function ProxyScreen({
   const handleStop = async () => {
     setChecking(true);
     try {
-      const result = await invoke<CommandResult<BridgeStatusPayload>>('stop_bridge');
+      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('stop_bridge'));
       if (result) {
         setLocalNotice({title:'代理服务器', message: result.message, status: result.status});
         setBridgeRunning(false);
@@ -2218,7 +2222,7 @@ function ProxyScreen({
   };
   const handleReadLogs = async () => {
     try {
-      const result = await invoke<CommandResult<LogsPayload>>('read_bridge_logs');
+      const result = await run(() => call<CommandResult<LogsPayload>>('read_bridge_logs'));
       if (result) setBridgeLogs(result.payload.text);
     } catch (_) {}
   };
@@ -2229,8 +2233,8 @@ function ProxyScreen({
         <CardContent>
           <div className="metric-list">
             <Metric label="运行状态" value={bridgeRunning ? '运行中' : '已停止'} />
-            <Metric label="代理端口" value="37000" />
-            <Metric label="管理端口" value="37001" />
+            <Metric label="代理端口" value="40000" />
+            <Metric label="管理端口" value="40001" />
           </div>
           <Toolbar>
             {!bridgeRunning ? (
