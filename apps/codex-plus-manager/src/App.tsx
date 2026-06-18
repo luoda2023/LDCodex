@@ -231,6 +231,30 @@ type RelayResult = CommandResult<{
   backupPath: string | null;
 }>;
 
+
+type LogsPayload = {
+  text: string;
+  path: string;
+};
+
+type BridgeStatusPayload = {
+  running: boolean;
+  port: number;
+  message: string;
+};
+
+
+type LogsPayload = {
+  text: string;
+  path: string;
+};
+
+type BridgeStatusPayload = {
+  running: boolean;
+  port: number;
+  message: string;
+};
+
 type RelayPayload = Omit<RelayResult, "status" | "message">;
 
 type RelayFilesResult = CommandResult<{
@@ -2150,62 +2174,122 @@ function ProxyScreen({
   actions: Actions;
   settings: SettingsResult | null;
 }) {
-  const savedCodexAppPath = settings?.settings.codexAppPath ?? "";
+  const [bridgeRunning, setBridgeRunning] = useState(false);
+  const [bridgeLogs, setBridgeLogs] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [localNotice, setLocalNotice] = useState<{title:string;message:string;status?:string}|null>(null);
+  useEffect(() => {
+    if (localNotice) {
+      const timer = setTimeout(() => setLocalNotice(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [localNotice]);
+  const savedCodexAppPath = settings?.settings.codexAppPath ?? '';
+  const refreshBridgeStatus = async () => {
+    try {
+      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('bridge_status'));
+      if (result) setBridgeRunning(result.payload.running);
+    } catch (_) {}
+  };
+  useEffect(() => { refreshBridgeStatus(); }, []);
+  const handleStart = async () => {
+    setChecking(true);
+    try {
+      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('start_bridge', { port: 40000 }));
+      if (result) {
+        setLocalNotice({title:'代理服务器', message: result.message, status: result.status});
+        if (result.status === 'ok' || result.payload?.running) setBridgeRunning(true);
+      }
+    } catch (_) { setLocalNotice({title:'代理服务器', message: '启动失败', status: 'failed'}); }
+    setChecking(false);
+    refreshBridgeStatus();
+  };
+  const handleStop = async () => {
+    setChecking(true);
+    try {
+      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('stop_bridge'));
+      if (result) {
+        setLocalNotice({title:'代理服务器', message: result.message, status: result.status});
+        setBridgeRunning(false);
+      }
+    } catch (_) { setLocalNotice({title:'代理服务器', message: '停止失败', status: 'failed'}); }
+    setChecking(false);
+    refreshBridgeStatus();
+  };
+  const handleReadLogs = async () => {
+    try {
+      const result = await run(() => call<CommandResult<LogsPayload>>('read_bridge_logs'));
+      if (result) setBridgeLogs(result.payload.text);
+    } catch (_) {}
+  };
   return (
     <>
       <Panel>
-        <CardHead title="代理服务器" detail="代理服务器启动状态与配置" />
+        <CardHead title="代理服务器" detail="LuoDaBridge 代理服务器管理" />
         <CardContent>
-          <LatestLaunch status={overview?.latest_launch ?? null} />
+          <div className="metric-list">
+            <Metric label="运行状态" value={bridgeRunning ? '运行中' : '已停止'} />
+            <Metric label="代理端口" value="40000" />
+            <Metric label="管理端口" value="40001" />
+          </div>
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>
-              <Rocket className="h-4 w-4" />
-              启动 LDCodex
+            {!bridgeRunning ? (
+              <Button onClick={handleStart} disabled={checking}>
+                <Power className="h-4 w-4" />
+                {checking ? '启动中...' : '启动代理'}
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={handleStop} disabled={checking}>
+                <PowerOff className="h-4 w-4" />
+                {checking ? '停止中...' : '停止代理'}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={handleReadLogs}>
+              <RefreshCw className="h-4 w-4" />
+              刷新日志
             </Button>
-            <Button variant="secondary" onClick={() => void actions.goLogs()}>
-              打开关于
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl('https://Dicad.cn')}>
+              <ExternalLink className="h-4 w-4" />
+              管理面板
             </Button>
           </Toolbar>
+          {localNotice ? (
+            <div className="toast-wrap" key="proxy-notice">
+              <div className={localNotice.status === 'failed' ? 'toast-card failed' : 'toast-card'}>
+                <div className="toast-icon">
+                  {localNotice.status === 'failed' ? <Bell className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+                </div>
+                <div className="toast-body">
+                  <h2>{localNotice.title}</h2>
+                  <p>{localNotice.message}</p>
+                </div>
+                <button className="toast-close" onClick={() => setLocalNotice(null)} type="button">×</button>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="手动启动" detail="应用路径留空时使用已保存路径；没有保存路径时使用自动探测" />
+        <CardHead title="运行日志" detail="代理服务器最近运行记录" />
         <CardContent>
-          <Field label="应用路径覆盖">
-            <Input
-              value={launchForm.appPath}
-              onChange={(event) => onLaunchFormChange({ ...launchForm, appPath: event.currentTarget.value })}
-              placeholder={savedCodexAppPath || "例如 C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
-            />
-          </Field>
-          <div className="form-row">
-            <Field label="Debug 端口">
-              <Input
-                value={launchForm.debugPort}
-                onChange={(event) => onLaunchFormChange({ ...launchForm, debugPort: event.currentTarget.value })}
-              />
-            </Field>
-            <Field label="Helper 端口">
-              <Input
-                value={launchForm.helperPort}
-                onChange={(event) => onLaunchFormChange({ ...launchForm, helperPort: event.currentTarget.value })}
-              />
-            </Field>
+          <div className="log-viewer">
+            <pre>{bridgeLogs || '暂无日志，请点击刷新日志'}</pre>
           </div>
-          <Toolbar>
-            <Button onClick={() => void actions.launch()}>启动 LDCodex</Button>
-            <Button variant="secondary" onClick={() => void actions.saveManualCodexAppPath()}>
-              保存为默认路径
-            </Button>
-          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="关于我们" detail="Dicad.cn  AI赋能工程设计  LET IMAGINATION BECOME REALITY" />
+        <CardContent>
+          <div className="about-footer">
+            <span onClick={() => actions.openExternalUrl('https://Dicad.cn')} className="about-footer-link">Dicad.cn</span>
+            <p>AI赋能工程设计</p>
+            <p>LET IMAGINATION BECOME REALITY</p>
+          </div>
         </CardContent>
       </Panel>
     </>
   );
-}
-
-
-function AboutScreen({
+}function AboutScreen({
   overview,
   actions,
 }: {

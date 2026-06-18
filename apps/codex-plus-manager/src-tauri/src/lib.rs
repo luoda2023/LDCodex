@@ -125,6 +125,14 @@ pub fn run() {
             commands::apply_relay_injection,
             commands::apply_pure_api_injection,
             commands::clear_relay_injection
+            commands::start_bridge,
+            commands::stop_bridge,
+            commands::bridge_status,
+            commands::read_bridge_logs,
+            commands::start_bridge,
+            commands::stop_bridge,
+            commands::bridge_status,
+            commands::read_bridge_logs,
         ])
         .run(tauri::generate_context!());
     if let Err(error) = run_result {

@@ -2462,6 +2462,96 @@ fn default_log_lines() -> usize {
     200
 }
 
+
+// ── Bridge (LuoDaBridge) process management ──
+static BRIDGE_CHILD: std::sync::Mutex<Option<std::process::Child>> = std::sync::Mutex::new(None);
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BridgeStatusPayload {
+    pub running: bool,
+    pub port: u16,
+    pub message: String,
+}
+
+#[tauri::command]
+pub fn start_bridge(port: Option<u16>) -> CommandResult<BridgeStatusPayload> {
+    let port = port.unwrap_or(40000);
+    let exe = std::env::current_exe().unwrap_or_default();
+    let exe_dir = exe.parent().unwrap_or(std::path::Path::new("."));
+    let bridge_paths = [
+        exe_dir.join("bridge").join("index.mjs"),
+        exe_dir.join(r"..\bridge\index.mjs"),
+        exe_dir.join(r"..\..\..\bridge\index.mjs"),
+        std::path::PathBuf::from(r"J:\codex-work\LDCodex2\bridge\index.mjs"),
+    ];
+    let bridge_path = bridge_paths.iter().find(|p| p.exists()).cloned();
+    let Some(bridge_path) = bridge_path else {
+        return failed("未找到bridge/index.mjs", BridgeStatusPayload { running: false, port, message: "bridge目录不存在".into() });
+    };
+
+    let mut guard = BRIDGE_CHILD.lock().unwrap();
+    if guard.as_ref().map(|c| c.try_wait().unwrap_or(None).is_none()).unwrap_or(false) {
+        return ok("代理服务器已在运行中", BridgeStatusPayload { running: true, port, message: "已在运行".into() });
+    }
+
+    match std::process::Command::new("node")
+        .arg(bridge_path.as_os_str())
+        .current_dir(bridge_path.parent().unwrap_or(std::path::Path::new(".")))
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+    {
+        Ok(child) => {
+            *guard = Some(child);
+            ok("代理服务器已启动", BridgeStatusPayload { running: true, port, message: "已启动".into() })
+        }
+        Err(e) => {
+            failed(&format!("启动代理服务器失败: {e}"), BridgeStatusPayload { running: false, port, message: e.to_string() })
+        }
+    }
+}
+
+#[tauri::command]
+pub fn stop_bridge() -> CommandResult<BridgeStatusPayload> {
+    let mut guard = BRIDGE_CHILD.lock().unwrap();
+    if let Some(mut child) = guard.take() {
+        let _ = child.kill();
+        let _ = child.wait();
+        ok("代理服务器已停止", BridgeStatusPayload { running: false, port: 40000, message: "已停止".into() })
+    } else {
+        ok("代理服务器未在运行", BridgeStatusPayload { running: false, port: 40000, message: "未运行".into() })
+    }
+}
+
+#[tauri::command]
+pub fn bridge_status() -> CommandResult<BridgeStatusPayload> {
+    let mut guard = BRIDGE_CHILD.lock().unwrap();
+    let running = guard.as_ref().map(|c| c.try_wait().unwrap_or(None).is_none()).unwrap_or(false);
+    if !running {
+        *guard = None;
+    }
+    let msg = if running { "运行中" } else { "已停止" };
+    ok(msg, BridgeStatusPayload { running, port: 40000, message: msg.into() })
+}
+
+#[tauri::command]
+pub fn read_bridge_logs() -> CommandResult<LogsPayload> {
+    let log_paths = [
+        std::path::PathBuf::from(r"J:\codex-work\LDCodex2\bridge\dataluoda.log"),
+        std::path::PathBuf::from(r"J:\codex-work\LDCodex2\bridge\bridge.log"),
+    ];
+    for path in &log_paths {
+        if path.exists() {
+            match read_tail(&path, 200) {
+                Ok(text) => return ok("日志已读取", LogsPayload { text, path: path.to_string_lossy().to_string() }),
+                Err(e) => return failed(&format!("读取日志失败: {e}"), LogsPayload { text: String::new(), path: path.to_string_lossy().to_string() }),
+            }
+        }
+    }
+    ok("暂无日志", LogsPayload { text: String::new(), path: String::new() })
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
