@@ -2490,7 +2490,7 @@ pub fn start_bridge(port: Option<u16>) -> CommandResult<BridgeStatusPayload> {
     };
 
     let mut guard = BRIDGE_CHILD.lock().unwrap();
-    if guard.as_ref().map(|c| c.try_wait().unwrap_or(None).is_none()).unwrap_or(false) {
+    if guard.as_mut().map(|c| c.try_wait().unwrap_or(None).is_none()).unwrap_or(false) {
         return ok("代理服务器已在运行中", BridgeStatusPayload { running: true, port, message: "已在运行".into() });
     }
 
@@ -2526,7 +2526,7 @@ pub fn stop_bridge() -> CommandResult<BridgeStatusPayload> {
 #[tauri::command]
 pub fn bridge_status() -> CommandResult<BridgeStatusPayload> {
     let mut guard = BRIDGE_CHILD.lock().unwrap();
-    let running = guard.as_ref().map(|c| c.try_wait().unwrap_or(None).is_none()).unwrap_or(false);
+    let running = guard.as_mut().map(|c| c.try_wait().unwrap_or(None).is_none()).unwrap_or(false);
     if !running {
         *guard = None;
     }
@@ -2543,12 +2543,12 @@ pub fn read_bridge_logs() -> CommandResult<LogsPayload> {
     for path in &log_paths {
         if path.exists() {
             match read_tail(&path, 200) {
-                Ok(text) => return ok("日志已读取", LogsPayload { text, path: path.to_string_lossy().to_string() }),
-                Err(e) => return failed(&format!("读取日志失败: {e}"), LogsPayload { text: String::new(), path: path.to_string_lossy().to_string() }),
+                Ok(text) => return ok("日志已读取", LogsPayload { text, path: path.to_string_lossy().to_string(), lines: 0 }),
+                Err(e) => return failed(&format!("读取日志失败: {e}"), LogsPayload { text: String::new(), path: path.to_string_lossy().to_string(), lines: 0 }),
             }
         }
     }
-    ok("暂无日志", LogsPayload { text: String::new(), path: String::new() })
+    ok("暂无日志", LogsPayload { text: String::new(), path: String::new(), lines: 0 })
 }
 
 
