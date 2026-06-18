@@ -1760,7 +1760,7 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
                 // Auto-start bridge for ChatCompletions protocol
                 if relay.protocol == codex_plus_core::settings::RelayProtocol::ChatCompletions {
                     eprintln!("ChatCompletions profile detected, auto-starting bridge");
-                    let _ = start_bridge(Some(40000));
+                    let _ = start_bridge(Some(37000));
                 }
                 ok(
                     "已按兼容切换规则切换供应商。",
@@ -2480,7 +2480,7 @@ pub struct BridgeStatusPayload {
 
 #[tauri::command]
 pub fn start_bridge(port: Option<u16>) -> CommandResult<BridgeStatusPayload> {
-    let port = port.unwrap_or(40000);
+    let port = port.unwrap_or(37000);
     let exe = std::env::current_exe().unwrap_or_default();
     let exe_dir = exe.parent().unwrap_or(std::path::Path::new("."));
     let bridge_paths = [
@@ -2522,9 +2522,9 @@ pub fn stop_bridge() -> CommandResult<BridgeStatusPayload> {
     if let Some(mut child) = guard.take() {
         let _ = child.kill();
         let _ = child.wait();
-        ok("代理服务器已停止", BridgeStatusPayload { running: false, port: 40000, message: "已停止".into() })
+        ok("代理服务器已停止", BridgeStatusPayload { running: false, port: 37000, message: "已停止".into() })
     } else {
-        ok("代理服务器未在运行", BridgeStatusPayload { running: false, port: 40000, message: "未运行".into() })
+        ok("代理服务器未在运行", BridgeStatusPayload { running: false, port: 37000, message: "未运行".into() })
     }
 }
 
@@ -2536,7 +2536,7 @@ pub fn bridge_status() -> CommandResult<BridgeStatusPayload> {
         *guard = None;
     }
     let msg = if running { "运行中" } else { "已停止" };
-    ok(msg, BridgeStatusPayload { running, port: 40000, message: msg.into() })
+    ok(msg, BridgeStatusPayload { running, port: 37000, message: msg.into() })
 }
 
 #[tauri::command]
