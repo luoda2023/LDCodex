@@ -106,7 +106,8 @@ fn app_paths_user_data_candidates_include_local_and_roaming_variants() {
             roaming.join("OpenAI").join("Codex"),
             roaming.join("OpenAI.Codex"),
             roaming.join("Codex"),
-        ]
+        ]);
+}
 #[test]
 #[cfg(target_os = "macos")]
 fn app_paths_find_macos_codex_app_prefers_first_search_root_and_known_names() {
@@ -1004,7 +1005,6 @@ fn launcher_macos_cleanup_is_skipped_when_app_was_already_running() {
     );
 
     assert_eq!(command, None);
-}
 }
 
 #[tokio::test]
