@@ -1,4 +1,4 @@
-ï»¿use tauri::Manager;
+use tauri::Manager;
 
 pub mod commands;
 pub mod install;
@@ -24,7 +24,7 @@ pub fn run() {
                 "index.html"
             };
             tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App(url.into()))
-                .title("LDCodex ç®¡ç†å·¥å…·").decorations(false).inner_size(1180.0, 820.0)
+                .title("LDCodex ¹ÜÀí¹¤¾ß").decorations(false).inner_size(1180.0, 820.0)
                 .min_inner_size(960.0, 720.0)
                 .center()
                 .visible(true)
@@ -37,16 +37,16 @@ pub fn run() {
                     let _ = main_window_clone.hide();
                 }
             });
-            // æ„å»ºæ‰˜ç›˜èœå•
-            let show_item = tauri::menu::MenuItemBuilder::with_id("show", "æ‰“å¼€").build(app)?;
-            let quit_item = tauri::menu::MenuItemBuilder::with_id("quit", "é€€å‡º").build(app)?;
+            // ¹¹½¨ÍĞÅÌ²Ëµ¥
+            let show_item = tauri::menu::MenuItemBuilder::with_id("show", "´ò¿ª").build(app)?;
+            let quit_item = tauri::menu::MenuItemBuilder::with_id("quit", "ÍË³ö").build(app)?;
             let tray_menu = tauri::menu::MenuBuilder::new(app)
                 .item(&show_item)
                 .item(&quit_item)
                 .build()?;
             tauri::tray::TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("LDCodex ç®¡ç†å·¥å…·")
+                .tooltip("LDCodex ¹ÜÀí¹¤¾ß")
                 .menu(&tray_menu)
                 .on_menu_event(move |app_handle, event| {
                     match event.id().as_ref() {
@@ -124,11 +124,7 @@ pub fn run() {
             commands::switch_relay_profile,
             commands::apply_relay_injection,
             commands::apply_pure_api_injection,
-            commands::clear_relay_injection
-            commands::start_bridge,
-            commands::stop_bridge,
-            commands::bridge_status,
-            commands::read_bridge_logs,
+            commands::clear_relay_injection,
             commands::start_bridge,
             commands::stop_bridge,
             commands::bridge_status,
@@ -152,7 +148,7 @@ fn install_panic_logger() {
             .downcast_ref::<&str>()
             .map(|message| (*message).to_string())
             .or_else(|| panic_info.payload().downcast_ref::<String>().cloned())
-            .unwrap_or_else(|| "é—ˆç‚²ç“§ç»—ï¸¿è¦† panic payload".to_string());
+            .unwrap_or_else(|| "éå­—ç¬¦ä¸² panic payload".to_string());
         let location = panic_info.location().map(|location| {
             serde_json::json!({
                 "file": location.file(),
@@ -229,4 +225,5 @@ fn acquire_single_instance_guard() -> Option<codex_plus_core::ports::LoopbackPor
         }
     }
 }
+
 
