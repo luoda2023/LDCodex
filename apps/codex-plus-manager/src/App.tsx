@@ -187,7 +187,7 @@ type CodexContextEntries = {
 
 type RelayProtocol = "responses" | "chatCompletions";
 type RelayMode = "official" | "mixedApi" | "pureApi";
-const PROTOCOL_PROXY_BASE_URL = "http://127.0.0.1:57321/v1";
+const PROTOCOL_PROXY_BASE_URL = "http://127.0.0.1:37000/v1";
 const CHAT_UPSTREAM_BASE_URL_KEY = "codex_plus_chat_base_url";
 const SCRIPT_MARKET_REPOSITORY_URL = "https://github.com/luoda2023/LDCodexScriptMarket";
 
@@ -589,7 +589,7 @@ export function App() {
   const [launchForm, setLaunchForm] = useState({
     appPath: "",
     debugPort: "9229",
-    helperPort: "57321",
+    helperPort: "37000",
   });
   const prevLaunchStatusRef = useRef<string | null>(null);
   const [settingsForm, setSettingsForm] = useState<BackendSettings>({ ...defaultSettings });
@@ -868,7 +868,7 @@ export function App() {
         request: {
           appPath: launchForm.appPath,
           debugPort: numberOrDefault(launchForm.debugPort, 9229),
-          helperPort: numberOrDefault(launchForm.helperPort, 57321),
+          helperPort: numberOrDefault(launchForm.helperPort, 37000),
         },
       }),
     );
@@ -3031,7 +3031,7 @@ function RelayProfileEditor({
       {showApiFields && profile.protocol === "chatCompletions" ? (
         <div className="hint-line relay-protocol-hint">
           <MessageCircle className="h-4 w-4" />
-          <span>此上游会通过本地 127.0.0.1:57321 转成 Responses API，需要从 LDCodex 启动 Codex。</span>
+          <span>此上游会通过本地 127.0.0.1:37000 转成 Responses API，需要从 LDCodex 启动 Codex。</span>
         </div>
       ) : null}
       <div className="hint-line relay-protocol-hint">
