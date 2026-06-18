@@ -1026,7 +1026,7 @@ mod tests {
         let profile: RelayProfile = serde_json::from_str(
             r#"{
                 "id":"relay-a",
-                "name":"供应�?A",
+                "name":"供应�?A",
                 "contextSelection":{
                     "mcpServers":["context7"],
                     "skills":["writer"],
@@ -1058,7 +1058,7 @@ mod tests {
         let profile: RelayProfile = serde_json::from_str(
             r#"{
                 "id":"relay-a",
-                "name":"供应�?A",
+                "name":"供应�?A",
                 "model":"gpt-5.4",
                 "baseUrl":"https://relay.example/v1",
                 "apiKey":"sk-test",
@@ -1523,7 +1523,7 @@ experimental_bearer_token = "sk-existing""#
                 "relayProfiles": [
                     {
                         "id": "relay-a",
-                        "name": "供应�?A",
+                        "name": "供应�?A",
                         "model": "gpt-5.4",
                         "baseUrl": "https://relay.example/v1",
                         "apiKey": "sk-a",
@@ -1536,7 +1536,7 @@ experimental_bearer_token = "sk-existing""#
             .unwrap();
 
         assert_eq!(updated.relay_profiles[0].id, "relay-a");
-        assert_eq!(updated.relay_profiles[0].name, "供应�?A");
+        assert_eq!(updated.relay_profiles[0].name, "供应�?A");
 
         let saved: Value =
             serde_json::from_str(&std::fs::read_to_string(dir.join("settings.json")).unwrap())
