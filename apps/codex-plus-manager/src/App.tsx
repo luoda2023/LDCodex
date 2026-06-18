@@ -620,7 +620,7 @@ export function App() {
   };
 
   const refreshOverview = async (silent = false) => {
-    const result = await run(() => call<OverviewResult>("load_overview"));
+    const result = await run2(() => call2<OverviewResult>("load_overview"));
     if (result) {
       // 崩溃检测：进程从运行状态变为停止/失败 → 弹出通知
       const prev = prevLaunchStatusRef.current;
@@ -635,7 +635,7 @@ export function App() {
   };
 
   const refreshSettings = async (silent = false) => {
-    const result = await run(() => call<SettingsResult>("load_settings"));
+    const result = await run2(() => call2<SettingsResult>("load_settings"));
     if (result) {
       setSettings(result);
       const normalized = normalizeSettings(result.settings);
@@ -651,7 +651,7 @@ export function App() {
   };
 
   const refreshScriptMarket = async (silent = false) => {
-    const result = await run(() => call<ScriptMarketResult>("refresh_script_market"));
+    const result = await run2(() => call2<ScriptMarketResult>("refresh_script_market"));
     if (result) {
       setScriptMarket(result);
       setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
@@ -660,7 +660,7 @@ export function App() {
   };
 
   const installMarketScript = async (id: string) => {
-    const result = await run(() => call<ScriptMarketResult>("install_market_script", { id }));
+    const result = await run2(() => call2<ScriptMarketResult>("install_market_script", { id }));
     if (result) {
       setScriptMarket(result);
       setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
@@ -669,7 +669,7 @@ export function App() {
   };
 
   const setUserScriptEnabled = async (key: string, enabled: boolean) => {
-    const result = await run(() => call<SettingsResult>("set_user_script_enabled", { key, enabled }));
+    const result = await run2(() => call2<SettingsResult>("set_user_script_enabled", { key, enabled }));
     if (result) {
       setSettings(result);
       setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
@@ -681,7 +681,7 @@ export function App() {
     const script = settings?.user_scripts?.scripts?.find((item) => item.key === key);
     const name = script?.name || key;
     if (!window.confirm(`删除脚本“${name}”？此操作会移除本地脚本文件。`)) return;
-    const result = await run(() => call<SettingsResult>("delete_user_script", { key }));
+    const result = await run2(() => call2<SettingsResult>("delete_user_script", { key }));
     if (result) {
       setSettings(result);
       setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
@@ -690,7 +690,7 @@ export function App() {
   };
 
   const refreshRelay = async (silent = false) => {
-    const result = await run(() => call<RelayResult>("relay_status"));
+    const result = await run2(() => call2<RelayResult>("relay_status"));
     if (result) {
       setRelay(result);
       if (!silent) showResultNotice("登录状态", result, { silentSuccess: true });
@@ -698,7 +698,7 @@ export function App() {
   };
 
   const refreshRelayFiles = async (silent = false) => {
-    const result = await run(() => call<RelayFilesResult>("read_relay_files"));
+    const result = await run2(() => call2<RelayFilesResult>("read_relay_files"));
     if (result) {
       setRelayFiles(result);
       if (!silent) showResultNotice("配置文件", result, { silentSuccess: true });
@@ -707,7 +707,7 @@ export function App() {
   };
 
   const refreshLocalSessions = async (silent = false) => {
-    const result = await run(() => call<LocalSessionsResult>("list_local_sessions"));
+    const result = await run2(() => call2<LocalSessionsResult>("list_local_sessions"));
     if (result) {
       setLocalSessions(result);
       if (!silent || !isSuccessStatus(result.status)) showResultNotice("会话管理", result, { silentSuccess: true });
@@ -716,7 +716,7 @@ export function App() {
   };
 
   const refreshZedRemoteProjects = async (silent = false) => {
-    const result = await run(() => call<ZedRemoteProjectsResult>("list_zed_remote_projects"));
+    const result = await run2(() => call2<ZedRemoteProjectsResult>("list_zed_remote_projects"));
     if (result) {
       setZedRemoteProjects(result);
       if (!silent || !isSuccessStatus(result.status)) showResultNotice("Zed 远程项目", result, { silentSuccess: true });
@@ -746,7 +746,7 @@ export function App() {
   };
 
   const forgetZedRemoteProject = async (project: ZedRemoteProject) => {
-    const result = await run(() => call<ZedRemoteProjectsResult>("forget_zed_remote_project", { id: project.id }));
+    const result = await run2(() => call2<ZedRemoteProjectsResult>("forget_zed_remote_project", { id: project.id }));
     if (result) {
       setZedRemoteProjects(result);
       showResultNotice("Zed 远程项目", result);
@@ -768,7 +768,7 @@ export function App() {
   };
 
   const refreshLiveContextEntries = async (silent = false) => {
-    const result = await run(() => call<LiveContextEntriesResult>("read_live_context_entries"));
+    const result = await run2(() => call2<LiveContextEntriesResult>("read_live_context_entries"));
     if (result) {
       setLiveContextEntries(result.entries);
       if (!silent || !isSuccessStatus(result.status)) showResultNotice("工具与插件", result, { silentSuccess: true });
@@ -777,7 +777,7 @@ export function App() {
   };
 
   const syncLiveContextEntries = async (next: BackendSettings, silent = false) => {
-    const result = await run(() => call<LiveContextEntriesResult>("sync_live_context_entries", { request: { settings: next } }));
+    const result = await run2(() => call2<LiveContextEntriesResult>("sync_live_context_entries", { request: { settings: next } }));
     if (result) {
       setLiveContextEntries(result.entries);
       if (!silent || !isSuccessStatus(result.status)) showResultNotice("工具与插件", result, { silentSuccess: true });
@@ -786,7 +786,7 @@ export function App() {
   };
 
   const refreshLogs = async (silent = false) => {
-    const result = await run(() => call<LogsResult>("read_latest_logs", { request: { lines: 240 } }));
+    const result = await run2(() => call2<LogsResult>("read_latest_logs", { request: { lines: 240 } }));
     if (result) {
       setLogs(result);
       if (!silent) showResultNotice("日志已刷新", result, { silentSuccess: true });
@@ -794,7 +794,7 @@ export function App() {
   };
 
   const refreshDiagnostics = async (silent = false) => {
-    const result = await run(() => call<DiagnosticsResult>("copy_diagnostics"));
+    const result = await run2(() => call2<DiagnosticsResult>("copy_diagnostics"));
     if (result) {
       setDiagnostics(result);
       if (!silent) showResultNotice("诊断已生成", result, { silentSuccess: true });
@@ -802,7 +802,7 @@ export function App() {
   };
 
   const refreshWatcher = async (silent = false) => {
-    const result = await run(() => call<WatcherResult>("load_watcher_state"));
+    const result = await run2(() => call2<WatcherResult>("load_watcher_state"));
     if (result) {
       setWatcher(result);
       if (!silent) showResultNotice("Watcher 状态", result, { silentSuccess: true });
@@ -876,7 +876,7 @@ export function App() {
   };
 
   const repairBackend = async () => {
-    const result = await run(() => call<SettingsResult>("repair_backend"));
+    const result = await run2(() => call2<SettingsResult>("repair_backend"));
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
@@ -885,7 +885,7 @@ export function App() {
   };
 
   const installEntrypoints = async () => {
-    const result = await run(() => call<InstallResult>("install_entrypoints"));
+    const result = await run2(() => call2<InstallResult>("install_entrypoints"));
     if (result) {
       showNotice("入口安装", result.message, result.status);
       await refreshOverview(true);
@@ -905,7 +905,7 @@ export function App() {
   };
 
   const repairShortcuts = async () => {
-    const result = await run(() => call<InstallResult>("repair_shortcuts"));
+    const result = await run2(() => call2<InstallResult>("repair_shortcuts"));
     if (result) {
       showNotice("快捷方式修复", result.message, result.status);
       await refreshOverview(true);
@@ -913,7 +913,7 @@ export function App() {
   };
 
   const watcherAction = async (command: string) => {
-    const result = await run(() => call<WatcherResult>(command));
+    const result = await run2(() => call2<WatcherResult>(command));
     if (result) {
       setWatcher(result);
       showNotice("Watcher 操作", result.message, result.status);
@@ -932,7 +932,7 @@ export function App() {
 
   const saveSettings = async () => {
     const next = normalizeSettings(settingsForm);
-    const result = await run(() => call<SettingsResult>("save_settings", { settings: next }));
+    const result = await run2(() => call2<SettingsResult>("save_settings", { settings: next }));
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
@@ -943,7 +943,7 @@ export function App() {
   const saveSettingsValue = async (next: BackendSettings, silent = true) => {
     const normalized = normalizeSettings(next);
     setSettingsForm(normalized);
-    const result = await run(() => call<SettingsResult>("save_settings", { settings: normalized }));
+    const result = await run2(() => call2<SettingsResult>("save_settings", { settings: normalized }));
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
@@ -952,7 +952,7 @@ export function App() {
   };
 
   const resetSettings = async () => {
-    const result = await run(() => call<SettingsResult>("reset_settings"));
+    const result = await run2(() => call2<SettingsResult>("reset_settings"));
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
@@ -963,7 +963,7 @@ export function App() {
   
 
   const refreshProviderSyncTargets = async (silent = false) => {
-    const result = await run(() => call<ProviderSyncTargetsResult>("load_provider_sync_targets"));
+    const result = await run2(() => call2<ProviderSyncTargetsResult>("load_provider_sync_targets"));
     if (result) {
       setProviderSyncTargets(result);
       const targets = result.targets ?? [];
@@ -1035,7 +1035,7 @@ export function App() {
   };
 
   const applyRelayInjection = async (silent = false) => {
-    const settingsResult = await run(() => call<SettingsResult>("save_settings", { settings: settingsForm }));
+    const settingsResult = await run2(() => call2<SettingsResult>("save_settings", { settings: settingsForm }));
     if (settingsResult) {
       setSettings(settingsResult);
       setSettingsForm(normalizeSettings(settingsResult.settings));
@@ -1046,7 +1046,7 @@ export function App() {
     } else {
       return false;
     }
-    const result = await run(() => call<RelayResult>("apply_relay_injection"));
+    const result = await run2(() => call2<RelayResult>("apply_relay_injection"));
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
@@ -1058,7 +1058,7 @@ export function App() {
   const saveLaunchMode = async (launchMode: LaunchMode, silent = false, baseSettings: BackendSettings = settingsForm) => {
     const next = { ...baseSettings, launchMode };
     setSettingsForm(next);
-    const result = await run(() => call<SettingsResult>("save_settings", { settings: next }));
+    const result = await run2(() => call2<SettingsResult>("save_settings", { settings: next }));
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
@@ -1068,7 +1068,7 @@ export function App() {
   };
 
   const applyPureApiInjection = async (silent = false) => {
-    const settingsResult = await run(() => call<SettingsResult>("save_settings", { settings: settingsForm }));
+    const settingsResult = await run2(() => call2<SettingsResult>("save_settings", { settings: settingsForm }));
     if (settingsResult) {
       setSettings(settingsResult);
       setSettingsForm(normalizeSettings(settingsResult.settings));
@@ -1079,7 +1079,7 @@ export function App() {
     } else {
       return false;
     }
-    const result = await run(() => call<RelayResult>("apply_pure_api_injection"));
+    const result = await run2(() => call2<RelayResult>("apply_pure_api_injection"));
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
@@ -1089,7 +1089,7 @@ export function App() {
   };
 
   const clearRelayInjection = async (silent = false) => {
-    const result = await run(() => call<RelayResult>("clear_relay_injection"));
+    const result = await run2(() => call2<RelayResult>("clear_relay_injection"));
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
@@ -1099,7 +1099,7 @@ export function App() {
   };
 
   const saveRelayFile = async (kind: "config" | "auth", contents: string, silent = false) => {
-    const result = await run(() => call<RelayFilesResult>("save_relay_file", { request: { kind, contents } }));
+    const result = await run2(() => call2<RelayFilesResult>("save_relay_file", { request: { kind, contents } }));
     if (result) {
       setRelayFiles(result);
       if (!silent || !isSuccessStatus(result.status)) {
@@ -1117,7 +1117,7 @@ export function App() {
     );
     if (!result) return null;
     let normalized = normalizeSettings(result.settings);
-    const saveResult = await run(() => call<SettingsResult>("save_settings", { settings: normalized }));
+    const saveResult = await run2(() => call2<SettingsResult>("save_settings", { settings: normalized }));
     if (saveResult) {
       setSettings(saveResult);
       normalized = normalizeSettings(saveResult.settings);
@@ -1135,7 +1135,7 @@ export function App() {
     );
     if (!result) return null;
     let normalized = normalizeSettings(result.settings);
-    const saveResult = await run(() => call<SettingsResult>("save_settings", { settings: normalized }));
+    const saveResult = await run2(() => call2<SettingsResult>("save_settings", { settings: normalized }));
     if (saveResult) {
       setSettings(saveResult);
       normalized = normalizeSettings(saveResult.settings);
@@ -1156,12 +1156,12 @@ export function App() {
   };
 
   const testRelayProfile = async (profile: RelayProfile) => {
-    const result = await run(() => call<RelayProfileTestResult>("test_relay_profile", { profile }));
+    const result = await run2(() => call2<RelayProfileTestResult>("test_relay_profile", { profile }));
     if (result) showNotice("供应商测试", result.message, result.status);
   };
 
   const fetchRelayProfileModels = async (profile: RelayProfile) => {
-    const result = await run(() => call<RelayProfileModelsResult>("fetch_relay_profile_models", { profile }));
+    const result = await run2(() => call2<RelayProfileModelsResult>("fetch_relay_profile_models", { profile }));
     if (result) showNotice("模型列表", result.message, result.status);
     return result && isSuccessStatus(result.status) ? result.models : null;
   };
@@ -1273,7 +1273,7 @@ export function App() {
   };
   const openExternalUrl = async (url: string) => {
     try {
-      const result = await run(() => call<CommandResult<Record<string, unknown>>>("open_external_url", { url }));
+      const result = await run2(() => call2<CommandResult<Record<string, unknown>>>("open_external_url", { url }));
       if (result && result.status === "ok") {
         return;
       }
@@ -1296,7 +1296,7 @@ export function App() {
 
   useEffect(() => {
     void (async () => {
-      const startup = await run(() => call<StartupResult>("startup_options"));
+      const startup = await run2(() => call2<StartupResult>("startup_options"));
       if (startup?.showUpdate) {
         setRoute("about");
         void checkUpdate(false);
@@ -1330,7 +1330,7 @@ const closeWindow = async () => {
 
   const saveCodexAppPath = async (appPath: string) => {
     const next = { ...settingsForm, codexAppPath: appPath };
-    const result = await run(() => call<SettingsResult>("save_settings", { settings: next }));
+    const result = await run2(() => call2<SettingsResult>("save_settings", { settings: next }));
     if (result) {
       setSettings(result);
       const normalized = normalizeSettings(result.settings);
@@ -1385,7 +1385,7 @@ const closeWindow = async () => {
       },
       clearCodexAppPath: async () => {
         const next = { ...settingsForm, codexAppPath: "" };
-        const result = await run(() => call<SettingsResult>("save_settings", { settings: next }));
+        const result = await run2(() => call2<SettingsResult>("save_settings", { settings: next }));
         if (result) {
           setSettings(result);
           setSettingsForm(normalizeSettings(result.settings));
@@ -2184,10 +2184,14 @@ function ProxyScreen({
       return () => clearTimeout(timer);
     }
   }, [localNotice]);
+  const call2 = <T,>(command: string, args?: Record<string, unknown>) => invoke<T>(command, args);
+  const run2 = async <T,>(task: () => Promise<T>): Promise<T | null> => {
+    try { return await task(); } catch { return null; }
+  };
   const savedCodexAppPath = settings?.settings.codexAppPath ?? '';
   const refreshBridgeStatus = async () => {
     try {
-      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('bridge_status'));
+      const result = await run2(() => call2<CommandResult<BridgeStatusPayload>>('bridge_status'));
       if (result) setBridgeRunning(result.payload.running);
     } catch (_) {}
   };
@@ -2195,7 +2199,7 @@ function ProxyScreen({
   const handleStart = async () => {
     setChecking(true);
     try {
-      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('start_bridge', { port: 37000 }));
+      const result = await run2(() => call2<CommandResult<BridgeStatusPayload>>('start_bridge', { port: 37000 }));
       if (result) {
         setLocalNotice({title:'代理服务器', message: result.message, status: result.status});
         if (result.status === 'ok' || result.payload?.running) setBridgeRunning(true);
@@ -2207,7 +2211,7 @@ function ProxyScreen({
   const handleStop = async () => {
     setChecking(true);
     try {
-      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('stop_bridge'));
+      const result = await run2(() => call2<CommandResult<BridgeStatusPayload>>('stop_bridge'));
       if (result) {
         setLocalNotice({title:'代理服务器', message: result.message, status: result.status});
         setBridgeRunning(false);
@@ -2218,7 +2222,7 @@ function ProxyScreen({
   };
   const handleReadLogs = async () => {
     try {
-      const result = await run(() => call<CommandResult<LogsPayload>>('read_bridge_logs'));
+      const result = await run2(() => call2<CommandResult<LogsPayload>>('read_bridge_logs'));
       if (result) setBridgeLogs(result.payload.text);
     } catch (_) {}
   };
