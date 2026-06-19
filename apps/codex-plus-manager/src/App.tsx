@@ -487,7 +487,7 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "maintenance" | "about" | "settings" | "proxy";
+type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "maintenance" | "settings" | "proxy";
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
@@ -499,7 +499,6 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
   { id: "maintenance", label: "安装维护", icon: Wrench },
   { id: "settings", label: "设置", icon: Settings },
   { id: "proxy", label: "代理服务器", icon: ShieldCheck },
-  { id: "about", label: "关于", icon: Info },
 ];
 
 const defaultSettings: BackendSettings = {
@@ -839,11 +838,6 @@ export function App() {
     if (next === "settings") await refreshSettings(true);
 
     
-    if (next === "about") {
-      await refreshOverview(true);
-      await refreshLogs(true);
-      await refreshDiagnostics(true);
-    }
     if (next === "maintenance") {
       await refreshOverview(true);
       await refreshWatcher(true);
@@ -1302,7 +1296,6 @@ export function App() {
     void (async () => {
       const startup = await run(() => call<StartupResult>("startup_options"));
       if (startup?.showUpdate) {
-        setRoute("about");
         void checkUpdate(false);
       } else {
         void checkUpdate(true);
@@ -1472,7 +1465,7 @@ const closeWindow = async () => {
       showMessage: async (title: string, message: string, status?: Status) => showNotice(title, message, status),
       copyLogs: () => copyText(logs?.text ?? "", "日志已复制。"),
       copyDiagnostics: () => copyText(diagnostics?.report ?? "", "诊断报告已复制。"),
-      goLogs: async () => {},
+
       checkHealth: async () => {
         await refreshOverview(true);
         await refreshRelay(true);
@@ -1533,9 +1526,17 @@ const closeWindow = async () => {
           })}
         </nav>
         <div className="sidebar-footer">
-          <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="sidebar-footer-link">Dicad.cn</span>
-          <div className="sidebar-footer-text">AI赋能工程设计</div>
-          <div className="sidebar-footer-en">LET IMAGINATION BECOME REALITY</div>
+          <div className="sidebar-footer-brand" onClick={() => actions.openExternalUrl("https://Dicad.cn")}>
+            <div className="sidebar-footer-logo">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <div className="sidebar-footer-info">
+              <span className="sidebar-footer-name">Dicad.cn</span>
+              <span className="sidebar-footer-slogan">AI赋能工程设计</span>
+            </div>
+          </div>
         </div>
       </aside>
       <main className="workspace">
@@ -1625,7 +1626,6 @@ const closeWindow = async () => {
               settings={settings}
             />
           ) : null}
-          {route === "about" ? <AboutScreen overview={overview} actions={actions} /> : null}
           {route === "settings" ? (
             <SettingsScreen settings={settings} theme={theme} form={settingsForm} onFormChange={setSettingsForm} actions={actions} />
           ) : null}
@@ -1701,7 +1701,7 @@ type Actions = {
   showMessage: (title: string, message: string, status?: Status) => Promise<void>;
   copyLogs: () => Promise<void>;
   copyDiagnostics: () => Promise<void>;
-  goLogs: () => Promise<void>;
+
   installWatcher: () => Promise<void>;
   uninstallWatcher: () => Promise<void>;
   enableWatcher: () => Promise<void>;
@@ -1760,9 +1760,7 @@ function OverviewScreen({
               <Rocket className="h-4 w-4" />
               启动 LDCodex
             </Button>
-            <Button variant="secondary" onClick={() => void actions.goLogs()}>
-              打开关于
-            </Button>
+
           </Toolbar>
         </CardContent>
       </Panel>
@@ -2182,6 +2180,8 @@ function ProxyScreen({
   const [bridgeRunning, setBridgeRunning] = useState(false);
   const [bridgeLogs, setBridgeLogs] = useState('');
   const [checking, setChecking] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [bridgePort, setBridgePort] = useState('40000');
   const [localNotice, setLocalNotice] = useState<{title:string;message:string;status?:string}|null>(null);
   useEffect(() => {
     if (localNotice) {
@@ -2204,7 +2204,7 @@ function ProxyScreen({
   const handleStart = async () => {
     setChecking(true);
     try {
-      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('start_bridge', { port: 40000 }));
+      const result = await run(() => call<CommandResult<BridgeStatusPayload>>('start_bridge', { port: parseInt(bridgePort) || 40000 }));
       if (result) {
         setLocalNotice({title:'代理服务器', message: result.message, status: result.status});
         if (result.status === 'ok' || (result).running) setBridgeRunning(true);
@@ -2238,8 +2238,8 @@ function ProxyScreen({
         <CardContent>
           <div className="metric-list">
             <Metric label="运行状态" value={bridgeRunning ? '运行中' : '已停止'} />
-            <Metric label="代理端口" value="40000" />
-            <Metric label="管理端口" value="40001" />
+            <Metric label="代理端口" value={bridgePort} />
+            <Metric label="管理端口" value={String(Number(bridgePort) + 1)} />
           </div>
           <Toolbar>
             {!bridgeRunning ? (
@@ -2257,9 +2257,9 @@ function ProxyScreen({
               <RefreshCw className="h-4 w-4" />
               刷新日志
             </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl('https://Dicad.cn')}>
-              <ExternalLink className="h-4 w-4" />
-              管理面板
+            <Button variant="secondary" onClick={() => setShowSettings(!showSettings)}>
+              <Settings className="h-4 w-4" />
+              相关设置
             </Button>
           </Toolbar>
           {localNotice ? (
@@ -2286,50 +2286,26 @@ function ProxyScreen({
           </div>
         </CardContent>
       </Panel>
-      <Panel>
-        <CardHead title="关于我们" detail="Dicad.cn  AI赋能工程设计  LET IMAGINATION BECOME REALITY" />
-        <CardContent>
-          <div className="about-footer">
-            <span onClick={() => actions.openExternalUrl('https://Dicad.cn')} className="about-footer-link">Dicad.cn</span>
-            <p>AI赋能工程设计</p>
-            <p>LET IMAGINATION BECOME REALITY</p>
-          </div>
-        </CardContent>
-      </Panel>
+      {showSettings ? (
+        <Panel>
+          <CardHead title="代理设置" detail="修改代理端口等参数" />
+          <CardContent>
+            <div className="settings-fields">
+              <Field label="代理端口号">
+                <Input
+                  value={bridgePort}
+                  onChange={(e) => setBridgePort(e.currentTarget.value)}
+                  placeholder="例如 40000"
+                />
+              </Field>
+              <div className="hint-text">修改端口后需重新启动代理服务器生效</div>
+            </div>
+          </CardContent>
+        </Panel>
+      ) : null}
     </>
   );
-}function AboutScreen({
-  overview,
-  actions,
-}: {
-  overview: OverviewResult | null;
-  actions: Actions;
-}) {
-  return (
-    <>
-      <Panel>
-        <CardHead title="关于 LDCodex" detail="本地 Codex 增强和管理工具" />
-        <CardContent>
-          <div className="metric-list">
-            <Metric label="软件版本" value={overview?.current_version ?? "-"} />
-          </div>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardContent>
-          <div className="about-footer">
-            <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="about-footer-link">Dicad.cn</span>
-            <div className="about-footer-text">AI赋能工程设计</div>
-            <div className="about-footer-en">LET IMAGINATION BECOME REALITY</div>
-          </div>
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
-
-
-function SettingsScreen({
+}function SettingsScreen({
   settings,
   theme,
   form,
@@ -3592,7 +3568,6 @@ function routeSubtitle(route: Route) {
     enhance: "会话删除、导出、项目移动和脚本能力",
     maintenance: "入口安装、修复、Watcher",
     proxy: "代理服务器配置与手动启动",
-    about: "版本信息",
     settings: "主题、命令包装器和启动参数",
   };
   return subtitles[route];
@@ -4953,8 +4928,8 @@ function loadInitialTheme(): Theme {
 function loadInitialRoute(): Route {
   if (typeof window === "undefined") return "overview";
   const params = new URLSearchParams(window.location.search);
-  if (params.get("showUpdate") === "1" || window.location.hash === "#about") {
-    return "about";
+  if (params.get("showUpdate") === "1" ) {
+    return "proxy";
   }
   return "overview";
 }

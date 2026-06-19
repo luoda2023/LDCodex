@@ -55,48 +55,15 @@
     "idx": 4
   },
   {
-    "name": "ST46",
-    "slug": "st46",
-    "base": "https://token.sensenova.cn/v1",
-    "key": "sk-YgfYahmUv2liWV6KBByoMavRFSVmFifk",
-    "id": "sensenova-u1-fast",
+    "name": "z.ai2",
+    "slug": "z-ai2",
+    "base": "https://api.z.ai/api/paas/v4",
+    "key": "75575a99cdd2497d8428841f8a15bcd4.2obLVIYQxukegobV",
+    "id": "GLM-4.7",
     "models": [
-      "sensenova-u1-fast"
+      "GLM-4.7"
     ],
     "idx": 5
-  },
-  {
-    "name": "shangtang33",
-    "slug": "shangtang33",
-    "base": "https://token.sensenova.cn/v1",
-    "key": "sk-ujCjbg6LfJKBiOIvdrobOiK9QzrTHAlX",
-    "id": "sensenova-6.7-flash-lite",
-    "models": [
-      "sensenova-6.7-flash-lite"
-    ],
-    "idx": 6
-  },
-  {
-    "name": "ST43",
-    "slug": "ST43",
-    "base": "https://token.sensenova.cn/v1",
-    "key": "sk-ydFFZ32kwrKH9Q5Wpl2MnMG1Q5Genr8o,sk-bdFqgIP13BNxX5P9GTRnGR8npi2qf5BX",
-    "id": "sensenova-u1-fast",
-    "models": [
-      "sensenova-u1-fast"
-    ],
-    "idx": 7
-  },
-  {
-    "name": "ST45",
-    "slug": "st45",
-    "base": "https://token.sensenova.cn/v1",
-    "key": "sk-YgfYahmUv2liWV6KBByoMavRFSVmFifk",
-    "id": "sensenova-6.7-flash-lite",
-    "models": [
-      "sensenova-6.7-flash-lite"
-    ],
-    "idx": 8
   },
   {
     "name": "shangtang4",
@@ -107,7 +74,7 @@
     "models": [
       "sensenova-6.7-flash-lite"
     ],
-    "idx": 9
+    "idx": 6
   },
   {
     "name": "shangtang3",
@@ -118,13 +85,46 @@
     "models": [
       "sensenova-6.7-flash-lite"
     ],
-    "idx": 10
+    "idx": 7
   },
   {
     "name": "ST41",
     "slug": "ST41",
     "base": "https://token.sensenova.cn/v1",
     "key": "sk-ydFFZ32kwrKH9Q5Wpl2MnMG1Q5Genr8o,sk-bdFqgIP13BNxX5P9GTRnGR8npi2qf5BX",
+    "id": "sensenova-6.7-flash-lite",
+    "models": [
+      "sensenova-6.7-flash-lite"
+    ],
+    "idx": 8
+  },
+  {
+    "name": "zhipu1-Edited",
+    "slug": "zhipu1-edited",
+    "base": "https://open.bigmodel.cn/api/paas/v4",
+    "key": "sk-test",
+    "id": "glm-4-flash",
+    "models": [
+      "glm-4-flash"
+    ],
+    "idx": 9
+  },
+  {
+    "name": "ST45",
+    "slug": "st45",
+    "base": "https://token.sensenova.cn/v1",
+    "key": "sk-YgfYahmUv2liWV6KBByoMavRFSVmFifk",
+    "id": "sensenova-6.7-flash-lite",
+    "models": [
+      "sensenova-6.7-flash-lite"
+    ],
+    "idx": 10
+  },
+  {
+    "name": "shangtang33",
+    "slug": "shangtang33",
+    "base": "https://token.sensenova.cn/v1",
+    "key": "sk-ujCjbg6LfJKBiOIvdrobOiK9QzrTHAlX",
     "id": "sensenova-6.7-flash-lite",
     "models": [
       "sensenova-6.7-flash-lite"
@@ -319,15 +319,26 @@
     "idx": 28
   },
   {
-    "name": "z.ai2",
-    "slug": "z-ai2",
-    "base": "https://api.z.ai/api/paas/v4",
-    "key": "75575a99cdd2497d8428841f8a15bcd4.2obLVIYQxukegobV",
-    "id": "GLM-4.7",
+    "name": "ST46",
+    "slug": "st46",
+    "base": "https://token.sensenova.cn/v1",
+    "key": "sk-YgfYahmUv2liWV6KBByoMavRFSVmFifk",
+    "id": "sensenova-u1-fast",
     "models": [
-      "GLM-4.7"
+      "sensenova-u1-fast"
     ],
     "idx": 29
+  },
+  {
+    "name": "ST43",
+    "slug": "ST43",
+    "base": "https://token.sensenova.cn/v1",
+    "key": "sk-ydFFZ32kwrKH9Q5Wpl2MnMG1Q5Genr8o,sk-bdFqgIP13BNxX5P9GTRnGR8npi2qf5BX",
+    "id": "sensenova-u1-fast",
+    "models": [
+      "sensenova-u1-fast"
+    ],
+    "idx": 30
   },
   {
     "name": "免费1",
@@ -338,7 +349,7 @@
     "models": [
       "gpt-4o-mini"
     ],
-    "idx": 30
+    "idx": 31
   },
   {
     "name": "ApiFree",
@@ -349,7 +360,7 @@
     "models": [
       "agnes-2.0-flash"
     ],
-    "idx": 31
+    "idx": 32
   },
   {
     "name": "ApiFree2",
@@ -360,6 +371,6 @@
     "models": [
       "agnes-2.0-flash"
     ],
-    "idx": 32
+    "idx": 33
   }
 ]
