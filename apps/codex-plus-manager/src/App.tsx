@@ -2239,7 +2239,6 @@ function ProxyScreen({
           <div className="metric-list">
             <Metric label="运行状态" value={bridgeRunning ? '运行中' : '已停止'} />
             <Metric label="代理端口" value={bridgePort} />
-            <Metric label="管理端口" value={String(Number(bridgePort) + 1)} />
           </div>
           <Toolbar>
             {!bridgeRunning ? (
@@ -3507,11 +3506,8 @@ function LatestLaunch({ status }: { status: LaunchStatus | null }) {
   if (!status) return <div className="empty">暂无启动状态。</div>;
   return (
     <div className="metric-list">
-      <Metric label="状态" value={status.status} />
-      <Metric label="消息" value={status.message} />
-      <Metric label="Debug" value={String(status.debug_port ?? "-")} />
-      <Metric label="Helper" value={String(status.helper_port ?? "-")} />
-      <Metric label="时间" value={formatTime(status.started_at_ms)} />
+      <Metric label="运行状态" value={status.status === "ok" ? "正常" : status.status} />
+      <Metric label="启动时间" value={formatTime(status.started_at_ms)} />
     </div>
   );
 }
