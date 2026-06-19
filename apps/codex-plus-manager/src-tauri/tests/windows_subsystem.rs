@@ -154,7 +154,7 @@ fn relay_settings_keeps_profile_config_and_auth_files_isolated() {
     assert!(commands_rs.contains("switch_relay_profile"));
     assert!(commands_rs.contains("backfill_relay_profile_from_live"));
     assert!(app_tsx.contains("relayProfileSwitchValidation(selectedBeforeSave)"));
-    assert!(app_tsx.contains("缺少独立 config.toml"));
+    assert!(app_tsx.contains("缺少独立配置"));
     assert!(commands_rs.contains("switch_relay_profile"));
     assert!(!commands_rs.contains("缺少独立 auth.json"));
     assert!(commands_rs.contains("backfill_relay_profile_from_live"));
@@ -241,3 +241,4 @@ fn relay_preview_deduplicates_root_keys_when_merging_common_config() {
     assert!(app_tsx.contains("rootSeen.add(key)"));
     assert!(app_tsx.contains("joinTomlSectionsRootFirst"));
 }
+
