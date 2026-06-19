@@ -115,6 +115,7 @@ pub fn resolve_codex_app_dir(app_dir: Option<&Path>) -> Option<PathBuf> {
 /// - %LOCALAPPDATA%\OpenAI\Codex\bin\  (standalone installer)
 /// - %LOCALAPPDATA%\OpenAI\Codex\      (user data root)
 /// - %LOCALAPPDATA%\Programs\OpenAI\Codex\ (alternative)
+/// - C:\codex\                         (custom portable installation)
 pub fn find_standalone_codex_app_dir() -> Option<PathBuf> {
     let local_appdata = std::env::var_os("LOCALAPPDATA")?;
 
@@ -128,6 +129,8 @@ pub fn find_standalone_codex_app_dir() -> Option<PathBuf> {
             .join("Programs")
             .join("OpenAI")
             .join("Codex"),
+        // Custom portable installation path
+        PathBuf::from(r"C:\codex"),
     ];
 
     for candidate in candidates {

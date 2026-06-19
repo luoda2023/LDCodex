@@ -87,9 +87,11 @@ pub fn codex_process_ids<'a>(processes: impl IntoIterator<Item = (u32, &'a str)>
         .into_iter()
         .filter_map(|(process_id, executable)| {
             let executable = executable.to_ascii_lowercase();
-            executable
-                .contains("\\windowsapps\\openai.codex_")
-                .then_some(process_id)
+            if executable.contains("\\windowsapps\\openai.codex_") || executable.ends_with("\\codex.exe") {
+                Some(process_id)
+            } else {
+                None
+            }
         })
         .collect()
 }

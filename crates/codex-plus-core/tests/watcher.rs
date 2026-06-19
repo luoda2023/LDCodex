@@ -67,20 +67,21 @@ fn spawn_launcher_command_points_to_silent_binary_only() {
 }
 
 #[test]
-fn codex_process_filter_keeps_only_windowsapps_codex_processes() {
+fn codex_process_filter_keeps_windowsapps_and_standalone_codex_processes() {
     let processes = [
         (
             11,
             r"C:\Program Files\WindowsApps\OpenAI.Codex_1.0.0.0_x64__abc\app\Codex.exe",
         ),
-        (12, r"C:\Tools\Codex.exe"),
+        (12, r"C:\codex\app\Codex.exe"),
+        (13, r"C:\Tools\NotCodex.exe"),
         (
-            13,
+            14,
             r"C:\Program Files\WindowsApps\Other.App_1.0.0.0_x64__abc\app\Codex.exe",
         ),
     ];
 
-    assert_eq!(codex_process_ids(processes), vec![11]);
+    assert_eq!(codex_process_ids(processes), vec![11, 12]);
 }
 
 #[test]

@@ -586,6 +586,7 @@ impl LaunchHooks for DefaultLaunchHooks {
         }
 
         let command = build_codex_command(app_dir, debug_port, extra_args);
+        crate::watcher::stop_codex_processes();
         let executable = command
             .first()
             .ok_or_else(|| anyhow::anyhow!("Codex command is empty"))?;
