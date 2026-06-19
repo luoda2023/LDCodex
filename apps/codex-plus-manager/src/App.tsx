@@ -1341,6 +1341,7 @@ const closeWindow = async () => {
   const actions = useMemo(
     () => ({
       refreshCurrent: () => navigate(route),
+      startBridge: async () => { try { await invoke("start_bridge", { port: 40000 }); } catch (_) {} },
       launch,
       restart,
       repairBackend,
@@ -1701,7 +1702,7 @@ type Actions = {
   showMessage: (title: string, message: string, status?: Status) => Promise<void>;
   copyLogs: () => Promise<void>;
   copyDiagnostics: () => Promise<void>;
-
+  startBridge: () => Promise<void>;
   installWatcher: () => Promise<void>;
   uninstallWatcher: () => Promise<void>;
   enableWatcher: () => Promise<void>;
@@ -1756,9 +1757,9 @@ function OverviewScreen({
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>
-              <Rocket className="h-4 w-4" />
-              启动 LDCodex
+            <Button onClick={() => void actions.startBridge()}>
+              <Power className="h-4 w-4" />
+              启动 代理
             </Button>
 
           </Toolbar>
@@ -2180,7 +2181,6 @@ function ProxyScreen({
   const [bridgeRunning, setBridgeRunning] = useState(false);
   const [bridgeLogs, setBridgeLogs] = useState('');
   const [checking, setChecking] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [bridgePort, setBridgePort] = useState('40000');
   const [localNotice, setLocalNotice] = useState<{title:string;message:string;status?:string}|null>(null);
   useEffect(() => {
@@ -2257,10 +2257,7 @@ function ProxyScreen({
               <RefreshCw className="h-4 w-4" />
               刷新日志
             </Button>
-            <Button variant="secondary" onClick={() => setShowSettings(!showSettings)}>
-              <Settings className="h-4 w-4" />
-              相关设置
-            </Button>
+
           </Toolbar>
           {localNotice ? (
             <div className="toast-wrap" key="proxy-notice">
@@ -2286,9 +2283,8 @@ function ProxyScreen({
           </div>
         </CardContent>
       </Panel>
-      {showSettings ? (
-        <Panel>
-          <CardHead title="代理设置" detail="修改代理端口等参数" />
+      <Panel>
+        <CardHead title="代理设置" detail="修改代理端口等参数" />
           <CardContent>
             <div className="settings-fields">
               <Field label="代理端口号">
@@ -2301,8 +2297,7 @@ function ProxyScreen({
               <div className="hint-text">修改端口后需重新启动代理服务器生效</div>
             </div>
           </CardContent>
-        </Panel>
-      ) : null}
+      </Panel>
     </>
   );
 }function SettingsScreen({
