@@ -1,4 +1,4 @@
-﻿name: PR build artifacts
+name: PR build artifacts
 
 on:
   pull_request:
