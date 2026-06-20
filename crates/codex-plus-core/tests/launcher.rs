@@ -2,7 +2,7 @@
 use std::sync::{Arc, Mutex};
 
 use codex_plus_core::app_paths::{
-    build_codex_executable, codex_app_version, find_latest_codex_app_dir,
+    codex_app_version, find_latest_codex_app_dir,
     find_latest_codex_app_dir_from_roots, normalize_codex_app_path,
     packaged_app_user_model_id, resolve_codex_app_dir_with_saved, user_data_candidates_from,
 };
