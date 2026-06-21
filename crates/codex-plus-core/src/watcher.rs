@@ -87,14 +87,13 @@ pub fn codex_process_ids<'a>(processes: impl IntoIterator<Item = (u32, &'a str)>
         .into_iter()
         .filter_map(|(process_id, executable)| {
             let executable = executable.to_ascii_lowercase();
-            if executable.contains("\\windowsapps\\openai.codex_") || executable.contains("\\codex\\") {
-                Some(process_id)
-            } else {
-                None
-            }
+            executable
+                .contains("\\windowsapps\\openai.codex_")
+                .then_some(process_id)
         })
         .collect()
 }
+
 pub fn filter_killable_launcher_processes<'a>(
     processes: impl IntoIterator<Item = (u32, u32, &'a str)>,
     current_process_id: u32,
@@ -254,4 +253,3 @@ fn startup_shortcut_path() -> Option<PathBuf> {
             .join(WATCHER_STARTUP_SHORTCUT_NAME)
     })
 }
-

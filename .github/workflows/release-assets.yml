@@ -1,12 +1,6 @@
-name: Release assets
+﻿name: Release assets
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (e.g. v2.0.1)"
-        required: true
-        type: string
   release:
     types: [published]
 
@@ -20,7 +14,7 @@ jobs:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -86,7 +80,7 @@ jobs:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -144,7 +138,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          TAG: ${{ github.event.release.tag_name }}
         shell: bash
         run: |
           set -euo pipefail
@@ -173,7 +167,7 @@ jobs:
       - name: Upload latest.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          TAG: ${{ github.event.release.tag_name }}
           REPO: ${{ github.repository }}
         shell: bash
         run: gh release upload "$TAG" latest.json --clobber --repo "$REPO"

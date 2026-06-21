@@ -793,14 +793,13 @@ fn restore_file_mtime(path: &Path, mtime: Option<SystemTime>) {
 }
 
 fn table_columns(db: &Connection, table: &str) -> anyhow::Result<HashSet<String>> {
-    let sql = format!(
+    let mut stmt = db.prepare(&format!(
         "PRAGMA table_info(\"{}\")",
         table.replace('"', "\"\"")
-    );
-    let mut stmt = db.prepare(&sql)?;
-    let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
-    let result: HashSet<String> = rows.collect::<rusqlite::Result<HashSet<_>>>()?;
-    Ok(result)
+    ))?;
+    Ok(stmt
+        .query_map([], |row| row.get::<_, String>(1))?
+        .collect::<rusqlite::Result<HashSet<_>>>()?)
 }
 
 fn sqlite_provider_ids(path: &Path) -> anyhow::Result<Vec<String>> {

@@ -1,17 +1,16 @@
-﻿use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use codex_plus_core::app_paths::{
-    codex_app_version, find_latest_codex_app_dir,
-    find_latest_codex_app_dir_from_roots, normalize_codex_app_path,
+    build_codex_executable, codex_app_version, find_latest_codex_app_dir,
+    find_latest_codex_app_dir_from_roots, find_macos_codex_app, normalize_codex_app_path,
     packaged_app_user_model_id, resolve_codex_app_dir_with_saved, user_data_candidates_from,
 };
 use codex_plus_core::launcher::{
-    CodexLaunch, DefaultLaunchHooks, LaunchHooks, LaunchOptions,
-    build_codex_arguments, build_codex_command, build_packaged_activation, launch_and_inject_with_hooks,
+    CodexLaunch, DefaultLaunchHooks, LaunchHooks, LaunchOptions, MacosCleanupPolicy,
+    build_codex_arguments, build_codex_command, build_macos_cleanup_command,
+    build_macos_open_command, build_packaged_activation, launch_and_inject_with_hooks,
 };
-#[cfg(target_os = "macos")]
-use codex_plus_core::launcher::{MacosCleanupPolicy, build_macos_cleanup_command, build_macos_open_command};
 #[cfg(windows)]
 use codex_plus_core::launcher::{WindowsProcessControlStrategy, windows_process_control_strategy};
 use codex_plus_core::ports::{
@@ -19,6 +18,7 @@ use codex_plus_core::ports::{
 };
 use codex_plus_core::settings::{BackendSettings, RelayProfile, RelayProtocol};
 use codex_plus_core::status::StatusStore;
+
 #[test]
 fn app_paths_find_latest_windows_package_prefers_highest_version_app_dir() {
     let temp = tempfile::tempdir().unwrap();
@@ -67,8 +67,8 @@ fn app_paths_extracts_codex_version_from_windows_package_app_dir() {
 }
 
 #[test]
-#[cfg(target_os = "macos")]
 fn app_paths_extracts_codex_version_from_macos_bundle_plist() {
+    let temp = tempfile::tempdir().unwrap();
     let app = temp.path().join("OpenAI Codex.app");
     let contents = app.join("Contents");
     std::fs::create_dir_all(&contents).unwrap();
@@ -106,10 +106,11 @@ fn app_paths_user_data_candidates_include_local_and_roaming_variants() {
             roaming.join("OpenAI").join("Codex"),
             roaming.join("OpenAI.Codex"),
             roaming.join("Codex"),
-        ]);
+        ]
+    );
 }
+
 #[test]
-#[cfg(target_os = "macos")]
 fn app_paths_find_macos_codex_app_prefers_first_search_root_and_known_names() {
     let temp = tempfile::tempdir().unwrap();
     let system_root = temp.path().join("Applications");
@@ -126,7 +127,6 @@ fn app_paths_find_macos_codex_app_prefers_first_search_root_and_known_names() {
 }
 
 #[test]
-#[cfg(target_os = "macos")]
 fn app_paths_build_macos_bundle_executable() {
     let app = PathBuf::from("/Applications/OpenAI Codex.app");
 
@@ -292,7 +292,6 @@ fn launcher_windows_packaged_process_management_uses_native_api() {
 }
 
 #[test]
-#[cfg(target_os = "macos")]
 fn launcher_macos_open_command_waits_for_app_exit() {
     let command = build_macos_open_command(Path::new("/Applications/Codex.app"), 9229, &[]);
 
@@ -302,10 +301,10 @@ fn launcher_macos_open_command_waits_for_app_exit() {
     assert!(command.contains(&"--args".to_string()));
     assert!(command.contains(&"--remote-debugging-port=9229".to_string()));
 }
+
 #[test]
-#[cfg(target_os = "macos")]
 fn launcher_macos_open_command_appends_extra_codex_arguments_after_args() {
-    let extra_args = ["--force_high_performance_gpu"];
+    let extra_args = vec!["--force_high_performance_gpu".to_string()];
     let command = build_macos_open_command(Path::new("/Applications/Codex.app"), 9229, &extra_args);
     let args_index = command
         .iter()
@@ -321,6 +320,7 @@ fn launcher_macos_open_command_appends_extra_codex_arguments_after_args() {
         ]
     );
 }
+
 #[test]
 fn ports_windows_falls_back_to_ephemeral_when_requested_is_busy() {
     let selected = select_platform_loopback_port_with(9229, true, |_| false, || 43001);
@@ -852,9 +852,6 @@ async fn launch_starts_helper_when_chat_protocol_proxy_is_enabled() {
             model_insert_mode: codex_plus_core::settings::RelayModelInsertMode::default(),
             model_list: String::new(),
             user_agent: String::new(),
-            vision_base_url: String::new(),
-            vision_api_key: String::new(),
-            vision_model: String::new(),
         }],
         active_relay_id: "relay-chat".to_string(),
         ..BackendSettings::default()
@@ -987,7 +984,6 @@ async fn default_provider_sync_enabled_fails_instead_of_silently_skipping() {
 }
 
 #[test]
-#[cfg(target_os = "macos")]
 fn launcher_macos_cleanup_command_targets_specific_app_bundle() {
     let command = build_macos_cleanup_command(
         Path::new("/Applications/OpenAI Codex.app"),
@@ -999,8 +995,8 @@ fn launcher_macos_cleanup_command_targets_specific_app_bundle() {
     assert!(command.iter().any(|part| part.contains("OpenAI Codex")));
     assert!(!command.iter().any(|part| part == "Codex"));
 }
+
 #[test]
-#[cfg(target_os = "macos")]
 fn launcher_macos_cleanup_is_skipped_when_app_was_already_running() {
     let command = build_macos_cleanup_command(
         Path::new("/Applications/OpenAI Codex.app"),
@@ -1198,4 +1194,3 @@ impl LaunchHooks for FakeHooks {
         }
     }
 }
-

@@ -17,7 +17,3 @@ docs/superpowers/
 *.log
 .DS_Store
 Thumbs.db
-
-# Backup files
-*.backup
-*.bak

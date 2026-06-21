@@ -1,4 +1,5 @@
 ﻿use std::path::Path;
+use std::process::Command;
 
 use crate::zed_remote::SshTarget;
 

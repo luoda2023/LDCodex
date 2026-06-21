@@ -87,12 +87,6 @@ pub struct RelayProfile {
         skip_serializing_if = "String::is_empty"
     )]
     pub user_agent: String,
-    #[serde(rename = "visionBaseUrl", default)]
-    pub vision_base_url: String,
-    #[serde(rename = "visionApiKey", default, skip_serializing)]
-    pub vision_api_key: String,
-    #[serde(rename = "visionModel", default)]
-    pub vision_model: String,
 }
 
 impl Default for RelayProfile {
@@ -118,9 +112,6 @@ impl Default for RelayProfile {
             model_insert_mode: RelayModelInsertMode::Patch,
             model_list: String::new(),
             user_agent: String::new(),
-            vision_base_url: String::new(),
-            vision_api_key: String::new(),
-            vision_model: String::new(),
         }
     }
 }
@@ -331,9 +322,6 @@ impl BackendSettings {
                 model_insert_mode: RelayModelInsertMode::Patch,
                 model_list: String::new(),
                 user_agent: String::new(),
-            vision_base_url: String::new(),
-            vision_api_key: String::new(),
-            vision_model: String::new(),
             };
         }
 
@@ -378,9 +366,6 @@ impl BackendSettings {
             model_insert_mode: RelayModelInsertMode::Patch,
             model_list: String::new(),
             user_agent: String::new(),
-            vision_base_url: String::new(),
-            vision_api_key: String::new(),
-            vision_model: String::new(),
         }
     }
 }
@@ -1026,7 +1011,7 @@ mod tests {
         let profile: RelayProfile = serde_json::from_str(
             r#"{
                 "id":"relay-a",
-                "name":"供应�?A",
+                "name":"供应商 A",
                 "contextSelection":{
                     "mcpServers":["context7"],
                     "skills":["writer"],
@@ -1058,7 +1043,7 @@ mod tests {
         let profile: RelayProfile = serde_json::from_str(
             r#"{
                 "id":"relay-a",
-                "name":"供应�?A",
+                "name":"供应商 A",
                 "model":"gpt-5.4",
                 "baseUrl":"https://relay.example/v1",
                 "apiKey":"sk-test",
@@ -1523,7 +1508,7 @@ experimental_bearer_token = "sk-existing""#
                 "relayProfiles": [
                     {
                         "id": "relay-a",
-                        "name": "供应�?A",
+                        "name": "供应商 A",
                         "model": "gpt-5.4",
                         "baseUrl": "https://relay.example/v1",
                         "apiKey": "sk-a",
@@ -1536,7 +1521,7 @@ experimental_bearer_token = "sk-existing""#
             .unwrap();
 
         assert_eq!(updated.relay_profiles[0].id, "relay-a");
-        assert_eq!(updated.relay_profiles[0].name, "供应�?A");
+        assert_eq!(updated.relay_profiles[0].name, "供应商 A");
 
         let saved: Value =
             serde_json::from_str(&std::fs::read_to_string(dir.join("settings.json")).unwrap())
@@ -1690,4 +1675,3 @@ experimental_bearer_token = "sk-existing""#
         assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
     }
 }
-

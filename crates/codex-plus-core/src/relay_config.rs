@@ -1226,12 +1226,23 @@ fn normalize_duplicate_toml_text(contents: &str) -> String {
             continue;
         }
 
+<<<<<<< HEAD
         if in_root && !trimmed.is_empty() && !trimmed.starts_with('#') {
             if let Some((key, _)) = trimmed.split_once('=') {
                 let key = key.trim();
                 if !key.is_empty() && !key.contains('.') && !seen_root_keys.insert(key.to_string()) {
                     continue;
                 }
+=======
+        if in_root
+            && !trimmed.is_empty()
+            && !trimmed.starts_with('#')
+            && let Some((key, _)) = trimmed.split_once('=')
+        {
+            let key = key.trim();
+            if !key.is_empty() && !key.contains('.') && !seen_root_keys.insert(key.to_string()) {
+                continue;
+>>>>>>> 132b5403305706a5983ca5c3a93db853661dc7ae
             }
         }
 
@@ -1266,12 +1277,21 @@ fn strip_common_config_text_fallback(config_text: &str, common_config: &str) -> 
             continue;
         }
 
+<<<<<<< HEAD
         if !trimmed.is_empty() && !trimmed.starts_with('#') {
             if let Some((key, _)) = trimmed.split_once('=') {
                 if anchors.root_keys.contains(key.trim()) {
                     continue;
                 }
             }
+=======
+        if !trimmed.is_empty()
+            && !trimmed.starts_with('#')
+            && let Some((key, _)) = trimmed.split_once('=')
+            && anchors.root_keys.contains(key.trim())
+        {
+            continue;
+>>>>>>> 132b5403305706a5983ca5c3a93db853661dc7ae
         }
 
         kept.push(line);
@@ -1298,12 +1318,23 @@ fn common_config_anchors(common_config: &str) -> CommonConfigAnchors {
             continue;
         }
 
+<<<<<<< HEAD
         if in_root && !trimmed.is_empty() && !trimmed.starts_with('#') {
             if let Some((key, _)) = trimmed.split_once('=') {
                 let key = key.trim();
                 if !key.is_empty() {
                     root_keys.insert(key.to_string());
                 }
+=======
+        if in_root
+            && !trimmed.is_empty()
+            && !trimmed.starts_with('#')
+            && let Some((key, _)) = trimmed.split_once('=')
+        {
+            let key = key.trim();
+            if !key.is_empty() {
+                root_keys.insert(key.to_string());
+>>>>>>> 132b5403305706a5983ca5c3a93db853661dc7ae
             }
         }
     }
