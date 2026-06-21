@@ -987,6 +987,12 @@
   function setCodexPlusSetting(key, value) {
     const backendKey = codexPlusBackendSettingMap[key];
     if (backendKey) {
+      // Sync to localStorage immediately so UI never reverts on async failure
+      try {
+        const stored = JSON.parse(localStorage.getItem(codexPlusSettingsKey) || '{}');
+        stored[key] = value;
+        localStorage.setItem(codexPlusSettingsKey, JSON.stringify(stored));
+      } catch(e) {}
       setBackendSetting(backendKey, value);
       return;
     }

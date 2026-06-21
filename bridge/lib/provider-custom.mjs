@@ -7,7 +7,7 @@
 
 import { log } from "./logger.mjs";
 import { register } from "./provider-registry.mjs";
-import { MODELS, slugify } from "./config.mjs";
+import { MODELS, slugify, loadJSON, PATHS } from "./config.mjs";
 import { proxyFetch } from "./protocol/openai-chat.mjs";
 
 /**
@@ -56,7 +56,11 @@ export function createCustomProvider(entry) {
 export function registerCustom() {
   const registered = [];
 
-  for (const entry of MODELS) {
+  let entries;
+  try { entries = loadJSON(PATHS.models, []); } catch(e) { entries = null; }
+  if (!entries || entries.length === 0) entries = MODELS;
+
+  for (const entry of entries) {
     if (!entry.base || !entry.key) {
       log.debug(`[custom] skipping "${entry.name || entry.slug}": missing base or key`);
       continue;
@@ -66,7 +70,7 @@ export function registerCustom() {
       const provider = createCustomProvider(entry);
       register(provider);
       registered.push(provider.name);
-      log.info(`[custom] registered "${provider.name}" â†’ ${provider.base}`);
+      log.info(`[custom] registered "${provider.name}" â†?${provider.base}`);
     } catch (e) {
       log.warn(`[custom] failed to register "${entry.name || entry.slug}": ${e.message}`);
     }

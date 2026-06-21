@@ -54,6 +54,18 @@ export function initMiddleman() {
  */
 export function syncModels() {
   const dbModels = dbGetAllModels();
+  // Safety: never overwrite models.json with empty array if DB is empty
+  // and models.json already has data. This prevents model disappearance
+  // when there's a race between admin-db init and middleman sync.
+  if (dbModels.length === 0) {
+    try {
+      const existing = loadJSON(PATHS.models, []);
+      if (existing.length > 0) {
+        log.warn('[middleman] syncModels: DB is empty but models.json has ' + existing.length + ' models; skipping overwrite');
+        return;
+      }
+    } catch(e) { /* skip, will overwrite anyway */ }
+  }
   const modelsArray = dbModels.map(m => ({
     name: m.name,
     slug: m.slug,

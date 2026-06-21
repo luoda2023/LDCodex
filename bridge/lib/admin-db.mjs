@@ -78,6 +78,34 @@ export function initAdminDB() {
   const modelCount = _db.prepare("SELECT COUNT(*) as cnt FROM models").get().cnt;
   if (modelCount === 0) {
     migrateFromJSON();
+  } else {
+    // Also import any models in models.json that are missing from DB
+    try {
+      const models = loadJSON(PATHS.models, []);
+      if (models.length > modelCount) {
+        log.info("[admin-db] models.json has " + models.length + " models but DB has " + modelCount + "; syncing missing");
+        const insert = _db.prepare(
+          "INSERT OR IGNORE INTO models (name, slug, base, key, model_id, idx, enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)"
+        );
+        const now = Date.now();
+        let added = 0;
+        for (const m of models) {
+          const slug = m.slug || (m.name ? m.name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() : "");
+          if (!slug) continue;
+          const existing = _db.prepare("SELECT id FROM models WHERE slug = ?").get(slug);
+          if (!existing) {
+            insert.run(m.name || "", slug, m.base || "", m.key || "", m.id || (m.models && m.models[0]) || "", m.idx || 0, now, now);
+            added++;
+          }
+        }
+        if (added > 0) {
+          bumpVersion("models");
+          log.info("[admin-db] imported " + added + " missing models from JSON");
+        }
+      }
+    } catch(e) {
+      log.warn("[admin-db] sync missing models failed: " + e.message);
+    }
   }
 
   log.info("[admin-db] SQLite ready: " + DB_PATH);
