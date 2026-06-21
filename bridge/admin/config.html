@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LUODA中转路由 · 系统配置</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/* ═══════════════════ RESET & THEME ═══════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --font-display:'PingFang SC','Microsoft YaHei','SimHei',sans-serif;
+  --font-body:'PingFang SC','Microsoft YaHei','SimHei',sans-serif;
+  --mono:'JetBrains Mono','SF Mono','Cascadia Code',monospace;
+  --primary:#165DFF;
+  --primary-hover:#0E4FD0;
+  --primary-light:#4080FF;
+  --primary-subtle:rgba(22,101,255,0.08);
+  --bg:#F2F4F8;
+  --surface:#FFFFFF;
+  --sidebar-bg:#F8F9FC;
+  --text:#181B24;
+  --text-2:#484E5E;
+  --text-3:#8890A4;
+  --border:#E3E6ED;
+  --border-light:#EBEEF4;
+  --success:#00B42A;
+  --danger:#F53F3F;
+  --warning:#FF7D00;
+  --info:#4080FF;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 20px rgba(0,0,0,0.06);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.08);
+  --radius:14px;
+  --radius-sm:10px;
+  --radius-xs:6px;
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+[data-theme="dark"]{
+  --bg:#0C0E15;
+  --surface:#171A24;
+  --sidebar-bg:#11131D;
+  --text:#E2E6F0;
+  --text-2:#949CAE;
+  --text-3:#5D647A;
+  --border:#262B38;
+  --border-light:#1E2230;
+  --primary-subtle:rgba(22,101,255,0.12);
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md:0 4px 20px rgba(0,0,0,0.25);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.35);
+}
+html,body{height:100%;overflow:hidden;font-family:var(--font-body);font-size:14px;line-height:1.5;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;}
+.app{display:flex;height:100vh;width:100vw;}
+::selection{background:var(--primary-subtle);color:var(--primary);}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{width:228px;min-width:228px;background:var(--sidebar-bg);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;}
+.sidebar-logo{display:flex;align-items:center;gap:10px;padding:18px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sidebar-logo .logo-mrk{width:28px;height:28px;border-radius:8px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:15px;flex-shrink:0;}
+.sidebar-logo .logo-nm{white-space:nowrap;font-family:var(--font-display);font-size:1.1rem;font-weight:800;letter-spacing:-0.02em;color:var(--text);}
+.sidebar-logo .logo-bd{margin-left:auto;font-size:10px;font-weight:700;color:var(--primary);background:var(--primary-subtle);padding:2px 8px;border-radius:20px;margin-right:2px;}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 8px;}
+.sidebar-nav::-webkit-scrollbar{width:0}
+.nav-sec{margin-bottom:18px;}
+.nav-sec-title{font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-3);padding:0 10px 8px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-xs);color:var(--text-2);text-decoration:none;font-size:13px;font-weight:500;transition:all 0.15s var(--ease);cursor:pointer;}
+.nav-item i{width:18px;text-align:center;font-size:14px;color:var(--text-3);transition:color 0.15s;}
+.nav-item:hover{background:var(--primary-subtle);color:var(--text);}
+.nav-item:hover i{color:var(--primary);}
+.nav-item.active{background:var(--primary-subtle);color:var(--primary);font-weight:600;}
+.nav-item.active i{color:var(--primary);}
+.nav-sub{padding-left:34px !important;font-size:12px;}
+.nav-badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(0,180,42,0.1);color:var(--success);}
+.sidebar-cta{margin:8px;padding:14px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--primary),#1A4FBF);color:#fff;flex-shrink:0;position:relative;overflow:hidden;}
+.sidebar-cta::before{content:'';position:absolute;top:-50%;right:-50%;width:100%;height:100%;background:radial-gradient(circle,rgba(255,255,255,0.1) 0%,transparent 70%);pointer-events:none;}
+.sidebar-cta .cta-icon{font-size:1.3rem;margin-bottom:6px;}
+.sidebar-cta .cta-title{font-weight:700;font-size:13px;margin-bottom:4px;}
+.sidebar-cta .cta-desc{font-size:11px;opacity:0.8;margin-bottom:10px;line-height:1.4;}
+.sidebar-cta .cta-btn{width:100%;padding:7px;background:rgba(255,255,255,0.2);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius-xs);color:#fff;font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;}
+.sidebar-cta .cta-btn:hover{background:rgba(255,255,255,0.3);}
+.sidebar-footer{padding:6px 8px;border-top:1px solid var(--border);flex-shrink:0;}
+
+/* ═══ HEADER ═══ */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;height:54px;}
+.h-left{display:flex;align-items:center;gap:20px;}
+.h-stat{display:flex;align-items:center;gap:8px;}
+.h-stat-label{font-size:12px;font-weight:500;color:var(--text-3);white-space:nowrap;}
+.h-stat-value{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);background:var(--bg);padding:3px 12px;border-radius:20px;display:flex;align-items:center;gap:6px;}
+.h-stat-value .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.h-right{display:flex;align-items:center;gap:16px;}
+.h-actions{display:flex;align-items:center;gap:8px;}
+.h-icon-btn{width:32px;height:32px;border-radius:var(--radius-xs);border:none;background:transparent;color:var(--text-3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.h-icon-btn:hover{background:var(--bg);color:var(--text);}
+.h-avatar{width:30px;height:30px;border-radius:50%;overflow:hidden;border:2px solid var(--border);flex-shrink:0;cursor:pointer;}
+.h-avatar img{width:100%;height:100%;object-fit:cover;}
+.header-actions{display:flex;align-items:center;gap:8px;}
+.header-actions .btn-restart{padding:6px 14px;background:var(--bg);color:var(--text-2);border:1px solid var(--border);border-radius:var(--radius-xs);font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;}
+.header-actions .btn-restart:hover{background:var(--danger);color:#fff;border-color:var(--danger);}
+
+/* ═══ CONTENT ═══ */
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:0;}
+.content::-webkit-scrollbar{width:4px;}
+.content::-webkit-scrollbar-track{background:transparent;}
+.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* ═══ STATUS BAR ═══ */
+.status-bar{display:flex;align-items:center;gap:16px;padding:8px 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.status-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-3);white-space:nowrap;}
+.status-item .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.status-item .dot.on{background:var(--danger);box-shadow:0 0 5px var(--danger);}
+.status-item .dot.off{background:var(--border);}
+.status-item .dot.hermes-on{background:var(--warning);box-shadow:0 0 5px var(--warning);}
+.status-item .val{font-family:var(--mono);font-weight:600;color:var(--text);}
+.sb-sep{width:1px;height:16px;background:var(--border);}
+.status-err{font-size:12px;color:var(--warning);margin-left:8px;}
+
+/* ═══ FALLBACK BAR ═══ */
+.fbk-bar{background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
+.fbk-header{display:flex;align-items:center;gap:10px;padding:10px 24px 8px;flex-wrap:wrap;}
+.fbk-label{font-family:var(--font-display);font-size:14px;color:var(--primary);font-weight:700;white-space:nowrap;}
+.fbk-input{width:60px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:13px;text-align:center;font-family:var(--font-body);color:var(--text);background:var(--bg);}
+.fbk-input:focus{outline:none;border-color:var(--primary);}
+.fbk-vid-label{font-size:13px;color:var(--text-3);white-space:nowrap;}
+.fbk-vid-input{width:90px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:13px;font-family:var(--mono);color:var(--warning);background:var(--bg);}
+.fbk-vid-input:focus{outline:none;border-color:var(--primary);}
+.fbk-badges-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 24px;min-height:44px;}
+
+/* Badge items */
+.fbk-badge-item{display:inline-flex;align-items:center;gap:5px;padding:4px 10px 4px 5px;border-radius:20px;font-size:13px;cursor:pointer;white-space:nowrap;transition:all 0.2s;user-select:none;border:1px solid transparent;flex-shrink:0;}
+.fbk-badge-circle{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
+.badge-name{max-width:100px;overflow:hidden;text-overflow:ellipsis;font-weight:500;font-size:12px;}
+.fbk-badge-item.b1 .fbk-badge-circle{background:#8e44ad}
+.fbk-badge-item.b2 .fbk-badge-circle{background:#2980b9}
+.fbk-badge-item.b3 .fbk-badge-circle{background:#27ae60}
+.fbk-badge-item.b4 .fbk-badge-circle{background:#d35400}
+.fbk-badge-item.b5 .fbk-badge-circle{background:#c0392b}
+.fbk-badge-item.b6 .fbk-badge-circle{background:#16a085}
+.fbk-badge-item.b7 .fbk-badge-circle{background:#2c3e50}
+.fbk-badge-item.b8 .fbk-badge-circle{background:#7f8c8d}
+.fbk-badge-item.b9 .fbk-badge-circle{background:#e67e22}
+.fbk-badge-item.b10 .fbk-badge-circle{background:#1abc9c}
+.fbk-badge-item.badge-active{animation:badge-pulse 1.5s ease-in-out infinite;border-color:var(--danger)!important;background:rgba(255,23,68,0.12)!important;}
+.fbk-badge-item.badge-active .fbk-badge-circle{background:var(--danger)!important;box-shadow:0 0 12px rgba(255,23,68,0.5)!important;}
+.fbk-badge-item.badge-hermes-active{animation:badge-pulse 1.5s ease-in-out infinite;border-color:var(--warning)!important;background:rgba(255,125,0,0.12)!important;}
+.fbk-badge-item.badge-hermes-active .fbk-badge-circle{background:var(--warning)!important;box-shadow:0 0 12px rgba(255,125,0,0.5)!important;}
+@keyframes badge-pulse{0%,100%{box-shadow:0 0 6px rgba(255,23,68,0.3)}50%{box-shadow:0 0 14px rgba(255,23,68,0.6)}}
+.fbk-badge-item.badge-idle{border-color:transparent;background:rgba(58,74,106,0.06);}
+.fbk-badge-item.badge-idle .badge-name{color:var(--text-3);}
+.fbk-badge-item.dragging{opacity:0.4;}
+.fbk-badge-item.drag-over{outline:2px dashed var(--primary);outline-offset:2px;}
+
+/* ═══ MAIN LAYOUT (2-col) ═══ */
+.main-layout{display:flex;gap:16px;padding:16px 24px 24px;flex:1;min-height:0;overflow-y:auto;}
+.col{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;}
+
+/* ═══ CARDS ═══ */
+.card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:16px;transition:box-shadow 0.15s;}
+.card:hover{box-shadow:var(--shadow-md);}
+.card-grow{flex:1;display:flex;flex-direction:column;min-height:0;}
+.card h2{font-family:var(--font-display);font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;color:var(--text);}
+
+/* ═══ TABS ═══ */
+.hm-tabbar{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:10px;flex-shrink:0;flex-wrap:wrap;}
+.hm-tab{padding:7px 16px;font-size:13px;color:var(--text-3);cursor:pointer;border:1px solid transparent;border-bottom:none;border-radius:8px 8px 0 0;margin-bottom:-1px;white-space:nowrap;font-weight:500;transition:all 0.15s;}
+.hm-tab:hover{color:var(--text);background:var(--bg);}
+.hm-tab.active{color:var(--primary);font-weight:600;border-color:var(--border);background:var(--surface);}
+.hm-pane{display:none;flex-direction:column;flex:1;min-height:0;}
+.hm-pane.active{display:flex;}
+
+/* ═══ FORM ═══ */
+.form-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:8px;align-items:center;}
+.form-grid label{font-size:12px;font-weight:500;color:var(--text-3);white-space:nowrap;}
+.form-grid input{width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--bg);color:var(--text);font-family:var(--font-body);outline:none;transition:border-color 0.15s;}
+.form-grid input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-subtle);}
+
+/* ═══ CODEX EDITOR ═══ */
+.code-area{width:100%;min-height:140px;flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:var(--mono);font-size:13px;padding:12px;resize:vertical;line-height:1.6;tab-size:2;}
+.code-area:focus{outline:none;border-color:var(--primary);}
+.code-hint{font-size:12px;color:var(--text-3);margin-bottom:6px;}
+
+/* ═══ MODEL LIST ═══ */
+.model-list-wrap{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
+.model-list-wrap::-webkit-scrollbar{width:5px;}
+.model-list-wrap::-webkit-scrollbar-track{background:transparent;}
+.model-list-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.model-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);font-size:13px;}
+.model-item .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+.model-item .name{font-weight:600;display:flex;align-items:center;gap:6px;}
+.model-item .detail{font-size:12px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.model-item .actions{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+
+/* Custom model cards */
+.custom-card{display:flex;gap:12px;padding:10px 14px;background:var(--bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);align-items:center;}
+.custom-card .cc-badge{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;}
+.custom-card .cc-badge.b1{background:#8e44ad}.custom-card .cc-badge.b2{background:#2980b9}
+.custom-card .cc-badge.b3{background:#27ae60}.custom-card .cc-badge.b4{background:#d35400}
+.custom-card .cc-badge.b5{background:#c0392b}.custom-card .cc-badge.b6{background:#16a085}
+.custom-card .cc-badge.b7{background:#2c3e50}.custom-card .cc-badge.b8{background:#7f8c8d}
+.custom-card .cc-badge.b9{background:#e67e22}.custom-card .cc-badge.b10{background:#1abc9c}
+.cc-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.cc-name{font-weight:600;font-size:13px;}
+.cc-detail{font-size:12px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cc-model{font-size:12px;color:var(--primary);}
+.cc-actions{display:flex;gap:6px;flex-shrink:0;}
+
+/* Tags */
+.tag{font-size:11px;padding:2px 6px;border-radius:4px;font-weight:600;}
+.tag-builtin{background:var(--primary-subtle);color:var(--primary);}
+.tag-custom{background:rgba(240,180,64,0.12);color:var(--warning);}
+.tag-ok{background:rgba(0,180,42,0.1);color:var(--success);}
+.tag-off{background:rgba(245,63,63,0.1);color:var(--danger);}
+.tag-warn{background:rgba(255,125,0,0.1);color:var(--warning);}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 14px;border:none;border-radius:var(--radius-xs);cursor:pointer;font-family:var(--font-display);font-size:12px;font-weight:600;transition:all 0.15s;white-space:nowrap;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-hover);box-shadow:0 2px 8px rgba(22,101,255,0.25);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-edit{background:var(--bg);color:var(--text-2);border:1px solid var(--border);}
+.btn-edit:hover{background:var(--primary-subtle);color:var(--primary);border-color:var(--primary);}
+.btn-danger{background:transparent;border:1px solid var(--danger);color:var(--danger);}
+.btn-danger:hover{background:var(--danger);color:#fff;}
+.btn-success{background:transparent;border:1px solid var(--success);color:var(--success);}
+.btn-success:hover{background:var(--success);color:#fff;}
+.btn-warning{background:transparent;border:1px solid var(--warning);color:var(--warning);}
+.btn-warning:hover{background:var(--warning);color:#fff;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-2);}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary);}
+
+/* HERMES info */
+.hm-desc{font-size:13px;color:var(--text-2);margin:0 0 6px;line-height:1.5;}
+.hm-row{display:flex;align-items:baseline;gap:8px;padding:3px 0;}
+.hm-label{font-size:12px;color:var(--text-3);width:70px;flex-shrink:0;font-weight:500;}
+.hm-val{font-family:var(--mono);font-size:13px;color:var(--warning);word-break:break-all;}
+.hm-val.dim{color:var(--text-3);}
+.hm-notice{display:block;font-size:12px;color:var(--danger);margin-top:8px;padding:6px 10px;background:rgba(245,63,63,0.06);border-radius:5px;border:1px solid rgba(245,63,63,0.15);}
+.file-path{font-size:12px;color:var(--text-3);margin-top:6px;word-break:break-all;}
+
+/* Toggle switch for auto-switch */
+.toggle-switch{position:relative;width:44px;height:24px;flex-shrink:0;display:inline-block;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--border);transition:.3s;border-radius:24px;}
+.toggle-slider:before{position:absolute;content:"";height:20px;width:20px;left:2px;bottom:2px;background:#fff;transition:.3s;border-radius:50%;}
+.toggle-switch input:checked+.toggle-slider{background:var(--primary);}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(20px);}
+
+/* Dialog */
+.dialog-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000;backdrop-filter:blur(4px);}
+.dialog-overlay.open{display:flex;}
+.dialog{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:500px;width:90%;max-height:80vh;overflow:auto;box-shadow:var(--shadow-lg);}
+.dialog h3{font-family:var(--font-display);font-size:15px;font-weight:700;margin-bottom:14px;color:var(--text);}
+.dialog-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+
+/* Message */
+.msg{padding:6px 14px;border-radius:var(--radius-xs);margin:0;font-size:13px;flex-shrink:0;}
+.msg.ok{color:var(--success);}
+.msg.err{color:var(--danger);}
+.msg.warn{color:var(--warning);}
+.empty{font-size:13px;color:var(--text-3);text-align:center;padding:24px 0;}
+
+/* Responsive */
+@media(max-width:900px){.main-layout{flex-direction:column;}.col{flex:none;}}
+</style>
+</head>
+<body><script>if(!sessionStorage.getItem("luoda-token")){location.href="login.html";}else{try{var x=new XMLHttpRequest();x.open("GET","/api/auth/check",false);x.send();if(x.status!==200)location.href="login.html";}catch(e){location.href="login.html";}}</script>
+<div class="app">
+
+<!-- Sidebar (统一组件) -->
+<div id="sidebarRoot"></div>
+
+<!-- ═══ Main ═══ -->
+<main class="main">
+  <header class="header">
+    <div class="h-left">
+      <div class="h-stat">
+        <span class="h-stat-label">服务状态</span>
+        <div class="h-stat-value"><span class="dot" id="svcStatusDot" style="background:var(--success)"></span><span id="svcStatusText">正常</span></div>
+      </div>
+      <div class="h-stat">
+        <span class="h-stat-label">强制切换间隔</span>
+        <div class="h-stat-value"><span id="headerInterval">30 min</span></div>
+      </div>
+    </div>
+    <div class="h-right">
+      <div class="h-actions">
+        <button class="h-icon-btn" onclick="toggleTheme()" aria-label="切换主题"><i class="fa-solid fa-moon" id="themeIcon"></i></button>
+        <button class="h-icon-btn"><i class="fa-solid fa-bell"></i></button>
+        <div class="header-actions">
+          <button class="btn-restart" onclick="restartServices()"><i class="fa-solid fa-rotate"></i> 重启服务</button>
+        </div>
+        <div class="h-avatar"><img src="https://picsum.photos/id/1005/200/200" alt="avatar"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Status Bar -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-item">
+      <span class="dot" id="codexDot"></span>
+      <span>CODEX:</span>
+      <span class="val" id="codexCurrent">—</span>
+    </div>
+    <div class="sb-sep"></div>
+    <div class="status-item">
+      <span class="dot hermes-on" id="hermesDot"></span>
+      <span>HERMES:</span>
+      <span class="val" id="hermesCurrent">—</span>
+    </div>
+    <div class="sb-sep"></div>
+    <div class="status-item">内置 <span class="val" id="statBuiltin">—</span></div>
+    <div class="sb-sep"></div>
+    <div class="status-item">自定义 <span class="val" id="statCustom">—</span></div>
+    <div class="sb-sep"></div>
+    <div class="status-item">距下次切换 <span class="val" id="countdownVal">—</span></div>
+    <div class="status-err" id="errorRow"></div>
+  </div>
+
+  <!-- Fallback Bar -->
+  <div class="fbk-bar" id="fbkBar">
+    <div class="fbk-header">
+      <span class="fbk-label"><i class="fa-solid fa-arrows-rotate"></i> 自动轮循</span>
+      <label class="toggle-switch"><input type="checkbox" id="fbkSwitch" checked onchange="onFbkToggle()"><span class="toggle-slider"></span></label>
+      <span style="font-size:13px;color:var(--text-3)">强制切换间隔：</span>
+      <input type="number" id="fbkInterval" class="fbk-input" value="30" min="1" max="43200" onchange="onIntervalChange()">
+      <span style="font-size:13px">分钟</span>
+      <span class="fbk-vid-label">CODEX 虚拟 ID：</span>
+      <input id="fbkCxVid" class="fbk-vid-input" value="codexAPI" onchange="onVidChange()">
+      <span class="fbk-vid-label">HERMES 虚拟 ID：</span>
+      <input id="fbkHmVid" class="fbk-vid-input" value="hermesAPI" onchange="onVidChange()">
+      <input id="fbkSeq" type="hidden" value="ApiFree;agnesai;shangtang1;zhipu5;shangtang2;shangtang5;ST40;shangtang4;zhipu1;shangtang6;shangtang3;ST41;ST43;ApiFree2;Cloud1;shangtang33;zhipu4;zhipu2;zhipu7;aliyun1;aliyun2;aliyun3;aliyun4;yidong;yidong2;aliyun5;mianfei1">
+    </div>
+    <div class="fbk-badges-row" id="fbkBadges"></div>
+  </div>
+
+  <!-- Main Layout -->
+  <div class="main-layout">
+    <!-- Left Column -->
+    <div class="col">
+      <!-- Model Config -->
+      <div class="card" id="modelsCard">
+        <h2>模型配置</h2>
+        <div class="hm-tabbar">
+          <div class="hm-tab active" onclick="switchModelsTab(0,this)">添加自定义模型</div>
+          <div class="hm-tab" onclick="switchModelsTab(1,this)">内置模型</div>
+        </div>
+        <div class="hm-pane active" id="modelsPane0">
+          <div class="form-grid">
+            <label>序号</label><div><input id="fIdx" type="number" min="1" placeholder="auto" style="width:80px"><span style="font-size:12px;color:var(--text-3);margin-left:6px">轮循优先级</span></div>
+            <label>模型名称</label><input id="fName" placeholder="如: 硅基流动 Qwen">
+            <label>API 地址</label><input id="fBase" placeholder="https://api.siliconflow.cn/v1">
+            <label>API 密钥</label><input id="fKey" type="password" placeholder="sk-xxxxxxxx">
+            <label>模型 ID</label>
+            <div style="display:flex;gap:8px;align-items:center;grid-column:2/-1">
+              <input id="fModel" placeholder="Qwen/Qwen2.5-72B-Instruct" style="flex:1">
+              <button class="btn btn-primary" onclick="addModel()">保存模型</button>
+            </div>
+          </div>
+          <span class="msg" id="addHint" style="font-size:12px;margin-top:8px;"></span>
+        </div>
+        <div class="hm-pane" id="modelsPane1">
+          <div id="builtinList" class="model-list-wrap" style="max-height:260px;"><div class="empty">加载中...</div></div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:8px;">点击禁用的模型将从列表中移除（不会删除 .env 配置）</div>
+        </div>
+      </div>
+
+      <!-- CODEX Config -->
+      <div class="card">
+        <h2>CODEX 配置</h2>
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+          <div class="code-hint">config.toml 编辑器 — 复制后粘贴到 .codex 目录</div>
+          <textarea id="cxCode" class="code-area" spellcheck="false"></textarea>
+        </div>
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;color:var(--text-3);">C:\Users\Administrator\.codex\config.toml</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-outline" onclick="copyCode()">复制</button>
+            <span class="msg" id="cxMsg"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- HERMES Config -->
+      <div class="card card-grow" id="hermesCard">
+        <h2>HERMES 配置 <span style="font-size:12px;color:var(--text-3);font-weight:400">3 个文件需保持一致</span></h2>
+        <div class="hm-tabbar">
+          <div class="hm-tab active" onclick="switchHmTab(0,this)">cli-config.yaml</div>
+          <div class="hm-tab" onclick="switchHmTab(1,this)">.env</div>
+          <div class="hm-tab" onclick="switchHmTab(2,this)">~/.hermes/config.yaml</div>
+        </div>
+        <div class="hm-pane active">
+          <p class="hm-desc">&#128193; <b>cli-config.yaml</b> — CLI 默认模型和代理地址</p>
+          <p class="hm-desc" style="color:var(--primary);margin-top:4px;">&#9654; 需修改以下字段：</p>
+          <div class="hm-row"><span class="hm-label">model</span><span class="hm-val" id="hmModel">hermesAPI</span></div>
+          <div class="hm-row"><span class="hm-label">provider</span><span class="hm-val" id="hmProvider">custom</span></div>
+          <div class="hm-row"><span class="hm-label">base_url</span><span class="hm-val" id="hmBase">http://localhost:40000/v1</span></div>
+          <div class="hm-row"><span class="hm-label">api_key</span><span class="hm-val dim">sk-proxy-local-...</span></div>
+          <div class="file-path">C:\...\hermes\hermes-agent\cli-config.yaml</div>
+        </div>
+        <div class="hm-pane">
+          <p class="hm-desc">&#128193; <b>.env</b> — Agent 进程环境变量</p>
+          <p class="hm-desc" style="color:var(--primary);margin-top:4px;">&#9654; 需修改以下变量：</p>
+          <div class="hm-row"><span class="hm-label">base_url</span><span class="hm-val">http://localhost:40000/v1</span></div>
+          <div class="hm-row"><span class="hm-label">api_key</span><span class="hm-val dim">sk-proxy-local-...</span></div>
+          <div class="hm-notice">&#9888; 这两项必须与 cli-config.yaml 完全一致</div>
+          <div class="file-path">C:\...\hermes\hermes-agent\.env</div>
+        </div>
+        <div class="hm-pane">
+          <p class="hm-desc">&#128193; <b>config.yaml（用户配置）</b></p>
+          <p class="hm-desc" style="color:var(--primary);margin-top:4px;">&#9654; 确保以下字段一致：</p>
+          <div class="hm-row"><span class="hm-label">model</span><span class="hm-val">hermesAPI</span></div>
+          <div class="hm-row"><span class="hm-label">provider</span><span class="hm-val">custom</span></div>
+          <div class="hm-row"><span class="hm-label">base_url</span><span class="hm-val">http://localhost:40000/v1</span></div>
+          <div class="hm-row"><span class="hm-label">api_key</span><span class="hm-val dim">sk-proxy-local-...</span></div>
+          <div class="hm-notice">&#9888; 这里修改不会影响 Tab 1，需分别保存</div>
+          <div class="file-path">C:\Users\Administrator\.hermes\config.yaml</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col">
+      <div class="card card-grow">
+        <h2>自定义模型 <span id="customCount" style="font-size:12px;color:var(--text-3);font-weight:400"></span></h2>
+        <div class="hm-tabbar" id="customTabbar">
+          <div class="hm-tab active" onclick="switchCustomTab(0,this)">正常模型</div>
+          <div class="hm-tab" onclick="switchCustomTab(1,this)">异常模型 <span id="abnormalBadge" style="background:var(--danger);color:#fff;border-radius:8px;padding:0 6px;font-size:11px;display:none">0</span></div>
+        </div>
+        <div class="hm-pane active" id="customPane0">
+          <div id="normalModelList" class="model-list-wrap" style="flex:1;max-height:none;"><div class="empty">暂无自定义模型</div></div>
+        </div>
+        <div class="hm-pane" id="customPane1">
+          <div id="abnormalModelList" class="model-list-wrap" style="flex:1;max-height:none;"><div class="empty">无异常模型</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- Edit Dialog -->
+<div class="dialog-overlay" id="editDialog">
+  <div class="dialog">
+    <h3 id="dialogTitle">修改模型</h3>
+    <div id="dialogBody"></div>
+    <div class="dialog-actions">
+      <button class="btn btn-outline" onclick="closeDialog()">取消</button>
+      <button class="btn btn-primary" id="dialogSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="shared/state.js"></script>
+<script src="shared/sidebar.js"></script>
+<script src="shared/auth.js"></script>
+<script>
+// ═══ Theme & Sidebar ════════════════════════════════════════
+(function(){var t=localStorage.getItem('luoda-theme')||'light';document.documentElement.setAttribute('data-theme',t);document.getElementById('themeIcon').className=t==='dark'?'fa-solid fa-sun':'fa-solid fa-moon';LUODA_SIDEBAR.inject('config');})();
+function toggleTheme(){var h=document.documentElement;var c=h.getAttribute('data-theme');var n=c==='dark'?'light':'dark';h.setAttribute('data-theme',n);localStorage.setItem('luoda-theme',n);document.getElementById('themeIcon').className=n==='dark'?'fa-solid fa-sun':'fa-solid fa-moon';}
+
+// ═══ Utils ══════════════════════════════════════════════════
+var API_BASE='';function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escAttr(s){return(s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');}
+function maskKey(k){if(!k||k.length<10)return'***';return k.slice(0,6)+'...'+k.slice(-4);}
+function show(m,t){var el=document.getElementById('addHint');el.textContent=m;el.className='msg '+(t||'')}
+
+// ═══ Data ═══════════════════════════════════════════════════
+var gBuiltins=[],gCustoms=[],gAbnormalModels=[];
+var badgeColors=['b1','b2','b3','b4','b5','b6','b7','b8','b9','b10'];
+var _draggedItem=null,_saveInProgress=false,_lastFirstClickTime=0,_firstClickSlug='';
+var gModelIdx=100;
+
+// ═══ Tab switching ══════════════════════════════════════════
+function switchModelsTab(idx,el){switchTabGroup('modelsCard',idx,el);}
+function switchHmTab(idx,el){switchTabGroup('hermesCard',idx,el);}
+function switchCustomTab(idx,el){
+  var card=el.closest('.card');
+  var tabs=card.querySelectorAll('.hm-tab');
+  var panes=card.querySelectorAll('.hm-pane');
+  tabs.forEach(function(t){t.classList.remove('active');});
+  panes.forEach(function(p){p.classList.remove('active');p.style.display='none';});
+  el.classList.add('active');
+  if(panes[idx]){panes[idx].classList.add('active');panes[idx].style.display='';}
+}
+function switchTabGroup(cardId,idx,el){
+  var parent=document.getElementById(cardId);
+  var tabs=parent.querySelectorAll('.hm-tab');
+  var panes=parent.querySelectorAll('.hm-pane');
+  tabs.forEach(function(t){t.classList.remove('active');});
+  panes.forEach(function(p){p.classList.remove('active');p.style.display='none';});
+  el.classList.add('active');
+  if(panes[idx]){panes[idx].classList.add('active');panes[idx].style.display='';}
+}
+
+// ═══ Fallback UI ════════════════════════════════════════════
+function onFbkToggle(){
+  var on=document.getElementById('fbkSwitch').checked;
+  fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fallback_enabled:on})})
+    .then(function(r){if(r.ok)console.log('Fallback:',on);}).catch(function(){});
+}
+
+function onIntervalChange(){
+  var val=parseInt(document.getElementById('fbkInterval').value,10);
+  if(val<1)val=1;if(val>43200)val=43200;
+  document.getElementById('fbkInterval').value=val;
+  show('间隔已设为 '+val+' 分钟','ok');
+  fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max_provider_use_minutes:val})}).catch(function(){});
+  fetch('/api/fallback/set-interval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({minutes:val})}).catch(function(){});
+  setTimeout(function(){show('','');},2000);
+}
+
+function onVidChange(){
+  var vid=document.getElementById('fbkCxVid').value.trim()||'auto';
+  var hvid=document.getElementById('fbkHmVid').value.trim()||'auto';
+  fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({virtual_model_id:vid,hermes_virtual_model_id:hvid})}).catch(function(){});
+}
+
+function restartServices(){
+  if(!confirm('确定要重启服务吗？'))return;
+  show('正在重启...','ok');
+  fetch('http://localhost:40001/api/restart',{method:'POST'}).then(function(){
+    setTimeout(function(){location.reload();},2000);
+  }).catch(function(){show('请手动重启终端','warn');});
+}
+
+// ═══ Badges ═════════════════════════════════════════════════
+function renderBadges(){
+  var el=document.getElementById('fbkBadges');
+  if(!gCustoms.length){el.innerHTML='<span style="font-size:13px;color:var(--text-3)">暂无自定义模型</span>';return;}
+  var rawSeq=window._cfgFallbackSeq||document.getElementById('fbkSeq').value||'';
+  var seqSlugs=rawSeq?rawSeq.split(';').map(function(s){return s.trim();}).filter(function(s){return s;}):[];
+  var ordered=[];
+  seqSlugs.forEach(function(slug){
+    var c=gCustoms.find(function(x){return(x.slug||'')===slug||x.name===slug;});
+    if(c&&!ordered.includes(c))ordered.push(c);
+  });
+  var orderedSlugs=ordered.map(function(x){return x.slug||'';});
+  var abnormalKeys={};
+  gAbnormalModels.forEach(function(a){abnormalKeys[a.key]=true;});
+  ordered=ordered.filter(function(c){return !abnormalKeys[c.slug] && !abnormalKeys[(c.name||'').toLowerCase()];});
+  var remaining=gCustoms.filter(function(c){return orderedSlugs.indexOf(c.slug||'')===-1;});
+  remaining.sort(function(a,b){return(a.idx||999)-(b.idx||999);});
+  remaining.forEach(function(c){ordered.push(c);});
+
+  var codexIdx=window._codexIdx||0;
+  var hermesIdx=window._hermesIdx||0;
+  var chain=window._chain||[];
+
+  ordered.forEach(function(c,badgeI){
+    var bc=badgeColors[(c.idx?c.idx-1:0)%badgeColors.length];
+    var div=document.createElement('div');
+    var chainIdx=chain.findIndex(function(e){return e.name===c.name||e.name===c.slug;});
+    var isCx=chainIdx===codexIdx;
+    var isHm=chainIdx===hermesIdx;
+    var cls='fbk-badge-item '+bc;
+    if(isCx) cls+=' badge-active';
+    else if(isHm) cls+=' badge-hermes-active';
+    else cls+=' badge-idle';
+    div.className=cls;
+    div.setAttribute('draggable','true');
+    div.setAttribute('data-slug',c.slug||'');
+    div.setAttribute('data-name',c.name||'');
+    div.setAttribute('data-idx',c.idx||'');
+    div.setAttribute('title','拖拽排序，单击切换 CODEX，10秒内双击不同模型切换 HERMES');
+    div.ondblclick=onBadgeDblClick;
+    div.innerHTML='<div class="fbk-badge-circle">'+(c.idx||'?')+'</div><span class="badge-name">'+esc(c.name||c.slug||'')+'</span>';
+    div.addEventListener('dragstart',function(e){_draggedItem=this;this.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    div.addEventListener('dragend',function(){this.classList.remove('dragging');document.querySelectorAll('.fbk-badge-item').forEach(function(i){i.classList.remove('drag-over');});_draggedItem=null;});
+    div.addEventListener('dragover',function(e){e.preventDefault();if(this!==_draggedItem)this.classList.add('drag-over');});
+    div.addEventListener('dragleave',function(){this.classList.remove('drag-over');});
+    div.addEventListener('drop',onBadgeDrop);
+    el.appendChild(div);
+  });
+}
+
+function onBadgeDblClick(e){
+  e.stopPropagation();
+  var slug=this.getAttribute('data-slug')||this.getAttribute('data-name')||'';
+  var name=this.querySelector('.badge-name').textContent;
+  if(!slug)return;
+  var now=Date.now();
+  var TEN_SECONDS=10000;
+  if(_lastFirstClickTime>0&&now-_lastFirstClickTime<TEN_SECONDS&&_firstClickSlug&&slug!==_firstClickSlug){
+    fetch('/api/fallback/set-index',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:slug,target:'HERMES',force:true})})
+      .then(function(r){return r.json();}).then(function(d){if(d.error)show(d.error+' (HERMES)','err');else{show('HERMES已切换到: '+name,'ok');_lastFirstClickTime=0;_firstClickSlug='';setTimeout(refreshStatus,300);}}).catch(function(){});
+  }else{
+    _lastFirstClickTime=now;_firstClickSlug=slug;
+    fetch('/api/fallback/set-index',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:slug,target:'CODEX'})})
+      .then(function(r){return r.json();}).then(function(d){if(d.error)show(d.error+' (CODEX)','err');else{show('CODEX已切换到: '+name,'ok');setTimeout(refreshStatus,300);}}).catch(function(){});
+  }
+}
+
+function onBadgeDrop(e){
+  e.preventDefault();this.classList.remove('drag-over');
+  if(this===_draggedItem||_saveInProgress)return;
+  _saveInProgress=true;
+  var parent=document.getElementById('fbkBadges');
+  var all=[].slice.call(parent.children);
+  var dIdx=all.indexOf(_draggedItem),tIdx=all.indexOf(this);
+  if(dIdx<tIdx)parent.insertBefore(_draggedItem,this.nextSibling);
+  else parent.insertBefore(_draggedItem,this);
+  var badges=[].slice.call(parent.children).filter(function(i){return i.classList.contains('fbk-badge-item');});
+  badges.forEach(function(b,ni){var c=b.querySelector('.fbk-badge-circle');if(c)c.textContent=ni+1;});
+  var newOrder=badges.map(function(b){return b.getAttribute('data-slug')||b.getAttribute('data-name')||'';}).filter(Boolean);
+  fetch('/api/codex/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fallback_sequence:newOrder.join(';')})})
+    .then(function(r){return r.text().then(function(txt){try{var d=JSON.parse(txt);return d&&d.status==='saved';}catch(e){return false;}});})
+    .then(function(s){show(s?'顺序已保存':'保存失败','ok');}).catch(function(){show('顺序已保存','ok');})
+    .finally(function(){_saveInProgress=false;});
+}
+
+// ═══ Status Refresh ════════════════════════════════════════
+function refreshStatus(){
+  fetch('/api/status').then(function(r){return r.json();}).then(function(s){
+    window._codexIdx=(s.fallback_state||{}).codexIdx;
+    window._hermesIdx=(s.fallback_state||{}).hermesIdx;
+    window._chain=s.fallback_chain||[];
+    window._cfgFallbackSeq=s.fallback_sequence||'';
+
+    var cxDot=document.getElementById('codexDot');
+    var hmDot=document.getElementById('hermesDot');
+    var cxCur=document.getElementById('codexCurrent');
+    var hmCur=document.getElementById('hermesCurrent');
+    var chain=s.fallback_chain||[];
+    var cIdx=s.fallback_state? s.fallback_state.codexIdx:-1;
+    var hIdx=s.fallback_state? s.fallback_state.hermesIdx:-1;
+    var cp=(chain[cIdx]||{}).name;
+    var hp=(chain[hIdx]||{}).name;
+    if(cxDot){cxDot.className='dot '+(cp?'on':'off');}
+    if(hmDot){hmDot.className='dot hermes-on'+(hp?'':' hermes-on');}
+    if(cxCur){cxCur.textContent=cp||'—';}
+    if(hmCur){hmCur.textContent=hp||'—';}
+
+    var ph=s.provider_health||{};
+    var total=Object.keys(ph).length;
+    var unhealthy=Object.keys(ph).filter(function(k){return ph[k].status==='unhealthy';}).length;
+    var svcText=document.getElementById('svcStatusText');
+    var svcDot=document.getElementById('svcStatusDot');
+    if(unhealthy>0){svcText.textContent='异常 '+unhealthy+'/'+total;svcDot.style.background='var(--danger)';}
+    else{svcText.textContent='正常 '+total+'/'+total;svcDot.style.background='var(--success)';}
+
+    document.getElementById('statBuiltin').textContent=s.builtin_count||'—';
+    document.getElementById('statCustom').textContent=s.custom_count||'—';
+
+    var fs=s.fallback_state||{};
+    var lastSwitch=fs.lastSwitch||Date.now();
+    var intervalMin=s.max_provider_use_minutes||30;
+    var remaining=Math.max(0,Math.ceil((lastSwitch+intervalMin*60000-Date.now())/1000));
+    var cdEl=document.getElementById('countdownVal');
+    if(remaining>60) cdEl.textContent=Math.floor(remaining/60)+'min '+(remaining%60||'')+'s';
+    else cdEl.textContent=remaining+'s';
+
+    document.getElementById('headerInterval').textContent=intervalMin+' min';
+
+    var errs=s.last_errors||{};
+    var errEl=document.getElementById('errorRow');
+    var cxErr=(errs.CODEX||[])[0],hmErr=(errs.HERMES||[])[0];
+    var parts=[];
+    if(cxErr)parts.push('CODEX: ['+cxErr.status+'] '+cxErr.message);
+    if(hmErr)parts.push('HERMES: ['+hmErr.status+'] '+hmErr.message);
+    errEl.textContent=parts.join(' | ');
+
+    // Re-render badges with updated active state
+    var fbkEl=document.getElementById('fbkBadges');
+    fbkEl.innerHTML='';
+    renderBadges();
+  }).catch(function(){});
+}
+
+// ═══ Embedded Models (fallback) ═════════════════════════════
+var EMBEDDED_CUSTOMS = [
+  {name:'shangtang1',base:'https://token.sensenova.cn/v1',key:'sk-ydFFZ32kwrKH9Q5Wpl2MnMG1Q5Genr8o',id:'deepseek-v4-flash',slug:'shangtang1',idx:1,models:['deepseek-v4-flash']},
+  {name:'shangtang2',base:'https://token.sensenova.cn/v1',key:'sk-ujCjbg6LfJKBiOIvdrobOiK9QzrTHAlX',id:'deepseek-v4-flash',slug:'shangtang2',idx:2,models:['deepseek-v4-flash']},
+  {name:'shangtang3',base:'https://token.sensenova.cn/v1',key:'sk-ydFFZ32kwrKH9Q5Wpl2MnMG1Q5Genr8o',id:'sensenova-6.7-flash-lite',slug:'shangtang3',idx:3,models:['sensenova-6.7-flash-lite']},
+  {name:'shangtang4',base:'https://token.sensenova.cn/v1',key:'sk-ujCjbg6LfJKBiOIvdrobOiK9QzrTHAlX',id:'sensenova-6.7-flash-lite',slug:'shangtang4',idx:4,models:['sensenova-6.7-flash-lite']},
+  {name:'智谱1',base:'https://open.bigmodel.cn/api/paas/v4',key:'75575a99cdd2497d8428841f8a15bcd4.2obLVIYQxukegobV',id:'GLM-5',slug:'zhipu1',idx:5,models:['GLM-5']},
+  {name:'shangtang5',base:'https://token.sensenova.cn/v1',key:'sk-9LrLqzmokxhQJCkkXieISWMIyfUH3gsv',id:'deepseek-v4-flash',slug:'shangtang5',idx:9,models:['deepseek-v4-flash']},
+  {name:'shangtang6',base:'https://token.sensenova.cn/v1',key:'sk-9LrLqzmokxhQJCkkXieISWMIyfUH3gsv',id:'sensenova-6.7-flash-lite',slug:'shangtang6',idx:10,models:['sensenova-6.7-flash-lite']},
+  {name:'shangtang33',base:'https://token.sensenova.cn/v1',key:'sk-ujCjbg6LfJKBiOIvdrobOiK9QzrTHAlX',id:'sensenova-6.7-flash-lite',slug:'shangtang33',idx:11,models:['sensenova-6.7-flash-lite']},
+  {name:'智谱2',base:'https://open.bigmodel.cn/api/paas/v4',key:'75575a99cdd2497d8428841f8a15bcd4.2obLVIYQxukegobV',id:'GLM-4.6V',slug:'zhipu2',idx:12,models:['GLM-4.6V']},
+  {name:'智谱4',base:'https://open.bigmodel.cn/api/paas/v4',key:'3403d1dd276646f1861a13f1ed06648f.xewFVGAgiO8i2heW',id:'GLM-4.7',slug:'zhipu4',idx:14,models:['GLM-4.7']},
+  {name:'智谱5',base:'https://open.bigmodel.cn/api/paas/v4',key:'3403d1dd276646f1861a13f1ed06648f.xewFVGAgiO8i2heW',id:'GLM-4.6V',slug:'zhipu5',idx:15,models:['GLM-4.6V']},
+  {name:'智谱7',base:'https://open.bigmodel.cn/api/paas/v4',key:'3403d1dd276646f1861a13f1ed06648f.xewFVGAgiO8i2heW',id:'GLM-5',slug:'zhipu7',idx:17,models:['GLM-5']},
+  {name:'阿里云1',base:'https://dashscope.aliyuncs.com/compatible-mode/v1',key:'sk-2780f8b0ffa948b1bac15c52cc6a0305',id:'deepseek-v4-pro',slug:'aliyun1',idx:18,models:['deepseek-v4-pro']},
+  {name:'阿里云2',base:'https://dashscope.aliyuncs.com/compatible-mode/v1',key:'sk-2780f8b0ffa948b1bac15c52cc6a0305',id:'deepseek-v4-pro',slug:'aliyun2',idx:19,models:['deepseek-v4-pro']},
+  {name:'阿里云3',base:'https://dashscope.aliyuncs.com/compatible-mode/v1',key:'sk-2780f8b0ffa948b1bac15c52cc6a0305',id:'qwen3.7-max',slug:'aliyun3',idx:20,models:['qwen3.7-max']},
+  {name:'阿里云4',base:'https://dashscope.aliyuncs.com/compatible-mode/v1',key:'sk-2780f8b0ffa948b1bac15c52cc6a0305',id:'qwen3.6-flash',slug:'aliyun4',idx:21,models:['qwen3.6-flash']},
+  {name:'阿里云5',base:'https://dashscope.aliyuncs.com/compatible-mode/v1',key:'sk-2780f8b0ffa948b1bac15c52cc6a0305',id:'glm-5.1',slug:'aliyun5',idx:25,models:['glm-5.1']},
+  {name:'移动',base:'https://zhenze-huhehaote.cmecloud.cn/v1',key:'jjS3nKSHI1eC9K08f6-X7UbkjA5la8NAwCxT5q_7nAU',id:'DeepSeek-V3.2',slug:'yidong',idx:22,models:['DeepSeek-V3.2']},
+  {name:'移动2',base:'https://zhenze-huhehaote.cmecloud.cn/v1',key:'jjS3nKSHI1eC9K08f6-X7UbkjA5la8NAwCxT5q_7nAU',id:'qwen3.6-plus',slug:'yidong2',idx:23,models:['qwen3.6-plus']},
+  {name:'ApiFree',base:'https://api.apifree.ai/agent/v1',key:'sk-p9AKWKKiZyHYNKYztNzZmDH0pWKkf',id:'skywork-ai/skyclaw-v1',slug:'ApiFree',idx:26,models:['skywork-ai/skyclaw-v1']},
+  {name:'ST40',base:'https://token.sensenova.cn/v1',key:'sk-bdFqgIP13BNxX5P9GTRnGR8npi2qf5BX',id:'deepseek-v4-flash',slug:'ST40',idx:27,models:['deepseek-v4-flash']},
+  {name:'ST41',base:'https://token.sensenova.cn/v1',key:'sk-ydFFZ32kwrKH9Q5Wpl2MnMG1Q5Genr8o,sk-bdFqgIP13BNxX5P9GTRnGR8npi2qf5BX',id:'sensenova-6.7-flash-lite',slug:'ST41',idx:28,models:['sensenova-6.7-flash-lite']},
+  {name:'ST43',base:'https://token.sensenova.cn/v1',key:'sk-ydFFZ32kwrKH9Q5Wpl2MnMG1Q5Genr8o,sk-bdFqgIP13BNxX5P9GTRnGR8npi2qf5BX',id:'sensenova-u1-fast',slug:'ST43',idx:29,models:['sensenova-u1-fast']},
+  {name:'Cloud1',base:'https://api.cloudflare.com/client/v4/accounts/e9ac56dfe63fa72143a7cd7b9c539b8f/ai/v1',key:'cfut_iDQ9uZfproZnp5LQLo8xbpoKeYoyYunkgiDLOsTRbfd56ec0',id:'@cf/moonshotai/kimi-k2.6',slug:'Cloud1',idx:30,models:['@cf/moonshotai/kimi-k2.6']},
+  {name:'免费1',base:'https://free.v36.cm',key:'sk-FEfntxjCEcGkeSszAf81F403A20048A887E36f3b72Ec6611',id:'gpt-4o-mini',slug:'mianfei1',idx:31,models:['gpt-4o-mini']},
+  {name:'ApiFree2',base:'ApiFree',key:'sk-p9AKWKKiZyHYNKYztNzZmDH0pWKkf',id:'skywork-ai/skyclaw-v1-lite',slug:'ApiFree2',idx:56,models:['skywork-ai/skyclaw-v1-lite']},
+  {name:'AgnesAI',base:'https://apihub.agnes-ai.com/v1',key:'sk-Qk2Oxnn7y1rZxxyf2FjhsohnolDrAGuDp7JsvAzSXAM1xBbt',id:'agnes-2.0-flash',slug:'agnesai',idx:57,models:['agnes-2.0-flash']},
+];
+var EMBEDDED_BUILTINS = [
+  {name:'deepseek',base:'https://api.deepseek.com/v1',key:'',models:['deepseek-v4-flash','deepseek-v4-pro','deepseek-chat'],enabled:true},
+  {name:'openai',base:'https://api.openai.com/v1',key:'',models:['gpt-4o','gpt-4o-mini','gpt-5.5'],enabled:true},
+  {name:'neizhi',base:'https://api.mimo.im/v1',key:'',models:['mimo-v2.5-pro','mimo-v3.0'],enabled:true},
+  {name:'mimo',base:'https://api.mimo.im/v1',key:'',models:['mimo-v2.5-pro'],enabled:false},
+];
+
+// ═══ Load ═══════════════════════════════════════════════════
+function load(){
+  var builtins=[],customs=[];
+  fetch('/api/all').then(function(r){return r.json();}).then(function(data){
+    builtins=data.builtin||[];customs=data.custom||[];
+    if(!customs.length){builtins=EMBEDDED_BUILTINS;customs=EMBEDDED_CUSTOMS;}
+    gBuiltins=builtins;gCustoms=customs;
+    applyLoadData();
+    loadAbnormalModels();
+  }).catch(function(){
+    gBuiltins=EMBEDDED_BUILTINS;gCustoms=EMBEDDED_CUSTOMS;
+    show('API 连接失败，使用内置数据','warn');
+    applyLoadData();
+  });
+}
+
+function applyLoadData(){
+    var builtins=gBuiltins,customs=gCustoms;
+    document.getElementById('navBadge').textContent=allModelsCount(customs);
+    document.getElementById('customCount').textContent='('+customs.length+'个)';
+
+    // Builtins
+    var bEl=document.getElementById('builtinList');
+    if(!builtins.length){bEl.innerHTML='<div class="empty">无内置模型配置</div>';}
+    else{
+      bEl.innerHTML=builtins.map(function(b){
+        var models=(b.models||[]).join(', ')||'未配置';
+        return '<div class="model-item"><div class="info"><div class="name"><span class="tag tag-builtin">内置</span>'+esc(b.name)+'</div><div class="detail">'+esc(b.base)+' | key:'+esc(maskKey(b.key))+'</div><div class="detail">'+models+'</div></div><div class="actions"><button class="btn btn-edit btn-sm" onclick="editBuiltin(\''+escAttr(b.name)+'\')">改</button><button class="btn btn-danger btn-sm" onclick="askDisableBuiltin(\''+escAttr(b.name)+'\')">禁用</button></div></div>';
+      }).join('');
+    }
+
+    // Reload badges
+    var fbkEl=document.getElementById('fbkBadges');fbkEl.innerHTML='';
+    renderBadges();
+    renderCustoms();
+}
+
+function allModelsCount(customs){
+  var n=0;
+  gBuiltins.filter(function(b){return b.enabled;}).forEach(function(b){n+=(b.models||[]).length;});
+  customs.forEach(function(c){n+=(c.models||[]).length;});
+  return n || customs.length;
+}
+
+// ═══ Custom models render ═══════════════════════════════════
+function renderCustoms(){
+  var normalEl=document.getElementById('normalModelList');
+  var normal=gCustoms.filter(function(x){return !gAbnormalModels.some(function(a){return a.key===x.slug||a.key===x.name;});});
+  if(!normal.length){normalEl.innerHTML='<div class="empty">暂无自定义模型</div>';}
+  else{
+    normalEl.innerHTML=normal.map(function(x){
+      var models=(x.models||[]).join(', ')||x.id||'';
+      var bc=badgeColors[(x.idx?x.idx-1:0)%badgeColors.length];
+      return '<div class="custom-card"><div class="cc-badge '+bc+'">'+(x.idx||'?')+'</div><div class="cc-body"><div class="cc-name">'+esc(x.name||x.slug||'')+'</div><div class="cc-detail">'+esc(x.base)+'</div><div class="cc-detail">key:'+esc(maskKey(x.key))+'</div><div class="cc-model">'+models+'</div></div><div class="cc-actions"><button class="btn btn-edit btn-sm" onclick="editCustom(\''+escAttr(x.slug||x.name)+'\')">改</button><button class="btn btn-sm btn-warning" onclick="delCustom(\''+escAttr(x.slug||x.name)+'\')">删</button><button class="btn btn-sm btn-danger" onclick="markAbnormal(\''+escAttr(x.slug||x.name)+'\')">标记异常</button></div></div>';
+    }).join('');
+    if(gAbnormalModels.length)normalEl.innerHTML+='<div style="text-align:center;color:var(--text-3);font-size:12px;padding:8px">'+gAbnormalModels.length+' 个异常模型已隐藏</div>';
+  }
+}
+
+// ═══ Abnormal models ════════════════════════════════════════
+function loadAbnormalModels(){
+  fetch('/api/fallback/abnormal').then(function(r){return r.json();}).then(function(d){
+    gAbnormalModels=d.abnormalModels||[];
+    renderAbnormalModels();
+    renderCustoms();
+  }).catch(function(e){console.error(e);});
+}
+
+function renderAbnormalModels(){
+  var badge=document.getElementById('abnormalBadge');
+  if(gAbnormalModels.length>0){badge.style.display='inline';badge.textContent=gAbnormalModels.length;}
+  else{badge.style.display='none';}
+  var el=document.getElementById('abnormalModelList');
+  if(!gAbnormalModels.length){el.innerHTML='<div class="empty">无异常模型</div>';return;}
+  el.innerHTML=gAbnormalModels.map(function(x,i){
+    var num=x.idx||'?';
+    var bc=badgeColors[(num!=='?'?num-1:0)%badgeColors.length];
+    return '<div class="custom-card"><div class="cc-badge '+bc+'">'+num+'</div><div class="cc-body"><div class="cc-name" style="color:var(--danger)">'+esc(x.name||x.key)+'</div><div class="cc-detail">连续失败: <strong>'+x.consecutiveFailures+'</strong> 次</div></div><div class="cc-actions"><button class="btn btn-sm btn-success" onclick="restoreAbnormal(\''+escAttr(x.key)+'\')">恢复</button><button class="btn btn-sm btn-edit" onclick="editAbnormal(\''+escAttr(x.key)+'\')">编辑</button><button class="btn btn-sm btn-danger" onclick="delCustom(\''+escAttr(x.key)+'\')">删除</button></div></div>';
+  }).join('');
+}
+
+function restoreAbnormal(key){
+  if(!confirm('恢复模型「'+key+'」到正常状态？'))return;
+  fetch('/api/fallback/abnormal/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key})})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.status==='restored'){show('模型已恢复','ok');loadAbnormalModels();load();}
+      else show('恢复失败','err');
+    }).catch(function(){});
+}
+
+function markAbnormal(key){
+  if(!confirm('将模型「'+key+'」标记为异常？'))return;
+  fetch('/api/fallback/abnormal/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,abnormal:true})})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.status==='marked_abnormal'){show('模型已标记异常','ok');loadAbnormalModels();load();}
+      else show('标记失败','err');
+    }).catch(function(){});
+}
+
+function editAbnormal(key){
+  var x=gAbnormalModels.find(function(m){return m.key===key;});
+  if(!x)return;
+  var h='<div class="form-grid"><div><label>模型名称</label><input id="eName" value="'+escAttr(x.name||x.key||'')+'"></div>'+
+    '<div><label>API 地址</label><input id="eBase" value="'+escAttr(x.base||'')+'"></div>'+
+    '<div><label>API 密钥</label><input id="eKey" value="'+escAttr(x.keyRaw||x.key||'')+'"></div>'+
+    '<div style="grid-column:1/-1"><label>模型 ID</label><input id="eModel" value="'+escAttr(x.id||'')+'"></div></div>';
+  document.getElementById('dialogTitle').textContent='编辑异常模型: '+(x.name||key);
+  document.getElementById('dialogBody').innerHTML=h;
+  document.getElementById('editDialog').classList.add('open');
+  document.getElementById('dialogSave').onclick=function(){
+    var nn=document.getElementById('eName').value.trim();
+    if(!nn){show('请填写名称','err');return;}
+    fetch('/api/abnormal/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,name:nn,base:document.getElementById('eBase').value.trim(),apiKey:document.getElementById('eKey').value.trim(),modelId:document.getElementById('eModel').value.trim()})})
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.status==='updated'){show('已更新','ok');closeDialog();loadAbnormalModels();}
+        else show('保存失败','err');
+      }).catch(function(){});
+  };
+}
+
+// ═══ CRUD ═══════════════════════════════════════════════════
+function addModel(){
+  var n=document.getElementById('fName').value.trim();
+  var b=document.getElementById('fBase').value.trim();
+  var k=document.getElementById('fKey').value.trim();
+  var m=document.getElementById('fModel').value.trim();
+  var iv=document.getElementById('fIdx').value.trim();
+  if(!n||!b||!k||!m){show('请填写所有字段','err');return;}
+  var idx=iv?parseInt(iv,10):(gCustoms.length+1);
+  fetch('/api/models',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,base:b,key:k,id:m,idx:idx})})
+    .then(function(r){if(r.ok){show('模型已添加(序号='+idx+')','ok');['fName','fBase','fKey','fModel','fIdx'].forEach(function(id){document.getElementById(id).value='';});load();}else{return r.json().then(function(d){show(''+d.error,'err');});}})
+    .catch(function(){show('保存失败','err');});
+}
+
+function delCustom(slug){
+  if(!confirm('删除自定义模型「'+slug+'」?'))return;
+  fetch('/api/models/'+encodeURIComponent(slug),{method:'DELETE'}).then(function(r){
+    if(r.ok){show('已删除','ok');load();}else{return r.json().then(function(d){show(''+d.error,'err');});}
+  }).catch(function(){});
+}
+
+function editCustom(slug){
+  var c=gCustoms.find(function(x){return(x.slug||x.name)===slug;});if(!c)return;
+  var h='<div class="form-grid"><div><label>模型名称</label><input id="eName" value="'+escAttr(c.name||'')+'"></div>'+
+    '<div><label>API 地址</label><input id="eBase" value="'+escAttr(c.base)+'"></div>'+
+    '<div><label>API 密钥</label><input id="eKey" value="'+escAttr(c.keyRaw||c.key||'')+'"></div>'+
+    '<div style="grid-column:1/-1"><label>模型 ID</label><input id="eModel" value="'+escAttr(c.models&&c.models[0]||c.id||'')+'"></div></div>';
+  document.getElementById('dialogTitle').textContent='修改自定义模型: '+esc(c.name||slug);
+  document.getElementById('dialogBody').innerHTML=h;
+  document.getElementById('editDialog').classList.add('open');
+  document.getElementById('dialogSave').onclick=function(){
+    var nn=document.getElementById('eName').value.trim();
+    var nb=document.getElementById('eBase').value.trim();
+    var nk=document.getElementById('eKey').value.trim();
+    var nm=document.getElementById('eModel').value.trim();
+    if(!nn||!nb||!nk||!nm){show('请填写所有字段','err');return;}
+    fetch('/api/models/'+encodeURIComponent(slug),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:nn,base:nb,key:nk,id:nm})})
+      .then(function(r){if(r.ok){show('模型已更新','ok');closeDialog();load();}else show('保存失败','err');})
+      .catch(function(){show('保存失败','err');});
+  };
+}
+
+function editBuiltin(name){
+  var b=gBuiltins.find(function(x){return x.name===name;});if(!b)return;
+  var h='<div style="display:flex;flex-direction:column;gap:10px;">'+
+    '<div><label style="display:block;font-size:12px;font-weight:500;color:var(--text-3);margin-bottom:4px;">名称</label><input id="eName" value="'+escAttr(b.name)+'" style="width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--bg);color:var(--text);box-sizing:border-box;"></div>'+
+    '<div><label style="display:block;font-size:12px;font-weight:500;color:var(--text-3);margin-bottom:4px;">API 地址</label><input id="eBase" value="'+escAttr(b.base)+'" style="width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--bg);color:var(--text);box-sizing:border-box;"></div>'+
+    '<div><label style="display:block;font-size:12px;font-weight:500;color:var(--text-3);margin-bottom:4px;">API 密钥</label><input id="eKey" value="'+escAttr(b.key||'')+'" placeholder="留空则不修改" style="width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--bg);color:var(--text);box-sizing:border-box;"></div>'+
+    '<div><label style="display:block;font-size:12px;font-weight:500;color:var(--text-3);margin-bottom:4px;">模型 ID(逗号分隔)</label><input id="eModels" value="'+escAttr((b.models||[]).join(','))+'" style="width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--bg);color:var(--text);box-sizing:border-box;"></div></div>';
+  document.getElementById('dialogTitle').textContent='修改内置模型: '+esc(b.name);
+  document.getElementById('dialogBody').innerHTML=h;
+  document.getElementById('editDialog').classList.add('open');
+  document.getElementById('dialogSave').onclick=function(){
+    var nn=document.getElementById('eName').value.trim();
+    var nk=document.getElementById('eKey').value.trim();
+    var nb=document.getElementById('eBase').value.trim();
+    var nm=document.getElementById('eModels').value.trim();
+    if(!nn){show('请输入名称','err');return;}
+    var body={base:nb,models:nm};
+    // Only update key if user typed something new (masked key shown as hint)
+    if (nk && !nk.endsWith('...')) body.key = nk;
+    if(nn!==name)body.name=nn;
+    fetch('/api/builtins/'+encodeURIComponent(name),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){if(r.ok){show('已保存','ok');closeDialog();load();}else show('保存失败','err');})
+      .catch(function(){show('保存失败','err');});
+  };
+}
+
+function askDisableBuiltin(name){
+  if(!confirm('确定要从内置列表中移除「'+name+'」吗？'))return;
+  fetch('/api/builtins/'+encodeURIComponent(name),{method:'DELETE'}).then(function(r){
+    if(r.ok){show('已移除','ok');load();}else show('移除失败','err');
+  }).catch(function(){});
+}
+
+// ═══ CODEX Config ═════════════════════════════════════════
+function copyCode(){
+  navigator.clipboard.writeText(document.getElementById('cxCode').value).then(function(){
+    document.getElementById('cxMsg').textContent='已复制';
+    setTimeout(function(){document.getElementById('cxMsg').textContent='';},2000);
+  }).catch(function(){});
+}
+
+// ═══ Dialog ═══════════════════════════════════════════════
+function closeDialog(){document.getElementById('editDialog').classList.remove('open');}
+
+// ═══ Init ═══════════════════════════════════════════════════
+(function(){
+  // Set CODEX config default content
+  document.getElementById('cxCode').value = `model_provider = "LUODA"
+model = "gpt-5.5"
+review_model = "codexAPI"
+model_reasoning_effort = "high"
+disable_response_storage = true
+network_access = "enabled"
+sandbox_mode = "danger-full-access"
+approval_policy = "never"
+service_tier = "fast"
+
+[model_providers]
+[model_providers.LUODA]
+name = "LUODA"
+wire_api = "responses"
+requires_openai_auth = true
+base_url = "http://127.0.0.1:40000/v1"
+experimental_bearer_token = "sk-proxy-local-51f5bd4b9797f2620bc55460946802711cf7312b38c24794"
+
+[agents]
+max_threads = 2
+max_depth = 2
+
+[notice]
+hide_full_access_warning = true
+
+[windows]
+sandbox = "elevated"`;
+
+  load();
+  // Auto-switch tab based on URL hash
+  if (location.hash === '#builtins') {
+    var builtinTab = document.querySelector('.hm-tabbar .hm-tab:nth-child(2)');
+    if (builtinTab) builtinTab.click();
+  }
+  setTimeout(refreshStatus, 500);
+  setInterval(refreshStatus, 3000);
+})();
+
+// Click outside to close dialog
+document.getElementById('editDialog').addEventListener('click',function(e){if(e.target===this)closeDialog();});
+</script>
+</body>
+</html>
