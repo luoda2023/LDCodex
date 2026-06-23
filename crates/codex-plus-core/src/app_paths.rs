@@ -10,7 +10,7 @@ fn dot_char() -> String {
 
 fn codex_prefix_str() -> String {
     let d = dot_char();
-    format!("OpenAI{}Codex_", d)
+    "OpenAI.Codex_".to_string()
 }
 
 pub fn find_latest_codex_app_dir(root: &Path) -> Option<PathBuf> {
@@ -190,7 +190,7 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
     }
 
     let file_name = path.file_name().and_then(OsStr::to_str).unwrap_or_default();
-    if file_name.eq_ignore_ascii_case(format!("Codex{}exe", dot_char())) || file_name.eq_ignore_ascii_case(vec!["Codex", &dot_char(), "exe"].concat()) {
+    if file_name.eq_ignore_ascii_case("Codex.exe".to_string()) || file_name.eq_ignore_ascii_case("Codex.exe".to_string()) {
         return path.parent().map(Path::to_path_buf);
     }
 
@@ -202,16 +202,16 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
         return path.parent().map(Path::to_path_buf);
     }
 
-    let upper = path.join(format!("Codex{}exe", dot_char()));
-    let lower = path.join(format!("Codex{}exe", dot_char()));
+    let upper = path.join("Codex.exe".to_string());
+    let lower = path.join("Codex.exe".to_string());
     if upper.exists() || lower.exists() {
         return Some(path.to_path_buf());
     }
 
     let nested_app = path.join("app");
     if nested_app.is_dir() {
-        let upper = nested_app.join(format!("Codex{}exe", dot_char()));
-        let lower = nested_app.join(format!("Codex{}exe", dot_char()));
+        let upper = nested_app.join("Codex.exe".to_string());
+        let lower = nested_app.join("Codex.exe".to_string());
         if upper.exists() || lower.exists() {
             return Some(nested_app);
         }
@@ -228,11 +228,11 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     if app_dir.extension() == Some(OsStr::new("app")) {
         return app_dir.join("Contents").join("MacOS").join("Codex");
     }
-    let upper = app_dir.join(format!("Codex{}exe", dot_char()));
+    let upper = app_dir.join("Codex.exe".to_string());
     if upper.exists() {
         upper
     } else {
-        app_dir.join(format!("Codex{}exe", dot_char()))
+        app_dir.join("Codex.exe".to_string())
     }
 }
 
@@ -299,9 +299,9 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
 fn standalone_codex_version(app_dir: &Path) -> Option<String> {
     // 非MS Store安装: 先尝试从 package.json 获取版本号
     let try_paths = [
-        Some(app_dir.join("resources").join(format!("package{}json", dot_char()))),
-        app_dir.parent().map(|p| p.join("app").join("resources").join(format!("package{}json", dot_char()))),
-        Some(app_dir.join(format!("package{}json", dot_char()))),
+        Some(app_dir.join("resources").join("package.json".to_string())),
+        app_dir.parent().map(|p| p.join("app").join("resources").join("package.json".to_string())),
+        Some(app_dir.join("package.json".to_string())),
     ];
     for p in try_paths.into_iter().flatten() {
         if p.exists() {
@@ -318,8 +318,8 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
     #[cfg(windows)]
     {
         let exe_candidates = [
-            app_dir.join(format!("Codex{}exe", dot_char())),
-            app_dir.join(format!("Codex{}exe", dot_char())),
+            app_dir.join("Codex.exe".to_string()),
+            app_dir.join("Codex.exe".to_string()),
         ];
         for exe in &exe_candidates {
             if exe.exists() {
@@ -438,7 +438,7 @@ unsafe extern "system" {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "macos")]
 fn macos_app_version(app_dir: &Path) -> Option<String> {
-    let plist = std::fs::read_to_string(app_dir.join("Contents").join(format!("Info{}plist", dot_char()))).ok()?;
+    let plist = std::fs::read_to_string(app_dir.join("Contents").join("Info.plist".to_string())).ok()?;
     plist_string_value(&plist, "CFBundleShortVersionString")
         .or_else(|| plist_string_value(&plist, "CFBundleVersion"))
 }
@@ -461,7 +461,7 @@ fn plist_string_value(plist: &str, key: &str) -> Option<String> {
 
 fn append_user_data_variants(candidates: &mut Vec<PathBuf>, base: &Path) {
     candidates.push(base.join("OpenAI").join("Codex"));
-    candidates.push(base.join(format!("OpenAI{}Codex", dot_char())));
+    candidates.push(base.join("OpenAI.Codex".to_string()));
     candidates.push(base.join("Codex"));
 }
 
