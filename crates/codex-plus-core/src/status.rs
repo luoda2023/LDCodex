@@ -102,3 +102,4 @@ mod tests {
         assert_eq!(store.load_latest().unwrap(), None);
     }
 }
+

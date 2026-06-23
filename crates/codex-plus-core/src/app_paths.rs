@@ -1,19 +1,16 @@
 ﻿use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-const CODEX_PREFIX: &str = vec!["OpenAI", &dot_char(), "Codex_"].concat();
+const CODEX_PREFIX: &str = "OpenAI.Codex_";
 
 fn dot_char() -> String {
     char::from(46u8).to_string()
 }
 
 
-fn dot_char() -> String {
-    char::from(46u8).to_string()
-}
 
 fn codex_prefix_str() -> String {
     let d = dot_char();
-    vec!["OpenAI", &d, "Codex_"].concat()
+    format!("OpenAI{}Codex_", d)
 }
 
 pub fn find_latest_codex_app_dir(root: &Path) -> Option<PathBuf> {
@@ -193,7 +190,7 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
     }
 
     let file_name = path.file_name().and_then(OsStr::to_str).unwrap_or_default();
-    if file_name.eq_ignore_ascii_case(vec!["Codex", &dot_char(), "exe"].concat()) || file_name.eq_ignore_ascii_case(vec!["Codex", &dot_char(), "exe"].concat()) {
+    if file_name.eq_ignore_ascii_case(format!("Codex{}exe", dot_char())) || file_name.eq_ignore_ascii_case(vec!["Codex", &dot_char(), "exe"].concat()) {
         return path.parent().map(Path::to_path_buf);
     }
 
@@ -205,16 +202,16 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
         return path.parent().map(Path::to_path_buf);
     }
 
-    let upper = path.join(vec!["Codex", &dot_char(), "exe"].concat());
-    let lower = path.join(vec!["Codex", &dot_char(), "exe"].concat());
+    let upper = path.join(format!("Codex{}exe", dot_char()));
+    let lower = path.join(format!("Codex{}exe", dot_char()));
     if upper.exists() || lower.exists() {
         return Some(path.to_path_buf());
     }
 
     let nested_app = path.join("app");
     if nested_app.is_dir() {
-        let upper = nested_app.join(vec!["Codex", &dot_char(), "exe"].concat());
-        let lower = nested_app.join(vec!["Codex", &dot_char(), "exe"].concat());
+        let upper = nested_app.join(format!("Codex{}exe", dot_char()));
+        let lower = nested_app.join(format!("Codex{}exe", dot_char()));
         if upper.exists() || lower.exists() {
             return Some(nested_app);
         }
@@ -231,11 +228,11 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     if app_dir.extension() == Some(OsStr::new("app")) {
         return app_dir.join("Contents").join("MacOS").join("Codex");
     }
-    let upper = app_dir.join(vec!["Codex", &dot_char(), "exe"].concat());
+    let upper = app_dir.join(format!("Codex{}exe", dot_char()));
     if upper.exists() {
         upper
     } else {
-        app_dir.join(vec!["Codex", &dot_char(), "exe"].concat())
+        app_dir.join(format!("Codex{}exe", dot_char()))
     }
 }
 
@@ -302,9 +299,9 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
 fn standalone_codex_version(app_dir: &Path) -> Option<String> {
     // 非MS Store安装: 先尝试从 package.json 获取版本号
     let try_paths = [
-        Some(app_dir.join("resources").join(vec!["package", &dot_char(), "json"].concat())),
-        app_dir.parent().map(|p| p.join("app").join("resources").join(vec!["package", &dot_char(), "json"].concat())),
-        Some(app_dir.join(vec!["package", &dot_char(), "json"].concat())),
+        Some(app_dir.join("resources").join(format!("package{}json", dot_char()))),
+        app_dir.parent().map(|p| p.join("app").join("resources").join(format!("package{}json", dot_char()))),
+        Some(app_dir.join(format!("package{}json", dot_char()))),
     ];
     for p in try_paths.into_iter().flatten() {
         if p.exists() {
@@ -321,8 +318,8 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
     #[cfg(windows)]
     {
         let exe_candidates = [
-            app_dir.join(vec!["Codex", &dot_char(), "exe"].concat()),
-            app_dir.join(vec!["Codex", &dot_char(), "exe"].concat()),
+            app_dir.join(format!("Codex{}exe", dot_char())),
+            app_dir.join(format!("Codex{}exe", dot_char())),
         ];
         for exe in &exe_candidates {
             if exe.exists() {
@@ -441,7 +438,7 @@ unsafe extern "system" {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "macos")]
 fn macos_app_version(app_dir: &Path) -> Option<String> {
-    let plist = std::fs::read_to_string(app_dir.join("Contents").join(vec!["Info", &dot_char(), "plist"].concat())).ok()?;
+    let plist = std::fs::read_to_string(app_dir.join("Contents").join(format!("Info{}plist", dot_char()))).ok()?;
     plist_string_value(&plist, "CFBundleShortVersionString")
         .or_else(|| plist_string_value(&plist, "CFBundleVersion"))
 }
@@ -464,7 +461,7 @@ fn plist_string_value(plist: &str, key: &str) -> Option<String> {
 
 fn append_user_data_variants(candidates: &mut Vec<PathBuf>, base: &Path) {
     candidates.push(base.join("OpenAI").join("Codex"));
-    candidates.push(base.join(vec!["OpenAI", &dot_char(), "Codex"].concat()));
+    candidates.push(base.join(format!("OpenAI{}Codex", dot_char())));
     candidates.push(base.join("Codex"));
 }
 
@@ -478,9 +475,9 @@ fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
     }
     let dot = char::from(46u8).to_string();
     let names = [
-        vec!["Codex", &dot, "app"].concat(),
-        vec!["OpenAI Codex", &dot, "app"].concat(),
-        vec!["OpenAI", &dot, "Codex", &dot, "app"].concat(),
+        format!("Codex{}app", dot),
+        format!("OpenAI Codex{}app", dot),
+        format!("OpenAI{}Codex{}app", dot, dot),
     ];
     names
         .into_iter()
