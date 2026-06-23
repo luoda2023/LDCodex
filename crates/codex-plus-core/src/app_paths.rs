@@ -475,9 +475,9 @@ fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
     }
     let dot = char::from(46u8).to_string();
     let names = [
-        format!("Codex{}app", dot),
-        format!("OpenAI Codex{}app", dot),
-        format!("OpenAI{}Codex{}app", dot, dot),
+        "Codex.app",
+        "OpenAI Codex.app",
+        "OpenAI.Codex.app",
     ];
     names
         .into_iter()
