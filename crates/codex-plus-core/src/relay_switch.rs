@@ -144,9 +144,9 @@ fn relay_combined_common_config(settings: &BackendSettings) -> String {
         settings.relay_common_config_contents.trim(),
         settings.relay_context_config_contents.trim(),
     ]
-    .into_iter()
+    .iter().copied()
     .filter(|section| !section.is_empty())
-    .collect::<Vec<_>>();
+    .collect::<Vec<&str>>();
     if sections.is_empty() {
         String::new()
     } else {

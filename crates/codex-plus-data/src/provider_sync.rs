@@ -797,9 +797,10 @@ fn table_columns(db: &Connection, table: &str) -> anyhow::Result<HashSet<String>
         "PRAGMA table_info(\"{}\")",
         table.replace('"', "\"\"")
     ))?;
-    Ok(stmt
+    let rows = stmt
         .query_map([], |row| row.get::<_, String>(1))?
-        .collect::<rusqlite::Result<HashSet<_>>>()?)
+        .collect::<rusqlite::Result<HashSet<_>>>()?;
+    Ok(rows)
 }
 
 fn sqlite_provider_ids(path: &Path) -> anyhow::Result<Vec<String>> {

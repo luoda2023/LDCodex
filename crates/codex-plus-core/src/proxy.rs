@@ -9,7 +9,7 @@ pub fn has_proxy_environment(env: &HashMap<String, String>) -> bool {
         "http_proxy",
         "all_proxy",
     ]
-    .into_iter()
+    .iter().copied()
     .any(|name| env.get(name).is_some_and(|value| !value.is_empty()))
 }
 

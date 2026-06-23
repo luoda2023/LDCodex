@@ -421,7 +421,7 @@ impl LaunchHooks for DefaultLaunchHooks {
                 settings.relay_context_config_contents.as_str(),
             ]
             .into_iter()
-            .map(str::trim)
+            .map(|s| s.trim())
             .filter(|section| !section.is_empty())
             .collect::<Vec<_>>()
             .join("\n\n"),

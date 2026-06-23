@@ -9,7 +9,7 @@ fn dot_char() -> String {
 
 
 fn codex_prefix_str() -> String {
-    let d = dot_char();
+    let _d = dot_char();
     "OpenAI.Codex_".to_string()
 }
 
@@ -82,10 +82,7 @@ pub fn user_data_candidates_from(local: Option<&Path>, roaming: Option<&Path>) -
     candidates
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
+
 pub fn find_macos_codex_app(search_roots: &[PathBuf]) -> Option<PathBuf> {
     for root in search_roots {
         for candidate in macos_app_candidates(root) {
@@ -97,10 +94,7 @@ pub fn find_macos_codex_app(search_roots: &[PathBuf]) -> Option<PathBuf> {
     None
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
+
 pub fn find_macos_codex_app_default() -> Option<PathBuf> {
     let mut roots = vec![PathBuf::from("/Applications")];
     if let Some(home) = directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf()) {
@@ -190,7 +184,7 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
     }
 
     let file_name = path.file_name().and_then(OsStr::to_str).unwrap_or_default();
-    if file_name.eq_ignore_ascii_case("Codex.exe".to_string()) || file_name.eq_ignore_ascii_case("Codex.exe".to_string()) {
+    if file_name.eq_ignore_ascii_case("Codex.exe") || file_name.eq_ignore_ascii_case("Codex.exe") {
         return path.parent().map(Path::to_path_buf);
     }
 
@@ -202,16 +196,16 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
         return path.parent().map(Path::to_path_buf);
     }
 
-    let upper = path.join("Codex.exe".to_string());
-    let lower = path.join("Codex.exe".to_string());
+    let upper = path.join("Codex.exe");
+    let lower = path.join("Codex.exe");
     if upper.exists() || lower.exists() {
         return Some(path.to_path_buf());
     }
 
     let nested_app = path.join("app");
     if nested_app.is_dir() {
-        let upper = nested_app.join("Codex.exe".to_string());
-        let lower = nested_app.join("Codex.exe".to_string());
+        let upper = nested_app.join("Codex.exe");
+        let lower = nested_app.join("Codex.exe");
         if upper.exists() || lower.exists() {
             return Some(nested_app);
         }
@@ -228,11 +222,11 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     if app_dir.extension() == Some(OsStr::new("app")) {
         return app_dir.join("Contents").join("MacOS").join("Codex");
     }
-    let upper = app_dir.join("Codex.exe".to_string());
+    let upper = app_dir.join("Codex.exe");
     if upper.exists() {
         upper
     } else {
-        app_dir.join("Codex.exe".to_string())
+        app_dir.join("Codex.exe")
     }
 }
 
@@ -249,11 +243,11 @@ pub fn codex_app_version(app_dir: &Path) -> Option<String> {
     } else {
         app_dir
     };
-    // ���� MS Store �汾���?
+    //  MS Store ?
     if let Some(ver) = codex_package_version(package_dir) {
         return Some(ver);
     }
-    // �� MS Store ��װ: �� package.json ��ȡ
+    //  MS Store :  package.json 
     standalone_codex_version(package_dir)
 }
 
@@ -281,7 +275,7 @@ fn package_name_from_app_dir(app_dir: &Path) -> Option<String> {
 }
 
 fn codex_package_version(package_dir: &Path) -> Option<String> {
-    // MS Store ��װ: ��Ŀ¼�� OpenAI.Codex_version_xxx ����ȡ
+    // MS Store :  OpenAI.Codex_version_xxx 
     let path = package_dir.to_string_lossy().replace('\\', "/");
     let name = path
         .split('/')
@@ -297,7 +291,7 @@ fn codex_package_version(package_dir: &Path) -> Option<String> {
 }
 
 fn standalone_codex_version(app_dir: &Path) -> Option<String> {
-    // 非MS Store安装: 先尝试从 package.json 获取版本号
+    // MS Store:  package.json 
     let try_paths = [
         Some(app_dir.join("resources").join("package.json".to_string())),
         app_dir.parent().map(|p| p.join("app").join("resources").join("package.json".to_string())),
@@ -314,12 +308,12 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
             }
         }
     }
-    // Windows回退: 从 Codex.exe 读取文件版本信息 (通过 PowerShell)
+    // Windows:  Codex.exe  ( PowerShell)
     #[cfg(windows)]
     {
         let exe_candidates = [
-            app_dir.join("Codex.exe".to_string()),
-            app_dir.join("Codex.exe".to_string()),
+            app_dir.join("Codex.exe"),
+            app_dir.join("Codex.exe"),
         ];
         for exe in &exe_candidates {
             if exe.exists() {
@@ -334,7 +328,7 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
 
 #[cfg(windows)]
 fn file_version_via_powershell(exe_path: &Path) -> Option<String> {
-    // 直接使用 Windows API 读取 EXE 文件版本信息
+    //  Windows API  EXE 
     get_exe_version(exe_path)
 }
 
@@ -369,7 +363,7 @@ fn get_exe_version(exe_path: &Path) -> Option<String> {
 
         let mut len: u32 = 0;
         let mut subblock_ptr: *mut std::ffi::c_void = ptr::null_mut();
-        let subblock: Vec<u16> = OsStr::new("\")
+        let subblock: Vec<u16> = OsStr::new("\\")
             .encode_wide()
             .chain(std::iter::once(0))
             .collect();
@@ -433,20 +427,15 @@ unsafe extern "system" {
         lplpBuffer: *mut *mut std::ffi::c_void,
         puLen: *mut u32,
     ) -> i32;
-}#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
+}
+
 fn macos_app_version(app_dir: &Path) -> Option<String> {
-    let plist = std::fs::read_to_string(app_dir.join("Contents").join("Info.plist".to_string())).ok()?;
+    let plist = std::fs::read_to_string(app_dir.join("Contents").join("Info.plist")).ok()?;
     plist_string_value(&plist, "CFBundleShortVersionString")
         .or_else(|| plist_string_value(&plist, "CFBundleVersion"))
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
+
 fn plist_string_value(plist: &str, key: &str) -> Option<String> {
     let (_, after_key) = plist.split_once(&format!("<key>{key}</key>"))?;
     let (_, after_string_open) = after_key.split_once("<string>")?;
@@ -461,19 +450,16 @@ fn plist_string_value(plist: &str, key: &str) -> Option<String> {
 
 fn append_user_data_variants(candidates: &mut Vec<PathBuf>, base: &Path) {
     candidates.push(base.join("OpenAI").join("Codex"));
-    candidates.push(base.join("OpenAI.Codex".to_string()));
+    candidates.push(base.join("OpenAI.Codex"));
     candidates.push(base.join("Codex"));
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "macos")]
+
 fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
     if root.extension() == Some(OsStr::new("app")) {
         return vec![root.to_path_buf()];
     }
-    [
+    vec![
         root.join("Codex.app"),
         root.join("OpenAI Codex.app"),
         root.join("OpenAI.Codex.app"),

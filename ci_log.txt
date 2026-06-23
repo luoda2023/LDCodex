@@ -1,0 +1,7 @@
+﻿gh : run 28038163065 is still in progress; logs will be available when it is complete
+At line:2 char:27
++ cd J:\codex-work\LDCodex; gh run view 28038163065 --log 2>&1 | Out-Fi ...
++                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (run 28038163065... it is complete:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

@@ -1421,7 +1421,7 @@ pub fn backfill_relay_profile_from_live(
     let Some(profile) = settings
         .relay_profiles
         .iter_mut()
-        .find(|profile| profile.id == request.profile_id)
+        .find(|profile| profile.id == requested_profile_id)
     else {
         log_manager_event(
             "manager.backfill_relay_profile_from_live.missing_profile",
