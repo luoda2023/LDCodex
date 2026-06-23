@@ -1,4 +1,4 @@
-﻿use std::sync::LazyLock;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 /// 全局复用 HTTP client，支持 HTTP/2 和连接池
