@@ -473,16 +473,11 @@ fn macos_app_candidates(root: &Path) -> Vec<PathBuf> {
     if root.extension() == Some(OsStr::new("app")) {
         return vec![root.to_path_buf()];
     }
-    let dot = char::from(46u8).to_string();
-    let names = [
-        "Codex.app",
-        "OpenAI Codex.app",
-        "OpenAI.Codex.app",
-    ];
-    names
-        .into_iter()
-        .map(|name| root.join(name))
-        .collect()
+    [
+        root.join("Codex.app"),
+        root.join("OpenAI Codex.app"),
+        root.join("OpenAI.Codex.app"),
+    ]
 }
 
 fn version_tuple(path: &Path) -> Option<Vec<u32>> {
