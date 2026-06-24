@@ -1589,7 +1589,7 @@ const closeWindow = async () => {
             <ProxyScreen
               overview={overview}
               launchForm={launchForm}
-              onLaunchFormChange={onLaunchFormChange}
+              onLaunchFormChange={setLaunchForm}
               actions={actions}
               settings={settings}
             />
