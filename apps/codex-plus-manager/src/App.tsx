@@ -1721,7 +1721,7 @@ function OverviewScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="代理服务器启动状态" detail={overview?.logs_path ?? "暂无状态文件"} />
+        <CardHead title="代理服务器启动状态" detail="LDbridge 转发服务运行状态" />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
@@ -2198,7 +2198,7 @@ function ProxyScreen({
     let cancelled = false;
     (async () => {
       try {
-        const resp = await fetch("http://127.0.0.1:40000/v1/models", { signal: AbortSignal.timeout(2000) });
+        const resp = await fetch("http://127.0.0.1:36000/v1/models", { signal: AbortSignal.timeout(2000) });
         if (!cancelled) setProxyRunning(resp.ok);
       } catch {
         if (!cancelled) setProxyRunning(false);
@@ -2210,12 +2210,12 @@ function ProxyScreen({
   return (
     <>
       <Panel>
-        <CardHead title="代理服务器" detail="LDbridge 转发服务状态" />
+        <CardHead title="代理服务器" detail="代理服务状态" />
         <CardContent>
           {proxyChecking ? (
               <div className="hint-line"><RefreshCw className="h-4 w-4" /><span>正在检测...</span></div>
           ) : proxyRunning ? (
-              <div className="hint-line"><ShieldCheck className="h-4 w-4" /><span>代理服务器已运行，端口 40000</span></div>
+              <div className="hint-line"><ShieldCheck className="h-4 w-4" /><span>代理服务器已运行，端口 36000</span></div>
           ) : (
               <div className="hint-line"><PowerOff className="h-4 w-4" /><span>代理服务器未运行</span></div>
           )}
@@ -3500,7 +3500,7 @@ function routeSubtitle(route: Route) {
     context: "独立管理 MCP、Skills、Plugins",
     enhance: "会话删除、导出、项目移动和脚本能力",
     maintenance: "入口安装、修复、Watcher",
-    proxy: "代理服务器配置与手动启动",
+    proxy: "代理服务器配置与状态监控",
     about: "版本信息",
     settings: "主题、命令包装器和启动参数",
   };
