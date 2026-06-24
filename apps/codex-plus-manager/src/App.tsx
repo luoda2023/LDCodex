@@ -2148,85 +2148,70 @@ function ProxyScreen({
   actions: Actions;
   settings: SettingsResult | null;
 }) {
-  const savedCodexAppPath = settings?.settings.codexAppPath ?? "";
+  const [proxyStatus, setProxyStatus] = useState<{ running: boolean; port: number; providerCount: number } | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetch("http://127.0.0.1:40000/v1/models", { signal: AbortSignal.timeout(3000) });
+        const data = await resp.json();
+        setProxyStatus({ running: true, port: 40000, providerCount: data.data?.length ?? 0 });
+      } catch {
+        setProxyStatus({ running: false, port: 40000, providerCount: 0 });
+      }
+    })();
+  }, []);
   return (
     <>
       <Panel>
-        <CardHead title="代理服务器" detail="代理服务器启动状态与配置" />
+        <CardHead title="ä»£çæå¡å¨" detail="LDbridge è½¬åæå¡ç¶æä¸æ§å¶" />
         <CardContent>
-          <LatestLaunch status={overview?.latest_launch ?? null} />
-          <Toolbar>
-            <Button onClick={() => void actions.launch()}>
-              <Rocket className="h-4 w-4" />
-              启动 LDCodex
-            </Button>
-            <Button variant="secondary" onClick={() => void actions.goLogs()}>
-              打开关于
-            </Button>
-          </Toolbar>
+          {proxyStatus === null ? (
+            <div className="hint-line">
+              <RefreshCw className="h-4 w-4" />
+              <span>æ­£å¨æ£æµä»£çæå¡å¨...</span>
+            </div>
+          ) : proxyStatus.running ? (
+            <>
+              <div className="hint-line">
+                <ShieldCheck className="h-4 w-4" />
+                <span>ä»£çæå¡å¨å·²è¿è¡ï¼ç«¯å£ {proxyStatus.port}ï¼å·²æ³¨å {proxyStatus.providerCount} ä¸ª Provider</span>
+              </div>
+              <Toolbar>
+                <Button onClick={() => void actions.launch()}>
+                  <Rocket className="h-4 w-4" />
+                  å¯å¨ LDCodex
+                </Button>
+              </Toolbar>
+            </>
+          ) : (
+            <>
+              <div className="hint-line">
+                <PowerOff className="h-4 w-4" />
+                <span>ä»£çæå¡å¨æªè¿è¡</span>
+              </div>
+              <Toolbar>
+                <Button onClick={() => void actions.launch()}>
+                  <Rocket className="h-4 w-4" />
+                  å¯å¨ä»£çæå¡å¨
+                </Button>
+              </Toolbar>
+            </>
+          )}
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="手动启动" detail="应用路径留空时使用已保存路径；没有保存路径时使用自动探测" />
+        <CardHead title="æå¨å¯å¨" detail="åºç¨è·¯å¾çç©ºæ¶ä½¿ç¨å·²ä¿å­è·¯å¾" />
         <CardContent>
-          <Field label="应用路径覆盖">
+          <Field label="åºç¨è·¯å¾è¦ç">
             <Input
               value={launchForm.appPath}
               onChange={(event) => onLaunchFormChange({ ...launchForm, appPath: event.currentTarget.value })}
-              placeholder={savedCodexAppPath || "例如 C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
+              placeholder={savedCodexAppPath || "ä¾å¦ C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
             />
           </Field>
-          <div className="form-row">
-            <Field label="Debug 端口">
-              <Input
-                value={launchForm.debugPort}
-                onChange={(event) => onLaunchFormChange({ ...launchForm, debugPort: event.currentTarget.value })}
-              />
-            </Field>
-            <Field label="Helper 端口">
-              <Input
-                value={launchForm.helperPort}
-                onChange={(event) => onLaunchFormChange({ ...launchForm, helperPort: event.currentTarget.value })}
-              />
-            </Field>
-          </div>
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>启动 LDCodex</Button>
-            <Button variant="secondary" onClick={() => void actions.saveManualCodexAppPath()}>
-              保存为默认路径
-            </Button>
+            <Button onClick={() => void actions.launch()}>å¯å¨ LDCodex</Button>
           </Toolbar>
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
-
-
-function AboutScreen({
-  overview,
-  actions,
-}: {
-  overview: OverviewResult | null;
-  actions: Actions;
-}) {
-  return (
-    <>
-      <Panel>
-        <CardHead title="关于 LDCodex" detail="本地 Codex 增强和管理工具" />
-        <CardContent>
-          <div className="metric-list">
-            <Metric label="LDCodex 版本" value={overview?.current_version ?? "-"} />
-          </div>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardContent>
-          <div className="about-footer">
-            <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="about-footer-link">Dicad.cn</span>
-            <div className="about-footer-text">AI赋能工程设计</div>
-            <div className="about-footer-en">LET IMAGINATION BECOME REALITY</div>
-          </div>
         </CardContent>
       </Panel>
     </>
