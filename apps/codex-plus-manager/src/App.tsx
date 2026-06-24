@@ -1,4 +1,4 @@
-import {
+﻿import {
   closestCenter,
   DndContext,
   KeyboardSensor,
@@ -1594,7 +1594,7 @@ const closeWindow = async () => {
               settings={settings}
             />
           ) : null}
-          {route === "about" ? <AboutScreen overview={overview} actions={actions} /> : null}
+          {route === "about" ? <AboutScreen overview={overview} update={update} logs={logs} diagnostics={diagnostics} actions={actions} /> : null}
           {route === "settings" ? (
             <SettingsScreen settings={settings} theme={theme} form={settingsForm} onFormChange={setSettingsForm} actions={actions} />
           ) : null}
@@ -2135,6 +2135,59 @@ function MaintenanceScreen({
     </>
   );
 }
+function AboutScreen({
+  overview,
+  update,
+  logs,
+  diagnostics,
+  actions,
+}: {
+  overview: OverviewResult | null;
+  update: UpdateResult | null;
+  logs: LogsResult | null;
+  diagnostics: DiagnosticsResult | null;
+  actions: Actions;
+}) {
+  return (
+    <>
+      <Panel>
+        <CardHead title="关于 Codex++" detail="本地 Codex 增强、管理工具和安装包维护" />
+        <CardContent>
+          <div className="metric-list">
+            <Metric label="Codex++ 版本" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
+            <Metric label="Codex 版本" value={overview?.codex_version ?? "未检测到"} />
+            <Metric label="项目地址" value="github.com/BigPizzaV3/CodexPlusPlus" />
+          </div>
+          <Toolbar>
+            <Button onClick={() => void actions.openExternalUrl("https://github.com/BigPizzaV3/CodexPlusPlus")} variant="secondary">
+              <ExternalLink className="h-4 w-4" />
+              打开项目主页
+            </Button>
+            <Button onClick={() => void actions.openExternalUrl("https://github.com/BigPizzaV3/CodexPlusPlus/issues")} variant="secondary">
+              <ExternalLink className="h-4 w-4" />
+              反馈问题
+            </Button>
+            <Button onClick={() => void actions.openExternalUrl("https://discord.gg/y96kX7A76v")} variant="secondary">
+              <MessageCircle className="h-4 w-4" />
+              Discord
+            </Button>
+            <Button onClick={() => void actions.openExternalUrl("https://t.me/CodexPlusPlus")} variant="secondary">
+              <MessageCircle className="h-4 w-4" />
+              Telegram
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="日志与诊断" detail="" />
+        <CardContent>
+          <LogsPanel logs={logs} actions={actions} />
+          <DiagnosticsPanel diagnostics={diagnostics} actions={actions} />
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
 function ProxyScreen({
   overview,
   launchForm,
@@ -2166,33 +2219,33 @@ function ProxyScreen({
   return (
     <>
       <Panel>
-        <CardHead title="ä»£çæå¡å¨" detail="LDbridge è½¬åæå¡ç¶æ" />
+        <CardHead title="代理服务器" detail="LDbridge 转发服务状态" />
         <CardContent>
           {proxyChecking ? (
-            <div className="hint-line"><RefreshCw className="h-4 w-4" /><span>æ­£å¨æ£æµ...</span></div>
+              <div className="hint-line"><RefreshCw className="h-4 w-4" /><span>正在检测...</span></div>
           ) : proxyRunning ? (
-            <div className="hint-line"><ShieldCheck className="h-4 w-4" /><span>ä»£çæå¡å¨å·²è¿è¡ï¼ç«¯å£ 40000</span></div>
+              <div className="hint-line"><ShieldCheck className="h-4 w-4" /><span>代理服务器已运行，端口 40000</span></div>
           ) : (
-            <div className="hint-line"><PowerOff className="h-4 w-4" /><span>ä»£çæå¡å¨æªè¿è¡</span></div>
+              <div className="hint-line"><PowerOff className="h-4 w-4" /><span>代理服务器未运行</span></div>
           )}
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="å¯å¨ LDCodex" detail="" />
+        <CardHead title="启动 LDCodex" detail="" />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
-              å¯å¨ LDCodex
+              启动 LDCodex
             </Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="æå¨å¯å¨" detail="" />
+        <CardHead title="手动启动" detail="" />
         <CardContent>
-          <Field label="åºç¨è·¯å¾">
+          <Field label="应用路径">
             <Input
               value={launchForm.appPath}
               onChange={(event) => onLaunchFormChange({ ...launchForm, appPath: event.currentTarget.value })}
@@ -2200,15 +2253,15 @@ function ProxyScreen({
             />
           </Field>
           <div className="form-row">
-            <Field label="Debug ç«¯å£">
+            <Field label="Debug 端口">
               <Input value={launchForm.debugPort} onChange={(event) => onLaunchFormChange({ ...launchForm, debugPort: event.currentTarget.value })} />
             </Field>
-            <Field label="Helper ç«¯å£">
+            <Field label="Helper 端口">
               <Input value={launchForm.helperPort} onChange={(event) => onLaunchFormChange({ ...launchForm, helperPort: event.currentTarget.value })} />
             </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>å¯å¨ LDCodex</Button>
+            <Button onClick={() => void actions.launch()}>启动 LDCodex</Button>
           </Toolbar>
         </CardContent>
       </Panel>
