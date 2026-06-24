@@ -2148,67 +2148,65 @@ function ProxyScreen({
   actions: Actions;
   settings: SettingsResult | null;
 }) {
-  const [proxyStatus, setProxyStatus] = useState<{ running: boolean; port: number; providerCount: number } | null>(null);
+  const [proxyRunning, setProxyRunning] = useState(false);
+  const [proxyChecking, setProxyChecking] = useState(true);
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const resp = await fetch("http://127.0.0.1:40000/v1/models", { signal: AbortSignal.timeout(3000) });
-        const data = await resp.json();
-        setProxyStatus({ running: true, port: 40000, providerCount: data.data?.length ?? 0 });
+        const resp = await fetch("http://127.0.0.1:40000/v1/models", { signal: AbortSignal.timeout(2000) });
+        if (!cancelled) setProxyRunning(resp.ok);
       } catch {
-        setProxyStatus({ running: false, port: 40000, providerCount: 0 });
+        if (!cancelled) setProxyRunning(false);
       }
+      if (!cancelled) setProxyChecking(false);
     })();
+    return () => { cancelled = true; };
   }, []);
   return (
     <>
       <Panel>
-        <CardHead title="ä»£çæå¡å¨" detail="LDbridge è½¬åæå¡ç¶æä¸æ§å¶" />
+        <CardHead title="ä»£çæå¡å¨" detail="LDbridge è½¬åæå¡ç¶æ" />
         <CardContent>
-          {proxyStatus === null ? (
-            <div className="hint-line">
-              <RefreshCw className="h-4 w-4" />
-              <span>æ­£å¨æ£æµä»£çæå¡å¨...</span>
-            </div>
-          ) : proxyStatus.running ? (
-            <>
-              <div className="hint-line">
-                <ShieldCheck className="h-4 w-4" />
-                <span>ä»£çæå¡å¨å·²è¿è¡ï¼ç«¯å£ {proxyStatus.port}ï¼å·²æ³¨å {proxyStatus.providerCount} ä¸ª Provider</span>
-              </div>
-              <Toolbar>
-                <Button onClick={() => void actions.launch()}>
-                  <Rocket className="h-4 w-4" />
-                  å¯å¨ LDCodex
-                </Button>
-              </Toolbar>
-            </>
+          {proxyChecking ? (
+            <div className="hint-line"><RefreshCw className="h-4 w-4" /><span>æ­£å¨æ£æµ...</span></div>
+          ) : proxyRunning ? (
+            <div className="hint-line"><ShieldCheck className="h-4 w-4" /><span>ä»£çæå¡å¨å·²è¿è¡ï¼ç«¯å£ 40000</span></div>
           ) : (
-            <>
-              <div className="hint-line">
-                <PowerOff className="h-4 w-4" />
-                <span>ä»£çæå¡å¨æªè¿è¡</span>
-              </div>
-              <Toolbar>
-                <Button onClick={() => void actions.launch()}>
-                  <Rocket className="h-4 w-4" />
-                  å¯å¨ä»£çæå¡å¨
-                </Button>
-              </Toolbar>
-            </>
+            <div className="hint-line"><PowerOff className="h-4 w-4" /><span>ä»£çæå¡å¨æªè¿è¡</span></div>
           )}
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="æå¨å¯å¨" detail="åºç¨è·¯å¾çç©ºæ¶ä½¿ç¨å·²ä¿å­è·¯å¾" />
+        <CardHead title="å¯å¨ LDCodex" detail="" />
         <CardContent>
-          <Field label="åºç¨è·¯å¾è¦ç">
+          <LatestLaunch status={overview?.latest_launch ?? null} />
+          <Toolbar>
+            <Button onClick={() => void actions.launch()}>
+              <Rocket className="h-4 w-4" />
+              å¯å¨ LDCodex
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="æå¨å¯å¨" detail="" />
+        <CardContent>
+          <Field label="åºç¨è·¯å¾">
             <Input
               value={launchForm.appPath}
               onChange={(event) => onLaunchFormChange({ ...launchForm, appPath: event.currentTarget.value })}
-              placeholder={savedCodexAppPath || "ä¾å¦ C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
+              placeholder={settings?.settings.codexAppPath || ""}
             />
           </Field>
+          <div className="form-row">
+            <Field label="Debug ç«¯å£">
+              <Input value={launchForm.debugPort} onChange={(event) => onLaunchFormChange({ ...launchForm, debugPort: event.currentTarget.value })} />
+            </Field>
+            <Field label="Helper ç«¯å£">
+              <Input value={launchForm.helperPort} onChange={(event) => onLaunchFormChange({ ...launchForm, helperPort: event.currentTarget.value })} />
+            </Field>
+          </div>
           <Toolbar>
             <Button onClick={() => void actions.launch()}>å¯å¨ LDCodex</Button>
           </Toolbar>
