@@ -3637,6 +3637,14 @@
           });
           return await response.json();
         } catch (error) {
+          try {
+            const proxyResp = await fetch(`${proxyBase}${path}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload || {}),
+            });
+            if (proxyResp.ok) return await proxyResp.json();
+          } catch (proxyError) {}
           return { status: "failed", message: "未连接" };
         }
       }
