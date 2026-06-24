@@ -3002,3 +3002,212 @@ model_reasoning_effort = "high"
     }
 }
 
+
+
+#[tauri::command]
+pub fn load_ccs_providers() -> CommandResult<CcsProvidersPayload> {
+    let db_path = codex_plus_core::ccs_import::default_ccs_db_path();
+    match codex_plus_core::ccs_import::list_codex_providers_from_db(&db_path) {
+        Ok(providers) => ok(
+            &format!(
+                "已读取 cc-switch Codex 供应商配置：{} 个。",
+                providers.len()
+            ),
+            CcsProvidersPayload {
+                db_path: db_path.to_string_lossy().to_string(),
+                providers,
+            },
+        ),
+        Err(error) => failed(
+            &format!("读取 cc-switch 供应商配置失败：{error}"),
+            CcsProvidersPayload {
+                db_path: db_path.to_string_lossy().to_string(),
+                providers: Vec::new(),
+            },
+        ),
+    }
+}
+
+#[tauri::command]
+pub fn import_ccs_providers() -> CommandResult<SettingsPayload> {
+    let providers = match codex_plus_core::ccs_import::list_codex_providers_from_default_db() {
+        Ok(providers) => providers,
+        Err(error) => {
+            let payload = settings_payload_value().unwrap_or_else(|(_, payload)| payload);
+            return failed(&format!("读取 cc-switch 供应商配置失败：{error}"), payload);
+        }
+    };
+
+    let store = SettingsStore::default();
+    let mut settings = store.load().unwrap_or_default();
+    let mut existing_keys: Vec<String> = settings
+        .relay_profiles
+        .iter()
+        .map(codex_plus_core::ccs_import::imported_provider_identity)
+        .collect();
+    let mut existing_ids: Vec<String> = settings
+        .relay_profiles
+        .iter()
+        .map(|profile| profile.id.clone())
+        .collect();
+    let mut imported = 0usize;
+
+    for provider in providers {
+        let key = codex_plus_core::ccs_import::provider_identity_from_ccs(&provider);
+        if existing_keys.iter().any(|existing| existing == &key) {
+            continue;
+        }
+        let profile = codex_plus_core::ccs_import::relay_profile_from_ccs(&provider, &existing_ids);
+        existing_ids.push(profile.id.clone());
+        existing_keys.push(key);
+        settings.relay_profiles.push(profile);
+        imported += 1;
+    }
+
+    if imported == 0 {
+        return settings_payload("没有新的 cc-switch 供应商配置需要导入。", "设置读取失败");
+    }
+
+    settings = normalize_settings_before_save(settings);
+    match store.save(&settings) {
+        Ok(()) => settings_payload(
+            &format!("已从 cc-switch 导入供应商配置：{imported} 个。"),
+            "导入供应商配置后重新读取设置失败",
+        ),
+        Err(error) => failed(
+            &format!("保存 cc-switch 供应商配置失败：{error}"),
+            settings_payload_value().unwrap_or_else(|(_, payload)| payload),
+        ),
+    }
+}
+
+#[tauri::command]
+pub fn plugin_marketplace_status() -> CommandResult<PluginMarketplaceStatusPayload> {
+    let home = codex_plus_core::codex_home::default_codex_home_dir();
+    let status = codex_plus_core::plugin_marketplace::openai_curated_marketplace_status(&home);
+    ok(
+        if status.needs_repair() {
+            "插件市场需要初始化或注册。"
+        } else {
+            "插件市场已可用。"
+        },
+        PluginMarketplaceStatusPayload {
+            codex_home: home.to_string_lossy().to_string(),
+            marketplace_root: status
+                .marketplace_root
+                .as_ref()
+                .map(|path| path.to_string_lossy().to_string()),
+            config_registered: status.config_registered,
+            needs_repair: status.needs_repair(),
+        },
+    )
+}
+
+#[tauri::command]
+pub fn reset_image_overlay_settings() -> CommandResult<SettingsPayload> {
+    let store = SettingsStore::default();
+    let mut settings = store.load().unwrap_or_default();
+    let defaults = BackendSettings::default();
+    settings.codex_app_image_overlay_enabled = defaults.codex_app_image_overlay_enabled;
+    settings.codex_app_image_overlay_path = defaults.codex_app_image_overlay_path;
+    settings.codex_app_image_overlay_opacity = defaults.codex_app_image_overlay_opacity;
+    let settings = normalize_settings_before_save(settings);
+    match store.save(&settings) {
+        Ok(()) => settings_payload("图片覆盖层设置已重置。", "图片覆盖层重置后重新读取失败"),
+        Err(error) => failed(
+            &format!("重置图片覆盖层失败：{error}"),
+            SettingsPayload {
+                settings,
+                settings_path: codex_plus_core::paths::default_settings_path()
+                    .to_string_lossy()
+                    .to_string(),
+                user_scripts: user_script_inventory(),
+            },
+        ),
+    }
+}
+
+#[tauri::command]
+pub fn check_env_conflicts() -> CommandResult<EnvConflictsPayload> {
+    let conflicts = codex_plus_core::env_conflicts::detect_env_conflicts();
+    let message = if conflicts.is_empty() {
+        "未检测到会覆盖 Codex 供应商配置的 OPENAI 环境变量。"
+    } else {
+        "检测到可能覆盖 Codex 供应商配置的 OPENAI 环境变量。"
+    };
+    ok(message, EnvConflictsPayload { conflicts })
+}
+
+#[tauri::command]
+pub fn remove_env_conflicts(
+    request: RemoveEnvConflictsRequest,
+) -> CommandResult<RemoveEnvConflictsPayload> {
+    let backup_dir = codex_plus_core::paths::default_app_state_dir().join("backups");
+    match codex_plus_core::env_conflicts::remove_env_conflicts(&request.names, backup_dir) {
+        Ok(result) => {
+            let remaining = codex_plus_core::env_conflicts::detect_env_conflicts();
+            ok(
+                "冲突变量已安全删除，重新启动 Codex 生效",
+                RemoveEnvConflictsPayload {
+                    removed: result.removed,
+                    backup_path: result.backup_path,
+                    remaining,
+                },
+            )
+        }
+        Err(error) => failed(
+            &format!("删除冲突变量失败：{error}"),
+            RemoveEnvConflictsPayload {
+                removed: Vec::new(),
+                backup_path: None,
+                remaining: codex_plus_core::env_conflicts::detect_env_conflicts(),
+            },
+        ),
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginMarketplaceRepairPayload {
+    pub codex_home: String,
+    pub marketplace_root: Option<String>,
+    pub initialized: bool,
+    pub configured: bool,
+    pub needs_repair: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginMarketplaceStatusPayload {
+    pub codex_home: String,
+    pub marketplace_root: Option<String>,
+    pub config_registered: bool,
+    pub needs_repair: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CcsProvidersPayload {
+    pub db_path: String,
+    pub providers: Vec<codex_plus_core::ccs_import::CcsProviderImport>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvConflictsPayload {
+    pub conflicts: Vec<codex_plus_core::env_conflicts::EnvConflict>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoveEnvConflictsRequest {
+    pub names: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoveEnvConflictsPayload {
+    pub removed: Vec<codex_plus_core::env_conflicts::EnvConflictRemoval>,
+    pub backup_path: Option<String>,
+    pub remaining: Vec<codex_plus_core::env_conflicts::EnvConflict>,
+}

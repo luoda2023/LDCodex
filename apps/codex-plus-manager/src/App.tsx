@@ -474,7 +474,7 @@ type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "概览", icon: LayoutDashboard },
-  { id: "relay", label: "供应商配置", icon: KeyRound },
+  { id: "relay", label: "模型配置", icon: KeyRound },
   { id: "sessions", label: "会话管理", icon: MessageCircle },
   { id: "context", label: "工具与插件", icon: Network },
   { id: "enhance", label: "页面增强", icon: Hammer },
@@ -1134,7 +1134,7 @@ export function App() {
 
   const testRelayProfile = async (profile: RelayProfile) => {
     const result = await run(() => call<RelayProfileTestResult>("test_relay_profile", { profile }));
-    if (result) showNotice("供应商测试", result.message, result.status);
+    if (result) showNotice("模型测试", result.message, result.status);
   };
 
   const fetchRelayProfileModels = async (profile: RelayProfile) => {
@@ -1159,12 +1159,12 @@ export function App() {
 
   const switchRelayProfile = async (next: BackendSettings, previousActiveRelayId = settingsForm.activeRelayId) => {
     if (relaySwitching) {
-      showNotice("供应商切换中", "上一次切换还没有完成，请稍后再试。", "failed");
+      showNotice("模型切换中", "上一次切换还没有完成，请稍后再试。", "failed");
       return;
     }
     let switchSettings = normalizeSettings(next);
     if (!switchSettings.relayProfilesEnabled) {
-      showNotice("供应商配置已关闭", "当前不会写入 Codex config.toml / auth.json。打开供应商配置总开关后再切换。", "failed");
+      showNotice("模型配置已关闭", "当前不会写入 Codex config.toml / auth.json。打开模型配置总开关后再切换。", "failed");
       return;
     }
     const targetBeforeSnapshot = activeRelayProfile(switchSettings);
@@ -1182,7 +1182,7 @@ export function App() {
         targetRelayName: selectedBeforeSave.name,
         error: validationError,
       });
-      showNotice("供应商配置可能不正确", validationError, "failed");
+      showNotice("模型配置可能不正确", validationError, "failed");
       return;
     }
 
@@ -1226,7 +1226,7 @@ export function App() {
           message: result.message,
           activeRelayId: selectedSettings.activeRelayId,
         });
-        showNotice("供应商切换", result.message, result.status);
+        showNotice("模型切换", result.message, result.status);
         return;
       }
       const currentSelected = activeRelayProfile(selectedSettings);
@@ -1235,7 +1235,7 @@ export function App() {
         launchMode: selectedSettings.launchMode,
         status: result.status,
       });
-      showNotice("供应商切换", relayProfileModeSwitchedText(currentSelected), result.status);
+      showNotice("模型切换", relayProfileModeSwitchedText(currentSelected), result.status);
     } finally {
       setRelaySwitching(false);
     }
@@ -1804,7 +1804,7 @@ function RelayScreen({
   return (
     <>
       <Panel>
-        <CardHead title="供应商列表" detail={`${normalized.relayProfiles.length} 个供应商配置；可拖动排序，点编辑进入详情`} />
+        <CardHead title="模型列表" detail={`${normalized.relayProfiles.length} 个模型配置；可拖动排序，点编辑进入详情`} />
         <CardContent>
           <label className="switch-row relay-master-switch">
             <input
@@ -1816,7 +1816,7 @@ function RelayScreen({
               type="checkbox"
             />
             <span>
-              <strong>启用供应商配置切换</strong>
+              <strong>启用模型配置切换</strong>
               <small>关闭后本工具不会在手动切换时写入 Codex 的 config.toml / auth.json；启动 Codex 时始终不会自动改这些文件。</small>
             </span>
           </label>
@@ -1829,7 +1829,7 @@ function RelayScreen({
               }}
             >
               <Plus className="h-4 w-4" />
-              添加供应商
+              添加模型
             </Button>
           </div>
           <RelayProfileList
@@ -2259,7 +2259,7 @@ function SettingsScreen({
             </div>
             <Button variant="secondary" onClick={actions.toggleTheme}>切换主题</Button>
           </div>
-          <Field label="供应商测试模型">
+          <Field label="模型测试模型">
             <Input
               value={form.relayTestModel}
               onChange={(event) => onFormChange({ ...form, relayTestModel: event.currentTarget.value })}
@@ -2511,11 +2511,11 @@ function SortableRelayProfileCard({
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="relay-index" title={profile.name || "未命名供应商"}>
+      <span className="relay-index" title={profile.name || "未命名模型"}>
         {providerInitial(profile.name)}
       </span>
       <span className="relay-summary">
-        <strong>{profile.name || "未命名供应商"}</strong>
+        <strong>{profile.name || "未命名模型"}</strong>
         <small>{relayModeLabel(profile.relayMode)} · {relayProtocolLabel(profile.protocol)} · {relayProfileConfigBrief(profile)}</small>
       </span>
       <span className="relay-card-actions">
@@ -2530,7 +2530,7 @@ function SortableRelayProfileCard({
             void actions.switchRelayProfile(next, previousActiveRelayId);
           }}
           size="sm"
-          title={disabled ? "供应商切换不可用" : active ? "当前正在使用" : "设为当前"}
+          title={disabled ? "模型切换不可用" : active ? "当前正在使用" : "设为当前"}
           variant={active ? "secondary" : "outline"}
         >
           <CheckCircle2 className="h-4 w-4" />
@@ -2577,7 +2577,7 @@ function SortableRelayProfileCard({
               onFormChange(removeRelayProfile(form, profile.id));
             }}
             size="icon"
-            title="删除供应商"
+            title="删除模型"
             variant="ghost"
           >
             <Trash2 className="h-4 w-4" />
@@ -2721,7 +2721,7 @@ function ContextScreen({
 }) {
   return (
     <Panel fill>
-      <CardHead title="Codex 工具与插件" detail="独立管理 Codex 的 MCP、Skills、Plugins；切换任意供应商都会带上。" />
+      <CardHead title="Codex 工具与插件" detail="独立管理 Codex 的 MCP、Skills、Plugins；切换任意模型都会带上。" />
       <CardContent>
         <RelayContextManager
           form={normalizeSettings(form)}
@@ -2759,14 +2759,14 @@ function RelayProfileEditor({
     <div className="relay-profile-editor">
       <div className="relay-editor-head">
         <div>
-          <strong>{profile.name || "未命名供应商"}</strong>
+          <strong>{profile.name || "未命名模型"}</strong>
           <span>{relayProfileEditorStatus(profile, form, isNew)}</span>
         </div>
         {isNew ? null : (
           <Button
             disabled={!form.relayProfilesEnabled || actions.relaySwitching}
             onClick={onSwitch}
-            title={!form.relayProfilesEnabled ? "供应商配置总开关已关闭" : actions.relaySwitching ? "供应商切换中" : undefined}
+            title={!form.relayProfilesEnabled ? "模型配置总开关已关闭" : actions.relaySwitching ? "模型切换中" : undefined}
             variant={profile.id === form.activeRelayId ? "secondary" : "default"}
           >
             {actions.relaySwitching ? "切换中" : profile.id === form.activeRelayId ? "使用中" : "设为当前"}
@@ -3004,7 +3004,7 @@ function RelayContextManager({
       <div className="relay-context-head">
         <div>
           <strong>Codex 工具与插件</strong>
-          <span>MCP、Skills、Plugins 作为全局配置独立管理，切换任意供应商都会合并。</span>
+          <span>MCP、Skills、Plugins 作为全局配置独立管理，切换任意模型都会合并。</span>
         </div>
         <div className="relay-context-head-actions">
           <Button onClick={() => setEditor({ kind: activeKind })} size="sm" variant="secondary">
@@ -3027,7 +3027,7 @@ function RelayContextManager({
         ))}
       </div>
       <div className="relay-context-summary">
-        当前共有 {visibleEntries.length} 个{label}；这些条目独立于供应商保存，会写入所有供应商切换后的 config.toml。
+        当前共有 {visibleEntries.length} 个{label}；这些条目独立于模型保存，会写入所有模型切换后的 config.toml。
       </div>
       <div className="relay-context-list">
         {visibleEntries.length ? (
@@ -3207,7 +3207,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>config.toml 预览</strong>
-            <span>{isActive ? "当前供应商切换后会写入的预览；上下文开关变化会立即反映" : "切换到此供应商时会写入的预览；上下文开关变化会立即反映"}</span>
+            <span>{isActive ? "当前模型切换后会写入的预览；上下文开关变化会立即反映" : "切换到此模型时会写入的预览；上下文开关变化会立即反映"}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -3230,7 +3230,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>通用配置文件</strong>
-            <span>只保留非 MCP、Skills、Plugins 的跨供应商配置；工具与插件在独立页面管理。</span>
+            <span>只保留非 MCP、Skills、Plugins 的跨模型配置；工具与插件在独立页面管理。</span>
           </div>
           <Button
             onClick={async () => {
@@ -3238,7 +3238,7 @@ function RelayFileEditors({
               if (!extracted) return;
               const split = splitContextConfigText(extracted.commonConfigContents || "");
               if (!split.common.trim() && !split.context.trim()) {
-                await actions.showMessage("通用配置文件", "当前供应商 config.toml 里没有可提取的通用配置。", "failed");
+                await actions.showMessage("通用配置文件", "当前模型 config.toml 里没有可提取的通用配置。", "failed");
                 return;
               }
               const promotedProfile = {
@@ -3260,7 +3260,7 @@ function RelayFileEditors({
             variant="secondary"
           >
             <Download className="h-4 w-4" />
-            提取当前供应商配置
+            提取当前模型配置
           </Button>
         </div>
         <SyncedTextarea
@@ -3273,7 +3273,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>auth.json</strong>
-            <span>{isActive ? "当前使用中：打开时从 ~/.codex/auth.json 回填，保存后会作为此供应商 auth 存档" : "切换到此供应商时会写入 ~/.codex/auth.json"}</span>
+            <span>{isActive ? "当前使用中：打开时从 ~/.codex/auth.json 回填，保存后会作为此模型 auth 存档" : "切换到此模型时会写入 ~/.codex/auth.json"}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -3491,7 +3491,7 @@ function routeTitle(route: Route) {
 function routeSubtitle(route: Route) {
   const subtitles: Record<Route, string> = {
     overview: "检查问题、启动与快速修复",
-    relay: "管理 API 供应商、协议、Key 与配置文件",
+    relay: "管理 API 模型、协议、Key 与配置文件",
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
     enhance: "会话删除、导出、项目移动和脚本能力",
@@ -4098,13 +4098,13 @@ function contextSelectionForAllEntries(settings: BackendSettings): RelayContextS
 }
 
 function relayProfileEditorStatus(profile: RelayProfile, form: BackendSettings, isNew: boolean) {
-  if (isNew) return "新建供应商需要先保存到列表";
-  if (!form.relayProfilesEnabled) return "供应商配置总开关已关闭；当前只保存配置，不写入 Codex live 文件";
+  if (isNew) return "新建模型需要先保存到列表";
+  if (!form.relayProfilesEnabled) return "模型配置总开关已关闭；当前只保存配置，不写入 Codex live 文件";
   return profile.id === form.activeRelayId ? "当前正在使用" : "编辑后保存列表，再切换模式时会使用新配置";
 }
 
 function providerInitial(name: string) {
-  const trimmed = (name || "供应商").trim();
+  const trimmed = (name || "模型").trim();
   return Array.from(trimmed)[0]?.toUpperCase() || "供";
 }
 
@@ -4301,20 +4301,20 @@ function relayProfileConfigBrief(profile: RelayProfile): string {
 function relayProfileModeHelp(profile: RelayProfile): string {
   if (profile.relayMode === "official") {
     if (profile.officialMixApiKey) {
-      return "此供应商会保留官方登录模式，并把请求混入当前 API Key；页面增强仍使用兼容模式。";
+      return "此模型会保留官方登录模式，并把请求混入当前 API Key；页面增强仍使用兼容模式。";
     }
-    return "此供应商会切回官方登录模式，使用 ChatGPT 官方账号，不写入 API Key。";
+    return "此模型会切回官方登录模式，使用 ChatGPT 官方账号，不写入 API Key。";
   }
   if (profile.relayMode === "pureApi") {
-    return "此供应商会同时写入 config.toml 和 auth.json；API Key 也会注入到 provider bearer token。";
+    return "此模型会同时写入 config.toml 和 auth.json；API Key 也会注入到 provider bearer token。";
   }
-  return "此供应商会保留官方登录模式，并把请求混入当前 API Key；页面增强仍使用兼容模式。";
+  return "此模型会保留官方登录模式，并把请求混入当前 API Key；页面增强仍使用兼容模式。";
 }
 
 function relayProfileModeSwitchedText(profile: RelayProfile): string {
-  if (profile.relayMode === "pureApi") return "已按此供应商切换到纯 API；页面增强已设为完整增强。";
-  if (profile.officialMixApiKey) return "已按此供应商使用官方登录，并混入 API Key；页面增强已设为兼容增强。";
-  return "已按此供应商切回官方登录；页面增强已设为兼容增强。";
+  if (profile.relayMode === "pureApi") return "已按此模型切换到纯 API；页面增强已设为完整增强。";
+  if (profile.officialMixApiKey) return "已按此模型使用官方登录，并混入 API Key；页面增强已设为兼容增强。";
+  return "已按此模型切回官方登录；页面增强已设为兼容增强。";
 }
 
 function withGeneratedRelayFiles(profile: RelayProfile): RelayProfile {
@@ -4663,10 +4663,10 @@ function removeTomlSectionKey(contents: string, sectionName: string, key: string
 function relayProfileSwitchValidation(profile: RelayProfile): string | null {
   if (profile.relayMode === "official" && !profile.officialMixApiKey) return null;
   if (!profile.configContents.trim()) {
-    return `供应商「${profile.name || profile.id}」缺少独立 config.toml，已停止切换，避免继续显示上一套配置文件。请先在该供应商详情里保存 config.toml。`;
+    return `模型「${profile.name || profile.id}」缺少独立 config.toml，已停止切换，避免继续显示上一套配置文件。请先在该模型详情里保存 config.toml。`;
   }
   if (profile.relayMode !== "official" || !authJsonHasOpenAiApiKey(profile.authContents)) return null;
-  return "官方混合 API 不应在 auth.json 中保存 OPENAI_API_KEY。请清理此供应商的 auth.json 后再切换。";
+  return "官方混合 API 不应在 auth.json 中保存 OPENAI_API_KEY。请清理此模型的 auth.json 后再切换。";
 }
 
 function authJsonHasOpenAiApiKey(contents: string): boolean {
@@ -4711,7 +4711,7 @@ function createRelayProfile(settings: BackendSettings): RelayProfile {
   const contextSelection = contextSelectionForAllEntries(settings);
   const next = {
     id,
-    name: `供应商 ${settings.relayProfiles.length + 1}`,
+    name: `模型 ${settings.relayProfiles.length + 1}`,
     model: "",
     baseUrl: defaultSettings.relayBaseUrl,
     upstreamBaseUrl: defaultSettings.relayBaseUrl,
@@ -4754,7 +4754,7 @@ function duplicateRelayProfile(settings: BackendSettings, id: string): BackendSe
   const next = {
     ...source,
     id: nextId,
-    name: `${source.name || "未命名供应商"} 副本`,
+    name: `${source.name || "未命名模型"} 副本`,
   };
   const relayProfiles = [...settings.relayProfiles];
   relayProfiles.splice(sourceIndex >= 0 ? sourceIndex + 1 : relayProfiles.length, 0, next);

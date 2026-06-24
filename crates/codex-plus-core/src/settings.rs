@@ -36,7 +36,41 @@ impl Default for RelayContextSelection {
             skills: Vec::new(),
             plugins: Vec::new(),
         }
+
+
     }
+}
+
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum AggregateRelayStrategy {
+    #[default]
+    Failover,
+    ConversationRoundRobin,
+    RequestRoundRobin,
+    WeightedRoundRobin,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AggregateRelayMember {
+    #[serde(rename = "relayId")]
+    pub relay_id: String,
+    #[serde(default = "default_aggregate_member_weight")]
+    pub weight: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AggregateRelayProfile {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub strategy: AggregateRelayStrategy,
+    #[serde(default)]
+    pub members: Vec<AggregateRelayMember>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -140,6 +174,7 @@ pub enum RelayMode {
     #[default]
     MixedApi,
     PureApi,
+    Aggregate,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -198,6 +233,24 @@ pub struct BackendSettings {
     pub codex_app_service_tier_controls: bool,
     #[serde(rename = "codexAppImageOverlayEnabled", default)]
     pub codex_app_image_overlay_enabled: bool,
+
+    #[serde(rename = "codexAppPasteFix", default)]
+    pub codex_app_paste_fix: bool,
+    #[serde(rename = "codexAppThreadIdBadge", default)]
+    pub codex_app_thread_id_badge: bool,
+    #[serde(rename = "mobileControlEnabled", default)]
+    pub mobile_control_enabled: bool,
+    #[serde(rename = "mobileControlRelayUrl", default = "default_mobile_control_relay_url")]
+    pub mobile_control_relay_url: String,
+    #[serde(rename = "mobileControlRoom", default)]
+    pub mobile_control_room: String,
+    #[serde(rename = "mobileControlKey", default)]
+    pub mobile_control_key: String,
+    #[serde(rename = "aggregateRelayProfiles", default)]
+    pub aggregate_relay_profiles: Vec<AggregateRelayProfile>,
+    #[serde(rename = "activeAggregateRelayId", default)]
+    pub active_aggregate_relay_id: String,
+
     #[serde(rename = "codexAppImageOverlayPath", default)]
     pub codex_app_image_overlay_path: String,
     #[serde(
@@ -283,6 +336,14 @@ impl Default for BackendSettings {
             cli_wrapper_base_url: String::new(),
             cli_wrapper_api_key: String::new(),
             cli_wrapper_api_key_env: default_api_key_env(),
+            codex_app_paste_fix: false,
+            codex_app_thread_id_badge: false,
+            mobile_control_enabled: false,
+            mobile_control_relay_url: default_mobile_control_relay_url(),
+            mobile_control_room: String::new(),
+            mobile_control_key: String::new(),
+            aggregate_relay_profiles: Vec::new(),
+            active_aggregate_relay_id: String::new(),
         }
     }
 }
@@ -369,6 +430,37 @@ impl BackendSettings {
             user_agent: String::new(),
         }
     }
+
+    pub fn active_aggregate_relay_profile(&self) -> Option<AggregateRelayProfile> {
+        let active_relay = self
+            .relay_profiles
+            .iter()
+            .find(|profile| profile.id == self.active_relay_id)?;
+
+        if active_relay.relay_mode != RelayMode::Aggregate {
+            return None;
+        }
+
+        let active_aggregate_id = if self.active_aggregate_relay_id.trim().is_empty() {
+            active_relay.id.as_str()
+        } else {
+            self.active_aggregate_relay_id.trim()
+        };
+
+        if active_aggregate_id != active_relay.id {
+            return None;
+        }
+
+        self.aggregate_relay_profiles
+            .iter()
+            .find(|profile| profile.id == active_aggregate_id)
+            .cloned()
+    }
+
+    pub fn active_relay_uses_protocol_proxy(&self) -> bool {
+        self.active_aggregate_relay_profile().is_some()
+            || self.active_relay_profile().protocol == RelayProtocol::ChatCompletions
+    }
 }
 
 pub fn default_api_key_env() -> String {
@@ -387,6 +479,14 @@ pub fn default_true() -> bool {
     true
 }
 
+
+fn default_mobile_control_relay_url() -> String {
+    "ws://127.0.0.1:57323".to_string()
+}
+
+pub fn default_aggregate_member_weight() -> u32 {
+    1
+}
 pub fn default_relay_base_url() -> String {
     String::new()
 }

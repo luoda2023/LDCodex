@@ -1,4 +1,4 @@
-﻿pub mod app_paths;
+pub mod app_paths;
 pub mod assets;
 pub mod bridge;
 pub mod cdp;
@@ -44,3 +44,8 @@ pub fn windows_open_url(url: &str) -> anyhow::Result<()> {
 pub fn windows_activate_process_window(process_id: u32) -> bool {
     windows_integration::activate_process_window(process_id)
 }
+pub mod ccs_import;
+pub mod codex_home;
+pub mod env_conflicts;
+pub mod plugin_marketplace;
+pub mod relay_rotation;

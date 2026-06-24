@@ -125,6 +125,13 @@ pub fn run() {
             commands::apply_relay_injection,
             commands::apply_pure_api_injection,
             commands::clear_relay_injection
+,
+            commands::load_ccs_providers,
+            commands::import_ccs_providers,
+            commands::plugin_marketplace_status,
+            commands::reset_image_overlay_settings,
+            commands::check_env_conflicts,
+            commands::remove_env_conflicts
         ])
         .run(tauri::generate_context!());
     if let Err(error) = run_result {
