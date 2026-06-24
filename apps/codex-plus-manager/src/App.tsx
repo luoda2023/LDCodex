@@ -1727,7 +1727,7 @@ function OverviewScreen({
           <Toolbar>
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
-              启动 LDCodex
+              启动代理
             </Button>
             <Button variant="secondary" onClick={() => void actions.goLogs()}>
               打开关于
@@ -2155,7 +2155,6 @@ function AboutScreen({
         <CardContent>
           <div className="metric-list">
             <Metric label="LDCodex 版本" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
-            <Metric label="Codex 版本" value={overview?.codex_version ?? "未检测到"} />
             <Metric label="项目地址" value="github.com/luoda2023/LDCodex" />
           </div>
           <Toolbar>
