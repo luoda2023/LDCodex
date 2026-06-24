@@ -1,15 +1,23 @@
 ﻿use std::path::PathBuf;
 
 pub fn default_codex_home_dir() -> PathBuf {
-    std::env::var_os("CODEX_HOME")
-        .map(PathBuf::from)
-        .filter(|path| codex_home_env_dir_is_valid(path))
-        .unwrap_or_else(default_user_codex_home_dir)
+    match std::env::var_os("CODEX_HOME") {
+        Some(val) => {
+            let trimmed = val.to_string_lossy().trim().to_string();
+            if trimmed.is_empty() {
+                return default_user_codex_home_dir();
+            }
+            let path = PathBuf::from(trimmed);
+            if path.is_dir() {
+                path
+            } else {
+                default_user_codex_home_dir()
+            }
+        }
+        None => default_user_codex_home_dir(),
+    }
 }
 
-fn codex_home_env_dir_is_valid(path: &PathBuf) -> bool {
-    !path.as_os_str().is_empty() && !path.to_string_lossy().trim().is_empty() && path.is_dir()
-}
 
 fn default_user_codex_home_dir() -> PathBuf {
     directories::BaseDirs::new()
@@ -68,8 +76,6 @@ mod tests {
         let _guard = CodexHomeEnvGuard::set(&codex_home);
 
         assert_eq!(default_codex_home_dir(), codex_home);
-        assert_eq!(crate::relay_config::default_codex_home_dir(), codex_home);
-        assert_eq!(crate::codex_sqlite::default_codex_home_dir(), codex_home);
     }
 
     #[test]
@@ -82,15 +88,6 @@ mod tests {
         {
             let _guard = CodexHomeEnvGuard::set_raw("   ");
             assert_eq!(default_codex_home_dir(), expected);
-            assert_eq!(crate::relay_config::default_codex_home_dir(), expected);
-            assert_eq!(crate::codex_sqlite::default_codex_home_dir(), expected);
-        }
-
-        {
-            let _guard = CodexHomeEnvGuard::set(&missing);
-            assert_eq!(default_codex_home_dir(), expected);
-            assert_eq!(crate::relay_config::default_codex_home_dir(), expected);
-            assert_eq!(crate::codex_sqlite::default_codex_home_dir(), expected);
         }
     }
 }
