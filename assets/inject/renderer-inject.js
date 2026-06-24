@@ -1,5 +1,21 @@
 (() => {
   const helperBase = window.__CODEX_SESSION_DELETE_HELPER__ || "http://127.0.0.1:57321";
+  const proxyBase = "http://127.0.0.1:40000";
+  async function proxyFallback(path, payload) {
+    try {
+      const response = await fetch(`${proxyBase}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {}),
+      });
+      if (response.ok) return await response.json();
+      return { status: "failed", message: "未连接" };
+    } catch (error) {
+      return { status: "failed", message: "未连接" };
+    }
+  }
+
+
   const buttonClass = "codex-delete-button";
   const exportButtonClass = "codex-export-button";
   const projectMoveButtonClass = "codex-project-move-button";
@@ -3640,9 +3656,10 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload || {}),
         });
-        return await response.json();
+        if (response.ok) return await response.json();
+        return await proxyFallback(path, payload);
       } catch (error) {
-        return { status: "failed", message: "未连接" };
+        return await proxyFallback(path, payload);
       }
     }
     try {
