@@ -656,10 +656,6 @@ export function App() {
     message: "尚未运行历史会话修复。",
     result: null,
   });
-    active: false,
-    percent: 0,
-    message: "尚未运行插件市场修复。",
-  });
   const [providerSyncTargets, setProviderSyncTargets] = useState<ProviderSyncTargetsResult | null>(null);
   const [selectedProviderSyncTarget, setSelectedProviderSyncTarget] = useState("");
   const [removeOwnedData, setRemoveOwnedData] = useState(false);
