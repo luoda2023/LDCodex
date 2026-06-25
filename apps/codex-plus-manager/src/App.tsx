@@ -3447,8 +3447,8 @@ function LatestLaunch({ status }: { status: LaunchStatus | null }) {
     <div className="metric-list">
       <Metric label="状态" value={status.status} />
       <Metric label="消息" value={status.message} />
-      <Metric label="Debug" value={String(status.debug_port ?? "-")} />
-      <Metric label="Helper" value={String(status.helper_port ?? "-")} />
+      <Metric label="调试端口" value={String(status.debug_port ?? "-")} />
+      <Metric label="辅助端口" value={String(status.helper_port ?? "-")} />
       <Metric label="时间" value={formatTime(status.started_at_ms)} />
     </div>
   );
