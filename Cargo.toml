@@ -1,4 +1,4 @@
-[workspace]
+﻿[workspace]
 resolver = "2"
 members = [
   "crates/codex-plus-core",
@@ -7,7 +7,7 @@ members = [
   "apps/codex-plus-manager/src-tauri",
 ]
 [workspace.package]
-version = "3.0.1"
+version = "3.0.2"
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/luoda2023/LDCodex"
@@ -31,3 +31,4 @@ toml_edit = "0.22"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
 winresource = "0.1"
+

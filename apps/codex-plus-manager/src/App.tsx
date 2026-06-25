@@ -1729,6 +1729,10 @@ function OverviewScreen({
               <Rocket className="h-4 w-4" />
               启动代理
             </Button>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002")}>
+              <ExternalLink className="h-4 w-4" />
+              打开管理面板
+            </Button>
             <Button variant="secondary" onClick={() => void actions.goLogs()}>
               打开关于
             </Button>
@@ -2229,6 +2233,10 @@ function ProxyScreen({
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
                启动代理
+            </Button>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002")}>
+              <ExternalLink className="h-4 w-4" />
+               打开管理面板
             </Button>
           </Toolbar>
         </CardContent>
