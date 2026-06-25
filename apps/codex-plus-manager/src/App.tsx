@@ -1530,14 +1530,14 @@ const closeWindow = async () => {
               variant="outline"
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
+
             <Button onClick={() => void actions.restart()} title="重启 LDCodex" variant="outline">
               <Rocket className="h-4 w-4" />
               重启 LDCodex
-            </Button>
+
             <Button onClick={() => void actions.refreshCurrent()} size="icon" title="刷新当前页面" variant="outline">
               <RefreshCw className="h-4 w-4" />
-            </Button>
+
           </div>
         </header>
         <section className="screen" key={route}>
@@ -1718,14 +1718,14 @@ function OverviewScreen({
             <Button onClick={() => void actions.checkHealth()}>
               <RefreshCw className="h-4 w-4" />
               检查
-            </Button>
+
             <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>
               <Wrench className="h-4 w-4" />
               修复入口
-            </Button>
+
             <Button variant="secondary" onClick={() => void actions.repairBackend()}>
               修复后端
-            </Button>
+
           </Toolbar>
         </CardContent>
       </Panel>
@@ -1737,14 +1737,14 @@ function OverviewScreen({
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
               启动代理
-            </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002")}>
-              <ExternalLink className="h-4 w-4" />
-              打开管理面板
-            </Button>
+
+            
             <Button variant="secondary" onClick={() => void actions.goLogs()}>
               打开关于
-            </Button>
+
+            <Button variant="secondary" onClick={() => void actions.goLogs()}>
+              打开关于
+
           </Toolbar>
         </CardContent>
       </Panel>
@@ -1843,7 +1843,7 @@ function RelayScreen({
             >
               <Plus className="h-4 w-4" />
               添加模型
-            </Button>
+
           </div>
           <RelayProfileList
             form={normalized}
@@ -1986,11 +1986,11 @@ function SessionsScreen({
             <Button onClick={() => void actions.refreshLocalSessions()}>
               <RefreshCw className="h-4 w-4" />
               刷新会话
-            </Button>
+
             <Button disabled={providerSyncProgress.active} onClick={() => void actions.syncProvidersNow()} variant="outline">
               <RefreshCw className="h-4 w-4" />
               {providerSyncProgress.active ? "正在修复…" : "立刻修复历史会话"}
-            </Button>
+
           </Toolbar>
           <div className="provider-sync-progress" data-active={providerSyncProgress.active}>
             <div className="provider-sync-progress-head">
@@ -2048,7 +2048,7 @@ function SessionsScreen({
                   <Button variant="outline" onClick={() => void actions.deleteLocalSession(session)}>
                     <Trash2 className="h-4 w-4" />
                     删除
-                  </Button>
+      
                 </div>
               ))}
             </div>
@@ -2172,13 +2172,13 @@ function AboutScreen({
           </div>
           <Toolbar>
             <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex")} variant="secondary">
-              <ExternalLink className="h-4 w-4" />
+
               打开项目主页
-            </Button>
+
             <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex/issues")} variant="secondary">
-              <ExternalLink className="h-4 w-4" />
+
               反馈问题
-            </Button>
+
           </Toolbar>
         </CardContent>
       </Panel>
@@ -2220,6 +2220,7 @@ function ProxyScreen({
     })();
     return () => { cancelled = true; };
   }, []);
+  const proxyProfile = settings ? activeRelayProfile(settings.settings) : null;
   return (
     <>
       <Panel>
@@ -2235,6 +2236,26 @@ function ProxyScreen({
         </CardContent>
       </Panel>
       <Panel>
+        <CardHead title="当前使用模型" detail="模型配置中的当前使用模型信息" />
+        <CardContent>
+          {proxyProfile ? (
+            <div className="metric-list">
+              <Metric label="模型名称" value={proxyProfile.name} />
+              <Metric label="API地址" value={proxyProfile.baseUrl} />
+              <Metric label="模型ID" value={proxyProfile.model} />
+              <Metric label="密钥" value={proxyProfile.apiKey ? proxyProfile.apiKey.substring(0, 8) + "..." : "-"} />
+            </div>
+          ) : (
+            <div className="empty">未配置当前使用模型，请先在模型配置页面添加并设置当前使用模型。</div>
+          )}
+          {proxyRunning ? (
+            <p className="field-hint">代理服务器已启动，当前模型已通过 LDbridge 转发服务正常连接。</p>
+          ) : (
+            <p className="field-hint">代理服务器未启动，请在下方点击"启动代理"按钮启动转发服务。</p>
+          )}
+        </CardContent>
+      </Panel>
+      <Panel>
         <CardHead title="启动代理" detail="" />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
@@ -2243,19 +2264,12 @@ function ProxyScreen({
               <Rocket className="h-4 w-4" />
                启动代理
             </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002")}>
-              <ExternalLink className="h-4 w-4" />
-               打开管理面板
-            </Button>
           </Toolbar>
         </CardContent>
       </Panel>
     </>
   );
-}
-
-
-function SettingsScreen({
+}function SettingsScreen({
   settings,
   theme,
   form,
@@ -2338,7 +2352,7 @@ function SettingsScreen({
               <Toolbar>
                 <Button variant="secondary" onClick={() => void actions.chooseImageOverlayPath()}>
                   选择图片
-                </Button>
+    
               </Toolbar>
             </div>
             <Field label={`透明度 ${form.codexAppImageOverlayOpacity}%`}>
@@ -2360,7 +2374,7 @@ function SettingsScreen({
             <Button onClick={() => void actions.saveSettings()}>保存设置</Button>
             <Button variant="secondary" onClick={() => void actions.resetSettings()}>
               重置设置
-            </Button>
+
           </Toolbar>
         </CardContent>
       </Panel>
@@ -2949,7 +2963,7 @@ function RelayProfileEditor({
               >
                 <Download className="h-4 w-4" />
                 从上游获取
-              </Button>
+  
             </div>
           </Field>
         ) : null}
@@ -3071,7 +3085,7 @@ function RelayContextManager({
                 </button>
                 <Button onClick={() => setEditor({ kind: entry.kind, entry })} size="icon" title="编辑扩展项" variant="ghost">
                   <Edit3 className="h-4 w-4" />
-                </Button>
+    
                 <Button
                   className="relay-context-delete"
                   onClick={() => void deleteEntry(entry)}
@@ -3080,7 +3094,7 @@ function RelayContextManager({
                   variant="ghost"
                 >
                   <Trash2 className="h-4 w-4" />
-                </Button>
+    
               </div>
             </div>
           ))
@@ -4874,6 +4888,11 @@ function loadInitialRoute(): Route {
   }
   return "overview";
 }
+
+
+
+
+
 
 
 
