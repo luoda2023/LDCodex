@@ -402,6 +402,8 @@ pub fn launch_bridge() -> CommandResult<Value> {
         ),
     }
 }
+
+#[tauri::command]
 pub fn launch_codex_plus(request: LaunchRequest) -> CommandResult<Value> {
     spawn_codex_plus_launch(request, "启动任务已在后台开始，可稍后查看概览状态。")
 }
@@ -3253,5 +3255,8 @@ pub struct RemoveEnvConflictsPayload {
     pub backup_path: Option<String>,
     pub remaining: Vec<codex_plus_core::env_conflicts::EnvConflict>,
 }
+
+
+
 
 
