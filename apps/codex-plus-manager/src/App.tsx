@@ -1688,6 +1688,7 @@ type Actions = {
   checkHealth: () => Promise<void>;
 };
 
+
 function OverviewScreen({
   overview,
   actions,
@@ -1718,14 +1719,14 @@ function OverviewScreen({
             <Button onClick={() => void actions.checkHealth()}>
               <RefreshCw className="h-4 w-4" />
               检查
-
+            </Button>
             <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>
               <Wrench className="h-4 w-4" />
               修复入口
-
+            </Button>
             <Button variant="secondary" onClick={() => void actions.repairBackend()}>
               修复后端
-
+            </Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -1737,14 +1738,14 @@ function OverviewScreen({
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
               启动代理
-
-            
+            </Button>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002")}>
+              <ExternalLink className="h-4 w-4" />
+              打开代理信息页
+            </Button>
             <Button variant="secondary" onClick={() => void actions.goLogs()}>
               打开关于
-
-            <Button variant="secondary" onClick={() => void actions.goLogs()}>
-              打开关于
-
+            </Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -1752,446 +1753,6 @@ function OverviewScreen({
   );
 }
 
-function RelayScreen({
-  settings: _settings,
-  relayFiles,
-  form,
-  onFormChange,
-  actions,
-}: {
-  settings: SettingsResult | null;
-  relayFiles: RelayFilesResult | null;
-  form: BackendSettings;
-  onFormChange: (value: BackendSettings) => void;
-  actions: Actions;
-}) {
-  const normalized = normalizeSettings(form);
-  const [detailProfileId, setDetailProfileId] = useState<string | null>(null);
-  const [newProfileDraft, setNewProfileDraft] = useState<RelayProfile | null>(null);
-  const detailProfile = newProfileDraft || (detailProfileId
-    ? normalized.relayProfiles.find((profile) => profile.id === detailProfileId) || null
-    : null);
-  const isNewProfile = !!newProfileDraft;
-  const saveRelaySettings = async (next: BackendSettings) => {
-    onFormChange(next);
-    await actions.saveSettingsValue(next, true);
-  };
-  const editRelayProfile = async (profileId: string) => {
-    setNewProfileDraft(null);
-    setDetailProfileId(
-      normalized.relayProfiles.some((item) => item.id === profileId) ? profileId : null,
-    );
-  };
-  useEffect(() => {
-    if (!newProfileDraft && detailProfileId && !normalized.relayProfiles.some((profile) => profile.id === detailProfileId)) {
-      setDetailProfileId(null);
-    }
-  }, [detailProfileId, newProfileDraft, normalized.relayProfiles]);
-  useEffect(() => {
-    if (!newProfileDraft && detailProfileId === normalized.activeRelayId) {
-      void actions.refreshRelayFiles();
-    }
-  }, [detailProfileId, newProfileDraft, normalized.activeRelayId]);
-
-  if (detailProfile) {
-    return (
-      <RelayProfileDetail
-        profile={detailProfile}
-        relayFiles={!isNewProfile && detailProfile.id === normalized.activeRelayId ? relayFiles : null}
-        form={normalized}
-        isNew={isNewProfile}
-        onBack={() => {
-          setNewProfileDraft(null);
-          setDetailProfileId(null);
-        }}
-        onFormChange={saveRelaySettings}
-        onSaved={() => {
-          setNewProfileDraft(null);
-          setDetailProfileId(null);
-        }}
-        actions={actions}
-      />
-    );
-  }
-
-  return (
-    <>
-      <Panel>
-        <CardHead title="模型列表" detail={`${normalized.relayProfiles.length} 个模型配置；可拖动排序，点编辑进入详情`} />
-        <CardContent>
-          <label className="switch-row relay-master-switch">
-            <input
-              checked={normalized.relayProfilesEnabled}
-              onChange={(event) => {
-                const next = { ...normalized, relayProfilesEnabled: event.currentTarget.checked };
-                void saveRelaySettings(next);
-              }}
-              type="checkbox"
-            />
-            <span>
-              <strong>启用模型配置切换</strong>
-              <small>关闭后本工具不会在手动切换时写入 Codex 的 config.toml / auth.json；启动 Codex 时始终不会自动改这些文件。</small>
-            </span>
-          </label>
-          <div className="relay-add-row">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setNewProfileDraft(createRelayProfile(normalized));
-                setDetailProfileId(null);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              添加模型
-
-          </div>
-          <RelayProfileList
-            form={normalized}
-            onEdit={(profileId) => void editRelayProfile(profileId)}
-            onFormChange={saveRelaySettings}
-            disabled={!normalized.relayProfilesEnabled || actions.relaySwitching}
-            actions={actions}
-          />
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
-
-function EnhanceScreen({
-  form,
-  onFormChange,
-  actions,
-}: {
-  form: BackendSettings;
-  onFormChange: (value: BackendSettings) => void;
-  actions: Actions;
-}) {
-  const setEnhanceFlag = (key: keyof BackendSettings, value: boolean) => onFormChange({ ...form, [key]: value });
-  const masterEnabled = form.enhancementsEnabled;
-  const patchMode = form.launchMode === "patch";
-  return (
-    <>
-      <Panel>
-        <CardHead title="页面功能增强" detail="会话删除、导出、项目移动、Timeline 和用户脚本等界面能力" />
-        <CardContent>
-          <label className="switch-row">
-            <input
-              checked={form.enhancementsEnabled}
-              onChange={(event) => onFormChange({ ...form, enhancementsEnabled: event.currentTarget.checked })}
-              type="checkbox"
-            />
-            <span>
-              <strong>启用 LDCodex 页面增强</strong>
-              <small>关闭后会停用删除、导出、项目移动、Timeline、插件相关和菜单位置增强。</small>
-            </span>
-          </label>
-          <label className="switch-row">
-            <input
-              checked={form.computerUseGuardEnabled}
-              onChange={(event) => onFormChange({ ...form, computerUseGuardEnabled: event.currentTarget.checked })}
-              type="checkbox"
-            />
-            <span>
-              <strong>启用 Windows Computer Use Guard</strong>
-              <small>默认关闭；开启后启动 Codex 时会自动保留官方 Computer Use 插件所需的 config.toml、bundled 插件和 notify 配置。</small>
-            </span>
-          </label>
-          <ModeSelector launchMode={form.launchMode} actions={actions} />
-          {form.launchMode === "relay" ? (
-            <div className="hint-line">
-              <ShieldCheck className="h-4 w-4" />
-              <span>当前为兼容增强模式，插件市场解锁、强制解锁入口和特殊插件强制安装不会启用；其他页面功能仍可用。</span>
-            </div>
-          ) : null}
-          <div className="feature-switch-grid">
-            <FeatureToggle title="插件市场解锁" detail="API Key 模式下扩展插件市场请求，尽量显示完整插件列表；官方/混合模式通常不需要。" checked={form.codexAppPluginMarketplaceUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginMarketplaceUnlock", value)} />
-            <FeatureToggle title="强制解锁入口" detail="恢复 1.1.9 的入口解锁方式，强制显示并启用插件入口。" checked={form.codexAppPluginEntryUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginEntryUnlock", value)} />
-            <FeatureToggle title="特殊插件强制安装" detail="解除 App unavailable / 应用不可用导致的前端安装禁用。" checked={form.codexAppForcePluginInstall} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppForcePluginInstall", value)} />
-            <FeatureToggle title="模型白名单解锁" detail="从环境变量和 config.toml 的 /v1/models 拉取模型并补进模型列表。" checked={form.codexAppModelWhitelistUnlock} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppModelWhitelistUnlock", value)} />
-            <FeatureToggle title="Fast 按钮" detail="显示服务模式切换按钮；Fast 仅支持 gpt-5.4 / gpt-5.5，其他模型按 Standard 发送。" checked={form.codexAppServiceTierControls} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppServiceTierControls", value)} />
-            <FeatureToggle title="会话删除" detail="在会话列表悬停显示删除按钮，并支持撤销。" checked={form.codexAppSessionDelete} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppSessionDelete", value)} />
-            <FeatureToggle title="Markdown 导出" detail="在会话列表显示导出按钮，导出带时间戳的 Markdown。" checked={form.codexAppMarkdownExport} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppMarkdownExport", value)} />
-            <FeatureToggle title="会话项目移动" detail="把会话移动到普通对话或其他本地项目。" checked={form.codexAppProjectMove} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppProjectMove", value)} />
-            <FeatureToggle title="对话 Timeline" detail="在对话右侧显示用户提问时间线，支持摘要和跳转。" checked={form.codexAppConversationTimeline} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationTimeline", value)} />
-            <FeatureToggle title="对话居中宽度" detail="把主对话和输入框限制到固定最大宽度，适合大屏阅读。" checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
-            <FeatureToggle title="切换对话保留位置" detail="切换 thread 时恢复上一次浏览位置。" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
-            <FeatureToggle title="Upstream worktree" detail="从最新 upstream 分支创建 Git worktree。" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
-            <FeatureToggle title="原生菜单栏位置" detail="把 LDCodex 菜单插入 Codex 顶部原生菜单栏。" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
-          </div>
-          <div className="hint-line">
-            <Info className="h-4 w-4" />
-            <span>如果使用官方模式或官方混入 API 模式，通常不需要开启插件市场解锁、强制解锁入口和特殊插件强制安装。</span>
-          </div>
-          <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>保存增强设置</Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
-
-function SessionsScreen({
-  settings,
-  form,
-  sessions,
-  providerSyncProgress,
-  providerSyncTargets,
-  selectedProviderSyncTarget,
-  onFormChange,
-  actions,
-}: {
-  settings: SettingsResult | null;
-  form: BackendSettings;
-  sessions: LocalSessionsResult | null;
-  providerSyncProgress: ProviderSyncProgress;
-  providerSyncTargets: ProviderSyncTargetsResult | null;
-  selectedProviderSyncTarget: string;
-  onFormChange: (value: BackendSettings) => void;
-  actions: Actions;
-}) {
-  const items = sessions?.sessions ?? [];
-  const activeCount = items.filter((item) => !item.archived).length;
-  const archivedCount = items.length - activeCount;
-  return (
-    <>
-      <Panel>
-        <CardHead title="会话管理" detail="读取 Codex 本地 SQLite 会话库，会删除数据库记录和对应 rollout 文件" />
-        <CardContent>
-          <div className="metric-list">
-            <Metric label="会话总数" value={`${items.length} 个`} />
-            <Metric label="未归档" value={`${activeCount} 个`} />
-            <Metric label="已归档" value={`${archivedCount} 个`} />
-            <Metric label="数据库" value={sessions?.dbPath ?? "~/.codex/sqlite/*.db"} />
-          </div>
-          <div className="form-row">
-            <Field label="同步目标">
-              <select
-                className="select-input"
-                disabled={providerSyncProgress.active || !(providerSyncTargets?.targets ?? []).length}
-                value={selectedProviderSyncTarget}
-                onChange={(event) => actions.setProviderSyncTarget(event.currentTarget.value)}
-              >
-                {(providerSyncTargets?.targets ?? []).map((target) => (
-                  <option key={target.id} value={target.id}>
-                    {target.id}（{providerSyncTargetLabel(target)}）
-                  </option>
-                ))}
-                {!(providerSyncTargets?.targets ?? []).length ? <option value="">当前配置 provider</option> : null}
-              </select>
-            </Field>
-          </div>
-          <Toolbar>
-            <Button onClick={() => void actions.refreshLocalSessions()}>
-              <RefreshCw className="h-4 w-4" />
-              刷新会话
-
-            <Button disabled={providerSyncProgress.active} onClick={() => void actions.syncProvidersNow()} variant="outline">
-              <RefreshCw className="h-4 w-4" />
-              {providerSyncProgress.active ? "正在修复…" : "立刻修复历史会话"}
-
-          </Toolbar>
-          <div className="provider-sync-progress" data-active={providerSyncProgress.active}>
-            <div className="provider-sync-progress-head">
-              <strong>{providerSyncProgress.active ? "正在修复历史会话" : "历史会话修复进度"}</strong>
-              <span>{providerSyncProgress.percent}%</span>
-            </div>
-            <div
-              aria-valuemax={100}
-              aria-valuemin={0}
-              aria-valuenow={providerSyncProgress.percent}
-              className="provider-sync-progress-bar"
-              role="progressbar"
-            >
-              <div className="provider-sync-progress-fill" style={{ width: `${providerSyncProgress.percent}%` }} />
-            </div>
-            <small>{providerSyncProgress.message}</small>
-          </div>
-          <div className="hint-line">
-            <Info className="h-4 w-4" />
-            <span>删除会创建本地备份；如果 Codex App 正在使用该会话，建议先关闭对应会话窗口再操作。</span>
-          </div>
-          <label className="switch-row">
-            <input
-              checked={form.providerSyncEnabled}
-              onChange={(event) => onFormChange({ ...form, providerSyncEnabled: event.currentTarget.checked })}
-              type="checkbox"
-            />
-            <span>
-              <strong>启动前自动修复历史会话</strong>
-              <small>开启后，通过 LDCodex 启动 Codex 前自动整理一次旧对话的归属标记。</small>
-            </span>
-          </label>
-          <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>保存自动修复设置</Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="本地会话" detail={items.length ? "按更新时间倒序显示" : "点击刷新会话读取本地数据库"} />
-        <CardContent>
-          {items.length ? (
-            <div className="session-list">
-              {items.map((session) => (
-                <div className="session-row" key={session.id}>
-                  <div className="session-main">
-                    <strong>{session.title || "未命名会话"}</strong>
-                    <span>{session.id}</span>
-                    <small>{session.cwd || "未记录项目路径"}</small>
-                  </div>
-                  <div className="session-meta">
-                    <Badge status={session.archived ? "archived" : "ok"} />
-                    <span>{session.modelProvider || "provider 未记录"}</span>
-                    <span>{formatTime(session.updatedAtMs ?? 0)}</span>
-                  </div>
-                  <Button variant="outline" onClick={() => void actions.deleteLocalSession(session)}>
-                    <Trash2 className="h-4 w-4" />
-                    删除
-      
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty">未读取到本地会话，或当前 SQLite 会话库不存在。</div>
-          )}
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
-
-function MaintenanceScreen({
-  overview,
-  watcher,
-  settings,
-  launchForm,
-  onLaunchFormChange,
-  removeOwnedData,
-  onRemoveOwnedDataChange,
-  actions,
-}: {
-  overview: OverviewResult | null;
-  watcher: WatcherResult | null;
-  settings: SettingsResult | null;
-  launchForm: { appPath: string; debugPort: string; helperPort: string };
-  onLaunchFormChange: (next: { appPath: string; debugPort: string; helperPort: string }) => void;
-  removeOwnedData: boolean;
-  onRemoveOwnedDataChange: (value: boolean) => void;
-  actions: Actions;
-}) {
-  const savedCodexAppPath = settings?.settings.codexAppPath ?? "";
-  return (
-    <>
-      <Panel>
-        <CardHead title="检查与修复" detail="检查入口、Codex 应用和 Watcher 状态" />
-        <CardContent>
-          <div className="status-table">
-            <StatusRow title="Codex 应用" status={overview?.codex_app.status} path={overview?.codex_app.path} />
-            <StatusRow title="静默启动入口" status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
-            <StatusRow title="管理控制台入口" status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
-            <StatusRow title="Watcher 自动接管" status={watcher?.enabled ? "ok" : "disabled"} path={watcher?.disabled_flag} />
-          </div>
-          <Toolbar>
-            <Button onClick={() => void actions.checkHealth()}>检查</Button>
-            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>修复快捷方式</Button>
-            <Button variant="secondary" onClick={() => void actions.repairBackend()}>修复后端</Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="入口管理" detail="快捷方式写入系统实际桌面位置，不使用写死桌面路径" />
-        <CardContent>
-          <label className="check-row">
-            <input checked={removeOwnedData} onChange={(event) => onRemoveOwnedDataChange(event.currentTarget.checked)} type="checkbox" />
-            <span>卸载时移除 LDCodex 托管数据</span>
-          </label>
-          <Toolbar>
-            <Button onClick={() => void actions.installEntrypoints()}>安装入口</Button>
-            <Button variant="secondary" onClick={() => void actions.uninstallEntrypoints()}>卸载入口</Button>
-            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>修复入口</Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="自动接管" detail="Watcher 用于保持 LDCodex 接管状态" />
-        <CardContent>
-          <Toolbar>
-            <Button variant="secondary" onClick={() => void actions.installWatcher()}>安装 watcher</Button>
-            <Button variant="secondary" onClick={() => void actions.uninstallWatcher()}>移除 watcher</Button>
-            <Button variant="secondary" onClick={() => void actions.enableWatcher()}>启用</Button>
-            <Button variant="secondary" onClick={() => void actions.disableWatcher()}>禁用</Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="Codex 应用路径" detail="免安装版或解包版只需要选择一次，之后静默启动会自动复用" />
-        <CardContent>
-          <div className="status-table">
-            <StatusRow title="保存路径" status={savedCodexAppPath ? "ok" : "not_checked"} path={savedCodexAppPath || null} />
-            <StatusRow title="当前识别" status={overview?.codex_app.status} path={overview?.codex_app.path} />
-          </div>
-          <Field label="保存的应用路径">
-            <Input
-              value={settings?.settings.codexAppPath ?? ""}
-              placeholder="选择 Codex.exe、Codex.app、app 目录或解包目录"
-              readOnly
-            />
-          </Field>
-          <Toolbar>
-            <Button onClick={() => void actions.chooseCodexAppPath("folder")}>选择应用目录</Button>
-            <Button variant="secondary" onClick={() => void actions.chooseCodexAppPath("file")}>选择 Codex.exe</Button>
-            <Button variant="secondary" onClick={() => void actions.clearCodexAppPath()}>清除保存路径</Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
-function AboutScreen({
-  overview,
-  update,
-  logs,
-  diagnostics,
-  actions,
-}: {
-  overview: OverviewResult | null;
-  update: UpdateResult | null;
-  logs: LogsResult | null;
-  diagnostics: DiagnosticsResult | null;
-  actions: Actions;
-}) {
-  return (
-    <>
-      <Panel>
-        <CardHead title="关于 LDCodex" detail="本地 Codex 增强、管理工具和安装包维护" />
-        <CardContent>
-          <div className="metric-list">
-            <Metric label="LDCodex 版本" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
-            <Metric label="项目地址" value="github.com/luoda2023/LDCodex" />
-          </div>
-          <Toolbar>
-            <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex")} variant="secondary">
-
-              打开项目主页
-
-            <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex/issues")} variant="secondary">
-
-              反馈问题
-
-          </Toolbar>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="日志与诊断" detail="" />
-        <CardContent>
-          <LogsPanel logs={logs} actions={actions} />
-          <DiagnosticsPanel diagnostics={diagnostics} actions={actions} />
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
 function ProxyScreen({
   overview,
   launchForm,
@@ -2269,7 +1830,8 @@ function ProxyScreen({
       </Panel>
     </>
   );
-}function SettingsScreen({
+}
+function SettingsScreen({
   settings,
   theme,
   form,
@@ -4888,6 +4450,10 @@ function loadInitialRoute(): Route {
   }
   return "overview";
 }
+
+
+
+
 
 
 
