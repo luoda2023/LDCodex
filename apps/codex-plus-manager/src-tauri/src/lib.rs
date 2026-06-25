@@ -77,6 +77,7 @@ pub fn run() {
             commands::backend_version,
             commands::startup_options,
             commands::load_overview,
+            commands::launch_bridge,
             commands::launch_codex_plus,
             commands::restart_codex_plus,
             commands::load_settings,
@@ -228,4 +229,5 @@ fn acquire_single_instance_guard() -> Option<codex_plus_core::ports::LoopbackPor
         }
     }
 }
+
 

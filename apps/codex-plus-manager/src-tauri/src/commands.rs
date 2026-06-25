@@ -360,6 +360,48 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
 }
 
 #[tauri::command]
+
+#[tauri::command]
+pub fn launch_bridge() -> CommandResult<Value> {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        .unwrap_or_else(|| PathBuf::from('.'));
+    let bridge_index = exe_dir.join('bridge').join('index.mjs');
+    let script_path = if bridge_index.exists() {
+        bridge_index
+    } else {
+        let src_bridge = PathBuf::from(env!('CARGO_MANIFEST_DIR')).join('..').join('..').join('bridge').join('index.mjs');
+        if src_bridge.exists() {
+            src_bridge
+        } else {
+            return failed("找不到 bridge/index.mjs", json!({}));
+        }
+    };
+    let node = if cfg!(windows) { 'node.exe' } else { 'node' };
+    let work_dir = script_path.parent().unwrap().parent().unwrap().to_path_buf();
+    match std::process::Command::new(node)
+        .arg(&script_path)
+        .current_dir(&work_dir)
+        .spawn()
+    {
+        Ok(child) => {
+            let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+                'manager.bridge_launched',
+                json!({"pid": child.id(), "script": script_path.to_string_lossy().to_string()}),
+            );
+            CommandResult {
+                status: "accepted".to_string(),
+                message: "代理服务器启动任务已开始，可打开 http://127.0.0.1:36002/ 查看状态。".to_string(),
+                payload: json!({}),
+            }
+        }
+        Err(error) => failed(
+            &format!("启动代理服务器失败：{error}"),
+            json!({}),
+        ),
+    }
+}
 pub fn launch_codex_plus(request: LaunchRequest) -> CommandResult<Value> {
     spawn_codex_plus_launch(request, "启动任务已在后台开始，可稍后查看概览状态。")
 }

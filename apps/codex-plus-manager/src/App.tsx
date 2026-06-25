@@ -839,7 +839,16 @@ export function App() {
     }
   };
 
-  const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus") => {
+  
+  const launchBridge = async () => {
+    const result = await run(() =>
+      call<CommandResult<Record<string, unknown>>>("launch_bridge"),
+    );
+    if (result) {
+      showNotice("启动代理", result.message, result.status);
+    }
+  };
+const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus") => {
     const result = await run(() =>
       call<CommandResult<Record<string, unknown>>>(command, {
         request: {
@@ -1502,7 +1511,7 @@ const closeWindow = async () => {
           })}
         </nav>
         <div className="sidebar-footer">
-          <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="sidebar-footer-link">Dicad.cn</span>
+          <span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="sidebar-footer-link"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Dicad.cn</span>
           <div className="sidebar-footer-text">AI赋能工程设计</div>
           <div className="sidebar-footer-en">LET IMAGINATION BECOME REALITY</div>
         </div>
@@ -4865,5 +4874,11 @@ function loadInitialRoute(): Route {
   }
   return "overview";
 }
+
+
+
+
+
+
 
 

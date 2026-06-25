@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LuoDaBridge — Admin Panel Server
  *
  * Serves the admin HTML files with server-side auth validation.
@@ -16,9 +16,9 @@ import crypto from "node:crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ADMIN_ROOT = path.resolve(__dirname, "..");
-const PORT = parseInt(process.env.ADMIN_PORT || "37002", 10);
-const CONFIG_PORT = parseInt(process.env.CONFIG_PORT || "37001", 10);
-const PROXY_PORT = parseInt(process.env.PROXY_PORT || "37000", 10);
+const PORT = parseInt(process.env.ADMIN_PORT || "36002", 10);
+const CONFIG_PORT = parseInt(process.env.CONFIG_PORT || "36001", 10);
+const PROXY_PORT = parseInt(process.env.PROXY_PORT || "36000", 10);
 const CONFIG_HOST = "127.0.0.1";
 
 // ─── Session Store (in-memory) ──────────────────────────────
@@ -759,3 +759,4 @@ export { pushTokenUsage };
 export default function startAdminServer() {
   return server;
 }
+
