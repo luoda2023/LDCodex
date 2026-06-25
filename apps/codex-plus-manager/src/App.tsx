@@ -14,7 +14,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -43,6 +42,7 @@ import {
   Save,
   Settings,
   ShieldCheck,
+  ShieldAlert,
   Sun,
   TestTube,
   Trash2,
@@ -93,6 +93,13 @@ type OverviewResult = CommandResult<{
   logs_path: string;
 }>;
 
+type PluginMarketplaceStatusResult = CommandResult<{
+  codexHome: string;
+  marketplaceRoot?: string | null;
+  configRegistered: boolean;
+  needsRepair: boolean;
+}>;
+
 type BackendSettings = {
   codexAppPath: string;
   codexExtraArgs: string[];
@@ -113,10 +120,6 @@ type BackendSettings = {
   codexAppConversationTimeline: boolean;
   codexAppConversationView: boolean;
   codexAppThreadScrollRestore: boolean;
-
-  zedRemoteOpenStrategy: ZedOpenStrategy;
-  zedRemoteProjectRegistryEnabled: boolean;
-  zedRemoteSyncToZedSettings: boolean;
   codexAppUpstreamWorktreeCreate: boolean;
   codexAppNativeMenuPlacement: boolean;
   codexAppServiceTierControls: boolean;
@@ -128,6 +131,8 @@ type BackendSettings = {
   relayBaseUrl: string;
   relayApiKey: string;
   relayProfiles: RelayProfile[];
+  aggregateRelayProfiles: AggregateRelayProfile[];
+  activeAggregateRelayId: string;
   relayCommonConfigContents: string;
   relayContextConfigContents: string;
   activeRelayId: string;
@@ -161,6 +166,27 @@ type RelayProfile = {
   autoCompactLimit: string;
   modelList: string;
   userAgent: string;
+  aggregate?: RelayAggregateConfig | null;
+};
+
+type RelayAggregateStrategy = "failover" | "conversationRoundRobin" | "requestRoundRobin" | "weightedRoundRobin";
+type RelayAggregateMember = {
+  profileId: string;
+  weight: number;
+};
+type RelayAggregateConfig = {
+  strategy: RelayAggregateStrategy;
+  members: RelayAggregateMember[];
+};
+type AggregateRelayMember = {
+  relayId: string;
+  weight: number;
+};
+type AggregateRelayProfile = {
+  id: string;
+  name: string;
+  strategy: RelayAggregateStrategy;
+  members: AggregateRelayMember[];
 };
 
 type RelayContextSelection = {
@@ -187,10 +213,17 @@ type CodexContextEntries = {
 };
 
 type RelayProtocol = "responses" | "chatCompletions";
-type RelayMode = "official" | "mixedApi" | "pureApi";
+type RelayMode = "official" | "mixedApi" | "pureApi" | "aggregate";
 const PROTOCOL_PROXY_BASE_URL = "http://127.0.0.1:57321/v1";
 const CHAT_UPSTREAM_BASE_URL_KEY = "codex_plus_chat_base_url";
 const SCRIPT_MARKET_REPOSITORY_URL = "https://github.com/luoda2023/LDCodexScriptMarket";
+const LOCAL_MOBILE_RELAY_URL = "ws://127.0.0.1:57323";
+const PUBLIC_MOBILE_RELAY_URL = "ws://154.201.90.76:57323";
+
+const mobileRelayServers = [
+  { id: "local", label: "æœ¬æœºæµ‹è¯•", url: LOCAL_MOBILE_RELAY_URL, capacity: 100 },
+  { id: "public-154", label: "å…¬å…±æœåŠ¡å™¨ 1", url: PUBLIC_MOBILE_RELAY_URL, capacity: 100 },
+];
 
 const emptyContextSelection = (): RelayContextSelection => ({
   mcpServers: [],
@@ -312,6 +345,10 @@ type RelaySwitchResult = CommandResult<{
   relay: RelayPayload;
 }>;
 
+type SettingsBackfillResult = CommandResult<{
+  settings: BackendSettings;
+}>;
+
 type RelayProfileTestResult = CommandResult<{
   httpStatus: number;
   endpoint: string;
@@ -321,6 +358,41 @@ type RelayProfileTestResult = CommandResult<{
 type RelayProfileModelsResult = CommandResult<{
   models: string[];
   endpoint: string;
+}>;
+
+type CcsProviderImport = {
+  sourceId: string;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  protocol: RelayProtocol;
+  configContents: string;
+  authContents: string;
+};
+
+type CcsProvidersResult = CommandResult<{
+  dbPath: string;
+  providers: CcsProviderImport[];
+}>;
+
+type EnvConflict = {
+  name: string;
+  source: "process" | "user" | string;
+  valuePresent: boolean;
+};
+
+type EnvConflictsResult = CommandResult<{
+  conflicts: EnvConflict[];
+}>;
+
+type RemoveEnvConflictsResult = CommandResult<{
+  removed: Array<{
+    name: string;
+    removedProcess: boolean;
+    removedUser: boolean;
+  }>;
+  backupPath: string | null;
+  remaining: EnvConflict[];
 }>;
 
 type ProviderSyncPayload = {
@@ -360,6 +432,12 @@ type ProviderSyncProgress = {
   result: CommandResult<ProviderSyncPayload> | null;
 };
 
+type TaskProgress = {
+  active: boolean;
+  percent: number;
+  message: string;
+};
+
 type LogsResult = CommandResult<{
   path: string;
   text: string;
@@ -391,6 +469,20 @@ type UpdateResult = CommandResult<{
   progress?: number;
 }>;
 
+type AdItem = {
+  id?: string;
+  type: "sponsor" | "normal" | string;
+  title: string;
+  description: string;
+  url: string;
+  highlights?: string[];
+  expires_at?: string;
+};
+
+type AdsResult = CommandResult<{
+  version: number;
+  ads: AdItem[];
+}>;
 
 type ScriptMarketItem = {
   id: string;
@@ -421,67 +513,42 @@ type ScriptMarketResult = CommandResult<{
 function providerSyncProgressMessage(result: CommandResult<ProviderSyncPayload>): string {
   const changed = result.changedSessionFiles ?? 0;
   const rows = result.sqliteRowsUpdated ?? 0;
-  const target = result.targetProvider || "µ±Ç° provider";
+  const target = result.targetProvider || "å½“å‰ provider";
   const skipped = result.skippedLockedRolloutFiles?.length ?? 0;
-  const skippedText = skipped ? `£¬Ìø¹ı ${skipped} ¸öÕ¼ÓÃÎÄ¼ş` : "";
-  return `ÒÑÍ¬²½µ½ ${target}£ºĞŞ¸´ ${changed} ¸ö»á»°ÎÄ¼ş£¬¸üĞÂ ${rows} ĞĞË÷Òı${skippedText}¡£`;
+  const skippedText = skipped ? `ï¼Œè·³è¿‡ ${skipped} ä¸ªå ç”¨æ–‡ä»¶` : "";
+  return `å·²åŒæ­¥åˆ° ${target}ï¼šä¿®å¤ ${changed} ä¸ªä¼šè¯æ–‡ä»¶ï¼Œæ›´æ–° ${rows} è¡Œç´¢å¼•${skippedText}ã€‚`;
 }
 
 const providerSyncSourceLabels: Record<ProviderSyncTargetSource, string> = {
-  config: "ÅäÖÃ",
-  rollout: "»á»°",
-  sqlite: "Ë÷Òı",
-  manual: "ÊÖ¶¯",
+  config: "é…ç½®",
+  rollout: "ä¼šè¯",
+  sqlite: "ç´¢å¼•",
+  manual: "æ‰‹åŠ¨",
 };
 
 function providerSyncTargetLabel(target: ProviderSyncTargetOption): string {
   const labels = target.sources.map((source) => providerSyncSourceLabels[source]).filter(Boolean);
-  const current = target.isCurrentProvider ? ["µ±Ç°"] : [];
-  return [...labels, ...current].join(" / ") || "·¢ÏÖ";
+  const current = target.isCurrentProvider ? ["å½“å‰"] : [];
+  return [...labels, ...current].join(" / ") || "å‘ç°";
 }
 
-function syncMarketInstalledState(current: ScriptMarketResult | null, userScripts: UserScriptInventory): ScriptMarketResult | null {
-  if (!current) return current;
-  const installed = new Map(
-    (userScripts.scripts ?? [])
-      .filter((script) => script.market_id)
-      .map((script) => [script.market_id || "", script.version || ""]),
-  );
-  return {
-    ...current,
-    user_scripts: userScripts,
-    market: {
-      ...current.market,
-      scripts: current.market.scripts.map((script) => {
-        const installedVersion = installed.get(script.id) || "";
-        return {
-          ...script,
-          installed: Boolean(installedVersion),
-          installedVersion,
-          updateAvailable: Boolean(installedVersion) && installedVersion !== script.version,
-        };
-      }),
-    },
-  };
-}
 
 type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "maintenance" | "about" | "settings" | "proxy";
+type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "about" | "settings" | "proxy";
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
-  { id: "overview", label: "¸ÅÀÀ", icon: LayoutDashboard },
-  { id: "relay", label: "Ä£ĞÍÅäÖÃ", icon: KeyRound },
-  { id: "sessions", label: "»á»°¹ÜÀí", icon: MessageCircle },
-  { id: "context", label: "¹¤¾ßÓë²å¼ş", icon: Network },
-  { id: "enhance", label: "Ò³ÃæÔöÇ¿", icon: Hammer },
-  { id: "maintenance", label: "°²×°Î¬»¤", icon: Wrench },
-  { id: "settings", label: "ÉèÖÃ", icon: Settings },
-  { id: "proxy", label: "´úÀí·şÎñÆ÷", icon: ShieldCheck },
-  { id: "about", label: "¹ØÓÚ", icon: Info },
+  { id: "overview", label: "æ¦‚è§ˆ", icon: LayoutDashboard },
+  { id: "relay", label: "æ¨¡å‹é…ç½®", icon: KeyRound },
+  { id: "sessions", label: "ä¼šè¯ç®¡ç†", icon: MessageCircle },
+  { id: "context", label: "å·¥å…·ä¸æ’ä»¶", icon: Network },
+  { id: "enhance", label: "é¡µé¢å¢å¼º", icon: Hammer },
+  { id: "proxy", label: "ä»£ç†æœåŠ¡å™¨", icon: ShieldCheck },
+  { id: "about", label: "å…³äº", icon: Info },
+  { id: "settings", label: "è®¾ç½®", icon: Settings },
 ];
 
 const defaultSettings: BackendSettings = {
@@ -500,11 +567,16 @@ const defaultSettings: BackendSettings = {
   codexAppModelWhitelistUnlock: true,
   codexAppSessionDelete: true,
   codexAppMarkdownExport: true,
+  codexAppPasteFix: false,
   codexAppProjectMove: true,
   codexAppConversationTimeline: true,
+  codexAppThreadIdBadge: false,
   codexAppConversationView: false,
   codexAppThreadScrollRestore: true,
-
+  codexAppZedRemoteOpen: true,
+  zedRemoteOpenStrategy: "addToFocusedWorkspace",
+  zedRemoteProjectRegistryEnabled: true,
+  zedRemoteSyncToZedSettings: false,
   codexAppUpstreamWorktreeCreate: true,
   codexAppNativeMenuPlacement: true,
   codexAppServiceTierControls: false,
@@ -512,13 +584,16 @@ const defaultSettings: BackendSettings = {
   codexAppImageOverlayPath: "",
   codexAppImageOverlayOpacity: 35,
   codexGoalsEnabled: false,
+  mobileControlRelayUrl: LOCAL_MOBILE_RELAY_URL,
+  mobileControlRoom: "",
+  mobileControlKey: "",
   launchMode: "patch",
   relayBaseUrl: "",
   relayApiKey: "",
   relayProfiles: [
     {
       id: "default",
-      name: "Ä¬ÈÏÖĞ×ª",
+      name: "é»˜è®¤ä¸­è½¬",
       model: "",
       baseUrl: "",
       upstreamBaseUrl: "",
@@ -541,6 +616,8 @@ const defaultSettings: BackendSettings = {
   relayCommonConfigContents: "",
   relayContextConfigContents: "",
   activeRelayId: "default",
+  aggregateRelayProfiles: [],
+  activeAggregateRelayId: "",
   relayTestModel: "gpt-5.4-mini",
   cliWrapperEnabled: false,
   cliWrapperBaseUrl: "",
@@ -556,13 +633,16 @@ export function App() {
   const [settings, setSettings] = useState<SettingsResult | null>(null);
   const [relay, setRelay] = useState<RelayResult | null>(null);
   const [relayFiles, setRelayFiles] = useState<RelayFilesResult | null>(null);
+  const [envConflicts, setEnvConflicts] = useState<EnvConflictsResult | null>(null);
+  const [ccsProviders, setCcsProviders] = useState<CcsProvidersResult | null>(null);
   const [localSessions, setLocalSessions] = useState<LocalSessionsResult | null>(null);
   const [liveContextEntries, setLiveContextEntries] = useState<CodexContextEntries | null>(null);
   const [logs, setLogs] = useState<LogsResult | null>(null);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsResult | null>(null);
   const [watcher, setWatcher] = useState<WatcherResult | null>(null);
   const [update, setUpdate] = useState<UpdateResult | null>(null);
-  
+  const [ads, setAds] = useState<AdsResult | null>(null);
+  const [scriptMarket, setScriptMarket] = useState<ScriptMarketResult | null>(null);
   const [launchForm, setLaunchForm] = useState({
     appPath: "",
     debugPort: "9229",
@@ -573,8 +653,12 @@ export function App() {
   const [providerSyncProgress, setProviderSyncProgress] = useState<ProviderSyncProgress>({
     active: false,
     percent: 0,
-    message: "ÉĞÎ´ÔËĞĞÀúÊ·»á»°ĞŞ¸´¡£",
+    message: "å°šæœªè¿è¡Œå†å²ä¼šè¯ä¿®å¤ã€‚",
     result: null,
+  });
+    active: false,
+    percent: 0,
+    message: "å°šæœªè¿è¡Œæ’ä»¶å¸‚åœºä¿®å¤ã€‚",
   });
   const [providerSyncTargets, setProviderSyncTargets] = useState<ProviderSyncTargetsResult | null>(null);
   const [selectedProviderSyncTarget, setSelectedProviderSyncTarget] = useState("");
@@ -591,7 +675,7 @@ export function App() {
     try {
       return await task();
     } catch (error) {
-      showNotice("µ÷ÓÃÊ§°Ü", stringifyError(error), "failed");
+      showNotice("è°ƒç”¨å¤±è´¥", stringifyError(error), "failed");
       return null;
     }
   };
@@ -599,15 +683,15 @@ export function App() {
   const refreshOverview = async (silent = false) => {
     const result = await run(() => call<OverviewResult>("load_overview"));
     if (result) {
-      // ±ÀÀ£¼ì²â£º½ø³Ì´ÓÔËĞĞ×´Ì¬±äÎªÍ£Ö¹/Ê§°Ü ¡ú µ¯³öÍ¨Öª
+      // å´©æºƒæ£€æµ‹ï¼šè¿›ç¨‹ä»è¿è¡ŒçŠ¶æ€å˜ä¸ºåœæ­¢/å¤±è´¥ â†’ å¼¹å‡ºé€šçŸ¥
       const prev = prevLaunchStatusRef.current;
       const current = result.latest_launch?.status;
       if (prev && prev === "running" && current && (current === "stopped" || current === "failed" || current === "crashed")) {
-        showNotice("Codex ÒâÍâÍ£Ö¹", `½ø³Ì×´Ì¬£º${current}¡£ÊÇ·ñÒªÖØĞÂÆô¶¯£¿`, "failed");
+        showNotice("Codex æ„å¤–åœæ­¢", `è¿›ç¨‹çŠ¶æ€ï¼š${current}ã€‚æ˜¯å¦è¦é‡æ–°å¯åŠ¨ï¼Ÿ`, "failed");
       }
       prevLaunchStatusRef.current = current ?? null;
       setOverview(result);
-      if (!silent) showResultNotice("¸ÅÀÀÒÑ¼ì²é", result, { silentSuccess: true });
+      if (!silent) showResultNotice("æ¦‚è§ˆå·²æ£€æŸ¥", result, { silentSuccess: true });
     }
   };
 
@@ -621,7 +705,7 @@ export function App() {
         ...current,
         appPath: current.appPath || result.settings.codexAppPath || "",
       }));
-      if (!silent) showResultNotice("ÉèÖÃÒÑ¼ÓÔØ", result, { silentSuccess: true });
+      if (!silent) showResultNotice("è®¾ç½®å·²åŠ è½½", result, { silentSuccess: true });
       return normalized;
     }
     return null;
@@ -632,7 +716,7 @@ export function App() {
     if (result) {
       setScriptMarket(result);
       setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("½Å±¾ÊĞ³¡", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("è„šæœ¬å¸‚åœº", result, { silentSuccess: true });
     }
   };
 
@@ -641,28 +725,7 @@ export function App() {
     if (result) {
       setScriptMarket(result);
       setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
-      showResultNotice("½Å±¾ÊĞ³¡", result);
-    }
-  };
-
-  const setUserScriptEnabled = async (key: string, enabled: boolean) => {
-    const result = await run(() => call<SettingsResult>("set_user_script_enabled", { key, enabled }));
-    if (result) {
-      setSettings(result);
-      setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
-      showResultNotice("±¾µØ½Å±¾", result);
-    }
-  };
-
-  const deleteUserScript = async (key: string) => {
-    const script = settings?.user_scripts?.scripts?.find((item) => item.key === key);
-    const name = script?.name || key;
-    if (!window.confirm(`É¾³ı½Å±¾¡°${name}¡±£¿´Ë²Ù×÷»áÒÆ³ı±¾µØ½Å±¾ÎÄ¼ş¡£`)) return;
-    const result = await run(() => call<SettingsResult>("delete_user_script", { key }));
-    if (result) {
-      setSettings(result);
-      setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
-      showResultNotice("±¾µØ½Å±¾", result);
+      showResultNotice("è„šæœ¬å¸‚åœº", result);
     }
   };
 
@@ -670,7 +733,7 @@ export function App() {
     const result = await run(() => call<RelayResult>("relay_status"));
     if (result) {
       setRelay(result);
-      if (!silent) showResultNotice("µÇÂ¼×´Ì¬", result, { silentSuccess: true });
+      if (!silent) showResultNotice("ç™»å½•çŠ¶æ€", result, { silentSuccess: true });
     }
   };
 
@@ -678,31 +741,63 @@ export function App() {
     const result = await run(() => call<RelayFilesResult>("read_relay_files"));
     if (result) {
       setRelayFiles(result);
-      if (!silent) showResultNotice("ÅäÖÃÎÄ¼ş", result, { silentSuccess: true });
+      if (!silent) showResultNotice("é…ç½®æ–‡ä»¶", result, { silentSuccess: true });
     }
     return result;
+  };
+
+  const refreshEnvConflicts = async (silent = false) => {
+    const result = await run(() => call<EnvConflictsResult>("check_env_conflicts"));
+    if (result) {
+      setEnvConflicts(result);
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("ç¯å¢ƒå˜é‡æ£€æµ‹", result, { silentSuccess: true });
+    }
+    return result;
+  };
+
+  const removeEnvConflicts = async (names: string[]) => {
+    const uniqueNames = Array.from(new Set(names.map((name) => name.trim()).filter(Boolean)));
+    if (!uniqueNames.length) return;
+    if (!window.confirm(`åˆ é™¤è¿™äº›ç¯å¢ƒå˜é‡ï¼Ÿ\n\n${uniqueNames.join("\n")}\n\nåˆ é™¤å‰ä¼šå†™å…¥å¤‡ä»½ã€‚`)) return;
+    const result = await run(() => call<RemoveEnvConflictsResult>("remove_env_conflicts", { request: { names: uniqueNames } }));
+    if (result) {
+      setEnvConflicts({
+        status: result.status,
+        message: result.message,
+        conflicts: result.remaining,
+      });
+      showNotice("ç¯å¢ƒå˜é‡æ¸…ç†", result.message, result.status);
+    }
+  };
+
+  const refreshCcsProviders = async (silent = false) => {
+    const result = await run(() => call<CcsProvidersResult>("load_ccs_providers"));
+    if (result) {
+      setCcsProviders(result);
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("cc-switch å¯¼å…¥", result, { silentSuccess: true });
+    }
+    return result;
+  };
+
+  const importCcsProviders = async () => {
+    const result = await run(() => call<SettingsResult>("import_ccs_providers"));
+    if (result) {
+      setSettings(result);
+      setSettingsForm(normalizeSettings(result.settings));
+      showResultNotice("cc-switch å¯¼å…¥", result);
+      await refreshCcsProviders(true);
+    }
   };
 
   const refreshLocalSessions = async (silent = false) => {
     const result = await run(() => call<LocalSessionsResult>("list_local_sessions"));
     if (result) {
       setLocalSessions(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("»á»°¹ÜÀí", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("ä¼šè¯ç®¡ç†", result, { silentSuccess: true });
     }
     return result;
   };
 
-  const refreshZedRemoteProjects = async (silent = false) => {
-    const result = await run(() => call<ZedRemoteProjectsResult>("list_zed_remote_projects"));
-    if (result) {
-      setZedRemoteProjects(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("Zed Ô¶³ÌÏîÄ¿", result, { silentSuccess: true });
-    }
-    return result;
-  };
-
-  const openZedRemoteProject = async (
-    project: ZedRemoteProject,
     strategy: ZedOpenStrategy = settingsForm.zedRemoteOpenStrategy || "addToFocusedWorkspace",
   ) => {
     const result = await run(() =>
@@ -717,29 +812,21 @@ export function App() {
       }),
     );
     if (result) {
-      showResultNotice("Zed Ô¶³Ì´ò¿ª", result);
+      showResultNotice("Zed è¿œç¨‹æ‰“å¼€", result);
       await refreshZedRemoteProjects(true);
-    }
-  };
-
-  const forgetZedRemoteProject = async (project: ZedRemoteProject) => {
-    const result = await run(() => call<ZedRemoteProjectsResult>("forget_zed_remote_project", { id: project.id }));
-    if (result) {
-      setZedRemoteProjects(result);
-      showResultNotice("Zed Ô¶³ÌÏîÄ¿", result);
     }
   };
 
   const deleteLocalSession = async (session: LocalSession) => {
     const title = session.title || session.id;
-    if (!window.confirm(`É¾³ı»á»°¡°${title}¡±£¿´Ë²Ù×÷»áÉ¾³ı±¾µØÊı¾İ¿â¼ÇÂ¼ºÍ rollout ÎÄ¼ş£¬²¢´´½¨±¸·İ¡£`)) return;
+    if (!window.confirm(`åˆ é™¤ä¼šè¯â€œ${title}â€ï¼Ÿæ­¤æ“ä½œä¼šåˆ é™¤æœ¬åœ°æ•°æ®åº“è®°å½•å’Œ rollout æ–‡ä»¶ï¼Œå¹¶åˆ›å»ºå¤‡ä»½ã€‚`)) return;
     const result = await run(() =>
       call<DeleteLocalSessionResult>("delete_local_session", {
         request: { sessionId: session.id, title: session.title, dbPath: session.dbPath },
       }),
     );
     if (result) {
-      showResultNotice("»á»°É¾³ı", result);
+      showResultNotice("ä¼šè¯åˆ é™¤", result);
       await refreshLocalSessions(true);
     }
   };
@@ -748,7 +835,7 @@ export function App() {
     const result = await run(() => call<LiveContextEntriesResult>("read_live_context_entries"));
     if (result) {
       setLiveContextEntries(result.entries);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("¹¤¾ßÓë²å¼ş", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("å·¥å…·ä¸æ’ä»¶", result, { silentSuccess: true });
     }
     return result;
   };
@@ -757,7 +844,7 @@ export function App() {
     const result = await run(() => call<LiveContextEntriesResult>("sync_live_context_entries", { request: { settings: next } }));
     if (result) {
       setLiveContextEntries(result.entries);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("¹¤¾ßÓë²å¼ş", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("å·¥å…·ä¸æ’ä»¶", result, { silentSuccess: true });
     }
     return result;
   };
@@ -766,7 +853,7 @@ export function App() {
     const result = await run(() => call<LogsResult>("read_latest_logs", { request: { lines: 240 } }));
     if (result) {
       setLogs(result);
-      if (!silent) showResultNotice("ÈÕÖ¾ÒÑË¢ĞÂ", result, { silentSuccess: true });
+      if (!silent) showResultNotice("æ—¥å¿—å·²åˆ·æ–°", result, { silentSuccess: true });
     }
   };
 
@@ -774,7 +861,7 @@ export function App() {
     const result = await run(() => call<DiagnosticsResult>("copy_diagnostics"));
     if (result) {
       setDiagnostics(result);
-      if (!silent) showResultNotice("Õï¶ÏÒÑÉú³É", result, { silentSuccess: true });
+      if (!silent) showResultNotice("è¯Šæ–­å·²ç”Ÿæˆ", result, { silentSuccess: true });
     }
   };
 
@@ -782,7 +869,7 @@ export function App() {
     const result = await run(() => call<WatcherResult>("load_watcher_state"));
     if (result) {
       setWatcher(result);
-      if (!silent) showResultNotice("Watcher ×´Ì¬", result, { silentSuccess: true });
+      if (!silent) showResultNotice("Watcher çŠ¶æ€", result, { silentSuccess: true });
     }
   };
 
@@ -793,40 +880,36 @@ export function App() {
       await refreshSettings(true);
       await refreshRelay(true);
       await refreshRelayFiles(true);
+      await refreshEnvConflicts(true);
+      await refreshCcsProviders(true);
     }
     if (next === "sessions") {
       await refreshSettings(true);
       await refreshLocalSessions(true);
       await refreshProviderSyncTargets(true);
     }
-    
     if (next === "context") {
       await refreshSettings(true);
       await refreshRelayFiles(true);
       await refreshLiveContextEntries(true);
     }
+    if (next === "settings") await refreshSettings(true);
+    if (next === "recommendations") await refreshAds(true);
     if (next === "proxy") {
       await refreshOverview(true);
       await refreshWatcher(true);
     }
-    if (next === "settings") await refreshSettings(true);
-
-    
     if (next === "about") {
       await refreshOverview(true);
       await refreshLogs(true);
       await refreshDiagnostics(true);
-    }
-    if (next === "maintenance") {
-      await refreshOverview(true);
-      await refreshWatcher(true);
     }
   };
 
   const launch = async () => {
     const result = await launchCommand("launch_codex_plus");
     if (result) {
-      showNotice("Æô¶¯ÈÎÎñ", result.message, result.status);
+      showNotice("å¯åŠ¨ä»»åŠ¡", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -834,21 +917,12 @@ export function App() {
   const restart = async () => {
     const result = await launchCommand("restart_codex_plus");
     if (result) {
-      showNotice("ÖØÆô LDCodex", result.message, result.status);
+      showNotice("é‡å¯ Codex++", result.message, result.status);
       await refreshOverview(true);
     }
   };
 
-  
-  const launchBridge = async () => {
-    const result = await run(() =>
-      call<CommandResult<Record<string, unknown>>>("launch_bridge"),
-    );
-    if (result) {
-      showNotice("Æô¶¯´úÀí", result.message, result.status);
-    }
-  };
-const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus") => {
+  const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus") => {
     const result = await run(() =>
       call<CommandResult<Record<string, unknown>>>(command, {
         request: {
@@ -866,14 +940,14 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("ºó¶ËĞŞ¸´", result.message, result.status);
+      showNotice("åç«¯ä¿®å¤", result.message, result.status);
     }
   };
 
   const installEntrypoints = async () => {
     const result = await run(() => call<InstallResult>("install_entrypoints"));
     if (result) {
-      showNotice("Èë¿Ú°²×°", result.message, result.status);
+      showNotice("å…¥å£å®‰è£…", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -885,7 +959,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
       }),
     );
     if (result) {
-      showNotice("Èë¿ÚĞ¶ÔØ", result.message, result.status);
+      showNotice("å…¥å£å¸è½½", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -893,7 +967,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
   const repairShortcuts = async () => {
     const result = await run(() => call<InstallResult>("repair_shortcuts"));
     if (result) {
-      showNotice("¿ì½İ·½Ê½ĞŞ¸´", result.message, result.status);
+      showNotice("å¿«æ·æ–¹å¼ä¿®å¤", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -902,19 +976,37 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     const result = await run(() => call<WatcherResult>(command));
     if (result) {
       setWatcher(result);
-      showNotice("Watcher ²Ù×÷", result.message, result.status);
+      showNotice("Watcher æ“ä½œ", result.message, result.status);
     }
   };
 
-  const checkUpdate = async (_silent = false) => {
-    // Éı¼¶¼ì²éÒÑ½ûÓÃ
+  const checkUpdate = async (silent = false) => {
+    const result = await run(() => call<UpdateResult>("check_update"));
+    if (result) {
+      setUpdate(result);
+      if (!silent || result.updateAvailable) {
+        showNotice("GitHub Release æ£€æŸ¥", result.message, result.status);
+      }
+    }
   };
-
 
   const performUpdate = async () => {
-    // ¸üĞÂ¹¦ÄÜÒÑ½ûÓÃ
+    const release =
+      update?.latestVersion && update.assetName && update.assetUrl
+        ? {
+            version: update.latestVersion,
+            url: "",
+            body: update.releaseSummary ?? "",
+            asset_name: update.assetName,
+            asset_url: update.assetUrl,
+          }
+        : null;
+    const result = await run(() => call<UpdateResult>("perform_update", { release }));
+    if (result) {
+      setUpdate(result);
+      showNotice("æ›´æ–°å®‰è£…", result.message, result.status);
+    }
   };
-
 
   const saveSettings = async () => {
     const next = normalizeSettings(settingsForm);
@@ -922,7 +1014,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("ÉèÖÃ±£´æ", result.message, result.status);
+      showNotice("è®¾ç½®ä¿å­˜", result.message, result.status);
     }
   };
 
@@ -933,7 +1025,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      if (!silent || !isSuccessStatus(result.status)) showNotice("ÉèÖÃ±£´æ", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("è®¾ç½®ä¿å­˜", result.message, result.status);
     }
   };
 
@@ -942,11 +1034,26 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("ÉèÖÃÖØÖÃ", result.message, result.status);
+      showNotice("è®¾ç½®é‡ç½®", result.message, result.status);
     }
   };
 
-  
+  const resetImageOverlaySettings = async () => {
+    const result = await run(() => call<SettingsResult>("reset_image_overlay_settings"));
+    if (result) {
+      setSettings(result);
+      setSettingsForm(normalizeSettings(result.settings));
+      showNotice("å›¾ç‰‡è¦†ç›–å±‚", result.message, result.status);
+    }
+  };
+
+  const refreshAds = async (silent = false) => {
+    const result = await run(() => call<AdsResult>("load_ads"));
+    if (result) {
+      setAds(result);
+      if (!silent) showResultNotice("æ¨èå†…å®¹", result, { silentSuccess: true });
+    }
+  };
 
   const refreshProviderSyncTargets = async (silent = false) => {
     const result = await run(() => call<ProviderSyncTargetsResult>("load_provider_sync_targets"));
@@ -960,7 +1067,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
         targets[0]?.id ||
         "openai";
       setSelectedProviderSyncTarget((current) => (targets.some((target) => target.id === current) ? current : preferred));
-      if (!silent && !isSuccessStatus(result.status)) showNotice("Provider Í¬²½Ä¿±ê", result.message, result.status);
+      if (!silent && !isSuccessStatus(result.status)) showNotice("Provider åŒæ­¥ç›®æ ‡", result.message, result.status);
     }
     return result;
   };
@@ -970,7 +1077,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     setProviderSyncProgress({
       active: true,
       percent: 12,
-      message: selectedProviderSyncTarget ? `ÕıÔÚÍ¬²½µ½ ${selectedProviderSyncTarget}¡­` : "ÕıÔÚÉ¨ÃèÀúÊ·»á»°ÓëË÷Òı¡­",
+      message: selectedProviderSyncTarget ? `æ­£åœ¨åŒæ­¥åˆ° ${selectedProviderSyncTarget}â€¦` : "æ­£åœ¨æ‰«æå†å²ä¼šè¯ä¸ç´¢å¼•â€¦",
       result: null,
     });
     const progressTimer = window.setInterval(() => {
@@ -979,7 +1086,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
         return {
           ...current,
           percent: Math.min(88, current.percent + 8),
-          message: current.percent < 40 ? "ÕıÔÚ¼ì²é»á»° provider ±ê¼Ç¡­" : "ÕıÔÚĞ´ÈëĞŞ¸´Óë±¸·İ¡­",
+          message: current.percent < 40 ? "æ­£åœ¨æ£€æŸ¥ä¼šè¯ provider æ ‡è®°â€¦" : "æ­£åœ¨å†™å…¥ä¿®å¤ä¸å¤‡ä»½â€¦",
         };
       });
     }, 350);
@@ -1006,12 +1113,12 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
           setSettingsForm(next);
         }
         await refreshProviderSyncTargets(true);
-        showNotice("ÀúÊ·»á»°ĞŞ¸´", result.message, result.status);
+        showNotice("å†å²ä¼šè¯ä¿®å¤", result.message, result.status);
       } else {
         setProviderSyncProgress({
           active: false,
           percent: 100,
-          message: "ÀúÊ·»á»°ĞŞ¸´Ê§°Ü£¬Çë²é¿´´íÎóÌáÊ¾ºóÖØÊÔ¡£",
+          message: "å†å²ä¼šè¯ä¿®å¤å¤±è´¥ï¼Œè¯·æŸ¥çœ‹é”™è¯¯æç¤ºåé‡è¯•ã€‚",
           result: null,
         });
       }
@@ -1026,7 +1133,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
       setSettings(settingsResult);
       setSettingsForm(normalizeSettings(settingsResult.settings));
       if (!isSuccessStatus(settingsResult.status)) {
-        showNotice("ÉèÖÃ±£´æ", settingsResult.message, settingsResult.status);
+        showNotice("è®¾ç½®ä¿å­˜", settingsResult.message, settingsResult.status);
         return false;
       }
     } else {
@@ -1036,7 +1143,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
-      if (!silent || !isSuccessStatus(result.status)) showNotice("¹Ù·½»ìÈë API Key", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("å®˜æ–¹æ··å…¥ API Key", result.message, result.status);
     }
     return !!result && isSuccessStatus(result.status) && result.configured;
   };
@@ -1048,7 +1155,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      if (!silent) showNotice("Ò³ÃæÔöÇ¿Ä£Ê½", result.message, result.status);
+      if (!silent) showNotice("é¡µé¢å¢å¼ºæ¨¡å¼", result.message, result.status);
     }
     return result;
   };
@@ -1059,7 +1166,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
       setSettings(settingsResult);
       setSettingsForm(normalizeSettings(settingsResult.settings));
       if (!isSuccessStatus(settingsResult.status)) {
-        showNotice("ÉèÖÃ±£´æ", settingsResult.message, settingsResult.status);
+        showNotice("è®¾ç½®ä¿å­˜", settingsResult.message, settingsResult.status);
         return false;
       }
     } else {
@@ -1069,7 +1176,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
-      if (!silent || !isSuccessStatus(result.status)) showNotice("´¿ API Ä£Ê½", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("çº¯ API æ¨¡å¼", result.message, result.status);
     }
     return !!result && isSuccessStatus(result.status) && result.configured;
   };
@@ -1079,7 +1186,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
-      if (!silent || !isSuccessStatus(result.status)) showNotice("¹Ù·½µÇÂ¼Ä£Ê½", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("å®˜æ–¹ç™»å½•æ¨¡å¼", result.message, result.status);
     }
     return !!result && isSuccessStatus(result.status) && !result.configured;
   };
@@ -1109,7 +1216,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
       normalized = normalizeSettings(saveResult.settings);
     }
     setSettingsForm(normalized);
-    if (!isSuccessStatus(result.status)) showResultNotice("¹¤¾ßÓë²å¼ş", result);
+    if (!isSuccessStatus(result.status)) showResultNotice("å·¥å…·ä¸æ’ä»¶", result);
     return normalized;
   };
 
@@ -1127,7 +1234,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
       normalized = normalizeSettings(saveResult.settings);
     }
     setSettingsForm(normalized);
-    if (!isSuccessStatus(result.status)) showResultNotice("¹¤¾ßÓë²å¼ş", result);
+    if (!isSuccessStatus(result.status)) showResultNotice("å·¥å…·ä¸æ’ä»¶", result);
     return normalized;
   };
 
@@ -1137,18 +1244,18 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
         request: { configContents },
       }),
     );
-    if (result) showResultNotice("Í¨ÓÃÅäÖÃÎÄ¼ş", result);
+    if (result) showResultNotice("é€šç”¨é…ç½®æ–‡ä»¶", result);
     return result && isSuccessStatus(result.status) ? result : null;
   };
 
   const testRelayProfile = async (profile: RelayProfile) => {
     const result = await run(() => call<RelayProfileTestResult>("test_relay_profile", { profile }));
-    if (result) showNotice("Ä£ĞÍ²âÊÔ", result.message, result.status);
+    if (result) showNotice("ä¾›åº”å•†æµ‹è¯•", result.message, result.status);
   };
 
   const fetchRelayProfileModels = async (profile: RelayProfile) => {
     const result = await run(() => call<RelayProfileModelsResult>("fetch_relay_profile_models", { profile }));
-    if (result) showNotice("Ä£ĞÍÁĞ±í", result.message, result.status);
+    if (result) showNotice("æ¨¡å‹åˆ—è¡¨", result.message, result.status);
     return result && isSuccessStatus(result.status) ? result.models : null;
   };
 
@@ -1156,24 +1263,24 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
     const switched = await clearRelayInjection(true);
     if (!switched) return;
     const result = await saveLaunchMode("relay", true);
-    if (result) showNotice("¹Ù·½µÇÂ¼Ä£Ê½", "ÒÑÇĞ»Ø¹Ù·½µÇÂ¼£»Ò³ÃæÔöÇ¿ÒÑÉèÎª¼æÈİÔöÇ¿¡£", result.status);
+    if (result) showNotice("å®˜æ–¹ç™»å½•æ¨¡å¼", "å·²åˆ‡å›å®˜æ–¹ç™»å½•ï¼›é¡µé¢å¢å¼ºå·²è®¾ä¸ºå…¼å®¹å¢å¼ºã€‚", result.status);
   };
 
   const switchPureApiMode = async () => {
     const switched = await applyPureApiInjection(true);
     if (!switched) return;
     const result = await saveLaunchMode("patch", true);
-    if (result) showNotice("´¿ API Ä£Ê½", "ÒÑÇĞ»»µ½´¿ API£»Ò³ÃæÔöÇ¿ÒÑÉèÎªÍêÕûÔöÇ¿¡£", result.status);
+    if (result) showNotice("çº¯ API æ¨¡å¼", "å·²åˆ‡æ¢åˆ°çº¯ APIï¼›é¡µé¢å¢å¼ºå·²è®¾ä¸ºå®Œæ•´å¢å¼ºã€‚", result.status);
   };
 
   const switchRelayProfile = async (next: BackendSettings, previousActiveRelayId = settingsForm.activeRelayId) => {
     if (relaySwitching) {
-      showNotice("Ä£ĞÍÇĞ»»ÖĞ", "ÉÏÒ»´ÎÇĞ»»»¹Ã»ÓĞÍê³É£¬ÇëÉÔºóÔÙÊÔ¡£", "failed");
+      showNotice("ä¾›åº”å•†åˆ‡æ¢ä¸­", "ä¸Šä¸€æ¬¡åˆ‡æ¢è¿˜æ²¡æœ‰å®Œæˆï¼Œè¯·ç¨åå†è¯•ã€‚", "failed");
       return;
     }
     let switchSettings = normalizeSettings(next);
     if (!switchSettings.relayProfilesEnabled) {
-      showNotice("Ä£ĞÍÅäÖÃÒÑ¹Ø±Õ", "µ±Ç°²»»áĞ´Èë Codex config.toml / auth.json¡£´ò¿ªÄ£ĞÍÅäÖÃ×Ü¿ª¹ØºóÔÙÇĞ»»¡£", "failed");
+      showNotice("ä¾›åº”å•†é…ç½®å·²å…³é—­", "å½“å‰ä¸ä¼šå†™å…¥ Codex config.toml / auth.jsonã€‚æ‰“å¼€ä¾›åº”å•†é…ç½®æ€»å¼€å…³åå†åˆ‡æ¢ã€‚", "failed");
       return;
     }
     const targetBeforeSnapshot = activeRelayProfile(switchSettings);
@@ -1191,14 +1298,18 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
         targetRelayName: selectedBeforeSave.name,
         error: validationError,
       });
-      showNotice("Ä£ĞÍÅäÖÃ¿ÉÄÜ²»ÕıÈ·", validationError, "failed");
+      showNotice("ä¾›åº”å•†é…ç½®å¯èƒ½ä¸æ­£ç¡®", validationError, "failed");
       return;
     }
+    switchSettings = await snapshotActiveRelayFilesBeforeSwitch(switchSettings, previousActiveRelayId);
+    const selectedAfterSave = activeRelayProfile(switchSettings);
+    const command = relayProfileSwitchCommand(selectedAfterSave);
 
     logDiagnostic("switchRelayProfile.apply_start", {
-      targetRelayId: selectedBeforeSave.id,
-      targetRelayName: selectedBeforeSave.name,
+      targetRelayId: selectedAfterSave.id,
+      targetRelayName: selectedAfterSave.name,
       previousActiveRelayId,
+      command,
     });
     setRelaySwitching(true);
     try {
@@ -1209,7 +1320,7 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
       );
       if (!result) {
         logDiagnostic("switchRelayProfile.apply_no_result", {
-          targetRelayId: selectedBeforeSave.id,
+          targetRelayId: selectedAfterSave.id,
         });
         return;
       }
@@ -1230,12 +1341,12 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
       await refreshRelayFiles(true);
       if (!isSuccessStatus(result.status)) {
         logDiagnostic("switchRelayProfile.apply_failed", {
-          targetRelayId: selectedBeforeSave.id,
+          targetRelayId: selectedAfterSave.id,
           status: result.status,
           message: result.message,
           activeRelayId: selectedSettings.activeRelayId,
         });
-        showNotice("Ä£ĞÍÇĞ»»", result.message, result.status);
+        showNotice("ä¾›åº”å•†åˆ‡æ¢", result.message, result.status);
         return;
       }
       const currentSelected = activeRelayProfile(selectedSettings);
@@ -1244,27 +1355,45 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
         launchMode: selectedSettings.launchMode,
         status: result.status,
       });
-      showNotice("Ä£ĞÍÇĞ»»", relayProfileModeSwitchedText(currentSelected), result.status);
+      showNotice("ä¾›åº”å•†åˆ‡æ¢", relayProfileModeSwitchedText(currentSelected), result.status);
     } finally {
       setRelaySwitching(false);
     }
+  };
+
+  const snapshotActiveRelayFilesBeforeSwitch = async (
+    next: BackendSettings,
+    previousActiveRelayId: string,
+  ): Promise<BackendSettings> => {
+    const profileId = previousActiveRelayId.trim();
+    if (!profileId) return next;
+    const result = await run(() =>
+      call<SettingsBackfillResult>("backfill_relay_profile_from_live", {
+        request: { settings: next, profileId },
+      }),
+    );
+    if (!result) return next;
+    const normalized = normalizeSettings(result.settings);
+    if (!isSuccessStatus(result.status)) {
+      showNotice("ä¾›åº”å•†åˆ‡æ¢", result.message, result.status);
+      return next;
+    }
+    return normalized;
   };
 
   const copyText = async (text: string, message: string) => {
     try {
       await navigator.clipboard.writeText(text);
     } catch (error) {
-      showNotice("¸´ÖÆÊ§°Ü", stringifyError(error), "failed");
+      showNotice("å¤åˆ¶å¤±è´¥", stringifyError(error), "failed");
     }
   };
+
   const openExternalUrl = async (url: string) => {
-    try {
-      const result = await run(() => call<CommandResult<Record<string, unknown>>>("open_external_url", { url }));
-      if (result && result.status === "ok") {
-        return;
-      }
-    } catch (_) {}
-    window.open(url, "_blank");
+    const result = await run(() => call<CommandResult<Record<string, unknown>>>("open_external_url", { url }));
+    if (result) {
+      showResultNotice("æ‰“å¼€é“¾æ¥", result, { silentSuccess: true });
+    }
   };
 
   const showNotice = (title: string, message: string, status?: Status) => {
@@ -1292,27 +1421,17 @@ const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus"
       await refreshOverview(true);
       await refreshSettings(true);
       await refreshRelay(true);
+      await refreshEnvConflicts(true);
       await refreshProviderSyncTargets(true);
+      await checkPluginMarketplacePrompt();
     })();
   }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.classList.toggle("light", theme === "light");
-    (async () => {
-      try { await getCurrentWindow().setTheme(theme == "dark" ? "dark" : "light"); } catch (_) {}
-    })();
+    window.localStorage.setItem("codex-plus-theme", theme);
   }, [theme]);
-
-const minimize = async () => {
-  try { await getCurrentWindow().minimize(); } catch (_) {}
-};
-const maximize = async () => {
-  try { await getCurrentWindow().toggleMaximize(); } catch (_) {}
-};
-const closeWindow = async () => {
-  try { await getCurrentWindow().close(); } catch (_) {}
-};
 
   const saveCodexAppPath = async (appPath: string) => {
     const next = { ...settingsForm, codexAppPath: appPath };
@@ -1333,6 +1452,8 @@ const closeWindow = async () => {
       launch,
       restart,
       repairBackend,
+      repairPluginMarketplace,
+      checkPluginMarketplacePrompt,
       installEntrypoints,
       uninstallEntrypoints,
       repairShortcuts,
@@ -1342,30 +1463,31 @@ const closeWindow = async () => {
       saveSettingsValue,
       refreshSettings,
       resetSettings,
+      resetImageOverlaySettings,
       chooseCodexAppPath: async (mode: "folder" | "file") => {
         let selected: unknown;
         try {
           selected = await open(
             mode === "folder"
-              ? { directory: true, multiple: false, title: "Ñ¡Ôñ Codex Ó¦ÓÃÄ¿Â¼" }
+              ? { directory: true, multiple: false, title: "é€‰æ‹© Codex åº”ç”¨ç›®å½•" }
               : {
                   directory: false,
                   multiple: false,
-                  title: "Ñ¡Ôñ Codex.exe »ò Codex.app",
-                  filters: [{ name: "Codex Ó¦ÓÃ", extensions: ["exe", "app"] }],
+                  title: "é€‰æ‹© Codex.exe æˆ– Codex.app",
+                  filters: [{ name: "Codex åº”ç”¨", extensions: ["exe", "app"] }],
                 },
           );
         } catch (error) {
           // Surface plugin failures (e.g. missing capability permission) so the
-          // buttons no longer appear unresponsive ¡ª see #345.
+          // buttons no longer appear unresponsive â€” see #345.
           const message = error instanceof Error ? error.message : String(error);
-          showNotice("Codex Ó¦ÓÃÂ·¾¶", `´ò¿ªÑ¡ÔñÆ÷Ê§°Ü£º${message}`, "failed");
+          showNotice("Codex åº”ç”¨è·¯å¾„", `æ‰“å¼€é€‰æ‹©å™¨å¤±è´¥ï¼š${message}`, "failed");
           return;
         }
         if (typeof selected === "string" && selected.trim()) {
           const result = await saveCodexAppPath(selected.trim());
           if (result) {
-            showNotice("Codex Ó¦ÓÃÂ·¾¶", "Ó¦ÓÃÂ·¾¶ÒÑ±£´æ£¬Ö®ºóÆô¶¯»á×Ô¶¯¸´ÓÃ¡£", result.status);
+            showNotice("Codex åº”ç”¨è·¯å¾„", "åº”ç”¨è·¯å¾„å·²ä¿å­˜ï¼Œä¹‹åå¯åŠ¨ä¼šè‡ªåŠ¨å¤ç”¨ã€‚", result.status);
           }
         }
       },
@@ -1376,7 +1498,7 @@ const closeWindow = async () => {
           setSettings(result);
           setSettingsForm(normalizeSettings(result.settings));
           setLaunchForm((current) => ({ ...current, appPath: "" }));
-          showNotice("Codex Ó¦ÓÃÂ·¾¶", "ÒÑÇå³ı±£´æÂ·¾¶£¬ºóĞøÆô¶¯»á»Øµ½×Ô¶¯Ì½²â¡£", result.status);
+          showNotice("Codex åº”ç”¨è·¯å¾„", "å·²æ¸…é™¤ä¿å­˜è·¯å¾„ï¼Œåç»­å¯åŠ¨ä¼šå›åˆ°è‡ªåŠ¨æ¢æµ‹ã€‚", result.status);
           await refreshOverview(true);
         }
       },
@@ -1386,12 +1508,12 @@ const closeWindow = async () => {
           selected = await open({
             directory: false,
             multiple: false,
-            title: "Ñ¡Ôñ¸²¸ÇÍ¼Æ¬",
-            filters: [{ name: "Í¼Æ¬", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"] }],
+            title: "é€‰æ‹©è¦†ç›–å›¾ç‰‡",
+            filters: [{ name: "å›¾ç‰‡", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"] }],
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          showNotice("Í¼Æ¬¸²¸Ç²ã", `´ò¿ªÑ¡ÔñÆ÷Ê§°Ü£º${message}`, "failed");
+          showNotice("å›¾ç‰‡è¦†ç›–å±‚", `æ‰“å¼€é€‰æ‹©å™¨å¤±è´¥ï¼š${message}`, "failed");
           return;
         }
         if (typeof selected === "string" && selected.trim()) {
@@ -1405,12 +1527,12 @@ const closeWindow = async () => {
       saveManualCodexAppPath: async () => {
         const appPath = launchForm.appPath.trim();
         if (!appPath) {
-          showNotice("Codex Ó¦ÓÃÂ·¾¶", "ÇëÏÈÌîĞ´»òÑ¡ÔñÓ¦ÓÃÂ·¾¶¡£", "failed");
+          showNotice("Codex åº”ç”¨è·¯å¾„", "è¯·å…ˆå¡«å†™æˆ–é€‰æ‹©åº”ç”¨è·¯å¾„ã€‚", "failed");
           return;
         }
         const result = await saveCodexAppPath(appPath);
         if (result) {
-          showNotice("Codex Ó¦ÓÃÂ·¾¶", "Ó¦ÓÃÂ·¾¶ÒÑ±£´æ£¬Ö®ºóÆô¶¯»á×Ô¶¯¸´ÓÃ¡£", result.status);
+          showNotice("Codex åº”ç”¨è·¯å¾„", "åº”ç”¨è·¯å¾„å·²ä¿å­˜ï¼Œä¹‹åå¯åŠ¨ä¼šè‡ªåŠ¨å¤ç”¨ã€‚", result.status);
         }
       },
       syncProvidersNow,
@@ -1424,8 +1546,13 @@ const closeWindow = async () => {
       },
       refreshRelay,
       refreshRelayFiles,
+      refreshEnvConflicts,
+      removeEnvConflicts,
+      refreshCcsProviders,
+      importCcsProviders,
       refreshLiveContextEntries,
       syncLiveContextEntries,
+      refreshAds,
       refreshScriptMarket,
       installMarketScript,
       setUserScriptEnabled,
@@ -1452,14 +1579,14 @@ const closeWindow = async () => {
       refreshLogs,
       refreshDiagnostics,
       showMessage: async (title: string, message: string, status?: Status) => showNotice(title, message, status),
-      copyLogs: () => copyText(logs?.text ?? "", "ÈÕÖ¾ÒÑ¸´ÖÆ¡£"),
-      copyDiagnostics: () => copyText(diagnostics?.report ?? "", "Õï¶Ï±¨¸æÒÑ¸´ÖÆ¡£"),
-      goLogs: () => {},
+      copyLogs: () => copyText(logs?.text ?? "", "æ—¥å¿—å·²å¤åˆ¶ã€‚"),
+      copyDiagnostics: () => copyText(diagnostics?.report ?? "", "è¯Šæ–­æŠ¥å‘Šå·²å¤åˆ¶ã€‚"),
+      goLogs: () => navigate("about"),
       checkHealth: async () => {
         await refreshOverview(true);
         await refreshRelay(true);
         await refreshWatcher(true);
-        showNotice("¼ì²éÍê³É", "ÒÑË¢ĞÂ Codex Ó¦ÓÃ¡¢Èë¿ÚºÍ Watcher ×´Ì¬¡£", "ok");
+        showNotice("æ£€æŸ¥å®Œæˆ", "å·²åˆ·æ–° Codex åº”ç”¨ã€å…¥å£å’Œ Watcher çŠ¶æ€ã€‚", "ok");
       },
       installWatcher: () => watcherAction("install_watcher"),
       uninstallWatcher: () => watcherAction("uninstall_watcher"),
@@ -1467,28 +1594,33 @@ const closeWindow = async () => {
       disableWatcher: () => watcherAction("disable_watcher"),
       toggleTheme: () => setTheme((current) => (current === "dark" ? "light" : "dark")),
     }),
+    [route, launchForm, settingsForm, settings, removeOwnedData, update, logs, diagnostics, theme, relayFiles, localSessions, zedRemoteProjects, selectedProviderSyncTarget, envConflicts, ccsProviders],
   );
   const hasUpdate = update?.updateAvailable === true;
 
   return (
     <div className={`shell ${theme}`}>
-      <header className="titlebar" data-tauri-drag-region>
-        <span className="titlebar-title">LDCodex</span>
-        <div className="titlebar-controls">
-          <button className="titlebar-btn" onClick={(e) => { e.stopPropagation(); minimize(); }} title="×îĞ¡»¯">_</button>
-          <button className="titlebar-btn" onClick={(e) => { e.stopPropagation(); maximize(); }} title="×î´ó»¯">&#x25A1;</button>
-          <button className="titlebar-btn titlebar-close" onClick={(e) => { e.stopPropagation(); closeWindow(); }} title="¹Ø±Õ">&#x2A2F;</button>
-        </div>
-      </header>
       <aside className="sidebar">
-
         <div className="brand">
-          <div className="brand-mark"><img src="/logo.png" alt="LDCodex" className="brand-logo" style={{ background: "transparent" }} /></div>
+          <div className="brand-mark"><img src="/logo.png" alt="LD" style={{width:32,height:32}} /></div>
           <div className="brand-copy">
             <div className="brand-title-row">
               <div className="brand-title">LDCodex</div>
+              {hasUpdate ? (
+                <button
+                  className="update-dot"
+                  onClick={() => {
+                    setRoute("about");
+                    void checkUpdate(false);
+                  }}
+                  title={`å‘ç°æ–°ç‰ˆæœ¬ ${update?.latestVersion ?? ""}`}
+                  type="button"
+                >
+                  <CircleArrowUp className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
             </div>
-            <div className="brand-subtitle">¹ÜÀí¿ØÖÆÌ¨</div>
+            <div className="brand-subtitle">ç®¡ç†æ§åˆ¶å°</div>
           </div>
         </div>
         <nav className="nav">
@@ -1506,15 +1638,11 @@ const closeWindow = async () => {
                 <Icon className="h-4 w-4" aria-hidden="true" />
               </span>
               <span className="nav-label">{item.label}</span>
+              {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
             </button>
           );
           })}
         </nav>
-        <div className="sidebar-footer">
-          <div className="sidebar-footer-brand"><svg className="sidebar-footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><div className="sidebar-footer-brand-text"><span onClick={() => actions.openExternalUrl("https://Dicad.cn")} className="sidebar-footer-link"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Dicad.cn</span><div className="sidebar-footer-text">AI¸³ÄÜ¹¤³ÌÉè¼Æ</div><div className="sidebar-footer-en">LET IMAGINATION BECOME REALITY</div></div></div>
-
-
-
       </aside>
       <main className="workspace">
         <header className="topbar" key={`topbar-${route}`}>
@@ -1526,24 +1654,25 @@ const closeWindow = async () => {
             <Button
               onClick={actions.toggleTheme}
               size="icon"
-              title={theme === "dark" ? "ÇĞ»»µ½Ç³É«" : "ÇĞ»»µ½ÉîÉ«"}
+              title={theme === "dark" ? "åˆ‡æ¢åˆ°æµ…è‰²" : "åˆ‡æ¢åˆ°æ·±è‰²"}
               variant="outline"
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-
-            <Button onClick={() => void actions.restart()} title="ÖØÆô LDCodex" variant="outline">
+            </Button>
+            <Button onClick={() => void actions.restart()} title="é‡å¯ Codex++" variant="outline">
               <Rocket className="h-4 w-4" />
-              ÖØÆô LDCodex
-
-            <Button onClick={() => void actions.refreshCurrent()} size="icon" title="Ë¢ĞÂµ±Ç°Ò³Ãæ" variant="outline">
+              é‡å¯ Codex++
+            </Button>
+            <Button onClick={() => void actions.refreshCurrent()} size="icon" title="åˆ·æ–°å½“å‰é¡µé¢" variant="outline">
               <RefreshCw className="h-4 w-4" />
-
+            </Button>
           </div>
         </header>
         <section className="screen" key={route}>
           {route === "overview" ? (
             <OverviewScreen
               overview={overview}
+              pluginMarketplaceProgress={pluginMarketplaceProgress}
               actions={actions}
             />
           ) : null}
@@ -1551,11 +1680,17 @@ const closeWindow = async () => {
             <RelayScreen
               settings={settings}
               relayFiles={relayFiles}
+              envConflicts={envConflicts}
+              ccsProviders={ccsProviders}
               form={settingsForm}
               onFormChange={setSettingsForm}
               actions={actions}
             />
           ) : null}
+          {route === "proxy" ? (
+            <ProxyScreen overview={overview} actions={actions} settings={settings} />
+          ) : null}
+
           {route === "sessions" ? (
             <SessionsScreen
               settings={settings}
@@ -1578,29 +1713,11 @@ const closeWindow = async () => {
             />
           ) : null}
           {route === "enhance" ? (
-            <EnhanceScreen form={settingsForm} onFormChange={setSettingsForm} actions={actions} />
-          ) : null}
-
-
-          {route === "maintenance" ? (
-            <MaintenanceScreen
-              overview={overview}
-              watcher={watcher}
-              settings={settings}
-              launchForm={launchForm}
-              onLaunchFormChange={setLaunchForm}
-              removeOwnedData={removeOwnedData}
-              onRemoveOwnedDataChange={setRemoveOwnedData}
+            <EnhanceScreen
+              form={settingsForm}
+              pluginMarketplaceProgress={pluginMarketplaceProgress}
+              onFormChange={setSettingsForm}
               actions={actions}
-            />
-          ) : null}
-          {route === "proxy" ? (
-            <ProxyScreen
-              overview={overview}
-              launchForm={launchForm}
-              onLaunchFormChange={setLaunchForm}
-              actions={actions}
-              settings={settings}
             />
           ) : null}
           {route === "about" ? <AboutScreen overview={overview} update={update} logs={logs} diagnostics={diagnostics} actions={actions} /> : null}
@@ -1614,6 +1731,14 @@ const closeWindow = async () => {
           key={`${notice.title}-${notice.message}-${notice.status ?? ""}`}
           notice={notice}
           onClose={() => setNotice(null)}
+        />
+      ) : null}
+      {pluginMarketplacePrompt ? (
+        <PluginMarketplacePromptDialog
+          progress={pluginMarketplaceProgress}
+          status={pluginMarketplacePrompt}
+          onClose={() => setPluginMarketplacePrompt(null)}
+          onRepair={() => void actions.repairPluginMarketplace()}
         />
       ) : null}
     </div>
@@ -1634,6 +1759,7 @@ type Actions = {
   saveSettingsValue: (settings: BackendSettings, silent?: boolean) => Promise<void>;
   refreshSettings: (silent?: boolean) => Promise<BackendSettings | null>;
   resetSettings: () => Promise<void>;
+  resetImageOverlaySettings: () => Promise<void>;
   chooseCodexAppPath: (mode: "folder" | "file") => Promise<void>;
   clearCodexAppPath: () => Promise<void>;
   chooseImageOverlayPath: () => Promise<void>;
@@ -1644,17 +1770,17 @@ type Actions = {
   setLaunchMode: (launchMode: LaunchMode) => Promise<void>;
   refreshRelay: () => Promise<void>;
   refreshRelayFiles: () => Promise<RelayFilesResult | null>;
+  refreshEnvConflicts: (silent?: boolean) => Promise<EnvConflictsResult | null>;
+  removeEnvConflicts: (names: string[]) => Promise<void>;
+  refreshCcsProviders: (silent?: boolean) => Promise<CcsProvidersResult | null>;
+  importCcsProviders: () => Promise<void>;
   refreshLiveContextEntries: () => Promise<LiveContextEntriesResult | null>;
   syncLiveContextEntries: (settings: BackendSettings, silent?: boolean) => Promise<LiveContextEntriesResult | null>;
+  refreshAds: () => Promise<void>;
   refreshScriptMarket: () => Promise<void>;
   installMarketScript: (id: string) => Promise<void>;
-  setUserScriptEnabled: (key: string, enabled: boolean) => Promise<void>;
-  deleteUserScript: (key: string) => Promise<void>;
   refreshLocalSessions: () => Promise<LocalSessionsResult | null>;
   deleteLocalSession: (session: LocalSession) => Promise<void>;
-  refreshZedRemoteProjects: () => Promise<ZedRemoteProjectsResult | null>;
-  openZedRemoteProject: (project: ZedRemoteProject, strategy?: ZedOpenStrategy) => Promise<void>;
-  forgetZedRemoteProject: (project: ZedRemoteProject) => Promise<void>;
   openExternalUrl: (url: string) => Promise<void>;
   applyRelayInjection: () => Promise<boolean>;
   applyPureApiInjection: () => Promise<boolean>;
@@ -1688,6 +1814,246 @@ type Actions = {
   checkHealth: () => Promise<void>;
 };
 
+type MobileRelayRoomStatus = {
+  room: string;
+  hostOnline: boolean;
+  clientOnline: boolean;
+  connections: number;
+  ageSeconds: number;
+  forwardedMessages: number;
+  forwardedBytes: number;
+};
+
+type MobileRelayStatus = {
+  status: string;
+  service: string;
+  version: string;
+  uptimeSeconds: number;
+  rooms: number;
+  activeConnections: number;
+  totalConnections: number;
+  forwardedMessages: number;
+  forwardedBytes: number;
+  roomDetails: MobileRelayRoomStatus[];
+};
+
+function MobileControlScreen({
+  form,
+  onFormChange,
+  actions,
+}: {
+  form: BackendSettings;
+  onFormChange: (value: BackendSettings) => void;
+  actions: Actions;
+}) {
+  const [serverStatuses, setServerStatuses] = useState<Record<string, MobileRelayStatus | null>>({});
+  const [statusMessage, setStatusMessage] = useState("å°šæœªåˆ·æ–°");
+  const [loadingStatus, setLoadingStatus] = useState(false);
+  const mobileUrl = mobileRelayShareUrl(form);
+  const selectedServerId =
+    mobileRelayServers.find((server) => server.url === form.mobileControlRelayUrl)?.id || mobileRelayServers[0].id;
+  const selectedServer = mobileRelayServers.find((server) => server.id === selectedServerId) ?? mobileRelayServers[0];
+  const selectedStatus = serverStatuses[selectedServer.id] ?? null;
+  const serverCapacity = selectedServer?.capacity ?? 100;
+  const serverLoad = selectedStatus?.activeConnections ?? 0;
+  const saveMobileSettings = async (next: BackendSettings, silent = true) => {
+    onFormChange(next);
+    await actions.saveSettingsValue(next, silent);
+  };
+  const selectRelayServer = (serverId: string) => {
+    const server = mobileRelayServers.find((item) => item.id === serverId);
+    if (!server) return;
+    onFormChange({ ...form, mobileControlRelayUrl: server.url });
+  };
+  const startAndCopyMobileLink = async () => {
+    const room = form.mobileControlRoom.trim() || randomToken(8);
+    const key = form.mobileControlKey.trim() || randomToken(32);
+    const relayUrl = selectedServer.url;
+    const next = {
+      ...form,
+      mobileControlRelayUrl: relayUrl,
+      mobileControlRoom: room,
+      mobileControlKey: key,
+    };
+    await saveMobileSettings(next, true);
+    const link = mobileRelayShareUrl(next);
+    if (!link) {
+      await actions.showMessage("æ‰‹æœºæ§åˆ¶", "æœåŠ¡å™¨åœ°å€æ— æ•ˆï¼Œæ— æ³•ç”Ÿæˆæ‰‹æœºé“¾æ¥ã€‚", "failed");
+      return;
+    }
+    await actions.launch();
+    try {
+      await navigator.clipboard?.writeText(link);
+      await actions.showMessage("æ‰‹æœºæ§åˆ¶", "å·²å¯åŠ¨å¹¶å¤åˆ¶æ‰‹æœºé“¾æ¥ã€‚");
+    } catch (error) {
+      await actions.showMessage("æ‰‹æœºæ§åˆ¶", `å·²å¯åŠ¨ï¼Œä½†å¤åˆ¶é“¾æ¥å¤±è´¥ï¼š${stringifyError(error)}`, "failed");
+    }
+  };
+  const refreshRelayStatus = async () => {
+    setLoadingStatus(true);
+    const entries = await Promise.all(mobileRelayServers.map(async (server) => {
+      const httpUrl = mobileRelayHttpUrl(server.url);
+      try {
+        const response = await fetch(`${httpUrl}/status`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return [server.id, (await response.json()) as MobileRelayStatus, ""] as const;
+      } catch (error) {
+        return [server.id, null, `${server.label}: ${error instanceof Error ? error.message : "åˆ·æ–°å¤±è´¥"}`] as const;
+      }
+    }));
+    setServerStatuses(Object.fromEntries(entries.map(([id, data]) => [id, data])));
+    const failed = entries.map(([, , error]) => error).filter(Boolean);
+    setStatusMessage(failed.length ? failed.join("ï¼›") : "çŠ¶æ€å·²åˆ·æ–°");
+    setLoadingStatus(false);
+  };
+  useEffect(() => {
+    void refreshRelayStatus();
+  }, []);
+  useEffect(() => {
+    if (!mobileRelayServers.some((server) => server.url === form.mobileControlRelayUrl)) {
+      onFormChange({ ...form, mobileControlRelayUrl: mobileRelayServers[0].url });
+    }
+  }, [form.mobileControlRelayUrl]);
+  return (
+    <>
+      <Panel>
+        <CardHead title="æ‰‹æœºæ§åˆ¶" detail="é€‰æ‹© relay æœåŠ¡å™¨åå¯åŠ¨ï¼Œç³»ç»Ÿä¼šç”Ÿæˆéšæœºæˆ¿é—´å’Œ Keyï¼Œå¹¶å¤åˆ¶æ‰‹æœºå¯ç›´æ¥æ‰“å¼€çš„é“¾æ¥ã€‚" />
+        <CardContent>
+          <div className="mobile-server-grid">
+            {mobileRelayServers.map((server) => {
+              const isActive = selectedServerId === server.id;
+              const itemStatus = serverStatuses[server.id] ?? null;
+              const load = itemStatus?.activeConnections ?? 0;
+              return (
+                <button
+                  className={`mobile-server-card ${isActive ? "active" : ""}`}
+                  key={server.id}
+                  onClick={() => selectRelayServer(server.id)}
+                  type="button"
+                >
+                  <span>
+                    <strong>{server.label}</strong>
+                    <small>{server.url}</small>
+                    <small>{itemStatus ? `åœ¨çº¿ Â· ${itemStatus.rooms} ä¸ªæˆ¿é—´ Â· ${formatBytes(itemStatus.forwardedBytes)}` : "æœªè¿æ¥æˆ–æœªåˆ·æ–°"}</small>
+                  </span>
+                  <em>{load}/{server.capacity}</em>
+                </button>
+              );
+            })}
+          </div>
+          <div className="form-row">
+            <Label className="field">
+              <span>å½“å‰æœåŠ¡å™¨</span>
+              <Input readOnly value={selectedServer.url} />
+            </Label>
+            <Label className="field">
+              <span>å®¹é‡</span>
+              <Input
+                readOnly
+                value={`${serverLoad}/${serverCapacity}`}
+              />
+            </Label>
+          </div>
+          <Toolbar>
+            <Button onClick={() => void startAndCopyMobileLink()} type="button">
+              <Rocket className="h-4 w-4" />
+              å¯åŠ¨å¹¶å¤åˆ¶æ‰‹æœºé“¾æ¥
+            </Button>
+            <Button
+              onClick={() => void saveMobileSettings({
+                ...form,
+                mobileControlEnabled: true,
+                mobileControlRoom: randomToken(8),
+                mobileControlKey: randomToken(32),
+              }, false)}
+              type="button"
+              variant="secondary"
+            >
+              <KeyRound className="h-4 w-4" />
+              é‡æ–°ç”Ÿæˆ Token
+            </Button>
+            <Button onClick={() => void refreshRelayStatus()} type="button" variant="secondary">
+              <RefreshCw className="h-4 w-4" />
+              {loadingStatus ? "æ­£åœ¨åˆ·æ–°" : "åˆ·æ–°æœåŠ¡å™¨çŠ¶æ€"}
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="æ‰‹æœºå…¥å£" detail="å¤åˆ¶å‡ºçš„é“¾æ¥åŒ…å«éšæœºæˆ¿é—´å’Œ Keyï¼›relay æœåŠ¡å™¨åªèƒ½çœ‹åˆ°æˆ¿é—´ã€è¿æ¥æ•°å’Œæµé‡ç»Ÿè®¡ã€‚" />
+        <CardContent>
+          <div className="relay-file-panel">
+            <div className="relay-file-head">
+              <div>
+                <strong>{mobileUrl || "æœªç”Ÿæˆæ‰‹æœºå…¥å£"}</strong>
+                <span>{mobileUrl ? "æ‰‹æœºæ‰“å¼€åä¼šè‡ªåŠ¨å¡«å…¥æˆ¿é—´å’Œ Key å¹¶å°è¯•è¿æ¥ã€‚" : "é€‰æ‹©æœåŠ¡å™¨å¹¶å¯åŠ¨åä¼šç”Ÿæˆæ‰‹æœºå…¥å£ã€‚"}</span>
+              </div>
+              {mobileUrl ? (
+                <Button
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(mobileUrl);
+                    void actions.showMessage("æ‰‹æœºå…¥å£", "å·²å¤åˆ¶æ‰‹æœºå…¥å£åœ°å€ã€‚");
+                  }}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  <Copy className="h-4 w-4" />
+                  å¤åˆ¶
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="æœåŠ¡å™¨çŠ¶æ€" detail={statusMessage} />
+        <CardContent>
+          {selectedStatus ? (
+            <>
+              <div className="health-grid">
+                <div className="health-item ok">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <div>
+                    <strong>åœ¨çº¿è¿æ¥</strong>
+                    <span>{selectedStatus.activeConnections} ä¸ªåœ¨çº¿è¿æ¥ï¼Œç´¯è®¡ {selectedStatus.totalConnections} æ¬¡è¿æ¥ã€‚</span>
+                  </div>
+                  <Badge status="ok" />
+                </div>
+                <div className="health-item ok">
+                  <Network className="h-4 w-4" />
+                  <div>
+                    <strong>æˆ¿é—´æ•°é‡</strong>
+                    <span>{selectedStatus.rooms} ä¸ªæˆ¿é—´ï¼Œå·²è½¬å‘ {selectedStatus.forwardedMessages} æ¡æ¶ˆæ¯ã€‚</span>
+                  </div>
+                  <Badge status="ok" />
+                </div>
+              </div>
+              <div className="relay-file-grid">
+                {selectedStatus.roomDetails.map((room) => (
+                  <div className="relay-file-panel" key={room.room}>
+                    <div className="relay-file-head">
+                      <div>
+                        <strong>{room.room}</strong>
+                        <span>
+                          host {room.hostOnline ? "åœ¨çº¿" : "ç¦»çº¿"} / client {room.clientOnline ? "åœ¨çº¿" : "ç¦»çº¿"}ï¼Œ
+                          {room.connections} ä¸ªè¿æ¥ï¼Œ{formatBytes(room.forwardedBytes)}
+                        </span>
+                      </div>
+                      <Badge status={room.hostOnline && room.clientOnline ? "ok" : "not_checked"} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="field-hint">ç‚¹å‡»â€œåˆ·æ–°æœåŠ¡å™¨çŠ¶æ€â€æŸ¥çœ‹ relay è´Ÿè½½ã€åœ¨çº¿ç”¨æˆ·å’Œæˆ¿é—´è¿æ¥æƒ…å†µã€‚</p>
+          )}
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
 
 function OverviewScreen({
   overview,
@@ -1699,9 +2065,8 @@ function OverviewScreen({
   const health = healthItems(overview);
   return (
     <>
-
       <Panel>
-        <CardHead title="½¡¿µ¼ì²é" detail="¸ÅÀÀÖ»Õ¹Ê¾¹Ø¼üÎÊÌâ£¬¾ßÌåÅäÖÃÔÚ¶ÔÓ¦Ò³Ãæ´¦Àí" />
+        <CardHead title="å¥åº·æ£€æŸ¥" detail="æ¦‚è§ˆåªå±•ç¤ºå…³é”®é—®é¢˜ï¼Œå…·ä½“é…ç½®åœ¨å¯¹åº”é¡µé¢å¤„ç†" />
         <CardContent>
           <div className="health-grid">
             {health.map((item) => (
@@ -1718,33 +2083,34 @@ function OverviewScreen({
           <Toolbar>
             <Button onClick={() => void actions.checkHealth()}>
               <RefreshCw className="h-4 w-4" />
-              ¼ì²é
+              æ£€æŸ¥
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>
               <Wrench className="h-4 w-4" />
-              ĞŞ¸´Èë¿Ú
+              ä¿®å¤å¿«æ·æ–¹å¼
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairBackend()}>
-              ĞŞ¸´ºó¶Ë
+              ä¿®å¤åç«¯
             </Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="´úÀí·şÎñÆ÷Æô¶¯×´Ì¬" detail="LDbridge ×ª·¢·şÎñÔËĞĞ×´Ì¬" />
+        <CardHead title="ä»£ç†æœåŠ¡å™¨å¯åŠ¨çŠ¶æ€" detail="LDbridge è½¬å‘æœåŠ¡è¿è¡ŒçŠ¶æ€" />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
-              Æô¶¯´úÀí
+              å¯åŠ¨ä»£ç†
             </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002")}>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002/")}>
               <ExternalLink className="h-4 w-4" />
-              ´ò¿ª´úÀíĞÅÏ¢Ò³
+              æ‰“å¼€ä»£ç†ä¿¡æ¯é¡µ
             </Button>
-            <Button variant="secondary" onClick={() => void actions.goLogs()}>
-              ´ò¿ª¹ØÓÚ
+            <Button variant="secondary" onClick={() => void navigate("about")}>
+              <Info className="h-4 w-4" />
+              æ‰“å¼€å…³äº
             </Button>
           </Toolbar>
         </CardContent>
@@ -1753,77 +2119,849 @@ function OverviewScreen({
   );
 }
 
+
 function ProxyScreen({
   overview,
-  launchForm,
-  onLaunchFormChange,
   actions,
   settings,
 }: {
   overview: OverviewResult | null;
-  launchForm: { appPath: string; debugPort: string; helperPort: string };
-  onLaunchFormChange: (next: { appPath: string; debugPort: string; helperPort: string }) => void;
   actions: Actions;
   settings: SettingsResult | null;
 }) {
-  const [proxyRunning, setProxyRunning] = useState(false);
-  const [proxyChecking, setProxyChecking] = useState(true);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const resp = await fetch("http://127.0.0.1:36000/v1/models", { signal: AbortSignal.timeout(2000) });
-        if (!cancelled) setProxyRunning(resp.ok);
-      } catch {
-        if (!cancelled) setProxyRunning(false);
-      }
-      if (!cancelled) setProxyChecking(false);
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  const proxyProfile = settings ? activeRelayProfile(settings.settings) : null;
+  const activeProfile = settings?.settings ? (() => {
+    const relays = settings.settings.relayProfiles || [];
+    const activeId = settings.settings.activeRelayId || "";
+    return relays.find((r: {id: string}) => r.id === activeId) || null;
+  })() : null;
   return (
     <>
       <Panel>
-        <CardHead title="´úÀí·şÎñÆ÷" detail="´úÀí·şÎñ×´Ì¬" />
-        <CardContent>
-          {proxyChecking ? (
-              <div className="hint-line"><RefreshCw className="h-4 w-4" /><span>ÕıÔÚ¼ì²â...</span></div>
-          ) : proxyRunning ? (
-              <div className="hint-line"><ShieldCheck className="h-4 w-4" /><span>´úÀí·şÎñÆ÷ÒÑÔËĞĞ£¬¶Ë¿Ú 36000</span></div>
-          ) : (
-              <div className="hint-line"><PowerOff className="h-4 w-4" /><span>´úÀí·şÎñÆ÷Î´ÔËĞĞ</span></div>
-          )}
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="µ±Ç°Ê¹ÓÃÄ£ĞÍ" detail="Ä£ĞÍÅäÖÃÖĞµÄµ±Ç°Ê¹ÓÃÄ£ĞÍĞÅÏ¢" />
-        <CardContent>
-          {proxyProfile ? (
-            <div className="metric-list">
-              <Metric label="Ä£ĞÍÃû³Æ" value={proxyProfile.name} />
-              <Metric label="APIµØÖ·" value={proxyProfile.baseUrl} />
-              <Metric label="Ä£ĞÍID" value={proxyProfile.model} />
-              <Metric label="ÃÜÔ¿" value={proxyProfile.apiKey ? proxyProfile.apiKey.substring(0, 8) + "..." : "-"} />
-            </div>
-          ) : (
-            <div className="empty">Î´ÅäÖÃµ±Ç°Ê¹ÓÃÄ£ĞÍ£¬ÇëÏÈÔÚÄ£ĞÍÅäÖÃÒ³ÃæÌí¼Ó²¢ÉèÖÃµ±Ç°Ê¹ÓÃÄ£ĞÍ¡£</div>
-          )}
-          {proxyRunning ? (
-            <p className="field-hint">´úÀí·şÎñÆ÷ÒÑÆô¶¯£¬µ±Ç°Ä£ĞÍÒÑÍ¨¹ı LDbridge ×ª·¢·şÎñÕı³£Á¬½Ó¡£</p>
-          ) : (
-            <p className="field-hint">´úÀí·şÎñÆ÷Î´Æô¶¯£¬ÇëÔÚÏÂ·½µã»÷"Æô¶¯´úÀí"°´Å¥Æô¶¯×ª·¢·şÎñ¡£</p>
-          )}
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="Æô¶¯´úÀí" detail="" />
+        <CardHead title="ä»£ç†æœåŠ¡å™¨è¿è¡ŒçŠ¶æ€" detail="æ£€æŸ¥ä»£ç†è½¬å‘æœåŠ¡æ˜¯å¦æ­£å¸¸è¿è¡Œ" />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
-               Æô¶¯´úÀí
+              å¯åŠ¨ä»£ç†
+            </Button>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002/")}>
+              <ExternalLink className="h-4 w-4" />
+              æ‰“å¼€ä»£ç†ä¿¡æ¯é¡µ
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="å½“å‰ä½¿ç”¨æ¨¡å‹ä¿¡æ¯" detail="æ¨¡å‹é…ç½®ä¸­è®¾ä¸ºå½“å‰ä½¿ç”¨çš„æ¨¡å‹" />
+        <CardContent>
+          {activeProfile ? (
+            <div className="metric-list">
+              <Metric label="æ¨¡å‹åç§°" value={activeProfile.model || "-"} />
+              <Metric label="API åœ°å€" value={activeProfile.baseUrl || "-"} />
+            </div>
+          ) : (
+            <p style={{ color: "var(--muted-foreground)" }}>æš‚æ— å½“å‰ä½¿ç”¨çš„æ¨¡å‹ï¼Œè¯·åœ¨æ¨¡å‹é…ç½®ä¸­è®¾ç½®ã€‚</p>
+          )}
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+function RelayScreen({
+  settings: _settings,
+  relayFiles,
+  envConflicts,
+  ccsProviders,
+  form,
+  onFormChange,
+  actions,
+}: {
+  settings: SettingsResult | null;
+  relayFiles: RelayFilesResult | null;
+  envConflicts: EnvConflictsResult | null;
+  ccsProviders: CcsProvidersResult | null;
+  form: BackendSettings;
+  onFormChange: (value: BackendSettings) => void;
+  actions: Actions;
+}) {
+  const normalized = normalizeSettings(form);
+  const [detailProfileId, setDetailProfileId] = useState<string | null>(null);
+  const [newProfileDraft, setNewProfileDraft] = useState<RelayProfile | null>(null);
+  const [thirdPartyImportOpen, setThirdPartyImportOpen] = useState(false);
+  const detailProfile = newProfileDraft || (detailProfileId
+    ? normalized.relayProfiles.find((profile) => profile.id === detailProfileId) || null
+    : null);
+  const isNewProfile = !!newProfileDraft;
+  const saveRelaySettings = async (next: BackendSettings) => {
+    onFormChange(next);
+    await actions.saveSettingsValue(next, true);
+  };
+  const createNewAggregateProfile = () => {
+    const draft = createAggregateRelayProfile(normalized);
+    setDetailProfileId(null);
+    setNewProfileDraft(draft);
+    if (!normalizeAggregateConfig(draft.aggregate, aggregateMemberCandidates(normalized, draft.id)).members.length) {
+      void actions.showMessage(
+        "æ·»åŠ èšåˆä¾›åº”å•†",
+        "å·²æ‰“å¼€èšåˆä¾›åº”å•†è¯¦æƒ…ï¼›è¯·å…ˆæ·»åŠ æˆ–å®Œå–„è‡³å°‘ 1 ä¸ªæ™®é€š API ä¾›åº”å•†çš„ Base URL / Keyï¼Œå†å‹¾é€‰ä¸ºæˆå‘˜ã€‚",
+        "failed",
+      );
+    }
+  };
+  const editRelayProfile = async (profileId: string) => {
+    setNewProfileDraft(null);
+    setDetailProfileId(
+      normalized.relayProfiles.some((item) => item.id === profileId) ? profileId : null,
+    );
+  };
+  useEffect(() => {
+    if (!newProfileDraft && detailProfileId && !normalized.relayProfiles.some((profile) => profile.id === detailProfileId)) {
+      setDetailProfileId(null);
+    }
+  }, [detailProfileId, newProfileDraft, normalized.relayProfiles]);
+  useEffect(() => {
+    if (!newProfileDraft && detailProfileId === normalized.activeRelayId) {
+      void actions.refreshRelayFiles();
+    }
+  }, [detailProfileId, newProfileDraft, normalized.activeRelayId]);
+  const openThirdPartyImport = () => {
+    setThirdPartyImportOpen((open) => !open);
+    if (!ccsProviders) void actions.refreshCcsProviders(true);
+  };
+
+  if (detailProfile) {
+    return (
+      <RelayProfileDetail
+        profile={detailProfile}
+        relayFiles={!isNewProfile && detailProfile.id === normalized.activeRelayId ? relayFiles : null}
+        form={normalized}
+        isNew={isNewProfile}
+        onBack={() => {
+          setNewProfileDraft(null);
+          setDetailProfileId(null);
+        }}
+        onFormChange={saveRelaySettings}
+        onSaved={() => {
+          setNewProfileDraft(null);
+          setDetailProfileId(null);
+        }}
+        actions={actions}
+      />
+    );
+  }
+
+  return (
+    <>
+      <Panel>
+        <CardHead title="ä¾›åº”å•†åˆ—è¡¨" detail={`${normalized.relayProfiles.length} ä¸ªä¾›åº”å•†é…ç½®ï¼›å¯æ‹–åŠ¨æ’åºï¼Œç‚¹ç¼–è¾‘è¿›å…¥è¯¦æƒ…`} />
+        <CardContent>
+          <EnvConflictNotice envConflicts={envConflicts} actions={actions} />
+          <label className="switch-row relay-master-switch">
+            <input
+              checked={normalized.relayProfilesEnabled}
+              onChange={(event) => {
+                const next = { ...normalized, relayProfilesEnabled: event.currentTarget.checked };
+                void saveRelaySettings(next);
+              }}
+              type="checkbox"
+            />
+            <span>
+              <strong>å¯ç”¨ä¾›åº”å•†é…ç½®åˆ‡æ¢</strong>
+              <small>å…³é—­åæœ¬å·¥å…·ä¸ä¼šåœ¨æ‰‹åŠ¨åˆ‡æ¢æ—¶å†™å…¥ Codex çš„ config.toml / auth.jsonï¼›å¯åŠ¨ Codex æ—¶å§‹ç»ˆä¸ä¼šè‡ªåŠ¨æ”¹è¿™äº›æ–‡ä»¶ã€‚</small>
+            </span>
+          </label>
+          <div className="relay-add-row">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setNewProfileDraft(createRelayProfile(normalized));
+                setDetailProfileId(null);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              æ·»åŠ ä¾›åº”å•†
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={createNewAggregateProfile}
+            >
+              <Plus className="h-4 w-4" />
+              æ·»åŠ èšåˆä¾›åº”å•†
+            </Button>
+            <div className="third-party-import">
+              <Button
+                onClick={openThirdPartyImport}
+                variant="secondary"
+              >
+                <Download className="h-4 w-4" />
+                ä»ç¬¬ä¸‰æ–¹å¯¼å…¥
+              </Button>
+              {thirdPartyImportOpen ? (
+                <div className="third-party-import-menu">
+                  <button
+                    disabled={!ccsProviders?.providers.length}
+                    onClick={() => {
+                      setThirdPartyImportOpen(false);
+                      void actions.importCcsProviders();
+                    }}
+                    type="button"
+                  >
+                    <strong>ccswitch</strong>
+                    <span>{ccsProviderSummary(ccsProviders)}</span>
+                  </button>
+                  <button
+                    onClick={() => void actions.refreshCcsProviders()}
+                    type="button"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    åˆ·æ–°åˆ—è¡¨
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <RelayProfileList
+            form={normalized}
+            onEdit={(profileId) => void editRelayProfile(profileId)}
+            onFormChange={saveRelaySettings}
+            disabled={!normalized.relayProfilesEnabled || actions.relaySwitching}
+            actions={actions}
+          />
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+function EnvConflictNotice({
+  envConflicts,
+  actions,
+}: {
+  envConflicts: EnvConflictsResult | null;
+  actions: Actions;
+}) {
+  const conflicts = envConflicts?.conflicts ?? [];
+  if (!conflicts.length) return null;
+  const names = Array.from(new Set(conflicts.map((conflict) => conflict.name))).sort();
+  return (
+    <div className="env-conflict-notice">
+      <div className="env-conflict-icon">
+        <ShieldAlert className="h-4 w-4" />
+      </div>
+      <div className="env-conflict-body">
+        <strong>æ£€æµ‹åˆ° OPENAI ç¯å¢ƒå˜é‡</strong>
+        <p>è¿™äº›å˜é‡å¯èƒ½è¦†ç›–å½“å‰ä¾›åº”å•†å†™å…¥çš„ config.toml / auth.jsonï¼›CODEX_HOME ä¸ä¼šè¢«æ¸…ç†ã€‚</p>
+        <div className="env-conflict-tags">
+          {conflicts.map((conflict) => (
+            <span key={`${conflict.source}-${conflict.name}`}>
+              {conflict.name}
+              <small>{envConflictSourceLabel(conflict.source)}</small>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="env-conflict-actions">
+        <Button onClick={() => void actions.removeEnvConflicts(names)} size="sm">
+          <Trash2 className="h-4 w-4" />
+          åˆ é™¤
+        </Button>
+        <Button onClick={() => void actions.refreshEnvConflicts(false)} size="sm" variant="secondary">
+          <RefreshCw className="h-4 w-4" />
+          æ£€æµ‹
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function envConflictSourceLabel(source: string): string {
+  if (source === "process") return "å½“å‰è¿›ç¨‹";
+  if (source === "user") return "ç”¨æˆ·ç¯å¢ƒ";
+  return source || "ç¯å¢ƒå˜é‡";
+}
+
+function EnhanceScreen({
+  form,
+  pluginMarketplaceProgress,
+  onFormChange,
+  actions,
+}: {
+  form: BackendSettings;
+  pluginMarketplaceProgress: TaskProgress;
+  onFormChange: (value: BackendSettings) => void;
+  actions: Actions;
+}) {
+  const setEnhanceFlag = (key: keyof BackendSettings, value: boolean) => onFormChange({ ...form, [key]: value });
+  const masterEnabled = form.enhancementsEnabled;
+  const patchMode = form.launchMode === "patch";
+  return (
+    <>
+      <Panel>
+        <CardHead title="é¡µé¢åŠŸèƒ½å¢å¼º" detail="ä¼šè¯åˆ é™¤ã€å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨ã€Timeline å’Œç”¨æˆ·è„šæœ¬ç­‰ç•Œé¢èƒ½åŠ›" />
+        <CardContent>
+          <label className="switch-row">
+            <input
+              checked={form.enhancementsEnabled}
+              onChange={(event) => onFormChange({ ...form, enhancementsEnabled: event.currentTarget.checked })}
+              type="checkbox"
+            />
+            <span>
+              <strong>å¯ç”¨ Codex++ é¡µé¢å¢å¼º</strong>
+              <small>å…³é—­åä¼šåœç”¨åˆ é™¤ã€å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨ã€Timelineã€æ’ä»¶ç›¸å…³å’Œèœå•ä½ç½®å¢å¼ºã€‚</small>
+            </span>
+          </label>
+          <label className="switch-row">
+            <input
+              checked={form.computerUseGuardEnabled}
+              onChange={(event) => onFormChange({ ...form, computerUseGuardEnabled: event.currentTarget.checked })}
+              type="checkbox"
+            />
+            <span>
+              <strong>å¯ç”¨ Windows Computer Use Guard</strong>
+              <small>é»˜è®¤å…³é—­ï¼›å¼€å¯åå¯åŠ¨ Codex æ—¶ä¼šè‡ªåŠ¨ä¿ç•™å®˜æ–¹ Computer Use æ’ä»¶æ‰€éœ€çš„ config.tomlã€bundled æ’ä»¶å’Œ notify é…ç½®ã€‚</small>
+            </span>
+          </label>
+          <ModeSelector launchMode={form.launchMode} actions={actions} />
+          {form.launchMode === "relay" ? (
+            <div className="hint-line">
+              <ShieldCheck className="h-4 w-4" />
+              <span>å½“å‰ä¸ºå…¼å®¹å¢å¼ºæ¨¡å¼ï¼Œæ’ä»¶å¸‚åœºè§£é”ã€å¼ºåˆ¶è§£é”å…¥å£å’Œç‰¹æ®Šæ’ä»¶å¼ºåˆ¶å®‰è£…ä¸ä¼šå¯ç”¨ï¼›å…¶ä»–é¡µé¢åŠŸèƒ½ä»å¯ç”¨ã€‚</span>
+            </div>
+          ) : null}
+          <div className="feature-switch-grid">
+            <FeatureToggle title="æ’ä»¶å¸‚åœºè§£é”" detail="API Key æ¨¡å¼ä¸‹æ‰©å±•æ’ä»¶å¸‚åœºè¯·æ±‚ï¼Œå°½é‡æ˜¾ç¤ºå®Œæ•´æ’ä»¶åˆ—è¡¨ï¼›å®˜æ–¹/æ··åˆæ¨¡å¼é€šå¸¸ä¸éœ€è¦ã€‚" checked={form.codexAppPluginMarketplaceUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginMarketplaceUnlock", value)} />
+            <FeatureToggle title="å¼ºåˆ¶è§£é”å…¥å£" detail="æ¢å¤ 1.1.9 çš„å…¥å£è§£é”æ–¹å¼ï¼Œå¼ºåˆ¶æ˜¾ç¤ºå¹¶å¯ç”¨æ’ä»¶å…¥å£ã€‚" checked={form.codexAppPluginEntryUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginEntryUnlock", value)} />
+            <FeatureToggle title="ç‰¹æ®Šæ’ä»¶å¼ºåˆ¶å®‰è£…" detail="è§£é™¤ App unavailable / åº”ç”¨ä¸å¯ç”¨å¯¼è‡´çš„å‰ç«¯å®‰è£…ç¦ç”¨ã€‚" checked={form.codexAppForcePluginInstall} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppForcePluginInstall", value)} />
+            <FeatureToggle title="æ¨¡å‹ç™½åå•è§£é”" detail="ä»ç¯å¢ƒå˜é‡å’Œ config.toml çš„ /v1/models æ‹‰å–æ¨¡å‹å¹¶è¡¥è¿›æ¨¡å‹åˆ—è¡¨ã€‚" checked={form.codexAppModelWhitelistUnlock} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppModelWhitelistUnlock", value)} />
+            <FeatureToggle title="Fast æŒ‰é’®" detail="æ˜¾ç¤ºæœåŠ¡æ¨¡å¼åˆ‡æ¢æŒ‰é’®ï¼›Fast ä»…æ”¯æŒ gpt-5.4 / gpt-5.5ï¼Œå…¶ä»–æ¨¡å‹æŒ‰ Standard å‘é€ã€‚" checked={form.codexAppServiceTierControls} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppServiceTierControls", value)} />
+            <FeatureToggle title="ä¼šè¯åˆ é™¤" detail="åœ¨ä¼šè¯åˆ—è¡¨æ‚¬åœæ˜¾ç¤ºåˆ é™¤æŒ‰é’®ï¼Œå¹¶æ”¯æŒæ’¤é”€ã€‚" checked={form.codexAppSessionDelete} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppSessionDelete", value)} />
+            <FeatureToggle title="Markdown å¯¼å‡º" detail="åœ¨ä¼šè¯åˆ—è¡¨æ˜¾ç¤ºå¯¼å‡ºæŒ‰é’®ï¼Œå¯¼å‡ºå¸¦æ—¶é—´æˆ³çš„ Markdownã€‚" checked={form.codexAppMarkdownExport} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppMarkdownExport", value)} />
+            <FeatureToggle title="ç²˜è´´ä¿®å¤" detail="ä» Word ç­‰å¯Œæ–‡æœ¬ç²˜è´´åˆ° Codex composer æ—¶åªä¿ç•™çº¯æ–‡æœ¬ï¼Œé¿å…è¢«è¯†åˆ«ä¸ºå›¾ç‰‡/æ–‡ä»¶é™„ä»¶ã€‚éœ€é‡å¯ Codex æ‰ç”Ÿæ•ˆã€‚" checked={form.codexAppPasteFix} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPasteFix", value)} />
+            <FeatureToggle title="ä¼šè¯é¡¹ç›®ç§»åŠ¨" detail="æŠŠä¼šè¯ç§»åŠ¨åˆ°æ™®é€šå¯¹è¯æˆ–å…¶ä»–æœ¬åœ°é¡¹ç›®ã€‚" checked={form.codexAppProjectMove} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppProjectMove", value)} />
+            <FeatureToggle title="å¯¹è¯ Timeline" detail="åœ¨å¯¹è¯å³ä¾§æ˜¾ç¤ºç”¨æˆ·æé—®æ—¶é—´çº¿ï¼Œæ”¯æŒæ‘˜è¦å’Œè·³è½¬ã€‚" checked={form.codexAppConversationTimeline} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationTimeline", value)} />
+            <FeatureToggle title="ä¼šè¯ ID æ ‡è¯†" detail="åœ¨ä¾§è¾¹æ ä¼šè¯æ ‡é¢˜å‰æ˜¾ç¤ºçŸ­ ID å’Œ UUIDv7 åˆ›å»ºæ—¶é—´ï¼Œæ–¹ä¾¿å®šä½å†å²ä¼šè¯ã€‚" checked={form.codexAppThreadIdBadge} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadIdBadge", value)} />
+            <FeatureToggle title="å¯¹è¯å±…ä¸­å®½åº¦" detail="æŠŠä¸»å¯¹è¯å’Œè¾“å…¥æ¡†é™åˆ¶åˆ°å›ºå®šæœ€å¤§å®½åº¦ï¼Œé€‚åˆå¤§å±é˜…è¯»ã€‚" checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
+            <FeatureToggle title="åˆ‡æ¢å¯¹è¯ä¿ç•™ä½ç½®" detail="åˆ‡æ¢ thread æ—¶æ¢å¤ä¸Šä¸€æ¬¡æµè§ˆä½ç½®ã€‚" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
+            <FeatureToggle title="Zed Remote open" detail="è¿œç¨‹ SSH æ–‡ä»¶å¼•ç”¨å¯ç›´æ¥ç”¨ Zed Remote Development æ‰“å¼€ã€‚" checked={form.codexAppZedRemoteOpen} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppZedRemoteOpen", value)} />
+            <FeatureToggle title="Zed é¡¹ç›®è®°å½•" detail="ç»´æŠ¤ Codex++ è‡ªå·±çš„è¿œç¨‹é¡¹ç›®æœ€è¿‘åˆ—è¡¨ã€‚" checked={form.zedRemoteProjectRegistryEnabled} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteProjectRegistryEnabled", value)} />
+            <FeatureToggle title="åŒæ­¥ Zed settings" detail="é«˜çº§é€‰é¡¹ï¼Œé»˜è®¤å…³é—­ï¼›å½“å‰å®ç°ä¸ä¸»åŠ¨æ”¹å†™ Zed settingsã€‚" checked={form.zedRemoteSyncToZedSettings} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteSyncToZedSettings", value)} />
+            <FeatureToggle title="Upstream worktree" detail="ä»æœ€æ–° upstream åˆ†æ”¯åˆ›å»º Git worktreeã€‚" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
+            <FeatureToggle title="åŸç”Ÿèœå•æ ä½ç½®" detail="æŠŠ Codex++ èœå•æ’å…¥ Codex é¡¶éƒ¨åŸç”Ÿèœå•æ ã€‚" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
+          </div>
+          <div className="hint-line">
+            <Wrench className="h-4 w-4" />
+            <span>æ–°æœºå™¨æ²¡æœ‰æœ¬åœ°æ’ä»¶å¸‚åœºæ—¶ï¼Œå¯ä» openai/plugins åˆå§‹åŒ–åˆ°å½“å‰ CODEX_HOMEã€‚</span>
+            <Button disabled={pluginMarketplaceProgress.active} variant="secondary" onClick={() => void actions.repairPluginMarketplace()}>
+              {pluginMarketplaceProgress.active ? "æ­£åœ¨ä¿®å¤â€¦" : "ä¿®å¤æ’ä»¶å¸‚åœº"}
+            </Button>
+          </div>
+          <TaskProgressBox progress={pluginMarketplaceProgress} title="æ’ä»¶å¸‚åœºä¿®å¤è¿›åº¦" />
+          <div className="zed-remote-settings">
+            <Field label="Zed é»˜è®¤æ‰“å¼€ç­–ç•¥">
+              <select
+                className="select-input"
+                disabled={!masterEnabled}
+                onChange={(event) => onFormChange({ ...form, zedRemoteOpenStrategy: event.currentTarget.value as ZedOpenStrategy })}
+                value={form.zedRemoteOpenStrategy}
+              >
+                <option value="addToFocusedWorkspace">åŠ å…¥å½“å‰å·¥ä½œåŒº</option>
+                <option value="reuseWindow">å¤ç”¨çª—å£</option>
+                <option value="newWindow">æ–°çª—å£</option>
+                <option value="default">Zed é»˜è®¤è¡Œä¸º</option>
+              </select>
+            </Field>
+          </div>
+          <div className="hint-line">
+            <Info className="h-4 w-4" />
+            <span>å¦‚æœä½¿ç”¨å®˜æ–¹æ¨¡å¼æˆ–å®˜æ–¹æ··å…¥ API æ¨¡å¼ï¼Œé€šå¸¸ä¸éœ€è¦å¼€å¯æ’ä»¶å¸‚åœºè§£é”ã€å¼ºåˆ¶è§£é”å…¥å£å’Œç‰¹æ®Šæ’ä»¶å¼ºåˆ¶å®‰è£…ã€‚</span>
+          </div>
+          <Toolbar>
+            <Button onClick={() => void actions.saveSettings()}>ä¿å­˜å¢å¼ºè®¾ç½®</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+function ZedRemoteScreen({
+  projects,
+  form,
+  onFormChange,
+  actions,
+}: {
+  projects: ZedRemoteProjectsResult | null;
+  form: BackendSettings;
+  onFormChange: (value: BackendSettings) => void;
+  actions: Actions;
+}) {
+  const allProjects = projects?.projects ?? [];
+  const currentProjects = allProjects.filter((project) => project.isCurrent);
+  const currentIds = new Set(currentProjects.map((project) => project.id));
+  const recentProjects = allProjects.filter((project) => !currentIds.has(project.id) && (project.source === "recent" || project.lastOpenedAtMs));
+  const recentIds = new Set(recentProjects.map((project) => project.id));
+  const discoveredProjects = allProjects.filter((project) => !currentIds.has(project.id) && !recentIds.has(project.id));
+  const copyUrl = async (project: ZedRemoteProject) => {
+    try {
+      await navigator.clipboard.writeText(project.url);
+      await actions.showMessage("Zed Remote URL", "ssh:// URL å·²å¤åˆ¶ã€‚", "ok");
+    } catch (error) {
+      await actions.showMessage("å¤åˆ¶å¤±è´¥", stringifyError(error), "failed");
+    }
+  };
+  return (
+    <>
+      <Panel>
+        <CardHead title="Zed è¿œç¨‹é¡¹ç›®" detail={`${allProjects.length} ä¸ª Codex++ å¯è¯†åˆ«é¡¹ç›®ï¼Œé»˜è®¤ç­–ç•¥ï¼š${zedStrategyLabel(form.zedRemoteOpenStrategy)}`} />
+        <CardContent>
+          <div className="metric-list">
+            <Metric label="Current" value={String(currentProjects.length)} />
+            <Metric label="Recent" value={String(recentProjects.length)} />
+            <Metric label="Discovered" value={String(discoveredProjects.length)} />
+          </div>
+          <div className="zed-remote-settings">
+            <Field label="é»˜è®¤æ‰“å¼€ç­–ç•¥">
+              <select
+                className="select-input"
+                onChange={(event) => onFormChange({ ...form, zedRemoteOpenStrategy: event.currentTarget.value as ZedOpenStrategy })}
+                value={form.zedRemoteOpenStrategy}
+              >
+                <option value="addToFocusedWorkspace">åŠ å…¥å½“å‰å·¥ä½œåŒº</option>
+                <option value="reuseWindow">å¤ç”¨çª—å£</option>
+                <option value="newWindow">æ–°çª—å£</option>
+                <option value="default">Zed é»˜è®¤è¡Œä¸º</option>
+              </select>
+            </Field>
+            <label className="switch-row compact">
+              <input
+                checked={form.zedRemoteProjectRegistryEnabled}
+                onChange={(event) => onFormChange({ ...form, zedRemoteProjectRegistryEnabled: event.currentTarget.checked })}
+                type="checkbox"
+              />
+              <span>
+                <strong>è®°å½•æœ€è¿‘æ‰“å¼€</strong>
+                <small>ä¿å­˜åˆ° Codex++ stateï¼Œä¸æ”¹å†™ Zed settingsã€‚</small>
+              </span>
+            </label>
+          </div>
+          <Toolbar>
+            <Button onClick={() => void actions.refreshZedRemoteProjects()}>
+              <RefreshCw className="h-4 w-4" />
+              åˆ·æ–°é¡¹ç›®
+            </Button>
+            <Button variant="secondary" onClick={() => void actions.saveSettingsValue(form, false)}>
+              <Save className="h-4 w-4" />
+              ä¿å­˜ç­–ç•¥
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <ZedRemoteProjectSection title="Current" projects={currentProjects} actions={actions} onCopyUrl={copyUrl} />
+      <ZedRemoteProjectSection title="Recent" projects={recentProjects} actions={actions} onCopyUrl={copyUrl} />
+      <ZedRemoteProjectSection title="Discovered from Codex" projects={discoveredProjects} actions={actions} onCopyUrl={copyUrl} />
+    </>
+  );
+}
+
+function ZedRemoteProjectSection({
+  title,
+  projects,
+  actions,
+  onCopyUrl,
+}: {
+  title: string;
+  projects: ZedRemoteProject[];
+  actions: Actions;
+  onCopyUrl: (project: ZedRemoteProject) => Promise<void>;
+}) {
+  return (
+    <Panel>
+      <CardHead title={title} detail={`${projects.length} ä¸ªé¡¹ç›®`} />
+      <CardContent>
+        {projects.length ? (
+          <div className="zed-remote-project-list">
+            {projects.map((project) => (
+              <div className="zed-remote-project-row" key={project.id}>
+                <div className="zed-remote-project-main">
+                  <div>
+                    <strong>{project.label}</strong>
+                    <span>{zedRemoteHostLabel(project)}</span>
+                  </div>
+                  <code>{project.path}</code>
+                  <small>
+                    {zedRemoteSourceLabel(project.source)}
+                    {project.lastOpenedAtMs ? ` Â· ${formatTime(project.lastOpenedAtMs)}` : ""}
+                  </small>
+                </div>
+                <div className="zed-remote-project-actions">
+                  <Button onClick={() => void actions.openZedRemoteProject(project, "addToFocusedWorkspace")} size="sm">
+                    <ExternalLink className="h-4 w-4" />
+                    åŠ å…¥å½“å‰å·¥ä½œåŒº
+                  </Button>
+                  <Button onClick={() => void actions.openZedRemoteProject(project, "reuseWindow")} size="sm" variant="outline">
+                    å¤ç”¨çª—å£
+                  </Button>
+                  <Button onClick={() => void actions.openZedRemoteProject(project, "newWindow")} size="sm" variant="outline">
+                    æ–°çª—å£
+                  </Button>
+                  <Button onClick={() => void onCopyUrl(project)} size="icon" title="å¤åˆ¶ ssh:// URL" variant="ghost">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  {project.source === "recent" ? (
+                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="ç§»é™¤æœ€è¿‘è®°å½•" variant="ghost">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty">æš‚æ— é¡¹ç›®ã€‚</div>
+        )}
+      </CardContent>
+    </Panel>
+  );
+}
+
+function UserScriptsScreen({ settings, market, actions }: { settings: SettingsResult | null; market: ScriptMarketResult | null; actions: Actions }) {
+  const inventory = settings?.user_scripts;
+  const scripts = inventory?.scripts ?? [];
+  const marketScripts = market?.market.scripts ?? [];
+  const installedCount = marketScripts.filter((script) => script.installed).length;
+  return (
+    <>
+      <Panel>
+        <CardHead title="è„šæœ¬å¸‚åœº" detail={`${marketScripts.length} ä¸ªå¸‚åœºè„šæœ¬ï¼Œå·²å®‰è£… ${installedCount} ä¸ªï¼Œæœ¬åœ°æ•´ä½“ ${inventory?.enabled === false ? "å…³é—­" : "å¼€å¯"}`} />
+        <CardContent>
+          <div className="metric-list">
+            <Metric label="å¸‚åœºçŠ¶æ€" value={market?.market.message ?? "å°šæœªåˆ·æ–°"} />
+            <Metric label="è¿œç¨‹è„šæœ¬" value={`${marketScripts.length} ä¸ª`} />
+            <Metric label="å·²å®‰è£…" value={`${installedCount} ä¸ª`} />
+            <Metric label="æœ¬åœ°æ•´ä½“" value={inventory?.enabled === false ? "å…³é—­" : "å¼€å¯"} />
+          </div>
+          <Toolbar>
+            <Button onClick={() => void actions.refreshScriptMarket()}>
+              <RefreshCw className="h-4 w-4" />
+              åˆ·æ–°å¸‚åœº
+            </Button>
+            <Button onClick={() => void actions.openExternalUrl(SCRIPT_MARKET_REPOSITORY_URL)} variant="secondary">
+              <ExternalLink className="h-4 w-4" />
+              æŠ•ç¨¿
+            </Button>
+            <Button onClick={() => void actions.refreshCurrent()} variant="secondary">
+              <RefreshCw className="h-4 w-4" />
+              åˆ·æ–°æœ¬åœ°
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="å¸‚åœºè„šæœ¬" detail={market?.market.updatedAt ? `æ¸…å•æ›´æ–°æ—¶é—´ï¼š${market.market.updatedAt}` : "ä» GitHub é™æ€æ¸…å•åŠ è½½"} />
+        <CardContent>
+          {marketScripts.length ? (
+            <div className="script-market-grid">
+              {marketScripts.map((script) => (
+                <MarketScriptCard key={script.id} script={script} actions={actions} />
+              ))}
+            </div>
+          ) : (
+            <div className="empty">{market?.status === "failed" ? market.message : "ç‚¹å‡»åˆ·æ–°å¸‚åœºåŠ è½½è¿œç¨‹è„šæœ¬ã€‚"}</div>
+          )}
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="æœ¬åœ°è„šæœ¬" detail="å†…ç½®ã€æ‰‹åŠ¨å’Œå¸‚åœºå®‰è£…è„šæœ¬ï¼›å¯åœ¨è¿™é‡Œå¯åœæˆ–åˆ é™¤ç”¨æˆ·è„šæœ¬" />
+        <CardContent>
+          <div className="table">
+            {scripts.length ? scripts.map((script) => <ScriptRow key={script.key} script={script} actions={actions} />) : <div className="empty">æœªå‘ç°ç”¨æˆ·è„šæœ¬ã€‚</div>}
+          </div>
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+function SessionsScreen({
+  settings,
+  form,
+  sessions,
+  providerSyncProgress,
+  providerSyncTargets,
+  selectedProviderSyncTarget,
+  onFormChange,
+  actions,
+}: {
+  settings: SettingsResult | null;
+  form: BackendSettings;
+  sessions: LocalSessionsResult | null;
+  providerSyncProgress: ProviderSyncProgress;
+  providerSyncTargets: ProviderSyncTargetsResult | null;
+  selectedProviderSyncTarget: string;
+  onFormChange: (value: BackendSettings) => void;
+  actions: Actions;
+}) {
+  const items = sessions?.sessions ?? [];
+  const activeCount = items.filter((item) => !item.archived).length;
+  const archivedCount = items.length - activeCount;
+  return (
+    <>
+      <Panel>
+        <CardHead title="ä¼šè¯ç®¡ç†" detail="è¯»å– Codex æœ¬åœ° SQLite ä¼šè¯åº“ï¼Œä¼šåˆ é™¤æ•°æ®åº“è®°å½•å’Œå¯¹åº” rollout æ–‡ä»¶" />
+        <CardContent>
+          <div className="metric-list">
+            <Metric label="ä¼šè¯æ€»æ•°" value={`${items.length} ä¸ª`} />
+            <Metric label="æœªå½’æ¡£" value={`${activeCount} ä¸ª`} />
+            <Metric label="å·²å½’æ¡£" value={`${archivedCount} ä¸ª`} />
+            <Metric label="æ•°æ®åº“" value={sessions?.dbPath ?? "~/.codex/sqlite/*.db"} />
+          </div>
+          <div className="form-row">
+            <Field label="åŒæ­¥ç›®æ ‡">
+              <select
+                className="select-input"
+                disabled={providerSyncProgress.active || !(providerSyncTargets?.targets ?? []).length}
+                value={selectedProviderSyncTarget}
+                onChange={(event) => actions.setProviderSyncTarget(event.currentTarget.value)}
+              >
+                {(providerSyncTargets?.targets ?? []).map((target) => (
+                  <option key={target.id} value={target.id}>
+                    {target.id}ï¼ˆ{providerSyncTargetLabel(target)}ï¼‰
+                  </option>
+                ))}
+                {!(providerSyncTargets?.targets ?? []).length ? <option value="">å½“å‰é…ç½® provider</option> : null}
+              </select>
+            </Field>
+          </div>
+          <Toolbar>
+            <Button onClick={() => void actions.refreshLocalSessions()}>
+              <RefreshCw className="h-4 w-4" />
+              åˆ·æ–°ä¼šè¯
+            </Button>
+            <Button disabled={providerSyncProgress.active} onClick={() => void actions.syncProvidersNow()} variant="outline">
+              <RefreshCw className="h-4 w-4" />
+              {providerSyncProgress.active ? "æ­£åœ¨ä¿®å¤â€¦" : "ç«‹åˆ»ä¿®å¤å†å²ä¼šè¯"}
+            </Button>
+          </Toolbar>
+          <div className="provider-sync-progress" data-active={providerSyncProgress.active}>
+            <div className="provider-sync-progress-head">
+              <strong>{providerSyncProgress.active ? "æ­£åœ¨ä¿®å¤å†å²ä¼šè¯" : "å†å²ä¼šè¯ä¿®å¤è¿›åº¦"}</strong>
+              <span>{providerSyncProgress.percent}%</span>
+            </div>
+            <div
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={providerSyncProgress.percent}
+              className="provider-sync-progress-bar"
+              role="progressbar"
+            >
+              <div className="provider-sync-progress-fill" style={{ width: `${providerSyncProgress.percent}%` }} />
+            </div>
+            <small>{providerSyncProgress.message}</small>
+          </div>
+          <div className="hint-line">
+            <Info className="h-4 w-4" />
+            <span>åˆ é™¤ä¼šåˆ›å»ºæœ¬åœ°å¤‡ä»½ï¼›å¦‚æœ Codex App æ­£åœ¨ä½¿ç”¨è¯¥ä¼šè¯ï¼Œå»ºè®®å…ˆå…³é—­å¯¹åº”ä¼šè¯çª—å£å†æ“ä½œã€‚</span>
+          </div>
+          <label className="switch-row">
+            <input
+              checked={form.providerSyncEnabled}
+              onChange={(event) => onFormChange({ ...form, providerSyncEnabled: event.currentTarget.checked })}
+              type="checkbox"
+            />
+            <span>
+              <strong>å¯åŠ¨å‰è‡ªåŠ¨ä¿®å¤å†å²ä¼šè¯</strong>
+              <small>å¼€å¯åï¼Œé€šè¿‡ Codex++ å¯åŠ¨ Codex å‰è‡ªåŠ¨æ•´ç†ä¸€æ¬¡æ—§å¯¹è¯çš„å½’å±æ ‡è®°ã€‚</small>
+            </span>
+          </label>
+          <Toolbar>
+            <Button onClick={() => void actions.saveSettings()}>ä¿å­˜è‡ªåŠ¨ä¿®å¤è®¾ç½®</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="æœ¬åœ°ä¼šè¯" detail={items.length ? "æŒ‰æ›´æ–°æ—¶é—´å€’åºæ˜¾ç¤º" : "ç‚¹å‡»åˆ·æ–°ä¼šè¯è¯»å–æœ¬åœ°æ•°æ®åº“"} />
+        <CardContent>
+          {items.length ? (
+            <div className="session-list">
+              {items.map((session) => (
+                <div className="session-row" key={session.id}>
+                  <div className="session-main">
+                    <strong>{session.title || "æœªå‘½åä¼šè¯"}</strong>
+                    <span>{session.id}</span>
+                    <small>{session.cwd || "æœªè®°å½•é¡¹ç›®è·¯å¾„"}</small>
+                  </div>
+                  <div className="session-meta">
+                    <Badge status={session.archived ? "archived" : "ok"} />
+                    <span>{session.modelProvider || "provider æœªè®°å½•"}</span>
+                    <span>{formatTime(session.updatedAtMs ?? 0)}</span>
+                  </div>
+                  <Button variant="outline" onClick={() => void actions.deleteLocalSession(session)}>
+                    <Trash2 className="h-4 w-4" />
+                    åˆ é™¤
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">æœªè¯»å–åˆ°æœ¬åœ°ä¼šè¯ï¼Œæˆ–å½“å‰ SQLite ä¼šè¯åº“ä¸å­˜åœ¨ã€‚</div>
+          )}
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+function RecommendationsScreen({ ads, actions }: { ads: AdsResult | null; actions: Actions }) {
+  const items = (ads?.ads ?? []).filter((ad) => !isExpiredAd(ad));
+  const sponsors = items.filter((ad) => ad.type === "sponsor");
+  const normal = items.filter((ad) => ad.type === "normal");
+  return (
+    <>
+      <Panel>
+        <CardHead title="æ¨èå†…å®¹" detail="ä¸ Codex å†…æ’ä»¶èœå•ä½¿ç”¨åŒä¸€ä¸ªè¿œç«¯å¹¿å‘Šæº" />
+        <CardContent>
+          <div className="recommend-hero">
+            <div>
+              <strong>{ads ? `å·²åŠ è½½ ${items.length} æ¡æ¨è` : "å°šæœªåŠ è½½æ¨èå†…å®¹"}</strong>
+              <span>å†…å®¹æ¥è‡ª LDCodex/Ad-Listï¼Œåˆ†ä¸ºèµåŠ©å•†æ¨èå’Œæ™®é€šæ¨èã€‚</span>
+            </div>
+            <Button onClick={() => void actions.refreshAds()}>
+              <RefreshCw className="h-4 w-4" />
+              åˆ·æ–°æ¨è
+            </Button>
+          </div>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="èµåŠ©å•†æ¨è" detail={`${sponsors.length} æ¡`} />
+        <CardContent>
+          <AdGrid actions={actions} ads={sponsors} empty="æš‚æ— èµåŠ©å•†æ¨èã€‚" />
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="æ™®é€šæ¨è" detail={`${normal.length} æ¡`} />
+        <CardContent>
+          <AdGrid actions={actions} ads={normal} empty="æš‚æ— æ™®é€šæ¨èã€‚" />
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+function MaintenanceScreen({
+  overview,
+  watcher,
+  settings,
+  launchForm,
+  onLaunchFormChange,
+  removeOwnedData,
+  onRemoveOwnedDataChange,
+  actions,
+}: {
+  overview: OverviewResult | null;
+  watcher: WatcherResult | null;
+  settings: SettingsResult | null;
+  launchForm: { appPath: string; debugPort: string; helperPort: string };
+  onLaunchFormChange: (next: { appPath: string; debugPort: string; helperPort: string }) => void;
+  removeOwnedData: boolean;
+  onRemoveOwnedDataChange: (value: boolean) => void;
+  actions: Actions;
+}) {
+  const savedCodexAppPath = settings?.settings.codexAppPath ?? "";
+  return (
+    <>
+      <Panel>
+        <CardHead title="æ£€æŸ¥ä¸ä¿®å¤" detail="æ£€æŸ¥å…¥å£ã€Codex åº”ç”¨å’Œ Watcher çŠ¶æ€" />
+        <CardContent>
+          <div className="status-table">
+            <StatusRow title="Codex åº”ç”¨" status={overview?.codex_app.status} path={overview?.codex_app.path} />
+            <StatusRow title="é™é»˜å¯åŠ¨å…¥å£" status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
+            <StatusRow title="ç®¡ç†æ§åˆ¶å°å…¥å£" status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
+            <StatusRow title="Watcher è‡ªåŠ¨æ¥ç®¡" status={watcher?.enabled ? "ok" : "disabled"} path={watcher?.disabled_flag} />
+          </div>
+          <Toolbar>
+            <Button onClick={() => void actions.checkHealth()}>æ£€æŸ¥</Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>ä¿®å¤å¿«æ·æ–¹å¼</Button>
+            <Button variant="secondary" onClick={() => void actions.repairBackend()}>ä¿®å¤åç«¯</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="å…¥å£ç®¡ç†" detail="å¿«æ·æ–¹å¼å†™å…¥ç³»ç»Ÿå®é™…æ¡Œé¢ä½ç½®ï¼Œä¸ä½¿ç”¨å†™æ­»æ¡Œé¢è·¯å¾„" />
+        <CardContent>
+          <label className="check-row">
+            <input checked={removeOwnedData} onChange={(event) => onRemoveOwnedDataChange(event.currentTarget.checked)} type="checkbox" />
+            <span>å¸è½½æ—¶ç§»é™¤ Codex++ æ‰˜ç®¡æ•°æ®</span>
+          </label>
+          <Toolbar>
+            <Button onClick={() => void actions.installEntrypoints()}>å®‰è£…å…¥å£</Button>
+            <Button variant="secondary" onClick={() => void actions.uninstallEntrypoints()}>å¸è½½å…¥å£</Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>ä¿®å¤å…¥å£</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="è‡ªåŠ¨æ¥ç®¡" detail="Watcher ç”¨äºä¿æŒ Codex++ æ¥ç®¡çŠ¶æ€" />
+        <CardContent>
+          <Toolbar>
+            <Button variant="secondary" onClick={() => void actions.installWatcher()}>å®‰è£… watcher</Button>
+            <Button variant="secondary" onClick={() => void actions.uninstallWatcher()}>ç§»é™¤ watcher</Button>
+            <Button variant="secondary" onClick={() => void actions.enableWatcher()}>å¯ç”¨</Button>
+            <Button variant="secondary" onClick={() => void actions.disableWatcher()}>ç¦ç”¨</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="Codex åº”ç”¨è·¯å¾„" detail="å…å®‰è£…ç‰ˆæˆ–è§£åŒ…ç‰ˆåªéœ€è¦é€‰æ‹©ä¸€æ¬¡ï¼Œä¹‹åé™é»˜å¯åŠ¨ä¼šè‡ªåŠ¨å¤ç”¨" />
+        <CardContent>
+          <div className="status-table">
+            <StatusRow title="ä¿å­˜è·¯å¾„" status={savedCodexAppPath ? "ok" : "not_checked"} path={savedCodexAppPath || null} />
+            <StatusRow title="å½“å‰è¯†åˆ«" status={overview?.codex_app.status} path={overview?.codex_app.path} />
+          </div>
+          <Field label="ä¿å­˜çš„åº”ç”¨è·¯å¾„">
+            <Input
+              value={settings?.settings.codexAppPath ?? ""}
+              placeholder="é€‰æ‹© Codex.exeã€Codex.appã€app ç›®å½•æˆ–è§£åŒ…ç›®å½•"
+              readOnly
+            />
+          </Field>
+          <Toolbar>
+            <Button onClick={() => void actions.chooseCodexAppPath("folder")}>é€‰æ‹©åº”ç”¨ç›®å½•</Button>
+            <Button variant="secondary" onClick={() => void actions.chooseCodexAppPath("file")}>é€‰æ‹© Codex.exe</Button>
+            <Button variant="secondary" onClick={() => void actions.clearCodexAppPath()}>æ¸…é™¤ä¿å­˜è·¯å¾„</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="æ‰‹åŠ¨å¯åŠ¨" detail="åº”ç”¨è·¯å¾„ç•™ç©ºæ—¶ä½¿ç”¨å·²ä¿å­˜è·¯å¾„ï¼›æ²¡æœ‰ä¿å­˜è·¯å¾„æ—¶ä½¿ç”¨è‡ªåŠ¨æ¢æµ‹" />
+        <CardContent>
+          <Field label="åº”ç”¨è·¯å¾„è¦†ç›–">
+            <Input
+              value={launchForm.appPath}
+              onChange={(event) => onLaunchFormChange({ ...launchForm, appPath: event.currentTarget.value })}
+              placeholder={savedCodexAppPath || "ä¾‹å¦‚ C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
+            />
+          </Field>
+          <div className="form-row">
+            <Field label="Debug ç«¯å£">
+              <Input
+                value={launchForm.debugPort}
+                onChange={(event) => onLaunchFormChange({ ...launchForm, debugPort: event.currentTarget.value })}
+              />
+            </Field>
+            <Field label="Helper ç«¯å£">
+              <Input
+                value={launchForm.helperPort}
+                onChange={(event) => onLaunchFormChange({ ...launchForm, helperPort: event.currentTarget.value })}
+              />
+            </Field>
+          </div>
+          <Toolbar>
+            <Button onClick={() => void actions.launch()}>å¯åŠ¨ Codex++</Button>
+            <Button variant="secondary" onClick={() => void actions.saveManualCodexAppPath()}>
+              ä¿å­˜ä¸ºé»˜è®¤è·¯å¾„
             </Button>
           </Toolbar>
         </CardContent>
@@ -1831,6 +2969,72 @@ function ProxyScreen({
     </>
   );
 }
+
+function AboutScreen({
+  overview,
+  update,
+  logs,
+  diagnostics,
+  actions,
+}: {
+  overview: OverviewResult | null;
+  update: UpdateResult | null;
+  logs: LogsResult | null;
+  diagnostics: DiagnosticsResult | null;
+  actions: Actions;
+}) {
+  return (
+    <>
+      <Panel>
+        <CardHead title="å…³äº Codex++" detail="æœ¬åœ° Codex å¢å¼ºã€ç®¡ç†å·¥å…·å’Œå®‰è£…åŒ…ç»´æŠ¤" />
+        <CardContent>
+          <div className="metric-list">
+            <Metric label="Codex++ ç‰ˆæœ¬" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
+            <Metric label="Codex ç‰ˆæœ¬" value={overview?.codex_version ?? "æœªæ£€æµ‹åˆ°"} />
+            <Metric label="é¡¹ç›®åœ°å€" value="github.com/luoda2023/LDCodex" />
+          </div>
+          <Toolbar>
+            <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex")} variant="secondary">
+              <ExternalLink className="h-4 w-4" />
+              æ‰“å¼€é¡¹ç›®ä¸»é¡µ
+            </Button>
+            <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex/issues")} variant="secondary">
+              <ExternalLink className="h-4 w-4" />
+              åé¦ˆé—®é¢˜
+            </Button>
+            <Button onClick={() => void actions.openExternalUrl("https://discord.gg/y96kX7A76v")} variant="secondary">
+              <MessageCircle className="h-4 w-4" />
+              Discord
+            </Button>
+            <Button onClick={() => void actions.openExternalUrl("https://t.me/CodexPlusPlus")} variant="secondary">
+              <MessageCircle className="h-4 w-4" />
+              Telegram
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="GitHub Release æ›´æ–°" detail={`å½“å‰ç‰ˆæœ¬ ${overview?.current_version ?? update?.currentVersion ?? "-"}`} />
+        <CardContent>
+          <div className="metric-list">
+            <Metric label="çŠ¶æ€" value={update?.status ?? "not_checked"} />
+            <Metric label="æœ€æ–°ç‰ˆæœ¬" value={update?.latestVersion ?? "æœªæ£€æŸ¥"} />
+            <Metric label="èµ„æº" value={update?.assetName ?? "-"} />
+            <Metric label="è¿›åº¦" value={`${update?.progress ?? 0}%`} />
+          </div>
+          <Textarea className="log-view" readOnly value={update?.releaseSummary || update?.message || "å°šæœªæ£€æŸ¥ GitHub Releaseï¼›æ›´æ–°ä¼šä¸‹è½½å¹¶å¯åŠ¨å®‰è£…åŒ…ã€‚"} />
+          <Toolbar>
+            <Button onClick={() => void actions.checkUpdate()}>æ£€æŸ¥æ›´æ–°</Button>
+            <Button variant="secondary" onClick={() => void actions.performUpdate()}>ä¸‹è½½å¹¶è¿è¡Œå®‰è£…åŒ…</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <LogsPanel logs={logs} actions={actions} />
+      <DiagnosticsPanel diagnostics={diagnostics} actions={actions} />
+    </>
+  );
+}
+
 function SettingsScreen({
   settings,
   theme,
@@ -1847,20 +3051,20 @@ function SettingsScreen({
   return (
     <>
       <Panel>
-        <CardHead title="»ù´¡ÉèÖÃ" detail={settings?.settings_path ?? ""} />
+        <CardHead title="åŸºç¡€è®¾ç½®" detail={settings?.settings_path ?? ""} />
         <CardContent>
           <div className="theme-row">
             <div>
-              <strong>½çÃæÖ÷Ìâ</strong>
-              <span>µ±Ç°Îª{theme === "dark" ? "ÉîÉ«" : "Ç³É«"}Ä£Ê½¡£</span>
+              <strong>ç•Œé¢ä¸»é¢˜</strong>
+              <span>å½“å‰ä¸º{theme === "dark" ? "æ·±è‰²" : "æµ…è‰²"}æ¨¡å¼ã€‚</span>
             </div>
-            <Button variant="secondary" onClick={actions.toggleTheme}>ÇĞ»»Ö÷Ìâ</Button>
+            <Button variant="secondary" onClick={actions.toggleTheme}>åˆ‡æ¢ä¸»é¢˜</Button>
           </div>
-          <Field label="Ä£ĞÍ²âÊÔÄ£ĞÍ">
+          <Field label="ä¾›åº”å•†æµ‹è¯•æ¨¡å‹">
             <Input
               value={form.relayTestModel}
               onChange={(event) => onFormChange({ ...form, relayTestModel: event.currentTarget.value })}
-              placeholder="ÀıÈç gpt-5.4-mini"
+              placeholder="ä¾‹å¦‚ gpt-5.4-mini"
             />
           </Field>
           <label className="check-row">
@@ -1869,16 +3073,16 @@ function SettingsScreen({
               onChange={(event) => onFormChange({ ...form, cliWrapperEnabled: event.currentTarget.checked })}
               type="checkbox"
             />
-            <span>ÆôÓÃ Codex ÃüÁî°ü×°Æ÷</span>
+            <span>å¯ç”¨ Codex å‘½ä»¤åŒ…è£…å™¨</span>
           </label>
           <div className="form-row">
-            <Field label="°ü×°Æ÷ Base URL">
+            <Field label="åŒ…è£…å™¨ Base URL">
               <Input
                 value={form.cliWrapperBaseUrl}
                 onChange={(event) => onFormChange({ ...form, cliWrapperBaseUrl: event.currentTarget.value })}
               />
             </Field>
-            <Field label="API Key »·¾³±äÁ¿">
+            <Field label="API Key ç¯å¢ƒå˜é‡">
               <Input
                 value={form.cliWrapperApiKeyEnv}
                 onChange={(event) => onFormChange({ ...form, cliWrapperApiKeyEnv: event.currentTarget.value })}
@@ -1901,23 +3105,23 @@ function SettingsScreen({
                 }
                 type="checkbox"
               />
-              <span>ÆôÓÃ Codex Í¼Æ¬¸²¸Ç²ã</span>
+              <span>å¯ç”¨ Codex å›¾ç‰‡è¦†ç›–å±‚</span>
             </label>
             <div className="form-row">
-              <Field label="¸²¸ÇÍ¼Æ¬">
+              <Field label="è¦†ç›–å›¾ç‰‡">
                 <Input
                   value={form.codexAppImageOverlayPath}
                   onChange={(event) => onFormChange({ ...form, codexAppImageOverlayPath: event.currentTarget.value })}
-                  placeholder="Ñ¡Ôñ png / jpg / webp / gif / bmp"
+                  placeholder="é€‰æ‹© png / jpg / webp / gif / bmp"
                 />
               </Field>
               <Toolbar>
                 <Button variant="secondary" onClick={() => void actions.chooseImageOverlayPath()}>
-                  Ñ¡ÔñÍ¼Æ¬
-    
+                  é€‰æ‹©å›¾ç‰‡
+                </Button>
               </Toolbar>
             </div>
-            <Field label={`Í¸Ã÷¶È ${form.codexAppImageOverlayOpacity}%`}>
+            <Field label={`é€æ˜åº¦ ${form.codexAppImageOverlayOpacity}%`}>
               <Input
                 min={1}
                 max={100}
@@ -1933,17 +3137,17 @@ function SettingsScreen({
             </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>±£´æÉèÖÃ</Button>
-            <Button variant="secondary" onClick={() => void actions.resetSettings()}>
-              ÖØÖÃÉèÖÃ
-
+            <Button onClick={() => void actions.saveSettings()}>ä¿å­˜è®¾ç½®</Button>
+            <Button variant="secondary" onClick={() => void actions.resetImageOverlaySettings()}>
+              é‡ç½®èƒŒæ™¯
+            </Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="Codex Æô¶¯²ÎÊı" detail="Æô¶¯ Codex App Ê±×·¼Óµ½Ä¬ÈÏ CDP ²ÎÊıºó¡£Áô¿ÕÔò±£³ÖÄ¬ÈÏÆô¶¯ĞĞÎª¡£" />
+        <CardHead title="Codex å¯åŠ¨å‚æ•°" detail="å¯åŠ¨ Codex App æ—¶è¿½åŠ åˆ°é»˜è®¤ CDP å‚æ•°åã€‚ç•™ç©ºåˆ™ä¿æŒé»˜è®¤å¯åŠ¨è¡Œä¸ºã€‚" />
         <CardContent>
-          <Field label="¶îÍâ²ÎÊı">
+          <Field label="é¢å¤–å‚æ•°">
             <Textarea
               className="launch-args-input"
               placeholder="--force_high_performance_gpu"
@@ -1957,9 +3161,9 @@ function SettingsScreen({
               }
             />
           </Field>
-          <p className="field-hint">Ã¿ĞĞÒ»¸ö²ÎÊı£¬ÀıÈç --force_high_performance_gpu¡£²»ĞèÒªÌîĞ´ open »ò --args¡£</p>
+          <p className="field-hint">æ¯è¡Œä¸€ä¸ªå‚æ•°ï¼Œä¾‹å¦‚ --force_high_performance_gpuã€‚ä¸éœ€è¦å¡«å†™ open æˆ– --argsã€‚</p>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>±£´æÉèÖÃ</Button>
+            <Button onClick={() => void actions.saveSettings()}>ä¿å­˜è®¾ç½®</Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -1971,7 +3175,7 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
   const lines = splitLogLines(logs?.text ?? "");
   return (
     <Panel>
-      <CardHead title="×î½üÈÕÖ¾" detail={logs?.path ?? ""} />
+      <CardHead title="æœ€è¿‘æ—¥å¿—" detail={logs?.path ?? ""} />
       <CardContent>
         <div className="log-lines">
           {lines.length ? (
@@ -1982,13 +3186,13 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
               </div>
             ))
           ) : (
-            <div className="empty">ÔİÎŞÈÕÖ¾¡£</div>
+            <div className="empty">æš‚æ— æ—¥å¿—ã€‚</div>
           )}
         </div>
         <Toolbar>
-          <Button onClick={() => void actions.refreshLogs()}>Ë¢ĞÂ</Button>
+          <Button onClick={() => void actions.refreshLogs()}>åˆ·æ–°</Button>
           <Button variant="secondary" onClick={() => void actions.copyLogs()}>
-            ¸´ÖÆ
+            å¤åˆ¶
           </Button>
         </Toolbar>
       </CardContent>
@@ -1999,13 +3203,13 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
 function DiagnosticsPanel({ diagnostics, actions }: { diagnostics: DiagnosticsResult | null; actions: Actions }) {
   return (
     <Panel>
-      <CardHead title="Õï¶Ï±¨¸æ" detail="°üº¬°æ±¾¡¢Â·¾¶¡¢ÉèÖÃºÍÆ½Ì¨ĞÅÏ¢" />
+      <CardHead title="è¯Šæ–­æŠ¥å‘Š" detail="åŒ…å«ç‰ˆæœ¬ã€è·¯å¾„ã€è®¾ç½®å’Œå¹³å°ä¿¡æ¯" />
       <CardContent>
-        <Textarea className="log-view tall" readOnly value={diagnostics?.report ?? "ÉĞÎ´Éú³ÉÕï¶Ï±¨¸æ¡£"} />
+        <Textarea className="log-view tall" readOnly value={diagnostics?.report ?? "å°šæœªç”Ÿæˆè¯Šæ–­æŠ¥å‘Šã€‚"} />
         <Toolbar>
-          <Button onClick={() => void actions.refreshDiagnostics()}>ÖØĞÂÉú³É</Button>
+          <Button onClick={() => void actions.refreshDiagnostics()}>é‡æ–°ç”Ÿæˆ</Button>
           <Button variant="secondary" onClick={() => void actions.copyDiagnostics()}>
-            ¸´ÖÆ±¨¸æ
+            å¤åˆ¶æŠ¥å‘Š
           </Button>
         </Toolbar>
       </CardContent>
@@ -2099,21 +3303,21 @@ function SortableRelayProfileCard({
       tabIndex={0}
     >
       <button
-        aria-label="ÍÏ¶¯ÅÅĞò"
+        aria-label="æ‹–åŠ¨æ’åº"
         className="relay-drag"
-        title="ÍÏ¶¯ÅÅĞò"
+        title="æ‹–åŠ¨æ’åº"
         type="button"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="relay-index" title={profile.name || "Î´ÃüÃûÄ£ĞÍ"}>
+      <span className="relay-index" title={profile.name || "æœªå‘½åä¾›åº”å•†"}>
         {providerInitial(profile.name)}
       </span>
       <span className="relay-summary">
-        <strong>{profile.name || "Î´ÃüÃûÄ£ĞÍ"}</strong>
-        <small>{relayModeLabel(profile.relayMode)} ¡¤ {relayProtocolLabel(profile.protocol)} ¡¤ {relayProfileConfigBrief(profile)}</small>
+        <strong>{profile.name || "æœªå‘½åä¾›åº”å•†"}</strong>
+        <small>{relayModeLabel(profile.relayMode)} Â· {relayProtocolLabel(profile.protocol)} Â· {relayProfileConfigBrief(profile)}</small>
       </span>
       <span className="relay-card-actions">
         <Button
@@ -2127,20 +3331,22 @@ function SortableRelayProfileCard({
             void actions.switchRelayProfile(next, previousActiveRelayId);
           }}
           size="sm"
-          title={disabled ? "Ä£ĞÍÇĞ»»²»¿ÉÓÃ" : active ? "µ±Ç°ÕıÔÚÊ¹ÓÃ" : "ÉèÎªµ±Ç°"}
+          title={disabled ? "ä¾›åº”å•†åˆ‡æ¢ä¸å¯ç”¨" : active ? "å½“å‰æ­£åœ¨ä½¿ç”¨" : "è®¾ä¸ºå½“å‰"}
           variant={active ? "secondary" : "outline"}
         >
           <CheckCircle2 className="h-4 w-4" />
-          {active ? "Ê¹ÓÃÖĞ" : "Ê¹ÓÃ"}
+          {active ? "ä½¿ç”¨ä¸­" : "ä½¿ç”¨"}
         </Button>
         <span className="relay-card-extra">
           <Button
+            disabled={isAggregateRelayProfile(profile)}
             onClick={(event) => {
               event.stopPropagation();
+              if (isAggregateRelayProfile(profile)) return;
               void actions.testRelayProfile(profile);
             }}
             size="icon"
-            title="·¢ËÍ hi ²âÊÔ"
+            title={isAggregateRelayProfile(profile) ? "èšåˆä¾›åº”å•†ä¼šåœ¨çœŸå®å¯¹è¯ä¸­è½®è½¬æˆå‘˜ï¼Œè¯·æµ‹è¯•æˆå‘˜ä¾›åº”å•†" : "å‘é€ hi æµ‹è¯•"}
             variant="ghost"
           >
             <TestTube className="h-4 w-4" />
@@ -2151,7 +3357,7 @@ function SortableRelayProfileCard({
               onEdit(profile.id);
             }}
             size="icon"
-            title="±à¼­"
+            title="ç¼–è¾‘"
             variant="ghost"
           >
             <Edit3 className="h-4 w-4" />
@@ -2162,7 +3368,7 @@ function SortableRelayProfileCard({
               onFormChange(duplicateRelayProfile(form, profile.id));
             }}
             size="icon"
-            title="¸´ÖÆ"
+            title="å¤åˆ¶"
             variant="ghost"
           >
             <Copy className="h-4 w-4" />
@@ -2174,7 +3380,7 @@ function SortableRelayProfileCard({
               onFormChange(removeRelayProfile(form, profile.id));
             }}
             size="icon"
-            title="É¾³ıÄ£ĞÍ"
+            title="åˆ é™¤ä¾›åº”å•†"
             variant="ghost"
           >
             <Trash2 className="h-4 w-4" />
@@ -2186,17 +3392,17 @@ function SortableRelayProfileCard({
 }
 
 function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actions: Actions }) {
-  const status = script.updateAvailable ? "¿É¸üĞÂ" : script.installed ? `ÒÑ°²×° ${script.installedVersion}` : "Î´°²×°";
+  const status = script.updateAvailable ? "å¯æ›´æ–°" : script.installed ? `å·²å®‰è£… ${script.installedVersion}` : "æœªå®‰è£…";
   return (
     <div className="script-market-card">
       <div className="script-market-title">
         <div>
           <strong>{script.name}</strong>
-          <span>{script.author || "Î´Öª×÷Õß"}</span>
+          <span>{script.author || "æœªçŸ¥ä½œè€…"}</span>
         </div>
         <UiBadge variant={script.updateAvailable ? "default" : script.installed ? "secondary" : "outline"}>{status}</UiBadge>
       </div>
-      <p className="script-market-description">{script.description || "ÔİÎŞÃèÊö¡£"}</p>
+      <p className="script-market-description">{script.description || "æš‚æ— æè¿°ã€‚"}</p>
       <div className="script-market-tags">
         <span className="script-market-tag">v{script.version}</span>
         {script.tags.map((tag) => (
@@ -2206,8 +3412,14 @@ function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actio
       <div className="script-market-actions">
         <Button onClick={() => void actions.installMarketScript(script.id)} size="sm">
           <Download className="h-4 w-4" />
-          {script.updateAvailable ? "¸üĞÂ" : script.installed ? "ÖØĞÂ°²×°" : "°²×°"}
+          {script.updateAvailable ? "æ›´æ–°" : script.installed ? "é‡æ–°å®‰è£…" : "å®‰è£…"}
         </Button>
+        {script.homepage ? (
+          <Button onClick={() => void actions.openExternalUrl(script.homepage)} size="sm" variant="secondary">
+            <ExternalLink className="h-4 w-4" />
+            ä¸»é¡µ
+          </Button>
+        ) : null}
       </div>
     </div>
   );
@@ -2234,26 +3446,31 @@ function RelayProfileDetail({
 }) {
   const [draft, setDraft] = useState<RelayProfile>(profile);
   const isActive = !isNew && profile.id === form.activeRelayId;
+  const profileUsesLiveFiles = relayProfileUsesLiveFiles(profile);
   useEffect(() => {
     setDraft(
-      deriveRelayProfileFromFiles(
-        isActive && relayFiles
-          ? {
-            ...profile,
-            configContents: relayFiles.configContents,
-            authContents: relayFiles.authContents,
-          }
-          : profile,
-      ),
+      isAggregateRelayProfile(profile)
+        ? normalizeAggregateRelayProfile(profile, form)
+        : deriveRelayProfileFromFiles(
+            isActive && profileUsesLiveFiles && relayFiles
+              ? {
+                ...profile,
+                configContents: relayFiles.configContents,
+                authContents: relayFiles.authContents,
+              }
+              : profile,
+          ),
     );
-  }, [profile.id, isActive, isNew, relayFiles?.configContents, relayFiles?.authContents]);
+  }, [profile.id, profileUsesLiveFiles, isActive, isNew, relayFiles?.configContents, relayFiles?.authContents]);
+  const validationError = isAggregateRelayProfile(draft) ? aggregateRelayProfileValidation(draft) : null;
   const saveDraft = async () => {
-    const normalizedDraft = deriveRelayProfileFromFiles(draft);
+    if (validationError) return;
+    const normalizedDraft = isAggregateRelayProfile(draft) ? normalizeAggregateRelayProfile(draft, form) : deriveRelayProfileFromFiles(draft);
     const next = isNew
       ? addRelayProfile(form, normalizedDraft)
       : updateRelayProfile(form, profile.id, normalizedDraft);
     await onFormChange(next);
-    if (isActive) {
+    if (isActive && relayProfileUsesLiveFiles(normalizedDraft)) {
       await actions.saveRelayFile(
         "config",
         effectiveRelayConfigPreview(normalizedDraft, form, normalizedDraft),
@@ -2264,8 +3481,8 @@ function RelayProfileDetail({
     onSaved?.();
   };
   const switchDraft = () => {
-    if (isNew || !form.relayProfilesEnabled || actions.relaySwitching) return;
-    const normalizedDraft = deriveRelayProfileFromFiles(draft);
+    if (isNew || !form.relayProfilesEnabled) return;
+    const normalizedDraft = isAggregateRelayProfile(draft) ? normalizeAggregateRelayProfile(draft, form) : deriveRelayProfileFromFiles(draft);
     const previousActiveRelayId = form.activeRelayId;
     const next = syncLegacyRelayFields({
       ...form,
@@ -2280,15 +3497,16 @@ function RelayProfileDetail({
         <Toolbar>
           <Button onClick={onBack} variant="secondary">
             <ArrowLeft className="h-4 w-4" />
-            ·µ»ØÁĞ±í
+            è¿”å›åˆ—è¡¨
           </Button>
-          <Button onClick={() => void saveDraft()}>
+          <Button disabled={!!validationError} onClick={() => void saveDraft()} title={validationError || "ä¿å­˜"}>
             <Save className="h-4 w-4" />
-            ±£´æ
+            ä¿å­˜
           </Button>
         </Toolbar>
       </div>
         <RelayProfileEditor profile={draft} form={form} isNew={isNew} onProfileChange={setDraft} onSwitch={switchDraft} actions={actions} />
+      {isAggregateRelayProfile(draft) ? null : (
       <RelayFileEditors
         contextProfile={profile}
         profile={draft}
@@ -2299,6 +3517,7 @@ function RelayProfileDetail({
         onProfileChange={setDraft}
         actions={actions}
       />
+      )}
     </div>
   );
 }
@@ -2318,7 +3537,7 @@ function ContextScreen({
 }) {
   return (
     <Panel fill>
-      <CardHead title="Codex ¹¤¾ßÓë²å¼ş" detail="¶ÀÁ¢¹ÜÀí Codex µÄ MCP¡¢Skills¡¢Plugins£»ÇĞ»»ÈÎÒâÄ£ĞÍ¶¼»á´øÉÏ¡£" />
+      <CardHead title="Codex å·¥å…·ä¸æ’ä»¶" detail="ç‹¬ç«‹ç®¡ç† Codex çš„ MCPã€Skillsã€Pluginsï¼›åˆ‡æ¢ä»»æ„ä¾›åº”å•†éƒ½ä¼šå¸¦ä¸Šã€‚" />
       <CardContent>
         <RelayContextManager
           form={normalizeSettings(form)}
@@ -2347,8 +3566,19 @@ function RelayProfileEditor({
   onSwitch: () => void;
   actions: Actions;
 }) {
-  const showApiFields = profile.relayMode !== "official" || profile.officialMixApiKey;
   const [showAdvanced, setShowAdvanced] = useState(false);
+  if (isAggregateRelayProfile(profile)) {
+    return (
+      <AggregateRelayProfileEditor
+        profile={profile}
+        form={form}
+        isNew={isNew}
+        onProfileChange={onProfileChange}
+      />
+    );
+  }
+
+  const showApiFields = profile.relayMode !== "official" || profile.officialMixApiKey;
   const updateDraft = (patch: Partial<RelayProfile>) => {
     onProfileChange(applyRelayProfilePatchToFiles(profile, patch, { allowGenerateFiles: isNew }));
   };
@@ -2356,17 +3586,17 @@ function RelayProfileEditor({
     <div className="relay-profile-editor">
       <div className="relay-editor-head">
         <div>
-          <strong>{profile.name || "Î´ÃüÃûÄ£ĞÍ"}</strong>
+          <strong>{profile.name || "æœªå‘½åä¾›åº”å•†"}</strong>
           <span>{relayProfileEditorStatus(profile, form, isNew)}</span>
         </div>
         {isNew ? null : (
           <Button
             disabled={!form.relayProfilesEnabled || actions.relaySwitching}
             onClick={onSwitch}
-            title={!form.relayProfilesEnabled ? "Ä£ĞÍÅäÖÃ×Ü¿ª¹ØÒÑ¹Ø±Õ" : actions.relaySwitching ? "Ä£ĞÍÇĞ»»ÖĞ" : undefined}
+            title={!form.relayProfilesEnabled ? "ä¾›åº”å•†é…ç½®æ€»å¼€å…³å·²å…³é—­" : actions.relaySwitching ? "ä¾›åº”å•†åˆ‡æ¢ä¸­" : undefined}
             variant={profile.id === form.activeRelayId ? "secondary" : "default"}
           >
-            {actions.relaySwitching ? "ÇĞ»»ÖĞ" : profile.id === form.activeRelayId ? "Ê¹ÓÃÖĞ" : "ÉèÎªµ±Ç°"}
+            {actions.relaySwitching ? "åˆ‡æ¢ä¸­" : profile.id === form.activeRelayId ? "ä½¿ç”¨ä¸­" : "è®¾ä¸ºå½“å‰"}
           </Button>
         )}
       </div>
@@ -2378,13 +3608,13 @@ function RelayProfileEditor({
         />
       ) : null}
       <div className="relay-fields">
-        <Field className="relay-field-name" label="Ãû³Æ">
+        <Field className="relay-field-name" label="åç§°">
           <Input
             value={profile.name}
             onChange={(event) => updateDraft({ name: event.currentTarget.value })}
           />
         </Field>
-        <Field className="relay-field-mode" label="½ÓÈëÄ£Ê½">
+        <Field className="relay-field-mode" label="æ¥å…¥æ¨¡å¼">
           <select
             className="field-select"
             value={profile.relayMode}
@@ -2393,18 +3623,18 @@ function RelayProfileEditor({
               updateDraft(relayMode === "official" ? { relayMode, officialMixApiKey: false } : { relayMode });
             }}
           >
-            <option value="official">¹Ù·½µÇÂ¼</option>
-            <option value="pureApi">´¿ API</option>
+            <option value="official">å®˜æ–¹ç™»å½•</option>
+            <option value="pureApi">çº¯ API</option>
           </select>
         </Field>
-        <Field className="relay-field-config-model" label="ÅäÖÃÄ£ĞÍ">
+        <Field className="relay-field-config-model" label="é…ç½®æ¨¡å‹">
           <Input
             value={profile.model}
             onChange={(event) => updateDraft({ model: event.currentTarget.value })}
-            placeholder="Ğ´Èë config.toml µÄ model ×Ö¶Î£¬ÀıÈç gpt-5"
+            placeholder="å†™å…¥ config.toml çš„ model å­—æ®µï¼Œä¾‹å¦‚ gpt-5"
           />
         </Field>
-        <Field className="relay-field-goals" label="Codex Ä¿±ê">
+        <Field className="relay-field-goals" label="Codex ç›®æ ‡">
           <label className="inline-check">
             <input
               checked={configHasCodexGoalsFeature(profile.configContents)}
@@ -2415,7 +3645,7 @@ function RelayProfileEditor({
               }
               type="checkbox"
             />
-            <span>ÆôÓÃÄ¿±ê¹¦ÄÜ</span>
+            <span>å¯ç”¨ç›®æ ‡åŠŸèƒ½</span>
           </label>
         </Field>
         <div className="relay-advanced-toggle">
@@ -2427,32 +3657,32 @@ function RelayProfileEditor({
             variant="secondary"
           >
             <Settings className="h-4 w-4" />
-            ¸ü¶àÑ¡Ïî
+            æ›´å¤šé€‰é¡¹
           </Button>
         </div>
         {showAdvanced ? (
           <div className="relay-advanced-fields">
-            <Field className="relay-field-test-model" label="²âÊÔÄ£ĞÍ">
+            <Field className="relay-field-test-model" label="æµ‹è¯•æ¨¡å‹">
               <Input
                 value={profile.testModel}
                 onChange={(event) => updateDraft({ testModel: event.currentTarget.value })}
-                placeholder={`Áô¿ÕÊ¹ÓÃÄ¬ÈÏ£º${form.relayTestModel || defaultSettings.relayTestModel}`}
+                placeholder={`ç•™ç©ºä½¿ç”¨é»˜è®¤ï¼š${form.relayTestModel || defaultSettings.relayTestModel}`}
               />
             </Field>
-            <Field className="relay-field-context-window" label="ÉÏÏÂÎÄ´óĞ¡">
+            <Field className="relay-field-context-window" label="ä¸Šä¸‹æ–‡å¤§å°">
               <Input
                 inputMode="numeric"
                 value={profile.contextWindow}
                 onChange={(event) => updateDraft({ contextWindow: event.currentTarget.value.replace(/[^\d]/g, "") })}
-                placeholder="Áô¿Õ²»¸ÄĞ´£¬ÀıÈç 200000"
+                placeholder="ç•™ç©ºä¸æ”¹å†™ï¼Œä¾‹å¦‚ 200000"
               />
             </Field>
-            <Field className="relay-field-auto-compact" label="Ñ¹ËõÉÏÏÂÎÄ´óĞ¡">
+            <Field className="relay-field-auto-compact" label="å‹ç¼©ä¸Šä¸‹æ–‡å¤§å°">
               <Input
                 inputMode="numeric"
                 value={profile.autoCompactLimit}
                 onChange={(event) => updateDraft({ autoCompactLimit: event.currentTarget.value.replace(/[^\d]/g, "") })}
-                placeholder="Áô¿Õ²»¸ÄĞ´£¬ÀıÈç 160000"
+                placeholder="ç•™ç©ºä¸æ”¹å†™ï¼Œä¾‹å¦‚ 160000"
               />
             </Field>
           </div>
@@ -2465,7 +3695,7 @@ function RelayProfileEditor({
                 onChange={(event) => updateDraft({ officialMixApiKey: event.currentTarget.checked })}
                 type="checkbox"
               />
-              <span>»ìÈë API KEY</span>
+              <span>æ··å…¥ API KEY</span>
             </label>
           </Field>
         ) : null}
@@ -2475,7 +3705,7 @@ function RelayProfileEditor({
               <Input
                 value={profile.baseUrl}
                 onChange={(event) => updateDraft({ baseUrl: event.currentTarget.value })}
-                placeholder="ÌîĞ´ÖĞ×ª·şÎñ Base URL"
+                placeholder="å¡«å†™ä¸­è½¬æœåŠ¡ Base URL"
               />
             </Field>
             <Field className="relay-field-key" label="Key">
@@ -2483,10 +3713,10 @@ function RelayProfileEditor({
                 type="password"
                 value={profile.apiKey}
                 onChange={(event) => updateDraft({ apiKey: event.currentTarget.value })}
-                placeholder="ÊäÈëÖĞ×ª·şÎñµÄ API Key"
+                placeholder="è¾“å…¥ä¸­è½¬æœåŠ¡çš„ API Key"
               />
             </Field>
-            <Field className="relay-field-protocol" label="ÉÏÓÎĞ­Òé">
+            <Field className="relay-field-protocol" label="ä¸Šæ¸¸åè®®">
               <div className="protocol-options">
                 <button
                   className={`protocol-option ${profile.protocol === "responses" ? "active" : ""}`}
@@ -2507,12 +3737,12 @@ function RelayProfileEditor({
           </div>
         ) : null}
         {showApiFields ? (
-          <Field className="relay-field-model-list" label="Ä£ĞÍÁĞ±í">
+          <Field className="relay-field-model-list" label="æ¨¡å‹åˆ—è¡¨">
             <div className="relay-model-list-tools">
               <Textarea
                 value={profile.modelList}
                 onChange={(event) => updateDraft({ modelList: event.currentTarget.value })}
-                placeholder="Ã¿ĞĞÒ»¸öÄ£ĞÍ£¬ÀıÈç qwen3-coder"
+                placeholder="æ¯è¡Œä¸€ä¸ªæ¨¡å‹ï¼Œä¾‹å¦‚ qwen3-coder"
               />
               <Button
                 onClick={async () => {
@@ -2524,8 +3754,8 @@ function RelayProfileEditor({
                 variant="secondary"
               >
                 <Download className="h-4 w-4" />
-                ´ÓÉÏÓÎ»ñÈ¡
-  
+                ä»ä¸Šæ¸¸è·å–
+              </Button>
             </div>
           </Field>
         ) : null}
@@ -2534,7 +3764,7 @@ function RelayProfileEditor({
             <Input
               value={profile.userAgent}
               onChange={(event) => updateDraft({ userAgent: event.currentTarget.value })}
-              placeholder="Áô¿ÕÊ¹ÓÃÄ¬ÈÏÖµ"
+              placeholder="ç•™ç©ºä½¿ç”¨é»˜è®¤å€¼"
             />
           </Field>
         ) : null}
@@ -2542,12 +3772,152 @@ function RelayProfileEditor({
       {showApiFields && profile.protocol === "chatCompletions" ? (
         <div className="hint-line relay-protocol-hint">
           <MessageCircle className="h-4 w-4" />
-          <span>´ËÉÏÓÎ»áÍ¨¹ı±¾µØ 127.0.0.1:57321 ×ª³É Responses API£¬ĞèÒª´Ó LDCodex Æô¶¯ Codex¡£</span>
+          <span>æ­¤ä¸Šæ¸¸ä¼šé€šè¿‡æœ¬åœ° 127.0.0.1:57321 è½¬æˆ Responses APIï¼Œéœ€è¦ä» Codex++ å¯åŠ¨ Codexã€‚</span>
         </div>
       ) : null}
       <div className="hint-line relay-protocol-hint">
         <ShieldCheck className="h-4 w-4" />
         <span>{relayProfileModeHelp(profile)}</span>
+      </div>
+    </div>
+  );
+}
+
+function AggregateRelayProfileEditor({
+  profile,
+  form,
+  isNew = false,
+  onProfileChange,
+}: {
+  profile: RelayProfile;
+  form: BackendSettings;
+  isNew?: boolean;
+  onProfileChange: (value: RelayProfile) => void;
+}) {
+  const candidates = aggregateMemberCandidates(form, profile.id);
+  const aggregate = normalizeAggregateConfig(profile.aggregate, candidates);
+  const memberIds = new Set(aggregate.members.map((member) => member.profileId));
+  const updateAggregate = (nextAggregate: RelayAggregateConfig) => {
+    onProfileChange(normalizeAggregateRelayProfile({ ...profile, aggregate: nextAggregate }, form));
+  };
+  const toggleMember = (profileId: string, checked: boolean) => {
+    const members = checked
+      ? [...aggregate.members, { profileId, weight: 1 }]
+      : aggregate.members.filter((member) => member.profileId !== profileId);
+    updateAggregate({ ...aggregate, members });
+  };
+  const updateWeight = (profileId: string, weight: number) => {
+    updateAggregate({
+      ...aggregate,
+      members: aggregate.members.map((member) =>
+        member.profileId === profileId ? { ...member, weight: clampAggregateWeight(weight) } : member,
+      ),
+    });
+  };
+  const totalWeight = aggregate.members.reduce((total, member) => total + clampAggregateWeight(member.weight), 0);
+
+  return (
+    <div className="relay-profile-editor aggregate-editor">
+      <div className="relay-editor-head">
+        <div>
+          <strong>{profile.name || "æœªå‘½åèšåˆä¾›åº”å•†"}</strong>
+          <span>{isNew ? "é€‰æ‹©å·²æœ‰ä¾›åº”å•†ä½œä¸ºæˆå‘˜ï¼Œä¿å­˜åå†™å…¥ settings payload" : "èšåˆé…ç½®åªå¼•ç”¨å·²æœ‰ä¾›åº”å•†ï¼Œä¸å¤åˆ¶ Key å’Œé…ç½®æ–‡ä»¶"}</span>
+        </div>
+        <UiBadge variant="secondary">èšåˆ</UiBadge>
+      </div>
+      <div className="relay-fields aggregate-fields">
+        <Field className="relay-field-name" label="åç§°">
+          <Input
+            value={profile.name}
+            onChange={(event) => onProfileChange({ ...profile, name: event.currentTarget.value })}
+            placeholder="ä¾‹å¦‚ ä¸»åŠ›èšåˆæ± "
+          />
+        </Field>
+        <Field className="relay-field-test-model" label="æµ‹è¯•æ¨¡å‹">
+          <Input
+            value={profile.testModel}
+            onChange={(event) => onProfileChange({ ...profile, testModel: event.currentTarget.value })}
+            placeholder={`ç•™ç©ºä½¿ç”¨é»˜è®¤ï¼š${form.relayTestModel || defaultSettings.relayTestModel}`}
+          />
+        </Field>
+        <Field className="aggregate-strategy-field" label="èšåˆç­–ç•¥">
+          <select
+            className="field-select"
+            value={aggregate.strategy}
+            onChange={(event) => updateAggregate({ ...aggregate, strategy: event.currentTarget.value as RelayAggregateStrategy })}
+          >
+            {aggregateStrategyOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="aggregate-strategy-grid">
+        {aggregateStrategyOptions.map((option) => (
+          <button
+            className={`mode-option aggregate-strategy-option ${aggregate.strategy === option.value ? "active" : ""}`}
+            key={option.value}
+            onClick={() => updateAggregate({ ...aggregate, strategy: option.value })}
+            type="button"
+          >
+            <strong>{option.label}</strong>
+            <span>{option.description}</span>
+          </button>
+        ))}
+      </div>
+      <div className="aggregate-members">
+        <div className="aggregate-members-head">
+          <div>
+            <strong>æˆå‘˜ä¾›åº”å•†</strong>
+            <span>åªèƒ½å‹¾é€‰å·²å¡«å†™ Base URL / Key çš„ API ä¾›åº”å•†ï¼Œèšåˆä¾›åº”å•†ä¸ä¼šä½œä¸ºæˆå‘˜ã€‚</span>
+          </div>
+          <UiBadge variant="outline">{aggregate.members.length} / {candidates.length}</UiBadge>
+        </div>
+        {candidates.length ? (
+          <div className="aggregate-member-list">
+            {candidates.map((candidate) => {
+              const member = aggregate.members.find((item) => item.profileId === candidate.id);
+              const checked = memberIds.has(candidate.id);
+              return (
+                <label className={`aggregate-member-row ${checked ? "selected" : ""}`} key={candidate.id}>
+                  <input
+                    checked={checked}
+                    onChange={(event) => toggleMember(candidate.id, event.currentTarget.checked)}
+                    type="checkbox"
+                  />
+                  <span className="aggregate-member-summary">
+                    <strong>{candidate.name || "æœªå‘½åä¾›åº”å•†"}</strong>
+                    <small>{relayModeLabel(candidate.relayMode)} Â· {relayProtocolLabel(candidate.protocol)} Â· {relayProfileConfigBrief(candidate)}</small>
+                  </span>
+                  <span className="aggregate-weight-box">
+                    <span>æƒé‡</span>
+                    <Input
+                      disabled={!checked}
+                      min={1}
+                      onChange={(event) => updateWeight(candidate.id, Number.parseInt(event.currentTarget.value, 10))}
+                      type="number"
+                      value={String(member?.weight ?? 1)}
+                    />
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="empty">å…ˆæ·»åŠ è‡³å°‘ 1 ä¸ªå·²å¡«å†™ Base URL / Key çš„ API ä¾›åº”å•†ï¼Œå†åˆ›å»ºèšåˆä¾›åº”å•†ã€‚</div>
+        )}
+      </div>
+      <div className="relay-grid compact aggregate-preview">
+        <Metric label="ç­–ç•¥" value={aggregateStrategyLabel(aggregate.strategy)} />
+        <Metric label="æˆå‘˜æ•°é‡" value={`${aggregate.members.length} ä¸ª`} />
+        <Metric label="æ€»æƒé‡" value={`${totalWeight}`} />
+        <Metric label="åºåˆ—åŒ–å­—æ®µ" value="aggregate.strategy / aggregate.members" />
+      </div>
+      <div className="hint-line relay-protocol-hint">
+        <ShieldCheck className="h-4 w-4" />
+        <span>{aggregateStrategyHelp(aggregate.strategy)}</span>
       </div>
     </div>
   );
@@ -2600,13 +3970,13 @@ function RelayContextManager({
     <div className="relay-context-panel">
       <div className="relay-context-head">
         <div>
-          <strong>Codex ¹¤¾ßÓë²å¼ş</strong>
-          <span>MCP¡¢Skills¡¢Plugins ×÷ÎªÈ«¾ÖÅäÖÃ¶ÀÁ¢¹ÜÀí£¬ÇĞ»»ÈÎÒâÄ£ĞÍ¶¼»áºÏ²¢¡£</span>
+          <strong>Codex å·¥å…·ä¸æ’ä»¶</strong>
+          <span>MCPã€Skillsã€Plugins ä½œä¸ºå…¨å±€é…ç½®ç‹¬ç«‹ç®¡ç†ï¼Œåˆ‡æ¢ä»»æ„ä¾›åº”å•†éƒ½ä¼šåˆå¹¶ã€‚</span>
         </div>
         <div className="relay-context-head-actions">
           <Button onClick={() => setEditor({ kind: activeKind })} size="sm" variant="secondary">
             <Plus className="h-4 w-4" />
-            ĞÂÔö{label}
+            æ–°å¢{label}
           </Button>
         </div>
       </div>
@@ -2624,7 +3994,7 @@ function RelayContextManager({
         ))}
       </div>
       <div className="relay-context-summary">
-        µ±Ç°¹²ÓĞ {visibleEntries.length} ¸ö{label}£»ÕâĞ©ÌõÄ¿¶ÀÁ¢ÓÚÄ£ĞÍ±£´æ£¬»áĞ´ÈëËùÓĞÄ£ĞÍÇĞ»»ºóµÄ config.toml¡£
+        å½“å‰å…±æœ‰ {visibleEntries.length} ä¸ª{label}ï¼›è¿™äº›æ¡ç›®ç‹¬ç«‹äºä¾›åº”å•†ä¿å­˜ï¼Œä¼šå†™å…¥æ‰€æœ‰ä¾›åº”å•†åˆ‡æ¢åçš„ config.tomlã€‚
       </div>
       <div className="relay-context-list">
         {visibleEntries.length ? (
@@ -2638,30 +4008,30 @@ function RelayContextManager({
                   className={`context-enabled-switch ${entry.enabled ? "active" : ""}`}
                   onClick={() => void toggleContextEntryEnabled(entry)}
                   role="switch"
-                  title={entry.enabled ? "½ûÓÃ´ËÀ©Õ¹Ïî" : "ÆôÓÃ´ËÀ©Õ¹Ïî"}
+                  title={entry.enabled ? "ç¦ç”¨æ­¤æ‰©å±•é¡¹" : "å¯ç”¨æ­¤æ‰©å±•é¡¹"}
                   type="button"
                 >
                   <span className="context-switch-track" aria-hidden="true">
                     <span className="context-switch-thumb" />
                   </span>
                 </button>
-                <Button onClick={() => setEditor({ kind: entry.kind, entry })} size="icon" title="±à¼­À©Õ¹Ïî" variant="ghost">
+                <Button onClick={() => setEditor({ kind: entry.kind, entry })} size="icon" title="ç¼–è¾‘æ‰©å±•é¡¹" variant="ghost">
                   <Edit3 className="h-4 w-4" />
-    
+                </Button>
                 <Button
                   className="relay-context-delete"
                   onClick={() => void deleteEntry(entry)}
                   size="icon"
-                  title="É¾³ıÀ©Õ¹Ïî"
+                  title="åˆ é™¤æ‰©å±•é¡¹"
                   variant="ghost"
                 >
                   <Trash2 className="h-4 w-4" />
-    
+                </Button>
               </div>
             </div>
           ))
         ) : (
-          <div className="empty">ÔİÎŞ{label}£¬¿ÉÒÔ´ÓÍ¨ÓÃÅäÖÃÎÄ¼ş»òÕâÀïĞÂÔö¡£</div>
+          <div className="empty">æš‚æ— {label}ï¼Œå¯ä»¥ä»é€šç”¨é…ç½®æ–‡ä»¶æˆ–è¿™é‡Œæ–°å¢ã€‚</div>
         )}
       </div>
       {editor ? (
@@ -2695,7 +4065,7 @@ function ContextEntryEditor({
   return (
     <div className="context-editor">
       <div className="context-editor-fields">
-        <Field label="ÀàĞÍ">
+        <Field label="ç±»å‹">
           <select
             className="field-select"
             disabled={!!entry}
@@ -2712,25 +4082,25 @@ function ContextEntryEditor({
             disabled={!!entry}
             value={id}
             onChange={(event) => setId(event.currentTarget.value.trim())}
-            placeholder="ÀıÈç context7"
+            placeholder="ä¾‹å¦‚ context7"
           />
         </Field>
       </div>
-      <Field label="TOML ÅäÖÃÌå">
+      <Field label="TOML é…ç½®ä½“">
         <Textarea
           className="context-editor-textarea"
           value={tomlBody}
           onChange={(event) => setTomlBody(event.currentTarget.value)}
-          placeholder={'Ö»ÌîĞ´±íÍ·ÏÂÃæµÄÄÚÈİ£¬ÀıÈç£º\ncommand = "npx"\nargs = ["-y", "@upstash/context7-mcp"]'}
+          placeholder={'åªå¡«å†™è¡¨å¤´ä¸‹é¢çš„å†…å®¹ï¼Œä¾‹å¦‚ï¼š\ncommand = "npx"\nargs = ["-y", "@upstash/context7-mcp"]'}
           spellCheck={false}
         />
       </Field>
       <Toolbar>
         <Button disabled={!canSave} onClick={() => onSave(draftKind, id.trim(), tomlBody)} size="sm">
           <Save className="h-4 w-4" />
-          ±£´æÀ©Õ¹Ïî
+          ä¿å­˜æ‰©å±•é¡¹
         </Button>
-        <Button onClick={onCancel} size="sm" variant="secondary">È¡Ïû</Button>
+        <Button onClick={onCancel} size="sm" variant="secondary">å–æ¶ˆ</Button>
       </Toolbar>
     </div>
   );
@@ -2803,8 +4173,8 @@ function RelayFileEditors({
       <div className="relay-file-panel">
         <div className="relay-file-head">
           <div>
-            <strong>config.toml Ô¤ÀÀ</strong>
-            <span>{isActive ? "µ±Ç°Ä£ĞÍÇĞ»»ºó»áĞ´ÈëµÄÔ¤ÀÀ£»ÉÏÏÂÎÄ¿ª¹Ø±ä»¯»áÁ¢¼´·´Ó³" : "ÇĞ»»µ½´ËÄ£ĞÍÊ±»áĞ´ÈëµÄÔ¤ÀÀ£»ÉÏÏÂÎÄ¿ª¹Ø±ä»¯»áÁ¢¼´·´Ó³"}</span>
+            <strong>config.toml é¢„è§ˆ</strong>
+            <span>{isActive ? "å½“å‰ä¾›åº”å•†åˆ‡æ¢åä¼šå†™å…¥çš„é¢„è§ˆï¼›ä¸Šä¸‹æ–‡å¼€å…³å˜åŒ–ä¼šç«‹å³åæ˜ " : "åˆ‡æ¢åˆ°æ­¤ä¾›åº”å•†æ—¶ä¼šå†™å…¥çš„é¢„è§ˆï¼›ä¸Šä¸‹æ–‡å¼€å…³å˜åŒ–ä¼šç«‹å³åæ˜ "}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -2826,8 +4196,8 @@ function RelayFileEditors({
       <div className="relay-file-panel">
         <div className="relay-file-head">
           <div>
-            <strong>Í¨ÓÃÅäÖÃÎÄ¼ş</strong>
-            <span>Ö»±£Áô·Ç MCP¡¢Skills¡¢Plugins µÄ¿çÄ£ĞÍÅäÖÃ£»¹¤¾ßÓë²å¼şÔÚ¶ÀÁ¢Ò³Ãæ¹ÜÀí¡£</span>
+            <strong>é€šç”¨é…ç½®æ–‡ä»¶</strong>
+            <span>åªä¿ç•™é MCPã€Skillsã€Plugins çš„è·¨ä¾›åº”å•†é…ç½®ï¼›å·¥å…·ä¸æ’ä»¶åœ¨ç‹¬ç«‹é¡µé¢ç®¡ç†ã€‚</span>
           </div>
           <Button
             onClick={async () => {
@@ -2835,7 +4205,7 @@ function RelayFileEditors({
               if (!extracted) return;
               const split = splitContextConfigText(extracted.commonConfigContents || "");
               if (!split.common.trim() && !split.context.trim()) {
-                await actions.showMessage("Í¨ÓÃÅäÖÃÎÄ¼ş", "µ±Ç°Ä£ĞÍ config.toml ÀïÃ»ÓĞ¿ÉÌáÈ¡µÄÍ¨ÓÃÅäÖÃ¡£", "failed");
+                await actions.showMessage("é€šç”¨é…ç½®æ–‡ä»¶", "å½“å‰ä¾›åº”å•† config.toml é‡Œæ²¡æœ‰å¯æå–çš„é€šç”¨é…ç½®ã€‚", "failed");
                 return;
               }
               const promotedProfile = {
@@ -2857,7 +4227,7 @@ function RelayFileEditors({
             variant="secondary"
           >
             <Download className="h-4 w-4" />
-            ÌáÈ¡µ±Ç°Ä£ĞÍÅäÖÃ
+            æå–å½“å‰ä¾›åº”å•†é…ç½®
           </Button>
         </div>
         <SyncedTextarea
@@ -2870,7 +4240,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>auth.json</strong>
-            <span>{isActive ? "µ±Ç°Ê¹ÓÃÖĞ£º´ò¿ªÊ±´Ó ~/.codex/auth.json »ØÌî£¬±£´æºó»á×÷Îª´ËÄ£ĞÍ auth ´æµµ" : "ÇĞ»»µ½´ËÄ£ĞÍÊ±»áĞ´Èë ~/.codex/auth.json"}</span>
+            <span>{isActive ? "å½“å‰ä½¿ç”¨ä¸­ï¼šæ‰“å¼€æ—¶ä» ~/.codex/auth.json å›å¡«ï¼Œä¿å­˜åä¼šä½œä¸ºæ­¤ä¾›åº”å•† auth å­˜æ¡£" : "åˆ‡æ¢åˆ°æ­¤ä¾›åº”å•†æ—¶ä¼šå†™å…¥ ~/.codex/auth.json"}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -2891,16 +4261,16 @@ function ModeSelector({ launchMode, actions }: { launchMode: LaunchMode; actions
         onClick={() => void actions.setLaunchMode("relay")}
         type="button"
       >
-        <strong>¼æÈİÔöÇ¿</strong>
-        <span>ÊÊºÏ¹Ù·½µÇÂ¼»ò¹Ù·½»ìÈë API Key£»±£Áô»á»°É¾³ı¡¢µ¼³ö¡¢ÏîÄ¿ÒÆ¶¯¡¢Timeline ºÍÓÃ»§½Å±¾£¬¹Ø±Õ²å¼şÈë¿ÚÏà¹ØÔöÇ¿¡£</span>
+        <strong>å…¼å®¹å¢å¼º</strong>
+        <span>é€‚åˆå®˜æ–¹ç™»å½•æˆ–å®˜æ–¹æ··å…¥ API Keyï¼›ä¿ç•™ä¼šè¯åˆ é™¤ã€å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨ã€Timeline å’Œç”¨æˆ·è„šæœ¬ï¼Œå…³é—­æ’ä»¶å…¥å£ç›¸å…³å¢å¼ºã€‚</span>
       </button>
       <button
         className={`mode-option ${launchMode === "patch" ? "active" : ""}`}
         onClick={() => void actions.setLaunchMode("patch")}
         type="button"
       >
-        <strong>ÍêÕûÔöÇ¿</strong>
-        <span>ÊÊºÏ´¿ API£»ÆôÓÃ²å¼şÈë¿Ú¡¢Ç¿ÖÆ°²×°¡¢»á»°É¾³ıµ¼³ö¡¢ÏîÄ¿ÒÆ¶¯µÈÈ«²¿Ò³ÃæÄÜÁ¦¡£</span>
+        <strong>å®Œæ•´å¢å¼º</strong>
+        <span>é€‚åˆçº¯ APIï¼›å¯ç”¨æ’ä»¶å…¥å£ã€å¼ºåˆ¶å®‰è£…ã€ä¼šè¯åˆ é™¤å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨ç­‰å…¨éƒ¨é¡µé¢èƒ½åŠ›ã€‚</span>
       </button>
     </div>
   );
@@ -2948,6 +4318,52 @@ function FeatureToggle({
   );
 }
 
+function randomToken(byteLength = 24) {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function mobileRelayHttpUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const withScheme = /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `ws://${trimmed}`;
+  try {
+    const url = new URL(withScheme);
+    url.protocol = url.protocol === "wss:" || url.protocol === "https:" ? "https:" : "http:";
+    url.pathname = "";
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return "";
+  }
+}
+
+function mobileRelayShareUrl(settings: Pick<BackendSettings, "mobileControlRelayUrl" | "mobileControlRoom" | "mobileControlKey">) {
+  const base = mobileRelayHttpUrl(settings.mobileControlRelayUrl);
+  const room = settings.mobileControlRoom.trim();
+  const key = settings.mobileControlKey.trim();
+  if (!base || !room || !key) return "";
+  const url = new URL(`${base}/mobile`);
+  url.searchParams.set("room", room);
+  url.searchParams.set("key", key);
+  url.searchParams.set("auto", "1");
+  return url.toString();
+}
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let index = 0;
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index += 1;
+  }
+  return `${value >= 10 || index === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[index]}`;
+}
+
 function GuideList({ items }: { items: string[] }) {
   return (
     <div className="guide-list">
@@ -2984,8 +4400,69 @@ function NoticeDialog({
           <h2>{notice.title}</h2>
           <p>{notice.message}</p>
         </div>
-        <button className="toast-close" onClick={onClose} type="button">¡Á</button>
+        <button className="toast-close" onClick={onClose} type="button">Ã—</button>
       </div>
+    </div>
+  );
+}
+
+function PluginMarketplacePromptDialog({
+  status,
+  progress,
+  onRepair,
+  onClose,
+}: {
+  status: PluginMarketplaceStatusResult;
+  progress: TaskProgress;
+  onRepair: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-card plugin-marketplace-modal">
+        <div className="modal-head">
+          <div>
+            <h2>æ’ä»¶å¸‚åœºéœ€è¦ä¿®å¤</h2>
+            <p>å½“å‰ CODEX_HOME æœªå‘ç°å¯ç”¨çš„å®Œæ•´æ’ä»¶å¸‚åœºï¼ŒAPI Key æ¨¡å¼ä¸‹å¯èƒ½å‡ºç°æ’ä»¶å®‰è£…åä¸å¯ç”¨ã€‚</p>
+          </div>
+          <button className="toast-close" onClick={onClose} type="button">Ã—</button>
+        </div>
+        <div className="metric-list">
+          <Metric label="CODEX_HOME" value={status.codexHome} />
+          <Metric label="æœ¬åœ°æ’ä»¶å¸‚åœº" value={status.marketplaceRoot ?? "æœªå‘ç°"} />
+          <Metric label="é…ç½®çŠ¶æ€" value={status.configRegistered ? "å·²æ³¨å†Œ" : "æœªæ³¨å†Œ"} />
+        </div>
+        <TaskProgressBox progress={progress} title="ä¿®å¤è¿›åº¦" />
+        <Toolbar>
+          <Button disabled={progress.active} onClick={onRepair}>
+            <Download className="h-4 w-4" />
+            {progress.active ? "æ­£åœ¨ä¿®å¤â€¦" : "ä¸€é”®ä¿®å¤"}
+          </Button>
+          <Button disabled={progress.active} onClick={onClose} variant="secondary">ç¨åå¤„ç†</Button>
+        </Toolbar>
+      </div>
+    </div>
+  );
+}
+
+function TaskProgressBox({ progress, title }: { progress: TaskProgress; title: string }) {
+  if (!progress.active && progress.percent <= 0) return null;
+  return (
+    <div className="provider-sync-progress task-progress" data-active={progress.active}>
+      <div className="provider-sync-progress-head">
+        <strong>{progress.active ? title : "ä¸Šæ¬¡ä¿®å¤ç»“æœ"}</strong>
+        <span>{progress.percent}%</span>
+      </div>
+      <div
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={progress.percent}
+        className="provider-sync-progress-bar"
+        role="progressbar"
+      >
+        <div className="provider-sync-progress-fill" style={{ width: `${progress.percent}%` }} />
+      </div>
+      <small>{progress.message}</small>
     </div>
   );
 }
@@ -3025,7 +4502,7 @@ function StatusRow({ title, status = "unknown", path }: { title: string; status?
     <div className="status-row">
       <span>{title}</span>
       <Badge status={status} />
-      <code>{path || "Î´¼ÇÂ¼Â·¾¶"}</code>
+      <code>{path || "æœªè®°å½•è·¯å¾„"}</code>
     </div>
   );
 }
@@ -3035,14 +4512,14 @@ function Badge({ status }: { status: string }) {
 }
 
 function LatestLaunch({ status }: { status: LaunchStatus | null }) {
-  if (!status) return <div className="empty">ÔİÎŞÆô¶¯×´Ì¬¡£</div>;
+  if (!status) return <div className="empty">æš‚æ— å¯åŠ¨çŠ¶æ€ã€‚</div>;
   return (
     <div className="metric-list">
-      <Metric label="×´Ì¬" value={status.status} />
-      <Metric label="ÏûÏ¢" value={status.message} />
-      <Metric label="µ÷ÊÔ¶Ë¿Ú" value={String(status.debug_port ?? "-")} />
-      <Metric label="¸¨Öú¶Ë¿Ú" value={String(status.helper_port ?? "-")} />
-      <Metric label="Ê±¼ä" value={formatTime(status.started_at_ms)} />
+      <Metric label="çŠ¶æ€" value={status.status} />
+      <Metric label="æ¶ˆæ¯" value={status.message} />
+      <Metric label="Debug" value={String(status.debug_port ?? "-")} />
+      <Metric label="Helper" value={String(status.helper_port ?? "-")} />
+      <Metric label="æ—¶é—´" value={formatTime(status.started_at_ms)} />
     </div>
   );
 }
@@ -3057,23 +4534,23 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function ScriptRow({ script, actions }: { script: NonNullable<UserScriptInventory["scripts"]>[number]; actions: Actions }) {
-  const source = script.market_id ? `ÊĞ³¡ ¡¤ ${script.version || "Î´Öª°æ±¾"}` : script.source === "builtin" ? "ÄÚÖÃ" : "ÓÃ»§";
+  const source = script.market_id ? `å¸‚åœº Â· ${script.version || "æœªçŸ¥ç‰ˆæœ¬"}` : script.source === "builtin" ? "å†…ç½®" : "ç”¨æˆ·";
   const canDelete = script.source === "user";
   return (
     <div className="table-row">
       <span>{script.name}</span>
       <span>{source}</span>
-      <span>{script.enabled ? "ÆôÓÃ" : "¹Ø±Õ"}</span>
+      <span>{script.enabled ? "å¯ç”¨" : "å…³é—­"}</span>
       <span>{script.status}</span>
       <div className="script-row-actions">
         <Button onClick={() => void actions.setUserScriptEnabled(script.key, !script.enabled)} size="sm" variant="secondary">
           {script.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-          {script.enabled ? "½ûÓÃ" : "ÆôÓÃ"}
+          {script.enabled ? "ç¦ç”¨" : "å¯ç”¨"}
         </Button>
         {canDelete ? (
           <Button onClick={() => void actions.deleteUserScript(script.key)} size="sm" variant="outline">
             <Trash2 className="h-4 w-4" />
-            É¾³ı
+            åˆ é™¤
           </Button>
         ) : null}
       </div>
@@ -3081,21 +4558,56 @@ function ScriptRow({ script, actions }: { script: NonNullable<UserScriptInventor
   );
 }
 
+function AdGrid({ ads, empty, actions }: { ads: AdItem[]; empty: string; actions: Actions }) {
+  if (!ads.length) return <div className="empty">{empty}</div>;
+  return (
+    <div className="ad-grid">
+      {ads.map((ad) => (
+        <button className="ad-card" key={ad.id || `${ad.type}-${ad.title}`} onClick={() => void actions.openExternalUrl(ad.url)} type="button">
+          <div>
+            <strong>{ad.title}</strong>
+            <p>{ad.description}</p>
+          </div>
+          {ad.highlights?.length ? (
+            <div className="ad-tags">
+              {ad.highlights.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+          ) : null}
+          <span className="ad-link">
+            æ‰“å¼€
+            <ExternalLink className="h-4 w-4" />
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function isExpiredAd(ad: AdItem) {
+  if (!ad.expires_at) return false;
+  const expiresAt = Date.parse(ad.expires_at);
+  return Number.isFinite(expiresAt) && expiresAt < Date.now();
+}
+
 function routeTitle(route: Route) {
-  return routes.find((item) => item.id === route)?.label ?? "¸ÅÀÀ";
+  return routes.find((item) => item.id === route)?.label ?? "æ¦‚è§ˆ";
 }
 
 function routeSubtitle(route: Route) {
   const subtitles: Record<Route, string> = {
-    overview: "¼ì²éÎÊÌâ¡¢Æô¶¯Óë¿ìËÙĞŞ¸´",
-    relay: "¹ÜÀí API Ä£ĞÍ¡¢Ğ­Òé¡¢Key ÓëÅäÖÃÎÄ¼ş",
-    sessions: "²é¿´¡¢É¾³ıºÍĞŞ¸´ Codex ±¾µØ»á»°",
-    context: "¶ÀÁ¢¹ÜÀí MCP¡¢Skills¡¢Plugins",
-    enhance: "»á»°É¾³ı¡¢µ¼³ö¡¢ÏîÄ¿ÒÆ¶¯ºÍ½Å±¾ÄÜÁ¦",
-    maintenance: "Èë¿Ú°²×°¡¢ĞŞ¸´¡¢Watcher",
-    proxy: "´úÀí·şÎñÆ÷ÅäÖÃÓë×´Ì¬¼à¿Ø",
-    about: "°æ±¾ĞÅÏ¢",
-    settings: "Ö÷Ìâ¡¢ÃüÁî°ü×°Æ÷ºÍÆô¶¯²ÎÊı",
+    overview: "æ£€æŸ¥é—®é¢˜ã€å¯åŠ¨ä¸å¿«é€Ÿä¿®å¤",
+    relay: "ç®¡ç† API ä¾›åº”å•†ã€åè®®ã€Key ä¸é…ç½®æ–‡ä»¶",
+    sessions: "æŸ¥çœ‹ã€åˆ é™¤å’Œä¿®å¤ Codex æœ¬åœ°ä¼šè¯",
+    context: "ç‹¬ç«‹ç®¡ç† MCPã€Skillsã€Plugins",
+    enhance: "ä¼šè¯åˆ é™¤ã€å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨å’Œè„šæœ¬èƒ½åŠ›",
+    zedRemote: "ç®¡ç† Codex SSH é¡¹ç›®å¹¶åŠ å…¥ Zed workspace",
+    userScripts: "å†…ç½®å’Œç”¨æˆ·è‡ªå®šä¹‰è„šæœ¬æ¸…å•",
+    recommendations: "èµåŠ©å•†æ¨èä¸æ™®é€šæ¨è",
+    maintenance: "å…¥å£å®‰è£…ã€ä¿®å¤ã€Watcher ä¸æ‰‹åŠ¨å¯åŠ¨",
+    about: "ç‰ˆæœ¬ä¿¡æ¯ã€é¡¹ç›®é“¾æ¥ã€GitHub Release æ›´æ–°ã€æ—¥å¿—ä¸è¯Šæ–­",
+    settings: "ä¸»é¢˜ã€å‘½ä»¤åŒ…è£…å™¨å’Œå¯åŠ¨å‚æ•°",
   };
   return subtitles[route];
 }
@@ -3103,11 +4615,11 @@ function routeSubtitle(route: Route) {
 const contextKindOptions: Array<{ kind: ContextKind; label: string; tableName: string }> = [
   { kind: "mcp", label: "MCP", tableName: "mcp_servers" },
   { kind: "skill", label: "Skills", tableName: "skills" },
-  { kind: "plugin", label: "²å¼ş", tableName: "plugins" },
+  { kind: "plugin", label: "æ’ä»¶", tableName: "plugins" },
 ];
 
 function contextKindLabel(kind: ContextKind) {
-  return contextKindOptions.find((option) => option.kind === kind)?.label ?? "À©Õ¹Ïî";
+  return contextKindOptions.find((option) => option.kind === kind)?.label ?? "æ‰©å±•é¡¹";
 }
 
 function contextEntriesFromSettings(settings: BackendSettings): CodexContextEntries {
@@ -3148,7 +4660,7 @@ function mergeLiveContextEntries(entries: CodexContextEntry[], liveEntries: Map<
 }
 
 function withLiveEntryState(entry: CodexContextEntry, live?: CodexContextEntry): CodexContextEntry {
-  return live ? { ...entry, enabled: live.enabled } : entry;
+  return live ? { ...entry, enabled: live.enabled } : { ...entry, enabled: false };
 }
 
 function contextEntriesForProfile(settings: BackendSettings, profile: RelayProfile): CodexContextEntries {
@@ -3695,30 +5207,30 @@ function contextSelectionForAllEntries(settings: BackendSettings): RelayContextS
 }
 
 function relayProfileEditorStatus(profile: RelayProfile, form: BackendSettings, isNew: boolean) {
-  if (isNew) return "ĞÂ½¨Ä£ĞÍĞèÒªÏÈ±£´æµ½ÁĞ±í";
-  if (!form.relayProfilesEnabled) return "Ä£ĞÍÅäÖÃ×Ü¿ª¹ØÒÑ¹Ø±Õ£»µ±Ç°Ö»±£´æÅäÖÃ£¬²»Ğ´Èë Codex live ÎÄ¼ş";
-  return profile.id === form.activeRelayId ? "µ±Ç°ÕıÔÚÊ¹ÓÃ" : "±à¼­ºó±£´æÁĞ±í£¬ÔÙÇĞ»»Ä£Ê½Ê±»áÊ¹ÓÃĞÂÅäÖÃ";
+  if (isNew) return "æ–°å»ºä¾›åº”å•†éœ€è¦å…ˆä¿å­˜åˆ°åˆ—è¡¨";
+  if (!form.relayProfilesEnabled) return "ä¾›åº”å•†é…ç½®æ€»å¼€å…³å·²å…³é—­ï¼›å½“å‰åªä¿å­˜é…ç½®ï¼Œä¸å†™å…¥ Codex live æ–‡ä»¶";
+  return profile.id === form.activeRelayId ? "å½“å‰æ­£åœ¨ä½¿ç”¨" : "ç¼–è¾‘åä¿å­˜åˆ—è¡¨ï¼Œå†åˆ‡æ¢æ¨¡å¼æ—¶ä¼šä½¿ç”¨æ–°é…ç½®";
 }
 
 function providerInitial(name: string) {
-  const trimmed = (name || "Ä£ĞÍ").trim();
-  return Array.from(trimmed)[0]?.toUpperCase() || "¹©";
+  const trimmed = (name || "ä¾›åº”å•†").trim();
+  return Array.from(trimmed)[0]?.toUpperCase() || "ä¾›";
 }
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
-    found: "ÒÑÕÒµ½",
-    missing: "È±Ê§",
-    installed: "ÒÑ°²×°",
-    ok: "Õı³£",
-    running: "ÔËĞĞÖĞ",
-    failed: "Ê§°Ü",
-    archived: "ÒÑ¹éµµ",
-    accepted: "ÒÑÊÜÀí",
-    not_checked: "Î´¼ì²é",
-    not_implemented: "Î´ÊµÏÖ",
-    disabled: "ÒÑ½ûÓÃ",
-    unknown: "Î´Öª",
+    found: "å·²æ‰¾åˆ°",
+    missing: "ç¼ºå¤±",
+    installed: "å·²å®‰è£…",
+    ok: "æ­£å¸¸",
+    running: "è¿è¡Œä¸­",
+    failed: "å¤±è´¥",
+    archived: "å·²å½’æ¡£",
+    accepted: "å·²å—ç†",
+    not_checked: "æœªæ£€æŸ¥",
+    not_implemented: "æœªå®ç°",
+    disabled: "å·²ç¦ç”¨",
+    unknown: "æœªçŸ¥",
   };
   return labels[status] ?? status;
 }
@@ -3736,27 +5248,30 @@ function isSuccessStatus(status?: Status) {
 function healthItems(overview: OverviewResult | null) {
   return [
     {
-      title: "Codex Ó¦ÓÃ",
+      title: "Codex åº”ç”¨",
       status: overview?.codex_app.status ?? "not_checked",
       ok: overview?.codex_app.status === "found",
-      detail: overview?.codex_app.path || "ÉĞÎ´¼ì²é Codex Ó¦ÓÃÂ·¾¶¡£",
+      detail: overview?.codex_app.path || "å°šæœªæ£€æŸ¥ Codex åº”ç”¨è·¯å¾„ã€‚",
     },
     {
-      title: "¾²Ä¬Æô¶¯Èë¿Ú",
+      title: "é™é»˜å¯åŠ¨å…¥å£",
       status: overview?.silent_shortcut.status ?? "not_checked",
       ok: overview?.silent_shortcut.status === "installed",
-      detail: overview?.silent_shortcut.path || "È±ÉÙ LDCodex ¾²Ä¬Æô¶¯¿ì½İ·½Ê½Ê±¿ÉÔÚ°²×°Î¬»¤Ò³ĞŞ¸´¡£",
+      detail: overview?.silent_shortcut.path || "ç¼ºå°‘ Codex++ é™é»˜å¯åŠ¨å¿«æ·æ–¹å¼æ—¶å¯åœ¨å®‰è£…ç»´æŠ¤é¡µä¿®å¤ã€‚",
     },
     {
-      title: "¹ÜÀí¹¤¾ßÈë¿Ú",
+      title: "ç®¡ç†å·¥å…·å…¥å£",
       status: overview?.management_shortcut.status ?? "not_checked",
       ok: overview?.management_shortcut.status === "installed",
-      detail: overview?.management_shortcut.path || "È±ÉÙ¹ÜÀí¹¤¾ß¿ì½İ·½Ê½Ê±¿ÉÔÚ°²×°Î¬»¤Ò³ĞŞ¸´¡£",
+      detail: overview?.management_shortcut.path || "ç¼ºå°‘ç®¡ç†å·¥å…·å¿«æ·æ–¹å¼æ—¶å¯åœ¨å®‰è£…ç»´æŠ¤é¡µä¿®å¤ã€‚",
     },
   ];
 }
 
 function normalizeSettings(settings: BackendSettings): BackendSettings {
+  const backendAggregates = new Map(
+    (settings.aggregateRelayProfiles ?? []).map((aggregate) => [aggregate.id, aggregate] as const),
+  );
   const splitCommon = splitContextConfigText(settings.relayCommonConfigContents || "");
   const relayCommonConfigContents = splitCommon.common;
   const relayContextConfigContents = joinTomlSectionsRootFirst([
@@ -3770,11 +5285,13 @@ function normalizeSettings(settings: BackendSettings): BackendSettings {
   });
   const profiles =
     settings.relayProfiles?.length
-      ? settings.relayProfiles.map((profile) => normalizeRelayProfile(profile, defaultContextSelection))
+      ? settings.relayProfiles.map((profile) =>
+          normalizeRelayProfile(hydrateAggregateRelayProfile(profile, backendAggregates.get(profile.id)), defaultContextSelection),
+        )
       : [
           {
             id: settings.activeRelayId || "default",
-            name: "Ä¬ÈÏÖĞ×ª",
+            name: "é»˜è®¤ä¸­è½¬",
             model: "",
             baseUrl: settings.relayBaseUrl || defaultSettings.relayBaseUrl,
             upstreamBaseUrl: settings.relayBaseUrl || defaultSettings.relayBaseUrl,
@@ -3825,6 +5342,34 @@ function inputToCodexExtraArgs(value: string) {
 
 function normalizeRelayProfile(profile: RelayProfile, defaultContextSelection = emptyContextSelection()): RelayProfile {
   const legacyMixedApi = profile.relayMode === "mixedApi";
+  if (profile.relayMode === "aggregate" || profile.aggregate) {
+    return normalizeAggregateRelayProfile(
+      {
+        ...profile,
+        model: profile.model || "",
+        baseUrl: "",
+        upstreamBaseUrl: "",
+        apiKey: "",
+        protocol: "responses",
+        relayMode: "aggregate",
+        officialMixApiKey: false,
+        testModel: profile.testModel || "",
+        configContents: "",
+        authContents: "",
+        useCommonConfig: profile.useCommonConfig !== false,
+        contextSelection: profile.contextSelectionInitialized
+          ? normalizeContextSelection(profile.contextSelection)
+          : normalizeContextSelection(undefined, defaultContextSelection),
+        contextSelectionInitialized: true,
+        contextWindow: "",
+        autoCompactLimit: "",
+        modelList: "",
+      },
+      null,
+    );
+  }
+  const relayMode = normalizeRelayMode(profile.relayMode);
+  const officialMixApiKey = profile.officialMixApiKey === true || legacyMixedApi;
   let normalized: RelayProfile = {
     ...profile,
     model: profile.model || "",
@@ -3832,11 +5377,11 @@ function normalizeRelayProfile(profile: RelayProfile, defaultContextSelection = 
     upstreamBaseUrl: profile.upstreamBaseUrl || profile.baseUrl || "",
     apiKey: profile.apiKey || "",
     protocol: profile.protocol === "chatCompletions" ? "chatCompletions" : "responses",
-    relayMode: normalizeRelayMode(profile.relayMode),
-    officialMixApiKey: profile.officialMixApiKey === true || legacyMixedApi,
+    relayMode,
+    officialMixApiKey,
     testModel: profile.testModel || "",
-    configContents: profile.configContents || "",
-    authContents: profile.authContents || "",
+    configContents: relayMode === "official" && !officialMixApiKey ? "" : profile.configContents || "",
+    authContents: relayMode === "official" && !officialMixApiKey ? buildOfficialRelayAuthJson(profile.authContents || "") : profile.authContents || "",
     useCommonConfig: profile.useCommonConfig !== false,
     contextSelection: profile.contextSelectionInitialized
       ? normalizeContextSelection(profile.contextSelection)
@@ -3846,8 +5391,25 @@ function normalizeRelayProfile(profile: RelayProfile, defaultContextSelection = 
     autoCompactLimit: profile.autoCompactLimit || "",
     modelList: profile.modelList || "",
     userAgent: profile.userAgent || "",
+    aggregate: null,
   };
-  return deriveRelayProfileFromFiles(normalized);
+  return relayProfileUsesLiveFiles(normalized) ? deriveRelayProfileFromFiles(normalized) : normalized;
+}
+
+function hydrateAggregateRelayProfile(profile: RelayProfile, aggregate: AggregateRelayProfile | undefined): RelayProfile {
+  if (!aggregate) return profile;
+  return {
+    ...profile,
+    name: profile.name || aggregate.name,
+    relayMode: "aggregate",
+    aggregate: {
+      strategy: aggregate.strategy,
+      members: aggregate.members.map((member) => ({
+        profileId: member.relayId,
+        weight: clampAggregateWeight(member.weight),
+      })),
+    },
+  };
 }
 
 function activeRelayProfile(settings: BackendSettings): RelayProfile {
@@ -3859,10 +5421,18 @@ function activeRelayProfile(settings: BackendSettings): RelayProfile {
 }
 
 function relayProtocolLabel(protocol: RelayProtocol): string {
-  return protocol === "chatCompletions" ? "Chat Completions ×ª Responses" : "Responses API";
+  return protocol === "chatCompletions" ? "Chat Completions è½¬ Responses" : "Responses API";
+}
+
+function ccsProviderSummary(result: CcsProvidersResult | null): string {
+  if (!result) return "è¯»å– ~/.cc-switch/cc-switch.db";
+  if (!isSuccessStatus(result.status)) return result.message || "è¯»å– cc-switch ä¾›åº”å•†å¤±è´¥ã€‚";
+  const count = result.providers.length;
+  return count ? `å‘ç° ${count} ä¸ª Codex ä¾›åº”å•†` : "æœªå‘ç°å¯å¯¼å…¥ä¾›åº”å•†";
 }
 
 function normalizeRelayMode(mode: RelayMode | undefined): RelayMode {
+  if (mode === "aggregate") return mode;
   if (mode === "pureApi") return mode;
   return "official";
 }
@@ -3886,35 +5456,77 @@ function normalizeContextSelection(
 }
 
 function relayModeLabel(mode: RelayMode): string {
-  if (mode === "pureApi") return "´¿ API";
-  return "¹Ù·½µÇÂ¼";
+  if (mode === "aggregate") return "èšåˆä¾›åº”å•†";
+  if (mode === "pureApi") return "çº¯ API";
+  return "å®˜æ–¹ç™»å½•";
 }
 
 function relayProfileConfigBrief(profile: RelayProfile): string {
-  if (profile.relayMode === "official") return profile.officialMixApiKey ? "»ìÈë API Key" : "²»Ğ´ API ÎÄ¼ş";
-  return profile.baseUrl || "Î´ÌîĞ´ URL";
+  if (isAggregateRelayProfile(profile)) {
+    const aggregate = normalizeAggregateConfig(profile.aggregate, []);
+    return `${aggregateStrategyLabel(aggregate.strategy)} Â· ${aggregate.members.length} ä¸ªæˆå‘˜`;
+  }
+  if (profile.relayMode === "official") return profile.officialMixApiKey ? "æ··å…¥ API Key" : "ä¸å†™ API æ–‡ä»¶";
+  return profile.baseUrl || "æœªå¡«å†™ URL";
 }
 
 function relayProfileModeHelp(profile: RelayProfile): string {
+  if (isAggregateRelayProfile(profile)) {
+    return "èšåˆä¾›åº”å•†åªä¿å­˜æˆå‘˜å’Œç­–ç•¥é…ç½®ï¼Œæˆå‘˜æ¥è‡ªå·²æœ‰ API ä¾›åº”å•†ï¼›åˆ‡ä¸ºå½“å‰åä¼šé€šè¿‡æœ¬åœ°åè®®ä»£ç†è½®è½¬è¯·æ±‚ã€‚";
+  }
   if (profile.relayMode === "official") {
     if (profile.officialMixApiKey) {
-      return "´ËÄ£ĞÍ»á±£Áô¹Ù·½µÇÂ¼Ä£Ê½£¬²¢°ÑÇëÇó»ìÈëµ±Ç° API Key£»Ò³ÃæÔöÇ¿ÈÔÊ¹ÓÃ¼æÈİÄ£Ê½¡£";
+      return "æ­¤ä¾›åº”å•†ä¼šä¿ç•™å®˜æ–¹ç™»å½•æ¨¡å¼ï¼Œå¹¶æŠŠè¯·æ±‚æ··å…¥å½“å‰ API Keyï¼›é¡µé¢å¢å¼ºä»ä½¿ç”¨å…¼å®¹æ¨¡å¼ã€‚";
     }
-    return "´ËÄ£ĞÍ»áÇĞ»Ø¹Ù·½µÇÂ¼Ä£Ê½£¬Ê¹ÓÃ ChatGPT ¹Ù·½ÕËºÅ£¬²»Ğ´Èë API Key¡£";
+    return "æ­¤ä¾›åº”å•†ä¼šåˆ‡å›å®˜æ–¹ç™»å½•æ¨¡å¼ï¼Œä½¿ç”¨ ChatGPT å®˜æ–¹è´¦å·ï¼Œä¸å†™å…¥ API Keyã€‚";
   }
   if (profile.relayMode === "pureApi") {
-    return "´ËÄ£ĞÍ»áÍ¬Ê±Ğ´Èë config.toml ºÍ auth.json£»API Key Ò²»á×¢Èëµ½ provider bearer token¡£";
+    return "æ­¤ä¾›åº”å•†ä¼šåŒæ—¶å†™å…¥ config.toml å’Œ auth.jsonï¼›API Key ä¹Ÿä¼šæ³¨å…¥åˆ° provider bearer tokenã€‚";
   }
-  return "´ËÄ£ĞÍ»á±£Áô¹Ù·½µÇÂ¼Ä£Ê½£¬²¢°ÑÇëÇó»ìÈëµ±Ç° API Key£»Ò³ÃæÔöÇ¿ÈÔÊ¹ÓÃ¼æÈİÄ£Ê½¡£";
+  return "æ­¤ä¾›åº”å•†ä¼šä¿ç•™å®˜æ–¹ç™»å½•æ¨¡å¼ï¼Œå¹¶æŠŠè¯·æ±‚æ··å…¥å½“å‰ API Keyï¼›é¡µé¢å¢å¼ºä»ä½¿ç”¨å…¼å®¹æ¨¡å¼ã€‚";
 }
 
+function relayProfileReadinessText(profile: RelayProfile, relay: RelayResult | null): string {
+  if (isAggregateRelayProfile(profile)) {
+    const aggregate = normalizeAggregateConfig(profile.aggregate, []);
+    return `èšåˆä¾›åº”å•†å·²é…ç½®ä¸º${aggregateStrategyLabel(aggregate.strategy)}ï¼ŒåŒ…å« ${aggregate.members.length} ä¸ªæˆå‘˜ï¼›çœŸå®å¯¹è¯ä¼šèµ°æœ¬åœ°ä»£ç†è½®è½¬ã€‚`;
+  }
+  if (profile.relayMode === "official") {
+    if (profile.officialMixApiKey) {
+      const hasApiFields = profile.baseUrl.trim() && profile.apiKey.trim();
+      if (!relay?.authenticated && !hasApiFields) return "å½“å‰æœªç™»å½•å®˜æ–¹è´¦å·ï¼Œä¹Ÿæœªé…ç½®æ··å…¥ API çš„ Base URL / Keyã€‚";
+      if (!relay?.authenticated) return "å½“å‰æœªç™»å½•å®˜æ–¹è´¦å·ï¼›å®˜æ–¹ç™»å½•æ··å…¥ API Key éœ€è¦å…ˆç™»å½•å®˜æ–¹è´¦å·ã€‚";
+      if (!hasApiFields) return "å½“å‰è¿˜æ²¡æœ‰å¡«å†™æ··å…¥ API çš„ Base URL / Keyã€‚";
+      return `å®˜æ–¹ç™»å½•å·²å°±ç»ªï¼š${relay.accountLabel || "å·²ç™»å½•"}ï¼Œä¼šæ··å…¥å½“å‰ API Keyã€‚`;
+    }
+    return relay?.authenticated
+      ? `å®˜æ–¹è´¦å·å·²ç™»å½•ï¼š${relay.accountLabel || relay.authSource || "å·²æ£€æµ‹"}ã€‚`
+      : "å½“å‰æœªç™»å½•å®˜æ–¹è´¦å·ï¼›åˆ‡åˆ°å®˜æ–¹ç™»å½•æ¨¡å¼åä»éœ€è¦å…ˆåœ¨ Codex/ChatGPT ç™»å½•ã€‚";
+  }
+  const hasFiles = profile.configContents.trim() && profile.authContents.trim();
+  if (!hasFiles) return "å½“å‰ä¾›åº”å•†è¿˜æ²¡æœ‰å®Œæ•´ config.toml / API Key å­˜æ¡£ã€‚";
+  if (relay && !relay.configured) return "çº¯ API é…ç½®æœªå®Œæ•´å†™å…¥ï¼šè¯·æ£€æŸ¥æ­¤ä¾›åº”å•†æ˜¯å¦æœ‰ OPENAI_API_KEYï¼Œä¸” config.toml æ˜¯å¦åŒ…å« model_provider / provider / base_urlã€‚";
+  return "çº¯ API å°±ç»ªï¼šä¼šåŒæ—¶å†™å…¥ config.toml å’Œ auth.jsonã€‚";
+}
+
+function relayProfileSwitchCommand(profile: RelayProfile): "clear_relay_injection" | "apply_relay_injection" | "apply_pure_api_injection" {
+  if (isAggregateRelayProfile(profile)) return "apply_relay_injection";
+  if (profile.relayMode === "pureApi") return "apply_pure_api_injection";
+  if (profile.relayMode === "official" && !profile.officialMixApiKey) return "clear_relay_injection";
+  if (profile.configContents.trim()) return "apply_relay_injection";
+  return profile.officialMixApiKey ? "apply_relay_injection" : "clear_relay_injection";
+}
 function relayProfileModeSwitchedText(profile: RelayProfile): string {
-  if (profile.relayMode === "pureApi") return "ÒÑ°´´ËÄ£ĞÍÇĞ»»µ½´¿ API£»Ò³ÃæÔöÇ¿ÒÑÉèÎªÍêÕûÔöÇ¿¡£";
-  if (profile.officialMixApiKey) return "ÒÑ°´´ËÄ£ĞÍÊ¹ÓÃ¹Ù·½µÇÂ¼£¬²¢»ìÈë API Key£»Ò³ÃæÔöÇ¿ÒÑÉèÎª¼æÈİÔöÇ¿¡£";
-  return "ÒÑ°´´ËÄ£ĞÍÇĞ»Ø¹Ù·½µÇÂ¼£»Ò³ÃæÔöÇ¿ÒÑÉèÎª¼æÈİÔöÇ¿¡£";
+  if (isAggregateRelayProfile(profile)) return "å·²åˆ‡æ¢åˆ°èšåˆä¾›åº”å•†ï¼›çœŸå®å¯¹è¯ä¼šæŒ‰æ‰€é€‰ç­–ç•¥è½®è½¬æˆå‘˜ã€‚";
+  if (profile.relayMode === "pureApi") return "å·²æŒ‰æ­¤ä¾›åº”å•†åˆ‡æ¢åˆ°çº¯ APIï¼›é¡µé¢å¢å¼ºå·²è®¾ä¸ºå®Œæ•´å¢å¼ºã€‚";
+  if (profile.officialMixApiKey) return "å·²æŒ‰æ­¤ä¾›åº”å•†ä½¿ç”¨å®˜æ–¹ç™»å½•ï¼Œå¹¶æ··å…¥ API Keyï¼›é¡µé¢å¢å¼ºå·²è®¾ä¸ºå…¼å®¹å¢å¼ºã€‚";
+  return "å·²æŒ‰æ­¤ä¾›åº”å•†åˆ‡å›å®˜æ–¹ç™»å½•ï¼›é¡µé¢å¢å¼ºå·²è®¾ä¸ºå…¼å®¹å¢å¼ºã€‚";
 }
 
 function withGeneratedRelayFiles(profile: RelayProfile): RelayProfile {
+  if (isAggregateRelayProfile(profile)) {
+    return { ...profile, configContents: "", authContents: "", aggregate: normalizeAggregateConfig(profile.aggregate, []) };
+  }
   if (profile.relayMode === "official") {
     return {
       ...profile,
@@ -3970,6 +5582,9 @@ function buildOfficialRelayAuthJson(contents: string): string {
 }
 
 function deriveRelayProfileFromFiles(profile: RelayProfile): RelayProfile {
+  if (isAggregateRelayProfile(profile)) {
+    return normalizeAggregateRelayProfile(profile, null);
+  }
   const configContents = profile.configContents || "";
   const authContents = profile.relayMode === "official" ? buildOfficialRelayAuthJson(profile.authContents || "") : profile.authContents || "";
   const configBaseUrl = codexBaseUrlFromConfig(configContents);
@@ -3998,6 +5613,9 @@ function applyRelayProfilePatchToFiles(
   options: { allowGenerateFiles?: boolean } = {},
 ): RelayProfile {
   let next: RelayProfile = { ...profile, ...patch };
+  if (isAggregateRelayProfile(next)) {
+    return normalizeAggregateRelayProfile(next, null);
+  }
   const shouldHaveFiles =
     next.relayMode !== "official" || next.officialMixApiKey || next.configContents.trim() || next.authContents.trim();
   const needsAuthFile = next.relayMode === "pureApi";
@@ -4258,12 +5876,19 @@ function removeTomlSectionKey(contents: string, sectionName: string, key: string
 }
 
 function relayProfileSwitchValidation(profile: RelayProfile): string | null {
+  if (isAggregateRelayProfile(profile)) {
+    return aggregateRelayProfileValidation(profile);
+  }
   if (profile.relayMode === "official" && !profile.officialMixApiKey) return null;
   if (!profile.configContents.trim()) {
-    return `Ä£ĞÍ¡¸${profile.name || profile.id}¡¹È±ÉÙ¶ÀÁ¢ config.toml£¬ÒÑÍ£Ö¹ÇĞ»»£¬±ÜÃâ¼ÌĞøÏÔÊ¾ÉÏÒ»Ì×ÅäÖÃÎÄ¼ş¡£ÇëÏÈÔÚ¸ÃÄ£ĞÍÏêÇéÀï±£´æ config.toml¡£`;
+    return `ä¾›åº”å•†ã€Œ${profile.name || profile.id}ã€ç¼ºå°‘ç‹¬ç«‹ config.tomlï¼Œå·²åœæ­¢åˆ‡æ¢ï¼Œé¿å…ç»§ç»­æ˜¾ç¤ºä¸Šä¸€å¥—é…ç½®æ–‡ä»¶ã€‚è¯·å…ˆåœ¨è¯¥ä¾›åº”å•†è¯¦æƒ…é‡Œä¿å­˜ config.tomlã€‚`;
   }
   if (profile.relayMode !== "official" || !authJsonHasOpenAiApiKey(profile.authContents)) return null;
-  return "¹Ù·½»ìºÏ API ²»Ó¦ÔÚ auth.json ÖĞ±£´æ OPENAI_API_KEY¡£ÇëÇåÀí´ËÄ£ĞÍµÄ auth.json ºóÔÙÇĞ»»¡£";
+  return "å®˜æ–¹æ··åˆ API ä¸åº”åœ¨ auth.json ä¸­ä¿å­˜ OPENAI_API_KEYã€‚è¯·æ¸…ç†æ­¤ä¾›åº”å•†çš„ auth.json åå†åˆ‡æ¢ã€‚";
+}
+
+function relayProfileUsesLiveFiles(profile: RelayProfile): boolean {
+  return profile.relayMode !== "official" || profile.officialMixApiKey;
 }
 
 function authJsonHasOpenAiApiKey(contents: string): boolean {
@@ -4282,18 +5907,47 @@ function tomlString(value: string): string {
 }
 
 function syncLegacyRelayFields(settings: BackendSettings): BackendSettings {
-  const relayProfiles = settings.relayProfiles.map(deriveRelayProfileFromFiles);
+  const relayProfiles = settings.relayProfiles.map((profile) =>
+    isAggregateRelayProfile(profile) ? normalizeAggregateRelayProfile(profile, { ...settings, relayProfiles: settings.relayProfiles }) : deriveRelayProfileFromFiles(profile),
+  );
   const active = activeRelayProfile({ ...settings, relayProfiles });
+  const aggregateRelayProfiles = normalizeAggregateProfilesFromRelayProfiles(relayProfiles);
+  const activeAggregateRelayId = isAggregateRelayProfile(active) ? active.id : "";
   return {
     ...settings,
     relayProfiles,
     activeRelayId: active.id,
-    relayBaseUrl: active.baseUrl,
+    relayBaseUrl: isAggregateRelayProfile(active) ? PROTOCOL_PROXY_BASE_URL : active.baseUrl,
     relayApiKey: active.apiKey,
+    aggregateRelayProfiles,
+    activeAggregateRelayId,
   };
 }
 
+function normalizeAggregateProfilesFromRelayProfiles(profiles: RelayProfile[]): AggregateRelayProfile[] {
+  const candidates = profiles.filter((profile) => !isAggregateRelayProfile(profile));
+  return profiles.filter(isAggregateRelayProfile).map((profile) => {
+    const aggregate = normalizeAggregateConfig(profile.aggregate, candidates);
+    return {
+      id: profile.id,
+      name: profile.name || "èšåˆä¾›åº”å•†",
+      strategy: aggregate.strategy,
+      members: aggregate.members.map((member) => ({
+        relayId: member.profileId,
+        weight: clampAggregateWeight(member.weight),
+      })),
+    };
+  });
+}
 function updateRelayProfile(settings: BackendSettings, id: string, patch: Partial<RelayProfile>): BackendSettings {
+  if (patch.relayMode === "aggregate" || patch.aggregate) {
+    return syncLegacyRelayFields({
+      ...settings,
+      relayProfiles: settings.relayProfiles.map((profile) =>
+        profile.id === id ? normalizeAggregateRelayProfile({ ...profile, ...patch }, settings) : profile,
+      ),
+    });
+  }
   return syncLegacyRelayFields({
     ...settings,
     relayProfiles: settings.relayProfiles.map((profile) => {
@@ -4308,7 +5962,7 @@ function createRelayProfile(settings: BackendSettings): RelayProfile {
   const contextSelection = contextSelectionForAllEntries(settings);
   const next = {
     id,
-    name: `Ä£ĞÍ ${settings.relayProfiles.length + 1}`,
+    name: `ä¾›åº”å•† ${settings.relayProfiles.length + 1}`,
     model: "",
     baseUrl: defaultSettings.relayBaseUrl,
     upstreamBaseUrl: defaultSettings.relayBaseUrl,
@@ -4330,10 +5984,46 @@ function createRelayProfile(settings: BackendSettings): RelayProfile {
   return withGeneratedRelayFiles(next);
 }
 
-function addRelayProfile(settings: BackendSettings, profile: RelayProfile): BackendSettings {
-  const nextWithFiles = deriveRelayProfileFromFiles(
-    profile.configContents.trim() || profile.authContents.trim() ? profile : withGeneratedRelayFiles(profile),
+function createAggregateRelayProfile(settings: BackendSettings): RelayProfile {
+  const id = `aggregate-${Date.now().toString(36)}`;
+  const contextSelection = contextSelectionForAllEntries(settings);
+  const candidates = aggregateMemberCandidates(settings, id);
+  return normalizeAggregateRelayProfile(
+    {
+      id,
+      name: `èšåˆä¾›åº”å•† ${settings.relayProfiles.filter(isAggregateRelayProfile).length + 1}`,
+      model: "",
+      baseUrl: "",
+      upstreamBaseUrl: "",
+      apiKey: "",
+      protocol: "responses",
+      relayMode: "aggregate",
+      officialMixApiKey: false,
+      testModel: "",
+      configContents: "",
+      authContents: "",
+      useCommonConfig: true,
+      contextSelection,
+      contextSelectionInitialized: true,
+      contextWindow: "",
+      autoCompactLimit: "",
+      modelList: "",
+      userAgent: "",
+      aggregate: {
+        strategy: "failover",
+        members: candidates.slice(0, 1).map((profile) => ({ profileId: profile.id, weight: 1 })),
+      },
+    },
+    settings,
   );
+}
+
+function addRelayProfile(settings: BackendSettings, profile: RelayProfile): BackendSettings {
+  const nextWithFiles = isAggregateRelayProfile(profile)
+    ? normalizeAggregateRelayProfile(profile, settings)
+    : deriveRelayProfileFromFiles(
+        profile.configContents.trim() || profile.authContents.trim() ? profile : withGeneratedRelayFiles(profile),
+      );
   const activeId = settings.relayProfiles.some((item) => item.id === settings.activeRelayId)
     ? settings.activeRelayId
     : activeRelayProfile(settings).id;
@@ -4351,10 +6041,11 @@ function duplicateRelayProfile(settings: BackendSettings, id: string): BackendSe
   const next = {
     ...source,
     id: nextId,
-    name: `${source.name || "Î´ÃüÃûÄ£ĞÍ"} ¸±±¾`,
+    name: `${source.name || "æœªå‘½åä¾›åº”å•†"} å‰¯æœ¬`,
   };
+  const normalizedNext = isAggregateRelayProfile(next) ? normalizeAggregateRelayProfile(next, settings) : next;
   const relayProfiles = [...settings.relayProfiles];
-  relayProfiles.splice(sourceIndex >= 0 ? sourceIndex + 1 : relayProfiles.length, 0, next);
+  relayProfiles.splice(sourceIndex >= 0 ? sourceIndex + 1 : relayProfiles.length, 0, normalizedNext);
   return syncLegacyRelayFields({
     ...settings,
     relayProfiles,
@@ -4377,11 +6068,120 @@ function reorderRelayProfiles(settings: BackendSettings, sourceId: string, targe
 
 function removeRelayProfile(settings: BackendSettings, id: string): BackendSettings {
   const profiles = settings.relayProfiles.filter((profile) => profile.id !== id);
+  const scrubbedProfiles = profiles.map((profile) =>
+    isAggregateRelayProfile(profile)
+      ? normalizeAggregateRelayProfile(
+          {
+            ...profile,
+            aggregate: {
+              ...normalizeAggregateConfig(profile.aggregate, []),
+              members: normalizeAggregateConfig(profile.aggregate, []).members.filter((member) => member.profileId !== id),
+            },
+          },
+          { ...settings, relayProfiles: profiles },
+        )
+      : profile,
+  );
   return syncLegacyRelayFields({
     ...settings,
-    relayProfiles: profiles.length ? profiles : defaultSettings.relayProfiles,
-    activeRelayId: settings.activeRelayId === id ? profiles[0]?.id || "default" : settings.activeRelayId,
+    relayProfiles: scrubbedProfiles.length ? scrubbedProfiles : defaultSettings.relayProfiles,
+    activeRelayId: settings.activeRelayId === id ? scrubbedProfiles[0]?.id || "default" : settings.activeRelayId,
   });
+}
+
+const aggregateStrategyOptions: Array<{ value: RelayAggregateStrategy; label: string; description: string }> = [
+  {
+    value: "failover",
+    label: "å¤±è´¥åˆ‡æ¢",
+    description: "æŒ‰æˆå‘˜é¡ºåºè¯·æ±‚ï¼Œå¤±è´¥ååˆ‡åˆ°ä¸‹ä¸€ä¸ªä¾›åº”å•†ã€‚",
+  },
+  {
+    value: "conversationRoundRobin",
+    label: "æŒ‰å¯¹è¯è½®è½¬",
+    description: "åŒä¸€å¯¹è¯ä¿æŒä¸€ä¸ªæˆå‘˜ï¼Œä¸åŒå¯¹è¯ä¾æ¬¡åˆ†é…ã€‚",
+  },
+  {
+    value: "requestRoundRobin",
+    label: "æŒ‰è¯·æ±‚è½®è½¬",
+    description: "æ¯æ¬¡è¯·æ±‚æŒ‰æˆå‘˜é¡ºåºåˆ‡æ¢ï¼Œé€‚åˆå‡åŒ€æ‘Šè¯·æ±‚é‡ã€‚",
+  },
+  {
+    value: "weightedRoundRobin",
+    label: "æƒé‡è½®è½¬",
+    description: "æŒ‰æˆå‘˜æƒé‡åˆ†é…è¯·æ±‚ï¼Œæƒé‡è¶Šé«˜æ‰¿æ‹…è¶Šå¤šã€‚",
+  },
+];
+
+function isAggregateRelayProfile(profile: Pick<RelayProfile, "relayMode" | "aggregate">): boolean {
+  return profile.relayMode === "aggregate" || !!profile.aggregate;
+}
+
+function normalizeAggregateRelayProfile(profile: RelayProfile, settings: BackendSettings | null): RelayProfile {
+  const candidates = settings ? aggregateMemberCandidates(settings, profile.id) : [];
+  const aggregate = normalizeAggregateConfig(profile.aggregate, candidates);
+  return {
+    ...profile,
+    baseUrl: "",
+    upstreamBaseUrl: "",
+    apiKey: "",
+    protocol: "responses",
+    relayMode: "aggregate",
+    officialMixApiKey: false,
+    configContents: "",
+    authContents: "",
+    aggregate,
+  };
+}
+
+function normalizeAggregateConfig(
+  aggregate: RelayAggregateConfig | null | undefined,
+  candidates: RelayProfile[],
+): RelayAggregateConfig {
+  const candidateIds = new Set(candidates.map((profile) => profile.id));
+  const seen = new Set<string>();
+  const strategy: RelayAggregateStrategy =
+    aggregate?.strategy && aggregateStrategyOptions.some((option) => option.value === aggregate.strategy)
+      ? aggregate.strategy
+      : "failover";
+  const members = (aggregate?.members ?? [])
+    .filter((member) => member.profileId && !seen.has(member.profileId))
+    .filter((member) => !candidateIds.size || candidateIds.has(member.profileId))
+    .map((member) => {
+      seen.add(member.profileId);
+      return { profileId: member.profileId, weight: clampAggregateWeight(member.weight) };
+    });
+  return { strategy, members };
+}
+
+function aggregateMemberCandidates(settings: BackendSettings, aggregateId: string): RelayProfile[] {
+  return settings.relayProfiles.filter(
+    (profile) => profile.id !== aggregateId && !isAggregateRelayProfile(profile) && isApiRelayProfile(profile),
+  );
+}
+
+function isApiRelayProfile(profile: RelayProfile): boolean {
+  return Boolean(profile.baseUrl.trim() && profile.apiKey.trim());
+}
+
+function clampAggregateWeight(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(1, Math.min(999, Math.round(value)));
+}
+
+function aggregateStrategyLabel(strategy: RelayAggregateStrategy): string {
+  return aggregateStrategyOptions.find((option) => option.value === strategy)?.label ?? "å¤±è´¥åˆ‡æ¢";
+}
+
+function aggregateStrategyHelp(strategy: RelayAggregateStrategy): string {
+  if (strategy === "failover") return "å¤±è´¥åˆ‡æ¢ä¼šä¿ç•™æˆå‘˜é¡ºåºï¼Œä¼˜å…ˆä½¿ç”¨ç¬¬ä¸€ä¸ªå¯ç”¨ä¾›åº”å•†ã€‚";
+  if (strategy === "conversationRoundRobin") return "æŒ‰å¯¹è¯è½®è½¬ä¼šè®©åŒä¸€å¯¹è¯å°½é‡ä¿æŒå›ºå®šæˆå‘˜ï¼Œé™ä½ä¸Šä¸‹æ–‡æ¼‚ç§»ã€‚";
+  if (strategy === "requestRoundRobin") return "æŒ‰è¯·æ±‚è½®è½¬ä¼šé€è¯·æ±‚åˆ‡æ¢æˆå‘˜ï¼Œé€‚åˆä¾›åº”å•†èƒ½åŠ›æ¥è¿‘çš„åœºæ™¯ã€‚";
+  return "æƒé‡è½®è½¬ä¼šè¯»å–æ¯ä¸ªæˆå‘˜çš„æƒé‡å€¼ï¼Œæƒé‡è¶Šé«˜çš„æˆå‘˜è·å¾—æ›´å¤šè¯·æ±‚ã€‚";
+}
+
+function aggregateRelayProfileValidation(profile: RelayProfile): string | null {
+  const aggregate = normalizeAggregateConfig(profile.aggregate, []);
+  return aggregate.members.length >= 1 ? null : "èšåˆä¾›åº”å•†è‡³å°‘éœ€è¦å‹¾é€‰ 1 ä¸ªå·²å¡«å†™ Base URL / Key çš„ API ä¾›åº”å•†ã€‚";
 }
 
 function numberOrDefault(value: string, fallback: number) {
@@ -4394,10 +6194,10 @@ function splitLogLines(text: string) {
 }
 
 function zedStrategyLabel(strategy: ZedOpenStrategy) {
-  if (strategy === "reuseWindow") return "¸´ÓÃ´°¿Ú";
-  if (strategy === "newWindow") return "ĞÂ´°¿Ú";
-  if (strategy === "default") return "Zed Ä¬ÈÏĞĞÎª";
-  return "¼ÓÈëµ±Ç°¹¤×÷Çø";
+  if (strategy === "reuseWindow") return "å¤ç”¨çª—å£";
+  if (strategy === "newWindow") return "æ–°çª—å£";
+  if (strategy === "default") return "Zed é»˜è®¤è¡Œä¸º";
+  return "åŠ å…¥å½“å‰å·¥ä½œåŒº";
 }
 
 function zedRemoteHostLabel(project: ZedRemoteProject) {
@@ -4407,12 +6207,12 @@ function zedRemoteHostLabel(project: ZedRemoteProject) {
 }
 
 function zedRemoteSourceLabel(source: string) {
-  if (source === "currentThread") return "µ±Ç°»á»°";
+  if (source === "currentThread") return "å½“å‰ä¼šè¯";
   if (source === "codexRemoteProject") return "Codex remote project";
   if (source === "threadWorkspaceHint") return "Thread workspace hint";
   if (source === "sqliteThreadCwd") return "SQLite cwd";
-  if (source === "recent") return "×î½ü´ò¿ª";
-  return source || "Î´ÖªÀ´Ô´";
+  if (source === "recent") return "æœ€è¿‘æ‰“å¼€";
+  return source || "æœªçŸ¥æ¥æº";
 }
 
 function formatTime(value: number) {
@@ -4425,11 +6225,11 @@ function formatDuration(startedAtMs: number): string {
   const elapsed = Date.now() - startedAtMs;
   if (elapsed < 0) return formatTime(startedAtMs);
   const mins = Math.floor(elapsed / 60000);
-  if (mins < 1) return "¸Õ¸ÕÆô¶¯";
-  if (mins < 60) return `ÒÑÔËĞĞ ${mins} ·ÖÖÓ`;
+  if (mins < 1) return "åˆšåˆšå¯åŠ¨";
+  if (mins < 60) return `å·²è¿è¡Œ ${mins} åˆ†é’Ÿ`;
   const hours = Math.floor(mins / 60);
   const remainMins = mins % 60;
-  return `ÒÑÔËĞĞ ${hours} Ğ¡Ê± ${remainMins} ·ÖÖÓ`;
+  return `å·²è¿è¡Œ ${hours} å°æ—¶ ${remainMins} åˆ†é’Ÿ`;
 }
 
 function stringifyError(error: unknown) {
@@ -4450,23 +6250,3 @@ function loadInitialRoute(): Route {
   }
   return "overview";
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
