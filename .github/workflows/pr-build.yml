@@ -1,4 +1,4 @@
-﻿name: PR build artifacts
+name: PR build artifacts
 
 on:
   pull_request:
@@ -134,7 +134,7 @@ jobs:
       - name: Verify macOS bundle structure
         run: |
           set -euo pipefail
-          for app in "dist/macos/stage/LDCodex.app" "dist/macos/stage/LDCodex 管理工具.app"; do
+          for app in "dist/macos/stage/LDCodex.app" "dist/macos/stage/LDCodex ????.app"; do
             test -f "$app/Contents/Info.plist"
             test -f "$app/Contents/PkgInfo"
             test -x "$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
@@ -149,4 +149,5 @@ jobs:
           name: ldcodex-macos-${{ matrix.arch }}-dmg
           path: dist/macos/*.dmg
           if-no-files-found: error
+
 
