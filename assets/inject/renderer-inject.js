@@ -1,6 +1,6 @@
 (() => {
   const helperBase = window.__CODEX_SESSION_DELETE_HELPER__ || "http://127.0.0.1:57321";
-  const proxyBase = "http://127.0.0.1:40000";
+  const proxyBase = "http://127.0.0.1:36000";
   async function proxyFallback(path, payload) {
     try {
       const response = await fetch(`${proxyBase}${path}`, {
