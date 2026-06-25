@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 @theme {
   --color-background: hsl(var(--background));
@@ -193,6 +193,23 @@ body {
   border-right: 1px solid hsl(var(--sidebar-border));
   background: hsl(var(--sidebar-bg));
   padding: 14px 10px;
+}
+.sidebar-footer {
+
+.sidebar-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+.sidebar-footer-icon {
+  width: 28px;
+  height: 28px;
+  color: hsl(var(--brand-accent));
+  flex-shrink: 0;
+}
+.sidebar-footer-brand-text {
+  text-align: left;
 }
 .sidebar-footer {
   margin-top: auto;
