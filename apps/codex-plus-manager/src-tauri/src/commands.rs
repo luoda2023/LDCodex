@@ -366,19 +366,19 @@ pub fn launch_bridge() -> CommandResult<Value> {
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-        .unwrap_or_else(|| PathBuf::from('.'));
-    let bridge_index = exe_dir.join('bridge').join('index.mjs');
+        .unwrap_or_else(|| PathBuf::from("."));
+    let bridge_index = exe_dir.join("bridge").join("index.mjs");
     let script_path = if bridge_index.exists() {
         bridge_index
     } else {
-        let src_bridge = PathBuf::from(env!('CARGO_MANIFEST_DIR')).join('..').join('..').join('bridge').join('index.mjs');
+        let src_bridge = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("bridge").join("index.mjs");
         if src_bridge.exists() {
             src_bridge
         } else {
             return failed("找不到 bridge/index.mjs", json!({}));
         }
     };
-    let node = if cfg!(windows) { 'node.exe' } else { 'node' };
+    let node = if cfg!(windows) { "node.exe" } else { "node" };
     let work_dir = script_path.parent().unwrap().parent().unwrap().to_path_buf();
     match std::process::Command::new(node)
         .arg(&script_path)
@@ -387,7 +387,7 @@ pub fn launch_bridge() -> CommandResult<Value> {
     {
         Ok(child) => {
             let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
-                'manager.bridge_launched',
+                "manager.bridge_launched",
                 json!({"pid": child.id(), "script": script_path.to_string_lossy().to_string()}),
             );
             CommandResult {
@@ -3253,3 +3253,4 @@ pub struct RemoveEnvConflictsPayload {
     pub backup_path: Option<String>,
     pub remaining: Vec<codex_plus_core::env_conflicts::EnvConflict>,
 }
+
