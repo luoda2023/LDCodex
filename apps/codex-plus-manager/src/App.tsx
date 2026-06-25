@@ -91,12 +91,6 @@ type OverviewResult = CommandResult<{
   update_status: string;
   settings_path: string;
   logs_path: string;
-}>;
-
-type PluginMarketplaceStatusResult = CommandResult<{
-  codexHome: string;
-  marketplaceRoot?: string | null;
-  configRegistered: boolean;
   needsRepair: boolean;
 }>;
 
@@ -111,7 +105,6 @@ type BackendSettings = {
   enhancementsEnabled: boolean;
   computerUseGuardEnabled: boolean;
   codexAppPluginEntryUnlock: boolean;
-  codexAppPluginMarketplaceUnlock: boolean;
   codexAppForcePluginInstall: boolean;
   codexAppModelWhitelistUnlock: boolean;
   codexAppSessionDelete: boolean;
@@ -143,7 +136,6 @@ type BackendSettings = {
   cliWrapperApiKeyEnv: string;
 };
 
-type ZedOpenStrategy = "addToFocusedWorkspace" | "reuseWindow" | "newWindow" | "default";
 type LaunchMode = "patch" | "relay";
 
 type RelayProfile = {
@@ -290,32 +282,6 @@ type LocalSessionsResult = CommandResult<{
   dbPaths: string[];
   sessions: LocalSession[];
 }>;
-
-type ZedRemoteProject = {
-  id: string;
-  label: string;
-  hostId: string;
-  ssh: {
-    user: string;
-    host: string;
-    port: number | null;
-  };
-  path: string;
-  url: string;
-  source: "currentThread" | "codexRemoteProject" | "threadWorkspaceHint" | "sqliteThreadCwd" | "recent" | string;
-  lastOpenedAtMs: number | null;
-  isCurrent: boolean;
-};
-
-type ZedRemoteProjectsResult = CommandResult<{
-  projects: ZedRemoteProject[];
-}>;
-
-type ZedRemoteOpenResult = CommandResult<{
-  url: string;
-  strategy: ZedOpenStrategy;
-}>;
-
 type DeleteLocalSessionResult = CommandResult<{
   status: string;
   session_id: string;
@@ -474,7 +440,6 @@ type AdItem = {
   type: "sponsor" | "normal" | string;
   title: string;
   description: string;
-  url: string;
   highlights?: string[];
   expires_at?: string;
 };
@@ -532,7 +497,6 @@ function providerSyncTargetLabel(target: ProviderSyncTargetOption): string {
   return [...labels, ...current].join(" / ") || "发现";
 }
 
-
 type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
@@ -562,21 +526,14 @@ const defaultSettings: BackendSettings = {
   enhancementsEnabled: true,
   computerUseGuardEnabled: false,
   codexAppPluginEntryUnlock: true,
-  codexAppPluginMarketplaceUnlock: true,
   codexAppForcePluginInstall: true,
   codexAppModelWhitelistUnlock: true,
   codexAppSessionDelete: true,
   codexAppMarkdownExport: true,
-  codexAppPasteFix: false,
   codexAppProjectMove: true,
   codexAppConversationTimeline: true,
-  codexAppThreadIdBadge: false,
   codexAppConversationView: false,
   codexAppThreadScrollRestore: true,
-  codexAppZedRemoteOpen: true,
-  zedRemoteOpenStrategy: "addToFocusedWorkspace",
-  zedRemoteProjectRegistryEnabled: true,
-  zedRemoteSyncToZedSettings: false,
   codexAppUpstreamWorktreeCreate: true,
   codexAppNativeMenuPlacement: true,
   codexAppServiceTierControls: false,
@@ -584,9 +541,6 @@ const defaultSettings: BackendSettings = {
   codexAppImageOverlayPath: "",
   codexAppImageOverlayOpacity: 35,
   codexGoalsEnabled: false,
-  mobileControlRelayUrl: LOCAL_MOBILE_RELAY_URL,
-  mobileControlRoom: "",
-  mobileControlKey: "",
   launchMode: "patch",
   relayBaseUrl: "",
   relayApiKey: "",
@@ -641,8 +595,6 @@ export function App() {
   const [diagnostics, setDiagnostics] = useState<DiagnosticsResult | null>(null);
   const [watcher, setWatcher] = useState<WatcherResult | null>(null);
   const [update, setUpdate] = useState<UpdateResult | null>(null);
-  const [ads, setAds] = useState<AdsResult | null>(null);
-  const [scriptMarket, setScriptMarket] = useState<ScriptMarketResult | null>(null);
   const [launchForm, setLaunchForm] = useState({
     appPath: "",
     debugPort: "9229",
@@ -705,24 +657,6 @@ export function App() {
       return normalized;
     }
     return null;
-  };
-
-  const refreshScriptMarket = async (silent = false) => {
-    const result = await run(() => call<ScriptMarketResult>("refresh_script_market"));
-    if (result) {
-      setScriptMarket(result);
-      setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("脚本市场", result, { silentSuccess: true });
-    }
-  };
-
-  const installMarketScript = async (id: string) => {
-    const result = await run(() => call<ScriptMarketResult>("install_market_script", { id }));
-    if (result) {
-      setScriptMarket(result);
-      setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
-      showResultNotice("脚本市场", result);
-    }
   };
 
   const refreshRelay = async (silent = false) => {
@@ -792,25 +726,6 @@ export function App() {
       if (!silent || !isSuccessStatus(result.status)) showResultNotice("会话管理", result, { silentSuccess: true });
     }
     return result;
-  };
-
-    strategy: ZedOpenStrategy = settingsForm.zedRemoteOpenStrategy || "addToFocusedWorkspace",
-  ) => {
-    const result = await run(() =>
-      call<ZedRemoteOpenResult>("open_zed_remote", {
-        payload: {
-          ssh: project.ssh,
-          hostId: project.hostId,
-          path: project.path,
-          strategy,
-          remember: settingsForm.zedRemoteProjectRegistryEnabled !== false,
-        },
-      }),
-    );
-    if (result) {
-      showResultNotice("Zed 远程打开", result);
-      await refreshZedRemoteProjects(true);
-    }
   };
 
   const deleteLocalSession = async (session: LocalSession) => {
@@ -1040,14 +955,6 @@ export function App() {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
       showNotice("图片覆盖层", result.message, result.status);
-    }
-  };
-
-  const refreshAds = async (silent = false) => {
-    const result = await run(() => call<AdsResult>("load_ads"));
-    if (result) {
-      setAds(result);
-      if (!silent) showResultNotice("推荐内容", result, { silentSuccess: true });
     }
   };
 
@@ -1448,8 +1355,6 @@ export function App() {
       launch,
       restart,
       repairBackend,
-      repairPluginMarketplace,
-      checkPluginMarketplacePrompt,
       installEntrypoints,
       uninstallEntrypoints,
       repairShortcuts,
@@ -1548,16 +1453,8 @@ export function App() {
       importCcsProviders,
       refreshLiveContextEntries,
       syncLiveContextEntries,
-      refreshAds,
-      refreshScriptMarket,
-      installMarketScript,
-      setUserScriptEnabled,
-      deleteUserScript,
       refreshLocalSessions,
       deleteLocalSession,
-      refreshZedRemoteProjects,
-      openZedRemoteProject,
-      forgetZedRemoteProject,
       openExternalUrl,
       applyRelayInjection,
       applyPureApiInjection,
@@ -1668,7 +1565,6 @@ export function App() {
           {route === "overview" ? (
             <OverviewScreen
               overview={overview}
-              pluginMarketplaceProgress={pluginMarketplaceProgress}
               actions={actions}
             />
           ) : null}
@@ -1711,7 +1607,6 @@ export function App() {
           {route === "enhance" ? (
             <EnhanceScreen
               form={settingsForm}
-              pluginMarketplaceProgress={pluginMarketplaceProgress}
               onFormChange={setSettingsForm}
               actions={actions}
             />
@@ -1859,7 +1754,6 @@ function MobileControlScreen({
   const selectRelayServer = (serverId: string) => {
     const server = mobileRelayServers.find((item) => item.id === serverId);
     if (!server) return;
-    onFormChange({ ...form, mobileControlRelayUrl: server.url });
   };
   const startAndCopyMobileLink = async () => {
     const room = form.mobileControlRoom.trim() || randomToken(8);
@@ -1867,9 +1761,6 @@ function MobileControlScreen({
     const relayUrl = selectedServer.url;
     const next = {
       ...form,
-      mobileControlRelayUrl: relayUrl,
-      mobileControlRoom: room,
-      mobileControlKey: key,
     };
     await saveMobileSettings(next, true);
     const link = mobileRelayShareUrl(next);
@@ -1907,7 +1798,6 @@ function MobileControlScreen({
   }, []);
   useEffect(() => {
     if (!mobileRelayServers.some((server) => server.url === form.mobileControlRelayUrl)) {
-      onFormChange({ ...form, mobileControlRelayUrl: mobileRelayServers[0].url });
     }
   }, [form.mobileControlRelayUrl]);
   return (
@@ -1958,9 +1848,6 @@ function MobileControlScreen({
             <Button
               onClick={() => void saveMobileSettings({
                 ...form,
-                mobileControlEnabled: true,
-                mobileControlRoom: randomToken(8),
-                mobileControlKey: randomToken(32),
               }, false)}
               type="button"
               variant="secondary"
@@ -2100,7 +1987,7 @@ function OverviewScreen({
               <Rocket className="h-4 w-4" />
               启动代理
             </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002/")}>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/api/status")}>
               <ExternalLink className="h-4 w-4" />
               打开代理信息页
             </Button>
@@ -2114,7 +2001,6 @@ function OverviewScreen({
     </>
   );
 }
-
 
 function ProxyScreen({
   overview,
@@ -2141,7 +2027,7 @@ function ProxyScreen({
               <Rocket className="h-4 w-4" />
               启动代理
             </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002/")}>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/api/status")}>
               <ExternalLink className="h-4 w-4" />
               打开代理信息页
             </Button>
@@ -2459,7 +2345,6 @@ function EnhanceScreen({
               <select
                 className="select-input"
                 disabled={!masterEnabled}
-                onChange={(event) => onFormChange({ ...form, zedRemoteOpenStrategy: event.currentTarget.value as ZedOpenStrategy })}
                 value={form.zedRemoteOpenStrategy}
               >
                 <option value="addToFocusedWorkspace">加入当前工作区</option>
@@ -2521,7 +2406,6 @@ function ZedRemoteScreen({
             <Field label="默认打开策略">
               <select
                 className="select-input"
-                onChange={(event) => onFormChange({ ...form, zedRemoteOpenStrategy: event.currentTarget.value as ZedOpenStrategy })}
                 value={form.zedRemoteOpenStrategy}
               >
                 <option value="addToFocusedWorkspace">加入当前工作区</option>
@@ -2533,7 +2417,6 @@ function ZedRemoteScreen({
             <label className="switch-row compact">
               <input
                 checked={form.zedRemoteProjectRegistryEnabled}
-                onChange={(event) => onFormChange({ ...form, zedRemoteProjectRegistryEnabled: event.currentTarget.checked })}
                 type="checkbox"
               />
               <span>
@@ -2568,7 +2451,6 @@ function ZedRemoteProjectSection({
   onCopyUrl,
 }: {
   title: string;
-  projects: ZedRemoteProject[];
   actions: Actions;
   onCopyUrl: (project: ZedRemoteProject) => Promise<void>;
 }) {
@@ -4513,8 +4395,8 @@ function LatestLaunch({ status }: { status: LaunchStatus | null }) {
     <div className="metric-list">
       <Metric label="状态" value={status.status} />
       <Metric label="消息" value={status.message} />
-      <Metric label="Debug" value={String(status.debug_port ?? "-")} />
-      <Metric label="Helper" value={String(status.helper_port ?? "-")} />
+      <Metric label="????" value={String(status.debug_port ?? "-")} />
+      <Metric label="????" value={String(status.helper_port ?? "-")} />
       <Metric label="时间" value={formatTime(status.started_at_ms)} />
     </div>
   );
@@ -6189,7 +6071,7 @@ function splitLogLines(text: string) {
   return text.trimEnd().split(/\r?\n/).filter((line, index, lines) => line.length > 0 || index < lines.length - 1);
 }
 
-function zedStrategyLabel(strategy: ZedOpenStrategy) {
+function zedStrategyLabel(strategy: any) {
   if (strategy === "reuseWindow") return "复用窗口";
   if (strategy === "newWindow") return "新窗口";
   if (strategy === "default") return "Zed 默认行为";
