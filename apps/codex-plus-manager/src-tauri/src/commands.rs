@@ -361,7 +361,7 @@ pub async fn load_overview() -> CommandResult<OverviewPayload> {
 
 
 #[tauri::command]
-pub pub fn launch_bridge() -> CommandResult<Value> {
+pub fn launch_bridge() -> CommandResult<Value> {
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|p| p.to_path_buf()))
