@@ -1,4 +1,4 @@
-import {
+﻿import {
   closestCenter,
   DndContext,
   KeyboardSensor,
@@ -1979,7 +1979,7 @@ function OverviewScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="代理服务器启动状态" detail="LDbridge 转发服务运行状态" />
+        <CardHead title="代理服务器启动状态" detail="代理服务器运行状态" />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
@@ -2019,7 +2019,7 @@ function ProxyScreen({
   return (
     <>
       <Panel>
-        <CardHead title="代理服务器运行状态" detail="检查代理转发服务是否正常运行" />
+        <CardHead title="代理服务器运行状态" detail="检查代理服务器是否正常运行" />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
