@@ -1987,7 +1987,7 @@ function OverviewScreen({
               <Rocket className="h-4 w-4" />
               启动代理
             </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/api/status")}>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/proxy-info.html")}>
               <ExternalLink className="h-4 w-4" />
               打开代理信息页
             </Button>
@@ -2027,7 +2027,7 @@ function ProxyScreen({
               <Rocket className="h-4 w-4" />
               启动代理
             </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/api/status")}>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/proxy-info.html")}>
               <ExternalLink className="h-4 w-4" />
               打开代理信息页
             </Button>

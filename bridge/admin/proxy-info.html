@@ -201,7 +201,7 @@
 
     async function loadConfig() {
       try {
-        const res = await fetch('/api/config', { cache: 'no-store' });
+        const res = await fetch('/api/fallback', { cache: 'no-store' });
         if (!res.ok) throw new Error('config_failed');
         const data = await res.json();
         const profile = data?.activeProfile || data?.profile || null;

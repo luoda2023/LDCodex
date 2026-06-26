@@ -996,6 +996,12 @@ export function startConfigServer() {
     }
 
     // Restart
+    // Proxy info page
+    if (req.method === "GET" && pn === "/proxy-info.html") {
+      const filePath = path.join(PATHS.root, "..", "admin", "proxy-info.html");
+      serveFile(res, filePath, "text/html; charset=utf-8");
+      return;
+    }
     if (req.method === "POST" && pn === "/api/restart") {
       sendJson(res, 200, { status: "ok", message: "restart initiated" });
       setTimeout(() => process.exit(0), 500);
