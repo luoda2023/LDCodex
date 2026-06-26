@@ -1,4 +1,4 @@
-﻿import {
+import {
   closestCenter,
   DndContext,
   KeyboardSensor,
@@ -1183,7 +1183,7 @@ export function App() {
     }
     let switchSettings = normalizeSettings(next);
     if (!switchSettings.relayProfilesEnabled) {
-      showNotice("模型配置已关闭", "当前不会写入 Codex config.toml / auth.json。打开模型配置总开关后再切换。", "failed");
+      showNotice("供应商配置已关闭", "当前不会写入 Codex config.toml / auth.json。打开供应商配置总开关后再切换。", "failed");
       return;
     }
     const targetBeforeSnapshot = activeRelayProfile(switchSettings);
@@ -1201,7 +1201,7 @@ export function App() {
         targetRelayName: selectedBeforeSave.name,
         error: validationError,
       });
-      showNotice("模型配置可能不正确", validationError, "failed");
+      showNotice("供应商配置可能不正确", validationError, "failed");
       return;
     }
     switchSettings = await snapshotActiveRelayFilesBeforeSwitch(switchSettings, previousActiveRelayId);
@@ -1353,13 +1353,6 @@ export function App() {
     () => ({
       refreshCurrent: () => navigate(route),
       launch,
-      launchBridge: async () => {
-        const result = await run(() => call<CommandResult<Record<string, unknown>>>("launch_bridge"));
-        if (result) {
-          showNotice("启动代理", result.message, result.status);
-          await refreshOverview(true);
-        }
-      },
       restart,
       repairBackend,
       installEntrypoints,
@@ -1643,7 +1636,84 @@ export function App() {
   );
 }
 
-type Actions = {\n  refreshCurrent: () => Promise<void>;\n  launch: () => Promise<void>;\n  launchBridge: () => Promise<void>;\n  restart: () => Promise<void>;\n  repairBackend: () => Promise<void>;\n  installEntrypoints: () => Promise<void>;\n  uninstallEntrypoints: () => Promise<void>;\n  repairShortcuts: () => Promise<void>;\n  checkUpdate: () => Promise<void>;\n  performUpdate: () => Promise<void>;\n  saveSettings: () => Promise<void>;\n  saveSettingsValue: (settings: BackendSettings, silent?: boolean) => Promise<void>;\n  refreshSettings: (silent?: boolean) => Promise<BackendSettings | null>;\n  resetSettings: () => Promise<void>;\n  resetImageOverlaySettings: () => Promise<void>;\n  chooseCodexAppPath: (mode: "folder" | "file") => Promise<void>;\n  clearCodexAppPath: () => Promise<void>;\n  chooseImageOverlayPath: () => Promise<void>;\n  saveManualCodexAppPath: (appPath: string) => Promise<void>;\n  syncProvidersNow: () => Promise<void>;\n  refreshProviderSyncTargets: (silent?: boolean) => Promise<ProviderSyncTargetsResult | null>;\n  setProviderSyncTarget: (provider: string) => void;\n  setLaunchMode: (launchMode: LaunchMode) => Promise<void>;\n  refreshRelay: () => Promise<void>;\n  refreshRelayFiles: () => Promise<RelayFilesResult | null>;\n  refreshEnvConflicts: (silent?: boolean) => Promise<EnvConflictsResult | null>;\n  removeEnvConflicts: (names: string[]) => Promise<void>;\n  refreshCcsProviders: (silent?: boolean) => Promise<CcsProvidersResult | null>;\n  importCcsProviders: () => Promise<void>;\n  refreshLiveContextEntries: () => Promise<LiveContextEntriesResult | null>;\n  syncLiveContextEntries: (settings: BackendSettings, silent?: boolean) => Promise<void>;\n  refreshAds: () => Promise<void>;\n  refreshScriptMarket: () => Promise<void>;\n  installMarketScript: (id: string) => Promise<void>;\n  refreshLocalSessions: () => Promise<void>;\n  deleteLocalSession: (session: LocalSession) => Promise<void>;\n  openExternalUrl: (url: string) => Promise<void>;\n  applyRelayInjection: () => Promise<void>;\n  applyPureApiInjection: () => Promise<void>;\n  clearRelayInjection: () => Promise<void>;\n  saveRelayFile: (kind: "config" | "auth", contents: string, silent?: boolean) => Promise<void>;\n  upsertContextEntry: (settings: BackendSettings, kind: ContextKind, id: string, tomlBody: string) => Promise<void>;\n  deleteContextEntry: (settings: BackendSettings, kind: ContextKind, id: string, tomlBody: string) => Promise<void>;\n  extractRelayCommonConfig: (configContents: string) => Promise<ExtractRelayCommonConfigResult | null>;\n  testRelayProfile: (profile: RelayProfile) => Promise<void>;\n  fetchRelayProfileModels: (profile: RelayProfile) => Promise<CommandResult<Record<string, unknown>> | null>;\n  switchRelayProfile: (settings: BackendSettings, previousActiveRelayId?: string) => Promise<void>;\n  relaySwitching: boolean;\n  switchOfficialMode: () => Promise<void>;\n  switchPureApiMode: () => Promise<void>;\n  refreshLogs: () => Promise<void>;\n  refreshDiagnostics: () => Promise<void>;\n  showMessage: (title: string, message: string, status?: Status) => void;\n  copyLogs: () => Promise<void>;\n  copyDiagnostics: () => Promise<void>;\n  goLogs: () => Promise<void>;\n  installWatcher: () => Promise<void>;\n};
+type Actions = {
+  refreshCurrent: () => Promise<void>;
+  launch: () => Promise<void>;
+  restart: () => Promise<void>;
+  repairBackend: () => Promise<void>;
+  installEntrypoints: () => Promise<void>;
+  uninstallEntrypoints: () => Promise<void>;
+  repairShortcuts: () => Promise<void>;
+  checkUpdate: () => Promise<void>;
+  performUpdate: () => Promise<void>;
+  saveSettings: () => Promise<void>;
+  saveSettingsValue: (settings: BackendSettings, silent?: boolean) => Promise<void>;
+  refreshSettings: (silent?: boolean) => Promise<BackendSettings | null>;
+  resetSettings: () => Promise<void>;
+  resetImageOverlaySettings: () => Promise<void>;
+  chooseCodexAppPath: (mode: "folder" | "file") => Promise<void>;
+  clearCodexAppPath: () => Promise<void>;
+  chooseImageOverlayPath: () => Promise<void>;
+  saveManualCodexAppPath: () => Promise<void>;
+  syncProvidersNow: () => Promise<void>;
+  refreshProviderSyncTargets: (silent?: boolean) => Promise<ProviderSyncTargetsResult | null>;
+  setProviderSyncTarget: (provider: string) => void;
+  setLaunchMode: (launchMode: LaunchMode) => Promise<void>;
+  refreshRelay: () => Promise<void>;
+  refreshRelayFiles: () => Promise<RelayFilesResult | null>;
+  refreshEnvConflicts: (silent?: boolean) => Promise<EnvConflictsResult | null>;
+  removeEnvConflicts: (names: string[]) => Promise<void>;
+  refreshCcsProviders: (silent?: boolean) => Promise<CcsProvidersResult | null>;
+  importCcsProviders: () => Promise<void>;
+  refreshLiveContextEntries: () => Promise<LiveContextEntriesResult | null>;
+  syncLiveContextEntries: (settings: BackendSettings, silent?: boolean) => Promise<LiveContextEntriesResult | null>;
+  refreshAds: () => Promise<void>;
+  refreshScriptMarket: () => Promise<void>;
+  installMarketScript: (id: string) => Promise<void>;
+  refreshLocalSessions: () => Promise<LocalSessionsResult | null>;
+  deleteLocalSession: (session: LocalSession) => Promise<void>;
+  openExternalUrl: (url: string) => Promise<void>;
+  applyRelayInjection: () => Promise<boolean>;
+  applyPureApiInjection: () => Promise<boolean>;
+  clearRelayInjection: () => Promise<boolean>;
+  saveRelayFile: (kind: "config" | "auth", contents: string, silent?: boolean) => Promise<void>;
+  upsertContextEntry: (
+    settings: BackendSettings,
+    kind: ContextKind,
+    id: string,
+    tomlBody: string,
+  ) => Promise<BackendSettings | null>;
+  deleteContextEntry: (settings: BackendSettings, kind: ContextKind, id: string) => Promise<BackendSettings | null>;
+  extractRelayCommonConfig: (configContents: string) => Promise<ExtractRelayCommonConfigResult | null>;
+  testRelayProfile: (profile: RelayProfile) => Promise<void>;
+  fetchRelayProfileModels: (profile: RelayProfile) => Promise<string[] | null>;
+  switchRelayProfile: (settings: BackendSettings, previousActiveRelayId?: string) => Promise<void>;
+  relaySwitching: boolean;
+  switchOfficialMode: () => Promise<void>;
+  switchPureApiMode: () => Promise<void>;
+  refreshLogs: () => Promise<void>;
+  refreshDiagnostics: () => Promise<void>;
+  showMessage: (title: string, message: string, status?: Status) => Promise<void>;
+  copyLogs: () => Promise<void>;
+  copyDiagnostics: () => Promise<void>;
+  goLogs: () => Promise<void>;
+  installWatcher: () => Promise<void>;
+  uninstallWatcher: () => Promise<void>;
+  enableWatcher: () => Promise<void>;
+  disableWatcher: () => Promise<void>;
+  toggleTheme: () => void;
+  checkHealth: () => Promise<void>;
+};
+
+type MobileRelayRoomStatus = {
+  room: string;
+  hostOnline: boolean;
+  clientOnline: boolean;
+  connections: number;
+  ageSeconds: number;
+  forwardedMessages: number;
+  forwardedBytes: number;
+};
 
 type MobileRelayStatus = {
   status: string;
@@ -1913,8 +1983,14 @@ function OverviewScreen({
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
-            <Button onClick={() => void actions.launchBridge()}><Rocket className="h-4 w-4" /> 启动代理</Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002/proxy-info.html")}><ExternalLink className="h-4 w-4" /> 打开代理信息页</Button>
+            <Button onClick={() => void actions.launch()}>
+              <Rocket className="h-4 w-4" />
+              启动代理
+            </Button>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/api/status")}>
+              <ExternalLink className="h-4 w-4" />
+              打开代理信息页
+            </Button>
             <Button variant="secondary" onClick={() => void navigate("about")}>
               <Info className="h-4 w-4" />
               打开关于
@@ -1947,8 +2023,14 @@ function ProxyScreen({
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
-            <Button onClick={() => void actions.launchBridge()}><Rocket className="h-4 w-4" /> 启动代理</Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36002/proxy-info.html")}><ExternalLink className="h-4 w-4" /> 打开代理信息页</Button>
+            <Button onClick={() => void actions.launch()}>
+              <Rocket className="h-4 w-4" />
+              启动代理
+            </Button>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/api/status")}>
+              <ExternalLink className="h-4 w-4" />
+              打开代理信息页
+            </Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -2055,7 +2137,7 @@ function RelayScreen({
   return (
     <>
       <Panel>
-        <CardHead title="供应商列表" detail={`${normalized.relayProfiles.length} 个模型配置；可拖动排序，点编辑进入详情`} />
+        <CardHead title="供应商列表" detail={`${normalized.relayProfiles.length} 个供应商配置；可拖动排序，点编辑进入详情`} />
         <CardContent>
           <EnvConflictNotice envConflicts={envConflicts} actions={actions} />
           <label className="switch-row relay-master-switch">
@@ -2068,7 +2150,7 @@ function RelayScreen({
               type="checkbox"
             />
             <span>
-              <strong>启用模型配置切换</strong>
+              <strong>启用供应商配置切换</strong>
               <small>关闭后本工具不会在手动切换时写入 Codex 的 config.toml / auth.json；启动 Codex 时始终不会自动改这些文件。</small>
             </span>
           </label>
@@ -3389,7 +3471,7 @@ function RelayProfileEditor({
           <Button
             disabled={!form.relayProfilesEnabled || actions.relaySwitching}
             onClick={onSwitch}
-            title={!form.relayProfilesEnabled ? "模型配置总开关已关闭" : actions.relaySwitching ? "供应商切换中" : undefined}
+            title={!form.relayProfilesEnabled ? "供应商配置总开关已关闭" : actions.relaySwitching ? "供应商切换中" : undefined}
             variant={profile.id === form.activeRelayId ? "secondary" : "default"}
           >
             {actions.relaySwitching ? "切换中" : profile.id === form.activeRelayId ? "使用中" : "设为当前"}
@@ -3993,7 +4075,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>通用配置文件</strong>
-            <span>只保留非 MCP、Skills、Plugins 的跨模型配置；工具与插件在独立页面管理。</span>
+            <span>只保留非 MCP、Skills、Plugins 的跨供应商配置；工具与插件在独立页面管理。</span>
           </div>
           <Button
             onClick={async () => {
@@ -4023,7 +4105,7 @@ function RelayFileEditors({
             variant="secondary"
           >
             <Download className="h-4 w-4" />
-            提取当前模型配置
+            提取当前供应商配置
           </Button>
         </div>
         <SyncedTextarea
@@ -5004,7 +5086,7 @@ function contextSelectionForAllEntries(settings: BackendSettings): RelayContextS
 
 function relayProfileEditorStatus(profile: RelayProfile, form: BackendSettings, isNew: boolean) {
   if (isNew) return "新建供应商需要先保存到列表";
-  if (!form.relayProfilesEnabled) return "模型配置总开关已关闭；当前只保存配置，不写入 Codex live 文件";
+  if (!form.relayProfilesEnabled) return "供应商配置总开关已关闭；当前只保存配置，不写入 Codex live 文件";
   return profile.id === form.activeRelayId ? "当前正在使用" : "编辑后保存列表，再切换模式时会使用新配置";
 }
 
@@ -6046,9 +6128,3 @@ function loadInitialRoute(): Route {
   }
   return "overview";
 }
-
-
-
-
-
-
