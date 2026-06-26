@@ -15,113 +15,44 @@
       --err: #ef4444;
       --warn: #f59e0b;
     }
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
       background: var(--bg);
       color: var(--text);
     }
-    .container {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 28px 24px 40px;
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-    .header h1 {
-      font-size: 20px;
-      margin: 0;
-    }
+    .container { max-width: 860px; margin: 0 auto; padding: 28px 24px 40px; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .header h1 { font-size: 20px; margin: 0; }
     .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      font-size: 13px;
-      color: var(--text-2);
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 10px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 13px; color: var(--text-2);
     }
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #9ca3af;
-    }
-    .dot.ok {
-      background: var(--ok);
-    }
-    .dot.err {
-      background: var(--err);
-    }
-    .dot.warn {
-      background: var(--warn);
-    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
+    .dot.ok { background: var(--ok); }
+    .dot.err { background: var(--err); }
+    .dot.warn { background: var(--warn); }
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px 18px;
-      margin-bottom: 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 18px; margin-bottom: 16px;
     }
-    .card h2 {
-      font-size: 14px;
-      margin: 0 0 10px;
-      color: var(--text-2);
-    }
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px 24px;
-    }
-    .item {
-      flex: 1 1 220px;
-    }
-    .item .label {
-      font-size: 12px;
-      color: var(--text-2);
-    }
-    .item .value {
-      font-size: 14px;
-      margin-top: 4px;
-      word-break: break-all;
-    }
-    .mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 10px;
-    }
+    .card h2 { font-size: 14px; margin: 0 0 10px; color: var(--text-2); }
+    .row { display: flex; flex-wrap: wrap; gap: 10px 24px; }
+    .item { flex: 1 1 220px; }
+    .item .label { font-size: 12px; color: var(--text-2); }
+    .item .value { font-size: 14px; margin-top: 4px; word-break: break-all; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
     button {
-      border: 1px solid var(--border);
-      background: #ffffff;
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 13px;
+      border: 1px solid var(--border); background: #ffffff;
+      color: var(--text); padding: 8px 12px; border-radius: 10px;
+      cursor: pointer; font-size: 13px;
     }
-    button.primary {
-      background: #111827;
-      color: #fff;
-      border-color: #111827;
-    }
-    .hint {
-      font-size: 13px;
-      color: var(--text-2);
-    }
+    button.primary { background: #111827; color: #fff; border-color: #111827; }
+    .hint { font-size: 13px; color: var(--text-2); }
   </style>
 </head>
 <body>
@@ -136,6 +67,7 @@
 
     <div class="card">
       <h2>当前模型配置</h2>
+      <p class="hint">以下信息来自模型库中设为"当前使用"的模型配置</p>
       <div class="row">
         <div class="item">
           <div class="label">API 地址</div>
@@ -154,29 +86,32 @@
     </div>
 
     <div class="card">
-      <h2>连接状态</h2>
+      <h2>连接检测</h2>
       <div class="row">
         <div class="item">
-          <div class="label">代理状态页</div>
-          <div class="value mono" id="statusUrl">http://127.0.0.1:36001/api/status</div>
+          <div class="label">代理地址</div>
+          <div class="value mono">http://127.0.0.1:36000</div>
         </div>
         <div class="item">
           <div class="label">上次检测</div>
           <div class="value" id="checkedAt">-</div>
         </div>
         <div class="item">
-          <div class="label">HTTP 状态</div>
-          <div class="value" id="httpStatus">-</div>
-        </div>
-        <div class="item">
-          <div class="label">转发检测</div>
-          <div class="value" id="relayCheck">-</div>
+          <div class="label">转发状态</div>
+          <div class="value" id="relayStatus">-</div>
         </div>
       </div>
       <div class="actions">
         <button class="primary" id="checkBtn">检测连接</button>
-        <button id="openStatusBtn">打开状态页</button>
       </div>
+    </div>
+
+    <div class="card" id="guideCard">
+      <h2>使用指引</h2>
+      <p class="hint" id="guideText">
+        在模型配置中添加您的 API 模型并设为"当前使用"，然后点击"启动代理"按钮启动代理服务器。
+        代理服务器启动后，这里将显示连接状态。
+      </p>
     </div>
   </div>
 
@@ -189,19 +124,19 @@
       statusDot: document.getElementById('statusDot'),
       statusText: document.getElementById('statusText'),
       checkedAt: document.getElementById('checkedAt'),
-      httpStatus: document.getElementById('httpStatus'),
-      relayCheck: document.getElementById('relayCheck'),
+      relayStatus: document.getElementById('relayStatus'),
+      guideText: document.getElementById('guideText'),
     };
 
     function mask(value) {
-      if (!value) return '-';
+      if (!value || value === '-') return '-';
       if (value.length <= 8) return '*'.repeat(value.length);
       return value.slice(0, 4) + '*'.repeat(Math.max(value.length - 8, 1)) + value.slice(-4);
     }
 
     async function loadConfig() {
       try {
-        const res = await fetch('/api/fallback', { cache: 'no-store' });
+        const res = await fetch('/api/admin/settings', { cache: 'no-store' });
         if (!res.ok) throw new Error('config_failed');
         const data = await res.json();
         const profile = data?.activeProfile || data?.profile || null;
@@ -214,62 +149,71 @@
         const activeLabel = profile?.name || data?.activeProfileName || '当前配置';
         els.modelHint.textContent = '当前使用模型：' + activeLabel;
       } catch (e) {
-        els.apiUrl.textContent = '-';
-        els.modelId.textContent = '-';
-        els.apiKey.textContent = '-';
-        els.modelHint.textContent = '当前使用模型：未读取到。';
+        // Fallback: try relay settings
+        try {
+          const res2 = await fetch('/api/relay-check', { cache: 'no-store' });
+          if (res2.ok) {
+            const data2 = await res2.json();
+            if (data2?.baseUrl) els.apiUrl.textContent = data2.baseUrl;
+            if (data2?.model) els.modelId.textContent = data2.model;
+            if (data2?.apiKey) els.apiKey.textContent = mask(data2.apiKey);
+            if (data2?.name) els.modelHint.textContent = '当前使用模型：' + data2.name;
+          }
+        } catch (_) {}
       }
     }
 
     async function checkStatus() {
       els.checkedAt.textContent = new Date().toLocaleString();
-      els.httpStatus.textContent = '检测中';
-      els.relayCheck.textContent = '未检测';
+      els.relayStatus.textContent = '检测中';
       els.statusDot.className = 'dot warn';
       els.statusText.textContent = '检测中';
 
-      let httpOk = false;
-      let httpStatus = '-';
-      try {
-        const res = await fetch('/api/status', { cache: 'no-store' });
-        httpStatus = String(res.status);
-        els.httpStatus.textContent = httpStatus;
-        httpOk = res.ok;
-      } catch (e) {
-        els.httpStatus.textContent = '请求失败';
-      }
-
+      let proxyRunning = false;
       let relayOk = false;
       try {
-        const res = await fetch('/api/relay-check', { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          relayOk = !!data?.ok;
-          els.relayCheck.textContent = relayOk ? '已正常连接' : '未连接';
-        } else {
-          els.relayCheck.textContent = '请求失败：' + res.status;
-        }
-      } catch (e) {
-        els.relayCheck.textContent = '请求失败';
-      }
+        const res = await fetch('http://127.0.0.1:36000/v1/models', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+        proxyRunning = res.ok;
+      } catch (_) {}
 
-      if (httpOk && relayOk) {
-        els.statusDot.className = 'dot ok';
-        els.statusText.textContent = '已正常连接';
-      } else if (httpOk) {
-        els.statusDot.className = 'dot warn';
-        els.statusText.textContent = '状态页可用，转发未确认';
-      } else {
+      if (!proxyRunning) {
+        els.relayStatus.textContent = '代理服务器未运行';
         els.statusDot.className = 'dot err';
         els.statusText.textContent = '未连接';
+        if (els.guideText) {
+          els.guideText.textContent = '代理服务器尚未启动。请在 LDCodex 管理面板的"代理服务器"页面点击"启动代理"按钮来启动代理服务器。启动后请再次检测连接。';
+        }
+        return;
+      }
+
+      try {
+        const res2 = await fetch('http://127.0.0.1:36000/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'gpt-3.5-turbo', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+          signal: AbortSignal.timeout(5000),
+        });
+        relayOk = res2.ok || res2.status === 400 || res2.status === 429;
+      } catch (_) {}
+
+      if (relayOk) {
+        els.relayStatus.textContent = '已正常连接转发';
+        els.statusDot.className = 'dot ok';
+        els.statusText.textContent = '已正常连接';
+        if (els.guideText) {
+          els.guideText.textContent = '代理服务器运行正常，已使用当前模型配置进行转发。如转发异常，请检查模型配置是否正确。';
+        }
+      } else {
+        els.relayStatus.textContent = '代理运行但转发异常';
+        els.statusDot.className = 'dot warn';
+        els.statusText.textContent = '转发未确认';
+        if (els.guideText) {
+          els.guideText.textContent = '代理服务已运行，但转发检测未通过。请检查模型库中的 API 地址、模型 ID 和密钥是否正确，并确保该模型已设为"当前使用"。';
+        }
       }
     }
 
     document.getElementById('checkBtn').addEventListener('click', checkStatus);
-    document.getElementById('openStatusBtn').addEventListener('click', () => {
-      window.open('/api/status', '_blank');
-    });
-
     loadConfig();
     checkStatus();
   </script>
