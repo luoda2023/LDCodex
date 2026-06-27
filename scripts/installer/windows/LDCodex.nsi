@@ -39,12 +39,17 @@ Section "Install"
   Delete "$DESKTOP\LDCodex 管理工具.lnk"
   Delete "$SMPROGRAMS\LDCodex\LDCodex 管理工具.lnk"
 
-  CreateShortcut "$DESKTOP\LDCodex.lnk" "$INSTDIR\ldcodex.exe" "" "$INSTDIR\ldcodex.exe"
+  CreateShortcut "$DESKTOP\LDCodex.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
   CreateShortcut "$DESKTOP\LDCodex 管理工具.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
   CreateDirectory "$SMPROGRAMS\LDCodex"
-  CreateShortcut "$SMPROGRAMS\LDCodex\LDCodex.lnk" "$INSTDIR\ldcodex.exe" "" "$INSTDIR\ldcodex.exe"
+  CreateShortcut "$SMPROGRAMS\LDCodex\LDCodex.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
   CreateShortcut "$SMPROGRAMS\LDCodex\LDCodex 管理工具.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
   CreateShortcut "$SMPROGRAMS\LDCodex\卸载 LDCodex.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\ldcodex-manager.exe"
+
+  # 安装 bridge 代理服务
+  SetOutPath "$INSTDIR\bridge"
+  File /r "${ROOT}\bridge\*"
+  SetOutPath "$INSTDIR"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
   WriteRegStr HKCU "Software\LDCodex" "InstallDir" "$INSTDIR"
@@ -74,6 +79,7 @@ Section "Uninstall"
   Delete "$INSTDIR\ldcodex.exe"
   Delete "$INSTDIR\ldcodex-manager.exe"
   Delete "$INSTDIR\uninstall.exe"
+  RMDir /r "$INSTDIR\bridge"
   RMDir "$INSTDIR"
 
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex"
