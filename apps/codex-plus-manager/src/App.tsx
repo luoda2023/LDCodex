@@ -805,7 +805,6 @@ export function App() {
       await refreshLiveContextEntries(true);
     }
     if (next === "settings") await refreshSettings(true);
-    if (next === "recommendations") await refreshAds(true);
     if (next === "proxy") {
       await refreshOverview(true);
       await refreshWatcher(true);
@@ -1299,7 +1298,6 @@ export function App() {
     }
   };
 
-  };
 
   const launchBridge = async () => {
     const result = await run(() => call<CommandResult<Record<string, unknown>>>("launch_bridge"));
