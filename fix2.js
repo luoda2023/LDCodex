@@ -1,15 +1,18 @@
-﻿const fs = require("fs");
-let content = fs.readFileSync("crates/codex-plus-core/src/app_paths.rs","utf8");
-let lines = content.split("\n");
+﻿const fs = require('fs');
+let c = fs.readFileSync('apps/codex-plus-manager/src/App.tsx', 'utf-8');
 
-// Fix line 480: the problematic format! with multiple dot args
-lines[479] = "\"OpenAI\".to_owned() + &dot + \"Codex\" + &dot + \"app\",";
-
-// Fix line 478
-lines[477] = "\"Codex\".to_owned() + &dot + \"app\",";
-
-// Fix line 479 (was 478)
-lines[478] = "\"OpenAI Codex\".to_owned() + &dot + \"app\",";
-
-fs.writeFileSync("crates/codex-plus-core/src/app_paths.rs", lines.join("\n"), "utf8");
-console.log("Done");
+let before = '<Button onClick={() => void actions.launch()}>';
+let after = '<Button onClick={() => void actions.launchBridge()}>';
+let count = 0;
+let idx = c.indexOf(before);
+while (idx >= 0) {
+    let chunk = c.substring(idx, idx + 80);
+    if (chunk.includes('\u542F\u52A8\u4EE3\u7406')) {
+        c = c.substring(0, idx) + after + c.substring(idx + before.length);
+        count++;
+    }
+    idx = c.indexOf(before, idx + 1);
+    if (count > 5) break;
+}
+console.log('Replaced', count, 'buttons');
+fs.writeFileSync('apps/codex-plus-manager/src/App.tsx', c, 'utf-8');

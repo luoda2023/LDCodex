@@ -1299,6 +1299,15 @@ export function App() {
     }
   };
 
+  };
+
+  const launchBridge = async () => {
+    const result = await run(() => call<CommandResult<Record<string, unknown>>>("launch_bridge"));
+    if (result) {
+      showResultNotice("启动代理", result, { silentSuccess: true });
+    }
+  };
+
   const showNotice = (title: string, message: string, status?: Status) => {
     setNotice({ title, message, status });
   };
@@ -1456,6 +1465,7 @@ export function App() {
       refreshLocalSessions,
       deleteLocalSession,
       openExternalUrl,
+      launchBridge,
       applyRelayInjection,
       applyPureApiInjection,
       clearRelayInjection,
@@ -1536,7 +1546,14 @@ export function App() {
           );
           })}
         </nav>
-      </aside>
+      
+            <div className="sidebar-footer">
+              <div className="sidebar-footer-brand">
+                <span className="sidebar-footer-link">Dicad.cn</span>
+                <span className="sidebar-footer-text">AI赋能工程设计</span>
+                <span className="sidebar-footer-en">LET IMAGINATION BECOME REALITY</span>
+              </div>
+            </div></aside>
       <main className="workspace">
         <header className="topbar" key={`topbar-${route}`}>
           <div>
@@ -1673,6 +1690,7 @@ type Actions = {
   refreshLocalSessions: () => Promise<LocalSessionsResult | null>;
   deleteLocalSession: (session: LocalSession) => Promise<void>;
   openExternalUrl: (url: string) => Promise<void>;
+  launchBridge: () => Promise<void>;
   applyRelayInjection: () => Promise<boolean>;
   applyPureApiInjection: () => Promise<boolean>;
   clearRelayInjection: () => Promise<boolean>;
@@ -1983,7 +2001,7 @@ function OverviewScreen({
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>
+            <Button onClick={() => void actions.launchBridge()}>
               <Rocket className="h-4 w-4" />
               启动代理
             </Button>
@@ -2023,7 +2041,7 @@ function ProxyScreen({
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>
+            <Button onClick={() => void actions.launchBridge()}>
               <Rocket className="h-4 w-4" />
               启动代理
             </Button>
@@ -2938,7 +2956,7 @@ function SettingsScreen({
             </div>
             <Button variant="secondary" onClick={actions.toggleTheme}>切换主题</Button>
           </div>
-          <Field label="模型测试模型">
+          <Field label="测试模型">
             <Input
               value={form.relayTestModel}
               onChange={(event) => onFormChange({ ...form, relayTestModel: event.currentTarget.value })}

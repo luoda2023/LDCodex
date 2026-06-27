@@ -1,87 +1,85 @@
-﻿const fs = require("fs");
-let content = fs.readFileSync("crates/codex-plus-core/src/app_paths.rs","utf8");
-content = content.replace(/\r\n/g,"\n");
-let lines = content.split("\n");
+﻿const fs = require('fs');
 
-// Find second fn dot_char
-let firstDot, secondDot;
-for(let i=0;i<lines.length;i++){
-  if(lines[i].includes("fn dot_char()")){
-    if(firstDot===undefined) firstDot=i;
-    else { secondDot=i; break; }
+// ===== 1. Fix App.tsx =====
+let c = fs.readFileSync('apps/codex-plus-manager/src/App.tsx', 'utf-8');
+
+// 1a. Add launchBridge to Actions type
+c = c.replace(
+  '  openExternalUrl: (url: string) => Promise<void>;',
+  '  openExternalUrl: (url: string) => Promise<void>;\n  launchBridge: () => Promise<void>;'
+);
+console.log('1a done - launchBridge added to Actions type');
+
+// 1b. Add launchBridge function
+const marker = '  const showNotice = (title: string, message: string';
+const bridgeFn = [
+  '  };',
+  '',
+  '  const launchBridge = async () => {',
+  '    const result = await run(() => call<CommandResult<Record<string, unknown>>>("launch_bridge"));',
+  '    if (result) {',
+  '      showResultNotice("启动代理", result, { silentSuccess: true });',
+  '    }',
+  '  };',
+  '',
+  '  const showNotice = (title: string, message: string'
+].join('\n');
+c = c.replace(marker, bridgeFn);
+console.log('1b done - launchBridge function added');
+
+// 1c. Add launchBridge to actions object
+c = c.replace(
+  '      openExternalUrl,\n      applyRelayInjection,',
+  '      openExternalUrl,\n      launchBridge,\n      applyRelayInjection,'
+);
+console.log('1c done - launchBridge added to actions object');
+
+// 1d. Fix 模型测试模型 -> 测试模型
+let cnt = 0;
+while (c.includes('模型测试模型')) {
+  c = c.replace('模型测试模型', '测试模型');
+  cnt++;
+}
+console.log('1d done - fixed', cnt, 'occurrences of 模型测试模型');
+
+// 1e. Fix About page project URL
+const oldUrl = 'https://github.com/BigPizzaV3/CodexPlusPlus';
+if (c.includes(oldUrl)) {
+  c = c.replace(new RegExp(oldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'https://github.com/luoda2023/LDCodex');
+  console.log('1e done - project URL fixed');
+} else {
+  console.log('1e - URL not found, checking...');
+  // Check what URLs are in the about section
+  let urlIdx = c.indexOf('github.com');
+  while (urlIdx >= 0) {
+    console.log('Found URL:', c.substring(urlIdx, urlIdx+60));
+    urlIdx = c.indexOf('github.com', urlIdx+1);
+    if (urlIdx > 110000) break;
   }
 }
-console.log("first dot_char:", firstDot, "second:", secondDot);
 
-// Remove second dot_char (3 lines)
-lines.splice(secondDot, 3);
+// 1f. Add sidebar footer
+let navEndIdx = c.lastIndexOf('</nav>');
+let asideEndIdx = c.indexOf('</aside>', navEndIdx);
+const footer = [
+  '',
+  '            <div className="sidebar-footer">',
+  '              <div className="sidebar-footer-brand">',
+  '                <span className="sidebar-footer-link">Dicad.cn</span>',
+  '                <span className="sidebar-footer-text">AI赋能工程设计</span>',
+  '                <span className="sidebar-footer-en">LET IMAGINATION BECOME REALITY</span>',
+  '              </div>',
+  '            </div>'
+].join('\n');
+c = c.substring(0, asideEndIdx) + footer + c.substring(asideEndIdx);
+console.log('1f done - sidebar footer added');
 
-// Fix const CODEX_PREFIX
-for(let i=0;i<lines.length;i++){
-  if(lines[i].includes("const CODEX_PREFIX") && lines[i].includes("vec![")){
-    lines[i] = "const CODEX_PREFIX: &str = \"OpenAI.Codex_\";";
-    break;
-  }
+// 1g. Fix Codex 版本 check - find the AboutScreen
+let aboutIdx = c.indexOf('Codex 版本');
+console.log('Codex 版本 location:', aboutIdx);
+if (aboutIdx >= 0) {
+  console.log('About context:', c.substring(aboutIdx-20, aboutIdx+80));
 }
 
-// Fix codex_prefix_str
-for(let i=0;i<lines.length;i++){
-  if(lines[i].includes("fn codex_prefix_str")){
-    for(let j=i;j<Math.min(i+5,lines.length);j++){
-      if(lines[j].includes("vec![") && lines[j].includes("].concat()")){
-        lines[j] = lines[j].replace(
-          'vec!["OpenAI", &d, "Codex_"].concat()',
-          'format!("OpenAI{}Codex_", d)'
-        );
-      }
-    }
-    break;
-  }
-}
-
-// Fix remaining vec! patterns
-for(let i=0;i<lines.length;i++){
-  let l = lines[i];
-  if(!l.includes("vec![") || !l.includes("].concat()")) continue;
-  
-  let m = l.match(/vec!\[(.*?)\]\.concat\(\)/);
-  if(!m) continue;
-  
-  let parts = m[1];
-  let items = [];
-  let pos = 0;
-  while(pos < parts.length){
-    if(parts[pos] === "\""){
-      let end = parts.indexOf("\"", pos+1);
-      items.push({type:"str", val: parts.substring(pos+1, end)});
-      pos = end+1;
-    } else if(parts[pos] === "&"){
-      let end = pos+1;
-      while(end < parts.length && (parts[end].match(/[\w\(\)]/))) end++;
-      items.push({type:"ref", val: parts.substring(pos+1, end)});
-      pos = end;
-    } else {
-      pos++;
-    }
-  }
-  
-  let fmtParts = [];
-  let args = [];
-  for(let item of items){
-    if(item.type === "str") fmtParts.push(item.val);
-    else { args.push(item.val); fmtParts.push("{}"); }
-  }
-  
-  let newExpr;
-  if(args.length > 0){
-    newExpr = "format!(\"" + fmtParts.join("") + "\", " + args.join(", ") + ")";
-  } else {
-    newExpr = "\"" + fmtParts.join("") + "\".to_string()";
-  }
-  
-  lines[i] = l.replace(m[0], newExpr);
-  console.log("Fixed line " + (i+1) + ": " + m[0] + " -> " + newExpr);
-}
-
-fs.writeFileSync("crates/codex-plus-core/src/app_paths.rs", lines.join("\n"), "utf8");
-console.log("Done.");
+fs.writeFileSync('apps/codex-plus-manager/src/App.tsx', c, 'utf-8');
+console.log('App.tsx saved successfully');
