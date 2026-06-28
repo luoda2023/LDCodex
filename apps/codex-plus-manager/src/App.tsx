@@ -240,7 +240,7 @@ type RelayProtocol = "responses" | "chatCompletions";
 type RelayMode = "official" | "mixedApi" | "pureApi" | "aggregate";
 const PROTOCOL_PROXY_BASE_URL = "http://127.0.0.1:57321/v1";
 const CHAT_UPSTREAM_BASE_URL_KEY = "codex_plus_chat_base_url";
-const SCRIPT_MARKET_REPOSITORY_URL = "https://github.com/luoda2023/LDCodexScriptMarket";
+
 const LOCAL_MOBILE_RELAY_URL = "ws://127.0.0.1:57323";
 const PUBLIC_MOBILE_RELAY_URL = "ws://154.201.90.76:57323";
 
@@ -507,7 +507,7 @@ type UpdateResult = CommandResult<{
   progress?: number;
 }>;
 
-type AdItem = {
+
   id?: string;
   type: "sponsor" | "normal" | string;
   title: string;
@@ -517,12 +517,12 @@ type AdItem = {
   expires_at?: string;
 };
 
-type AdsResult = CommandResult<{
+
   version: number;
-  ads: AdItem[];
+
 }>;
 
-type ScriptMarketItem = {
+
   id: string;
   name: string;
   description: string;
@@ -537,13 +537,13 @@ type ScriptMarketItem = {
   updateAvailable: boolean;
 };
 
-type ScriptMarketResult = CommandResult<{
+
   market: {
     status: string;
     message: string;
     indexUrl: string;
     updatedAt: string;
-    scripts: ScriptMarketItem[];
+
   };
   user_scripts: UserScriptInventory;
 }>;
@@ -570,7 +570,7 @@ function providerSyncTargetLabel(target: ProviderSyncTargetOption): string {
   return [...labels, ...current].join(" / ") || "发现";
 }
 
-function syncMarketInstalledState(current: ScriptMarketResult | null, userScripts: UserScriptInventory): ScriptMarketResult | null {
+
   if (!current) return current;
   const installed = new Map(
     (userScripts.scripts ?? [])
@@ -718,8 +718,8 @@ export function App() {
   const [diagnostics, setDiagnostics] = useState<DiagnosticsResult | null>(null);
   const [watcher, setWatcher] = useState<WatcherResult | null>(null);
   const [update, setUpdate] = useState<UpdateResult | null>(null);
-  const [ads, setAds] = useState<AdsResult | null>(null);
-  const [scriptMarket, setScriptMarket] = useState<ScriptMarketResult | null>(null);
+
+
   const [launchForm, setLaunchForm] = useState({
     appPath: "",
     debugPort: "9229",
@@ -944,17 +944,12 @@ export function App() {
       await refreshLocalSessions(true);
       await refreshProviderSyncTargets(true);
     }
-      await refreshSettings(true);
-      await refreshZedRemoteProjects(true);
-    }
     if (next === "context") {
       await refreshSettings(true);
       await refreshRelayFiles(true);
       await refreshLiveContextEntries(true);
     }
     if (next === "settings") await refreshSettings(true);
-      await refreshScriptMarket(true);
-    }
     if (next === "about") {
       await refreshOverview(true);
       await refreshLogs(true);
@@ -1154,7 +1149,7 @@ export function App() {
   };
 
 
-    const result = await run(() => call<AdsResult>("load_ads"));
+
     if (result) {
       setAds(result);
       if (!silent) showResultNotice("推荐内容", result, { silentSuccess: true });
@@ -1667,16 +1662,16 @@ export function App() {
       refreshLiveContextEntries,
       syncLiveContextEntries,
 
-      refreshScriptMarket,
-      installMarketScript,
-      setUserScriptEnabled,
-      deleteUserScript,
+
+
+
+
       refreshLocalSessions,
       deleteLocalSession,
       deleteLocalSessions,
-      refreshZedRemoteProjects,
-      openZedRemoteProject,
-      forgetZedRemoteProject,
+
+
+
       openExternalUrl,
       applyRelayInjection,
       applyPureApiInjection,
@@ -1931,7 +1926,7 @@ type Actions = {
   syncLiveContextEntries: (settings: BackendSettings, silent?: boolean) => Promise<LiveContextEntriesResult | null>;
 
   refreshScriptMarket: () => Promise<void>;
-  installMarketScript: (id: string) => Promise<void>;
+
   setUserScriptEnabled: (key: string, enabled: boolean) => Promise<void>;
   deleteUserScript: (key: string) => Promise<void>;
   refreshLocalSessions: () => Promise<LocalSessionsResult | null>;
@@ -2697,7 +2692,7 @@ function ZedRemoteScreen({
             </label>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.refreshZedRemoteProjects()}>
+
               <RefreshCw className="h-4 w-4" />
               刷新项目
             </Button>
@@ -2746,21 +2741,21 @@ function ZedRemoteProjectSection({
                   </small>
                 </div>
                 <div className="zed-remote-project-actions">
-                  <Button onClick={() => void actions.openZedRemoteProject(project, "addToFocusedWorkspace")} size="sm">
+
                     <ExternalLink className="h-4 w-4" />
                     加入当前工作区
                   </Button>
-                  <Button onClick={() => void actions.openZedRemoteProject(project, "reuseWindow")} size="sm" variant="outline">
+
                     复用窗口
                   </Button>
-                  <Button onClick={() => void actions.openZedRemoteProject(project, "newWindow")} size="sm" variant="outline">
+
                     新窗口
                   </Button>
                   <Button onClick={() => void onCopyUrl(project)} size="icon" title="复制 ssh:// URL" variant="ghost">
                     <Copy className="h-4 w-4" />
                   </Button>
                   {project.source === "recent" ? (
-                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="移除最近记录" variant="ghost">
+
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   ) : null}
@@ -2776,7 +2771,7 @@ function ZedRemoteProjectSection({
   );
 }
 
-function UserScriptsScreen({ settings, market, actions }: { settings: SettingsResult | null; market: ScriptMarketResult | null; actions: Actions }) {
+
   const inventory = settings?.user_scripts;
   const scripts = inventory?.scripts ?? [];
   const marketScripts = market?.market.scripts ?? [];
@@ -2793,11 +2788,11 @@ function UserScriptsScreen({ settings, market, actions }: { settings: SettingsRe
             <Metric label="本地整体" value={inventory?.enabled === false ? "关闭" : "开启"} />
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.refreshScriptMarket()}>
+
               <RefreshCw className="h-4 w-4" />
               刷新市场
             </Button>
-            <Button onClick={() => void actions.openExternalUrl(SCRIPT_MARKET_REPOSITORY_URL)} variant="secondary">
+
               <ExternalLink className="h-4 w-4" />
               投稿
             </Button>
@@ -3040,7 +3035,7 @@ function SessionsScreen({
   );
 }
 
-function RecommendationsScreen({ ads, actions }: { ads: AdsResult | null; actions: Actions }) {
+
   const items = (ads?.ads ?? []).filter((ad) => !isExpiredAd(ad));
   const sponsors = items.filter((ad) => ad.type === "sponsor");
   const normal = items.filter((ad) => ad.type === "normal");
@@ -3618,7 +3613,7 @@ function SortableRelayProfileCard({
   );
 }
 
-function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actions: Actions }) {
+
   const status = script.updateAvailable ? "可更新" : script.installed ? `已安装 ${script.installedVersion}` : "未安装";
   return (
     <div className="script-market-card">
@@ -3637,7 +3632,7 @@ function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actio
         ))}
       </div>
       <div className="script-market-actions">
-        <Button onClick={() => void actions.installMarketScript(script.id)} size="sm">
+
           <Download className="h-4 w-4" />
           {script.updateAvailable ? "更新" : script.installed ? "重新安装" : "安装"}
         </Button>
@@ -4913,12 +4908,12 @@ function ScriptRow({ script, actions }: { script: NonNullable<UserScriptInventor
       <span>{script.enabled ? "启用" : "关闭"}</span>
       <span>{script.status}</span>
       <div className="script-row-actions">
-        <Button onClick={() => void actions.setUserScriptEnabled(script.key, !script.enabled)} size="sm" variant="secondary">
+
           {script.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
           {script.enabled ? "禁用" : "启用"}
         </Button>
         {canDelete ? (
-          <Button onClick={() => void actions.deleteUserScript(script.key)} size="sm" variant="outline">
+
             <Trash2 className="h-4 w-4" />
             删除
           </Button>
@@ -4928,7 +4923,7 @@ function ScriptRow({ script, actions }: { script: NonNullable<UserScriptInventor
   );
 }
 
-function AdGrid({ ads, empty, actions }: { ads: AdItem[]; empty: string; actions: Actions }) {
+
   if (!ads.length) return <div className="empty">{empty}</div>;
   return (
     <div className="ad-grid">
@@ -4955,7 +4950,7 @@ function AdGrid({ ads, empty, actions }: { ads: AdItem[]; empty: string; actions
   );
 }
 
-function isExpiredAd(ad: AdItem) {
+
   if (!ad.expires_at) return false;
   const expiresAt = Date.parse(ad.expires_at);
   return Number.isFinite(expiresAt) && expiresAt < Date.now();
