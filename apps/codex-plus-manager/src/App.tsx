@@ -503,6 +503,7 @@ type StartupResult = CommandResult<{
 
 type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "about" | "settings" | "proxy";
 type RouteItem = { id: Route; label: string; icon: LucideIcon; badge?: string };
+type RouteItem = { id: Route; label: string; icon: LucideIcon; badge?: string };
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
@@ -1548,9 +1549,9 @@ export function App() {
       
             <div className="sidebar-footer">
               <div className="sidebar-footer-brand">
-                <span className="sidebar-footer-link">Dicad.cn</span>
+                <span className="sidebar-footer-link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Dicad.cn</span>
                 <span className="sidebar-footer-text">AI赋能工程设计</span>
-                <span className="sidebar-footer-en">LET IMAGINATION BECOME REALITY</span>
+                <span className="sidebar-footer-en">让想象变为现实</span>
               </div>
             </div></aside>
       <main className="workspace">

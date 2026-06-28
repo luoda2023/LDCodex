@@ -88,19 +88,19 @@ export function ProviderPresetSelector({
         <span className="preset-toggle-label">
           从预设模板创建
           <span className="preset-toggle-count">
-            {collapsed ? `${PRESETS.length} 个供应商` : ""}
+            {collapsed ? `${PRESETS.length} 个预设模型` : ""}
           </span>
         </span>
         <span className="preset-toggle-arrow">{collapsed ? "▾" : "▴"}</span>
       </button>
 
       {!collapsed && (
-        <div className="preset-grid" role="region" aria-label="供应商预设列表">
+        <div className="preset-grid" role="region" aria-label="模型预设列表">
           <div className="preset-search">
             <span className="preset-search-icon">⌕</span>
             <input
               className="preset-search-input"
-              placeholder="搜索供应商…"
+              placeholder="搜索模型…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
@@ -109,7 +109,7 @@ export function ProviderPresetSelector({
 
           {filtered.length === 0 && (
             <div className="preset-empty">
-              没有匹配「{query}」的供应商
+              没有匹配「{query}」的模型
             </div>
           )}
 
