@@ -240,7 +240,7 @@ type RelayProtocol = "responses" | "chatCompletions";
 type RelayMode = "official" | "mixedApi" | "pureApi" | "aggregate";
 const PROTOCOL_PROXY_BASE_URL = "http://127.0.0.1:57321/v1";
 const CHAT_UPSTREAM_BASE_URL_KEY = "codex_plus_chat_base_url";
-
+const SCRIPT_MARKET_REPOSITORY_URL = "https://github.com/luoda2023/LDCodexScriptMarket";
 const LOCAL_MOBILE_RELAY_URL = "ws://127.0.0.1:57323";
 const PUBLIC_MOBILE_RELAY_URL = "ws://154.201.90.76:57323";
 
@@ -507,7 +507,7 @@ type UpdateResult = CommandResult<{
   progress?: number;
 }>;
 
-
+type AdItem = {
   id?: string;
   type: "sponsor" | "normal" | string;
   title: string;
@@ -517,12 +517,12 @@ type UpdateResult = CommandResult<{
   expires_at?: string;
 };
 
-
+type AdsResult = CommandResult<{
   version: number;
-
+  ads: AdItem[];
 }>;
 
-
+type ScriptMarketItem = {
   id: string;
   name: string;
   description: string;
@@ -537,13 +537,13 @@ type UpdateResult = CommandResult<{
   updateAvailable: boolean;
 };
 
-
+type ScriptMarketResult = CommandResult<{
   market: {
     status: string;
     message: string;
     indexUrl: string;
     updatedAt: string;
-
+    scripts: ScriptMarketItem[];
   };
   user_scripts: UserScriptInventory;
 }>;
@@ -570,7 +570,7 @@ function providerSyncTargetLabel(target: ProviderSyncTargetOption): string {
   return [...labels, ...current].join(" / ") || "发现";
 }
 
-
+function syncMarketInstalledState(current: ScriptMarketResult | null, userScripts: UserScriptInventory): ScriptMarketResult | null {
   if (!current) return current;
   const installed = new Map(
     (userScripts.scripts ?? [])
@@ -599,7 +599,7 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "mobileControl" | "sessions" | "context" | "enhance" | "maintenance" | "about" | "settings";
+type Route = "overview" | "relay" | "mobileControl" | "sessions" | "context" | "enhance" | "zedRemote" | "userScripts" | "recommendations" | "maintenance" | "about" | "settings";
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string }> = [
@@ -609,9 +609,9 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string
   { id: "sessions", label: "会话管理", icon: MessageCircle },
   { id: "context", label: "工具与插件", icon: Network },
   { id: "enhance", label: "Codex增强", icon: Hammer },
-
-
-
+  { id: "zedRemote", label: "Zed 远程项目", icon: ExternalLink },
+  { id: "userScripts", label: "脚本市场", icon: FileCode2 },
+  { id: "recommendations", label: "推荐内容", icon: ExternalLink },
   { id: "maintenance", label: "安装维护", icon: Wrench },
   { id: "about", label: "关于", icon: Info },
   { id: "settings", label: "设置", icon: Settings },
@@ -718,8 +718,8 @@ export function App() {
   const [diagnostics, setDiagnostics] = useState<DiagnosticsResult | null>(null);
   const [watcher, setWatcher] = useState<WatcherResult | null>(null);
   const [update, setUpdate] = useState<UpdateResult | null>(null);
-
-
+  const [ads, setAds] = useState<AdsResult | null>(null);
+  const [scriptMarket, setScriptMarket] = useState<ScriptMarketResult | null>(null);
   const [launchForm, setLaunchForm] = useState({
     appPath: "",
     debugPort: "9229",
@@ -788,6 +788,45 @@ export function App() {
       return normalized;
     }
     return null;
+  };
+
+  const refreshScriptMarket = async (silent = false) => {
+    const result = await run(() => call<ScriptMarketResult>("refresh_script_market"));
+    if (result) {
+      setScriptMarket(result);
+      setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("脚本市场", result, { silentSuccess: true });
+    }
+  };
+
+  const installMarketScript = async (id: string) => {
+    const result = await run(() => call<ScriptMarketResult>("install_market_script", { id }));
+    if (result) {
+      setScriptMarket(result);
+      setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
+      showResultNotice("脚本市场", result);
+    }
+  };
+
+  const setUserScriptEnabled = async (key: string, enabled: boolean) => {
+    const result = await run(() => call<SettingsResult>("set_user_script_enabled", { key, enabled }));
+    if (result) {
+      setSettings(result);
+      setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
+      showResultNotice("本地脚本", result);
+    }
+  };
+
+  const deleteUserScript = async (key: string) => {
+    const script = settings?.user_scripts?.scripts?.find((item) => item.key === key);
+    const name = script?.name || key;
+    if (!window.confirm(`删除脚本“${name}”？此操作会移除本地脚本文件。`)) return;
+    const result = await run(() => call<SettingsResult>("delete_user_script", { key }));
+    if (result) {
+      setSettings(result);
+      setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
+      showResultNotice("本地脚本", result);
+    }
   };
 
   const refreshRelay = async (silent = false) => {
@@ -887,6 +926,111 @@ export function App() {
     return result;
   };
 
+  const refreshZedRemoteProjects = async (silent = false) => {
+    const result = await run(() => call<ZedRemoteProjectsResult>("list_zed_remote_projects"));
+    if (result) {
+      setZedRemoteProjects(result);
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("Zed 远程项目", result, { silentSuccess: true });
+    }
+    return result;
+  };
+
+  const openZedRemoteProject = async (
+    project: ZedRemoteProject,
+    strategy: ZedOpenStrategy = settingsForm.zedRemoteOpenStrategy || "addToFocusedWorkspace",
+  ) => {
+    const result = await run(() =>
+      call<ZedRemoteOpenResult>("open_zed_remote", {
+        payload: {
+          ssh: project.ssh,
+          hostId: project.hostId,
+          path: project.path,
+          strategy,
+          remember: settingsForm.zedRemoteProjectRegistryEnabled !== false,
+        },
+      }),
+    );
+    if (result) {
+      showResultNotice("Zed 远程打开", result);
+      await refreshZedRemoteProjects(true);
+    }
+  };
+
+  const forgetZedRemoteProject = async (project: ZedRemoteProject) => {
+    const result = await run(() => call<ZedRemoteProjectsResult>("forget_zed_remote_project", { id: project.id }));
+    if (result) {
+      setZedRemoteProjects(result);
+      showResultNotice("Zed 远程项目", result);
+    }
+  };
+
+  const requestDeleteLocalSession = (session: LocalSession) =>
+    call<DeleteLocalSessionResult>("delete_local_session", {
+      request: { sessionId: session.id, title: session.title, dbPath: session.dbPath },
+    });
+
+  const confirmSessionDelete = (title: string, message: string) =>
+    new Promise<boolean>((resolve) => {
+      setConfirmDialog({
+        title,
+        message,
+        confirmText: "确认删除",
+        cancelText: "取消",
+        resolve,
+      });
+    });
+
+  const deleteLocalSession = async (session: LocalSession) => {
+    const title = session.title || session.id;
+    const confirmed = await confirmSessionDelete("删除会话", `删除会话“${title}”？此操作会删除本地数据库记录和 rollout 文件，并创建备份。`);
+    if (!confirmed) return;
+    const result = await run(() => requestDeleteLocalSession(session));
+    if (result) {
+      showResultNotice("会话删除", result);
+      await refreshLocalSessions(true);
+    }
+  };
+
+  const deleteLocalSessions = async (sessions: LocalSession[]) => {
+    const uniqueSessions = Array.from(new Map(sessions.map((session) => [session.id, session])).values());
+    if (!uniqueSessions.length) {
+      showNotice("批量删除会话", "请先选择要删除的会话。", "failed");
+      return;
+    }
+    const preview = uniqueSessions
+      .slice(0, 6)
+      .map((session) => `- ${truncateSessionDeletePreview(session.title || session.id)}`)
+      .join("\n");
+    const extraCount = uniqueSessions.length > 6 ? `\n...以及另外 ${uniqueSessions.length - 6} 个会话` : "";
+    const confirmed = await confirmSessionDelete(
+      "批量删除会话",
+      `删除选中的 ${uniqueSessions.length} 个会话？此操作会删除本地数据库记录和 rollout 文件，并为每个会话创建备份。\n\n${preview}${extraCount}`,
+    );
+    if (!confirmed) return;
+
+    let succeeded = 0;
+    const failed: string[] = [];
+    for (const session of uniqueSessions) {
+      const result = await run(() => requestDeleteLocalSession(session));
+      if (result && isSuccessStatus(result.status)) {
+        succeeded += 1;
+      } else {
+        failed.push(session.title || session.id);
+      }
+    }
+
+    if (failed.length) {
+      showNotice(
+        "批量删除会话",
+        `已删除 ${succeeded} 个，失败 ${failed.length} 个：${failed.slice(0, 3).map(truncateSessionDeletePreview).join("、")}`,
+        succeeded ? "ok" : "failed",
+      );
+    } else {
+      showNotice("批量删除会话", `已删除 ${succeeded} 个会话。`, "ok");
+    }
+    await refreshLocalSessions(true);
+  };
+
   const refreshLiveContextEntries = async (silent = false) => {
     const result = await run(() => call<LiveContextEntriesResult>("read_live_context_entries"));
     if (result) {
@@ -944,12 +1088,21 @@ export function App() {
       await refreshLocalSessions(true);
       await refreshProviderSyncTargets(true);
     }
+    if (next === "zedRemote") {
+      await refreshSettings(true);
+      await refreshZedRemoteProjects(true);
+    }
     if (next === "context") {
       await refreshSettings(true);
       await refreshRelayFiles(true);
       await refreshLiveContextEntries(true);
     }
     if (next === "settings") await refreshSettings(true);
+    if (next === "userScripts") {
+      await refreshSettings(true);
+      await refreshScriptMarket(true);
+    }
+    if (next === "recommendations") await refreshAds(true);
     if (next === "about") {
       await refreshOverview(true);
       await refreshLogs(true);
@@ -1148,8 +1301,8 @@ export function App() {
     }
   };
 
-
-
+  const refreshAds = async (silent = false) => {
+    const result = await run(() => call<AdsResult>("load_ads"));
     if (result) {
       setAds(result);
       if (!silent) showResultNotice("推荐内容", result, { silentSuccess: true });
@@ -1381,7 +1534,7 @@ export function App() {
     }
     let switchSettings = normalizeSettings(next);
     if (!switchSettings.relayProfilesEnabled) {
-      showNotice("模型配置已关闭", "当前不会写入 Codex config.toml / auth.json。打开模型配置总开关后再切换。", "failed");
+      showNotice("模型配置已关闭", "当前不会写入 Codex config.toml / auth.json。打开供应商配置总开关后再切换。", "failed");
       return;
     }
     const targetBeforeSnapshot = activeRelayProfile(switchSettings);
@@ -1399,7 +1552,7 @@ export function App() {
         targetRelayName: selectedBeforeSave.name,
         error: validationError,
       });
-      showNotice("模型配置可能不正确", validationError, "failed");
+      showNotice("供应商配置可能不正确", validationError, "failed");
       return;
     }
     switchSettings = await snapshotActiveRelayFilesBeforeSwitch(switchSettings, previousActiveRelayId);
@@ -1447,7 +1600,7 @@ export function App() {
           message: result.message,
           activeRelayId: selectedSettings.activeRelayId,
         });
-        showNotice("模型切换", result.message, result.status);
+        showNotice("供应商切换", result.message, result.status);
         return;
       }
       const currentSelected = activeRelayProfile(selectedSettings);
@@ -1456,7 +1609,7 @@ export function App() {
         launchMode: selectedSettings.launchMode,
         status: result.status,
       });
-      showNotice("模型切换", relayProfileModeSwitchedText(currentSelected), result.status);
+      showNotice("供应商切换", relayProfileModeSwitchedText(currentSelected), result.status);
     } finally {
       setRelaySwitching(false);
     }
@@ -1476,7 +1629,7 @@ export function App() {
     if (!result) return next;
     const normalized = normalizeSettings(result.settings);
     if (!isSuccessStatus(result.status)) {
-      showNotice("模型切换", result.message, result.status);
+      showNotice("供应商切换", result.message, result.status);
       return next;
     }
     return normalized;
@@ -1661,17 +1814,17 @@ export function App() {
       importCcsProviders,
       refreshLiveContextEntries,
       syncLiveContextEntries,
-
-
-
-
-
+      refreshAds,
+      refreshScriptMarket,
+      installMarketScript,
+      setUserScriptEnabled,
+      deleteUserScript,
       refreshLocalSessions,
       deleteLocalSession,
       deleteLocalSessions,
-
-
-
+      refreshZedRemoteProjects,
+      openZedRemoteProject,
+      forgetZedRemoteProject,
       openExternalUrl,
       applyRelayInjection,
       applyPureApiInjection,
@@ -1924,9 +2077,9 @@ type Actions = {
   importCcsProviders: () => Promise<void>;
   refreshLiveContextEntries: () => Promise<LiveContextEntriesResult | null>;
   syncLiveContextEntries: (settings: BackendSettings, silent?: boolean) => Promise<LiveContextEntriesResult | null>;
-
+  refreshAds: () => Promise<void>;
   refreshScriptMarket: () => Promise<void>;
-
+  installMarketScript: (id: string) => Promise<void>;
   setUserScriptEnabled: (key: string, enabled: boolean) => Promise<void>;
   deleteUserScript: (key: string) => Promise<void>;
   refreshLocalSessions: () => Promise<LocalSessionsResult | null>;
@@ -2349,8 +2502,8 @@ function RelayScreen({
     setNewProfileDraft(draft);
     if (!normalizeAggregateConfig(draft.aggregate, aggregateMemberCandidates(normalized, draft.id)).members.length) {
       void actions.showMessage(
-        "添加聚合模型",
-        "已打开聚合模型详情；请先添加或完善至少 1 个普通 API 模型的 Base URL / Key，再勾选为成员。",
+        "添加聚合供应商",
+        "已打开聚合供应商详情；请先添加或完善至少 1 个普通 API 供应商的 Base URL / Key，再勾选为成员。",
         "failed",
       );
     }
@@ -2400,7 +2553,7 @@ function RelayScreen({
   return (
     <>
       <Panel>
-        <CardHead title="模型列表" detail={`${normalized.relayProfiles.length} 个模型配置；可拖动排序，点编辑进入详情`} />
+        <CardHead title="供应商列表" detail={`${normalized.relayProfiles.length} 个供应商配置；可拖动排序，点编辑进入详情`} />
         <CardContent>
           <EnvConflictNotice envConflicts={envConflicts} actions={actions} />
           <label className="switch-row relay-master-switch">
@@ -2413,7 +2566,7 @@ function RelayScreen({
               type="checkbox"
             />
             <span>
-              <strong>启用模型配置切换</strong>
+              <strong>启用供应商配置切换</strong>
               <small>关闭后本工具不会在手动切换时写入 Codex 的 config.toml / auth.json；启动 Codex 时始终不会自动改这些文件。</small>
             </span>
           </label>
@@ -2426,14 +2579,14 @@ function RelayScreen({
               }}
             >
               <Plus className="h-4 w-4" />
-              添加模型
+              添加供应商
             </Button>
             <Button
               variant="secondary"
               onClick={createNewAggregateProfile}
             >
               <Plus className="h-4 w-4" />
-              添加聚合模型
+              添加聚合供应商
             </Button>
             <div className="third-party-import">
               <Button
@@ -2497,7 +2650,7 @@ function EnvConflictNotice({
       </div>
       <div className="env-conflict-body">
         <strong>检测到 OPENAI 环境变量</strong>
-        <p>这些变量可能覆盖当前模型写入的 config.toml / auth.json；CODEX_HOME 不会被清理。</p>
+        <p>这些变量可能覆盖当前供应商写入的 config.toml / auth.json；CODEX_HOME 不会被清理。</p>
         <div className="env-conflict-tags">
           {conflicts.map((conflict) => (
             <span key={`${conflict.source}-${conflict.name}`}>
@@ -2692,7 +2845,7 @@ function ZedRemoteScreen({
             </label>
           </div>
           <Toolbar>
-
+            <Button onClick={() => void actions.refreshZedRemoteProjects()}>
               <RefreshCw className="h-4 w-4" />
               刷新项目
             </Button>
@@ -2741,21 +2894,21 @@ function ZedRemoteProjectSection({
                   </small>
                 </div>
                 <div className="zed-remote-project-actions">
-
+                  <Button onClick={() => void actions.openZedRemoteProject(project, "addToFocusedWorkspace")} size="sm">
                     <ExternalLink className="h-4 w-4" />
                     加入当前工作区
                   </Button>
-
+                  <Button onClick={() => void actions.openZedRemoteProject(project, "reuseWindow")} size="sm" variant="outline">
                     复用窗口
                   </Button>
-
+                  <Button onClick={() => void actions.openZedRemoteProject(project, "newWindow")} size="sm" variant="outline">
                     新窗口
                   </Button>
                   <Button onClick={() => void onCopyUrl(project)} size="icon" title="复制 ssh:// URL" variant="ghost">
                     <Copy className="h-4 w-4" />
                   </Button>
                   {project.source === "recent" ? (
-
+                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="移除最近记录" variant="ghost">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   ) : null}
@@ -2771,7 +2924,7 @@ function ZedRemoteProjectSection({
   );
 }
 
-
+function UserScriptsScreen({ settings, market, actions }: { settings: SettingsResult | null; market: ScriptMarketResult | null; actions: Actions }) {
   const inventory = settings?.user_scripts;
   const scripts = inventory?.scripts ?? [];
   const marketScripts = market?.market.scripts ?? [];
@@ -2788,11 +2941,11 @@ function ZedRemoteProjectSection({
             <Metric label="本地整体" value={inventory?.enabled === false ? "关闭" : "开启"} />
           </div>
           <Toolbar>
-
+            <Button onClick={() => void actions.refreshScriptMarket()}>
               <RefreshCw className="h-4 w-4" />
               刷新市场
             </Button>
-
+            <Button onClick={() => void actions.openExternalUrl(SCRIPT_MARKET_REPOSITORY_URL)} variant="secondary">
               <ExternalLink className="h-4 w-4" />
               投稿
             </Button>
@@ -3035,7 +3188,7 @@ function SessionsScreen({
   );
 }
 
-
+function RecommendationsScreen({ ads, actions }: { ads: AdsResult | null; actions: Actions }) {
   const items = (ads?.ads ?? []).filter((ad) => !isExpiredAd(ad));
   const sponsors = items.filter((ad) => ad.type === "sponsor");
   const normal = items.filter((ad) => ad.type === "normal");
@@ -3049,7 +3202,7 @@ function SessionsScreen({
               <strong>{ads ? `已加载 ${items.length} 条推荐` : "尚未加载推荐内容"}</strong>
               <span>内容来自 luoda2023/Ad-List，分为赞助商推荐和普通推荐。</span>
             </div>
-
+            <Button onClick={() => void actions.refreshAds()}>
               <RefreshCw className="h-4 w-4" />
               刷新推荐
             </Button>
@@ -3282,7 +3435,7 @@ function SettingsScreen({
             </div>
             <Button variant="secondary" onClick={actions.toggleTheme}>切换主题</Button>
           </div>
-          <Field label="模型测试模型">
+          <Field label="供应商测试模型">
             <Input
               value={form.relayTestModel}
               onChange={(event) => onFormChange({ ...form, relayTestModel: event.currentTarget.value })}
@@ -3534,11 +3687,11 @@ function SortableRelayProfileCard({
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="relay-index" title={profile.name || "未命名模型"}>
+      <span className="relay-index" title={profile.name || "未命名供应商"}>
         {providerInitial(profile.name)}
       </span>
       <span className="relay-summary">
-        <strong>{profile.name || "未命名模型"}</strong>
+        <strong>{profile.name || "未命名供应商"}</strong>
         <small>{relayModeLabel(profile.relayMode)} · {relayProtocolLabel(profile.protocol)} · {relayProfileConfigBrief(profile)}</small>
       </span>
       <span className="relay-card-actions">
@@ -3553,7 +3706,7 @@ function SortableRelayProfileCard({
             void actions.switchRelayProfile(next, previousActiveRelayId);
           }}
           size="sm"
-          title={disabled ? "模型切换不可用" : active ? "当前正在使用" : "设为当前"}
+          title={disabled ? "供应商切换不可用" : active ? "当前正在使用" : "设为当前"}
           variant={active ? "secondary" : "outline"}
         >
           <CheckCircle2 className="h-4 w-4" />
@@ -3568,7 +3721,7 @@ function SortableRelayProfileCard({
               void actions.testRelayProfile(profile);
             }}
             size="icon"
-            title={isAggregateRelayProfile(profile) ? "聚合模型会在真实对话中轮转成员，请测试成员模型" : "发送 hi 测试"}
+            title={isAggregateRelayProfile(profile) ? "聚合供应商会在真实对话中轮转成员，请测试成员供应商" : "发送 hi 测试"}
             variant="ghost"
           >
             <TestTube className="h-4 w-4" />
@@ -3602,7 +3755,7 @@ function SortableRelayProfileCard({
               onFormChange(removeRelayProfile(form, profile.id));
             }}
             size="icon"
-            title="删除模型"
+            title="删除供应商"
             variant="ghost"
           >
             <Trash2 className="h-4 w-4" />
@@ -3613,7 +3766,7 @@ function SortableRelayProfileCard({
   );
 }
 
-
+function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actions: Actions }) {
   const status = script.updateAvailable ? "可更新" : script.installed ? `已安装 ${script.installedVersion}` : "未安装";
   return (
     <div className="script-market-card">
@@ -3632,7 +3785,7 @@ function SortableRelayProfileCard({
         ))}
       </div>
       <div className="script-market-actions">
-
+        <Button onClick={() => void actions.installMarketScript(script.id)} size="sm">
           <Download className="h-4 w-4" />
           {script.updateAvailable ? "更新" : script.installed ? "重新安装" : "安装"}
         </Button>
@@ -3768,7 +3921,7 @@ function ContextScreen({
 }) {
   return (
     <Panel fill>
-      <CardHead title="Codex 工具与插件" detail="独立管理 Codex 的 MCP、Skills、Plugins；切换任意模型都会带上。" />
+      <CardHead title="Codex 工具与插件" detail="独立管理 Codex 的 MCP、Skills、Plugins；切换任意供应商都会带上。" />
       <CardContent>
         <RelayContextManager
           form={normalizeSettings(form)}
@@ -3834,14 +3987,14 @@ function RelayProfileEditor({
     <div className="relay-profile-editor">
       <div className="relay-editor-head">
         <div>
-          <strong>{profile.name || "未命名模型"}</strong>
+          <strong>{profile.name || "未命名供应商"}</strong>
           <span>{relayProfileEditorStatus(profile, form, isNew)}</span>
         </div>
         {isNew ? null : (
           <Button
             disabled={!form.relayProfilesEnabled || actions.relaySwitching}
             onClick={onSwitch}
-            title={!form.relayProfilesEnabled ? "模型配置总开关已关闭" : actions.relaySwitching ? "模型切换中" : undefined}
+            title={!form.relayProfilesEnabled ? "供应商配置总开关已关闭" : actions.relaySwitching ? "模型切换中" : undefined}
             variant={profile.id === form.activeRelayId ? "secondary" : "default"}
           >
             {actions.relaySwitching ? "切换中" : profile.id === form.activeRelayId ? "使用中" : "设为当前"}
@@ -4116,8 +4269,8 @@ function AggregateRelayProfileEditor({
     <div className="relay-profile-editor aggregate-editor">
       <div className="relay-editor-head">
         <div>
-          <strong>{profile.name || "未命名聚合模型"}</strong>
-          <span>{isNew ? "选择已有模型作为成员，保存后写入 settings payload" : "聚合配置只引用已有模型，不复制 Key 和配置文件"}</span>
+          <strong>{profile.name || "未命名聚合供应商"}</strong>
+          <span>{isNew ? "选择已有供应商作为成员，保存后写入 settings payload" : "聚合配置只引用已有供应商，不复制 Key 和配置文件"}</span>
         </div>
         <UiBadge variant="secondary">聚合</UiBadge>
       </div>
@@ -4166,8 +4319,8 @@ function AggregateRelayProfileEditor({
       <div className="aggregate-members">
         <div className="aggregate-members-head">
           <div>
-            <strong>成员模型</strong>
-            <span>只能勾选已填写 Base URL / Key 的 API 模型，聚合模型不会作为成员。</span>
+            <strong>成员供应商</strong>
+            <span>只能勾选已填写 Base URL / Key 的 API 供应商，聚合供应商不会作为成员。</span>
           </div>
           <UiBadge variant="outline">{aggregate.members.length} / {candidates.length}</UiBadge>
         </div>
@@ -4184,7 +4337,7 @@ function AggregateRelayProfileEditor({
                     type="checkbox"
                   />
                   <span className="aggregate-member-summary">
-                    <strong>{candidate.name || "未命名模型"}</strong>
+                    <strong>{candidate.name || "未命名供应商"}</strong>
                     <small>{relayModeLabel(candidate.relayMode)} · {relayProtocolLabel(candidate.protocol)} · {relayProfileConfigBrief(candidate)}</small>
                   </span>
                   <span className="aggregate-weight-box">
@@ -4202,7 +4355,7 @@ function AggregateRelayProfileEditor({
             })}
           </div>
         ) : (
-          <div className="empty">先添加至少 1 个已填写 Base URL / Key 的 API 模型，再创建聚合模型。</div>
+          <div className="empty">先添加至少 1 个已填写 Base URL / Key 的 API 供应商，再创建聚合供应商。</div>
         )}
       </div>
       <div className="relay-grid compact aggregate-preview">
@@ -4267,7 +4420,7 @@ function RelayContextManager({
       <div className="relay-context-head">
         <div>
           <strong>Codex 工具与插件</strong>
-          <span>MCP、Skills、Plugins 作为全局配置独立管理，切换任意模型都会合并。</span>
+          <span>MCP、Skills、Plugins 作为全局配置独立管理，切换任意供应商都会合并。</span>
         </div>
         <div className="relay-context-head-actions">
           <Button onClick={() => setEditor({ kind: activeKind })} size="sm" variant="secondary">
@@ -4290,7 +4443,7 @@ function RelayContextManager({
         ))}
       </div>
       <div className="relay-context-summary">
-        当前共有 {visibleEntries.length} 个{label}；这些条目独立于模型保存，会写入所有模型切换后的 config.toml。
+        当前共有 {visibleEntries.length} 个{label}；这些条目独立于供应商保存，会写入所有供应商切换后的 config.toml。
       </div>
       <div className="relay-context-list">
         {visibleEntries.length ? (
@@ -4470,7 +4623,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>config.toml 预览</strong>
-            <span>{isActive ? "当前模型切换后会写入的预览；上下文开关变化会立即反映" : "切换到此模型时会写入的预览；上下文开关变化会立即反映"}</span>
+            <span>{isActive ? "当前供应商切换后会写入的预览；上下文开关变化会立即反映" : "切换到此供应商时会写入的预览；上下文开关变化会立即反映"}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -4493,7 +4646,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>通用配置文件</strong>
-            <span>只保留非 MCP、Skills、Plugins 的跨模型配置；工具与插件在独立页面管理。</span>
+            <span>只保留非 MCP、Skills、Plugins 的跨供应商配置；工具与插件在独立页面管理。</span>
           </div>
           <Button
             onClick={async () => {
@@ -4501,7 +4654,7 @@ function RelayFileEditors({
               if (!extracted) return;
               const split = splitContextConfigText(extracted.commonConfigContents || "");
               if (!split.common.trim() && !split.context.trim()) {
-                await actions.showMessage("通用配置文件", "当前模型 config.toml 里没有可提取的通用配置。", "failed");
+                await actions.showMessage("通用配置文件", "当前供应商 config.toml 里没有可提取的通用配置。", "failed");
                 return;
               }
               const promotedProfile = {
@@ -4523,7 +4676,7 @@ function RelayFileEditors({
             variant="secondary"
           >
             <Download className="h-4 w-4" />
-            提取当前模型配置
+            提取当前供应商配置
           </Button>
         </div>
         <SyncedTextarea
@@ -4536,7 +4689,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>auth.json</strong>
-            <span>{isActive ? "当前使用中：打开时从 ~/.codex/auth.json 回填，保存后会作为此模型 auth 存档" : "切换到此模型时会写入 ~/.codex/auth.json"}</span>
+            <span>{isActive ? "当前使用中：打开时从 ~/.codex/auth.json 回填，保存后会作为此供应商 auth 存档" : "切换到此供应商时会写入 ~/.codex/auth.json"}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -4786,13 +4939,13 @@ function PendingProviderImportDialog({
       <div className="modal-card provider-import-modal">
         <div className="modal-head">
           <div>
-            <h2>导入 LDCodex 模型</h2>
-            <p>检测到来自网页的模型配置导入请求，确认后会写入本机 LDCodex 管理工具。</p>
+            <h2>导入 LDCodex 供应商</h2>
+            <p>检测到来自网页的供应商配置导入请求，确认后会写入本机 LDCodex 管理工具。</p>
           </div>
           <button className="toast-close" onClick={onDismiss} type="button">×</button>
         </div>
         <div className="metric-list">
-          <Metric label="名称" value={request.name || "未命名模型"} />
+          <Metric label="名称" value={request.name || "未命名供应商"} />
           <Metric label="Base URL" value={request.baseUrl || "未填写"} />
           <Metric label="协议" value={providerImportWireApiLabel(request.wireApi)} />
           <Metric label="模式" value={providerImportRelayModeLabel(request.relayMode)} />
@@ -4908,12 +5061,12 @@ function ScriptRow({ script, actions }: { script: NonNullable<UserScriptInventor
       <span>{script.enabled ? "启用" : "关闭"}</span>
       <span>{script.status}</span>
       <div className="script-row-actions">
-
+        <Button onClick={() => void actions.setUserScriptEnabled(script.key, !script.enabled)} size="sm" variant="secondary">
           {script.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
           {script.enabled ? "禁用" : "启用"}
         </Button>
         {canDelete ? (
-
+          <Button onClick={() => void actions.deleteUserScript(script.key)} size="sm" variant="outline">
             <Trash2 className="h-4 w-4" />
             删除
           </Button>
@@ -4923,7 +5076,7 @@ function ScriptRow({ script, actions }: { script: NonNullable<UserScriptInventor
   );
 }
 
-
+function AdGrid({ ads, empty, actions }: { ads: AdItem[]; empty: string; actions: Actions }) {
   if (!ads.length) return <div className="empty">{empty}</div>;
   return (
     <div className="ad-grid">
@@ -4950,7 +5103,7 @@ function ScriptRow({ script, actions }: { script: NonNullable<UserScriptInventor
   );
 }
 
-
+function isExpiredAd(ad: AdItem) {
   if (!ad.expires_at) return false;
   const expiresAt = Date.parse(ad.expires_at);
   return Number.isFinite(expiresAt) && expiresAt < Date.now();
@@ -4963,7 +5116,7 @@ function routeTitle(route: Route) {
 function routeSubtitle(route: Route) {
   const subtitles: Record<Route, string> = {
     overview: "检查问题、启动与快速修复",
-    relay: "管理 API 模型、协议、Key 与配置文件",
+    relay: "管理 API 供应商、协议、Key 与配置文件",
     mobileControl: "配置手机控制 relay、房间密钥和服务器状态",
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
@@ -5573,13 +5726,13 @@ function contextSelectionForAllEntries(settings: BackendSettings): RelayContextS
 }
 
 function relayProfileEditorStatus(profile: RelayProfile, form: BackendSettings, isNew: boolean) {
-  if (isNew) return "新建模型需要先保存到列表";
-  if (!form.relayProfilesEnabled) return "模型配置总开关已关闭；当前只保存配置，不写入 Codex live 文件";
+  if (isNew) return "新建供应商需要先保存到列表";
+  if (!form.relayProfilesEnabled) return "供应商配置总开关已关闭；当前只保存配置，不写入 Codex live 文件";
   return profile.id === form.activeRelayId ? "当前正在使用" : "编辑后保存列表，再切换模式时会使用新配置";
 }
 
 function providerInitial(name: string) {
-  const trimmed = (name || "模型").trim();
+  const trimmed = (name || "供应商").trim();
   return Array.from(trimmed)[0]?.toUpperCase() || "供";
 }
 
@@ -5800,9 +5953,9 @@ function relayProtocolLabel(protocol: RelayProtocol): string {
 
 function ccsProviderSummary(result: CcsProvidersResult | null): string {
   if (!result) return "读取 ~/.cc-switch/cc-switch.db";
-  if (!isSuccessStatus(result.status)) return result.message || "读取 cc-switch 模型失败。";
+  if (!isSuccessStatus(result.status)) return result.message || "读取 cc-switch 供应商失败。";
   const count = result.providers.length;
-  return count ? `发现 ${count} 个 Codex 模型` : "未发现可导入模型";
+  return count ? `发现 ${count} 个 Codex 供应商` : "未发现可导入供应商";
 }
 
 function normalizeRelayMode(mode: RelayMode | undefined): RelayMode {
@@ -5830,7 +5983,7 @@ function normalizeContextSelection(
 }
 
 function relayModeLabel(mode: RelayMode): string {
-  if (mode === "aggregate") return "聚合模型";
+  if (mode === "aggregate") return "聚合供应商";
   if (mode === "pureApi") return "纯 API";
   return "官方登录";
 }
@@ -5847,7 +6000,7 @@ function providerImportRelayModeLabel(value: string): string {
   const normalized = value.trim().toLowerCase();
   if (normalized === "official") return "官方登录";
   if (normalized === "mixedapi" || normalized === "mixed-api" || normalized === "mixed_api") return "混入 API";
-  if (normalized === "aggregate") return "聚合模型";
+  if (normalized === "aggregate") return "聚合供应商";
   return "纯 API";
 }
 
@@ -5869,24 +6022,24 @@ function relayProfileConfigBrief(profile: RelayProfile): string {
 
 function relayProfileModeHelp(profile: RelayProfile): string {
   if (isAggregateRelayProfile(profile)) {
-    return "聚合模型只保存成员和策略配置，成员来自已有 API 模型；切为当前后会通过本地协议代理轮转请求。";
+    return "聚合供应商只保存成员和策略配置，成员来自已有 API 供应商；切为当前后会通过本地协议代理轮转请求。";
   }
   if (profile.relayMode === "official") {
     if (profile.officialMixApiKey) {
-      return "此模型会保留官方登录模式，并把请求混入当前 API Key；Codex增强仍使用兼容模式。";
+      return "此供应商会保留官方登录模式，并把请求混入当前 API Key；Codex增强仍使用兼容模式。";
     }
-    return "此模型会切回官方登录模式，使用 ChatGPT 官方账号，不写入 API Key。";
+    return "此供应商会切回官方登录模式，使用 ChatGPT 官方账号，不写入 API Key。";
   }
   if (profile.relayMode === "pureApi") {
-    return "此模型会同时写入 config.toml 和 auth.json；API Key 也会注入到 provider bearer token。";
+    return "此供应商会同时写入 config.toml 和 auth.json；API Key 也会注入到 provider bearer token。";
   }
-  return "此模型会保留官方登录模式，并把请求混入当前 API Key；Codex增强仍使用兼容模式。";
+  return "此供应商会保留官方登录模式，并把请求混入当前 API Key；Codex增强仍使用兼容模式。";
 }
 
 function relayProfileReadinessText(profile: RelayProfile, relay: RelayResult | null): string {
   if (isAggregateRelayProfile(profile)) {
     const aggregate = normalizeAggregateConfig(profile.aggregate, []);
-    return `聚合模型已配置为${aggregateStrategyLabel(aggregate.strategy)}，包含 ${aggregate.members.length} 个成员；真实对话会走本地代理轮转。`;
+    return `聚合供应商已配置为${aggregateStrategyLabel(aggregate.strategy)}，包含 ${aggregate.members.length} 个成员；真实对话会走本地代理轮转。`;
   }
   if (profile.relayMode === "official") {
     if (profile.officialMixApiKey) {
@@ -5901,8 +6054,8 @@ function relayProfileReadinessText(profile: RelayProfile, relay: RelayResult | n
       : "当前未登录官方账号；切到官方登录模式后仍需要先在 Codex/ChatGPT 登录。";
   }
   const hasFiles = profile.configContents.trim() && profile.authContents.trim();
-  if (!hasFiles) return "当前模型还没有完整 config.toml / API Key 存档。";
-  if (relay && !relay.configured) return "纯 API 配置未完整写入：请检查此模型是否有 OPENAI_API_KEY，且 config.toml 是否包含 model_provider / provider / base_url。";
+  if (!hasFiles) return "当前供应商还没有完整 config.toml / API Key 存档。";
+  if (relay && !relay.configured) return "纯 API 配置未完整写入：请检查此供应商是否有 OPENAI_API_KEY，且 config.toml 是否包含 model_provider / provider / base_url。";
   return "纯 API 就绪：会同时写入 config.toml 和 auth.json。";
 }
 
@@ -5914,10 +6067,10 @@ function relayProfileSwitchCommand(profile: RelayProfile): "clear_relay_injectio
   return profile.officialMixApiKey ? "apply_relay_injection" : "clear_relay_injection";
 }
 function relayProfileModeSwitchedText(profile: RelayProfile): string {
-  if (isAggregateRelayProfile(profile)) return "已切换到聚合模型；真实对话会按所选策略轮转成员。";
-  if (profile.relayMode === "pureApi") return "已按此模型切换到纯 API；Codex增强已设为完整增强。";
-  if (profile.officialMixApiKey) return "已按此模型使用官方登录，并混入 API Key；Codex增强已设为兼容增强。";
-  return "已按此模型切回官方登录；Codex增强已设为兼容增强。";
+  if (isAggregateRelayProfile(profile)) return "已切换到聚合供应商；真实对话会按所选策略轮转成员。";
+  if (profile.relayMode === "pureApi") return "已按此供应商切换到纯 API；Codex增强已设为完整增强。";
+  if (profile.officialMixApiKey) return "已按此供应商使用官方登录，并混入 API Key；Codex增强已设为兼容增强。";
+  return "已按此供应商切回官方登录；Codex增强已设为兼容增强。";
 }
 
 function withGeneratedRelayFiles(profile: RelayProfile): RelayProfile {
@@ -6301,10 +6454,10 @@ function relayProfileSwitchValidation(profile: RelayProfile): string | null {
   }
   if (profile.relayMode === "official" && !profile.officialMixApiKey) return null;
   if (!profile.configContents.trim()) {
-    return `模型「${profile.name || profile.id}」缺少独立 config.toml，已停止切换，避免继续显示上一套配置文件。请先在该模型详情里保存 config.toml。`;
+    return `供应商「${profile.name || profile.id}」缺少独立 config.toml，已停止切换，避免继续显示上一套配置文件。请先在该供应商详情里保存 config.toml。`;
   }
   if (profile.relayMode !== "official" || !authJsonHasOpenAiApiKey(profile.authContents)) return null;
-  return "官方混合 API 不应在 auth.json 中保存 OPENAI_API_KEY。请清理此模型的 auth.json 后再切换。";
+  return "官方混合 API 不应在 auth.json 中保存 OPENAI_API_KEY。请清理此供应商的 auth.json 后再切换。";
 }
 
 function relayProfileUsesLiveFiles(profile: RelayProfile): boolean {
@@ -6350,7 +6503,7 @@ function normalizeAggregateProfilesFromRelayProfiles(profiles: RelayProfile[]): 
     const aggregate = normalizeAggregateConfig(profile.aggregate, candidates);
     return {
       id: profile.id,
-      name: profile.name || "聚合模型",
+      name: profile.name || "聚合供应商",
       strategy: aggregate.strategy,
       members: aggregate.members.map((member) => ({
         relayId: member.profileId,
@@ -6382,7 +6535,7 @@ function createRelayProfile(settings: BackendSettings): RelayProfile {
   const contextSelection = contextSelectionForAllEntries(settings);
   const next = {
     id,
-    name: `模型 ${settings.relayProfiles.length + 1}`,
+    name: `供应商 ${settings.relayProfiles.length + 1}`,
     model: "",
     baseUrl: defaultSettings.relayBaseUrl,
     upstreamBaseUrl: defaultSettings.relayBaseUrl,
@@ -6412,7 +6565,7 @@ function createAggregateRelayProfile(settings: BackendSettings): RelayProfile {
   return normalizeAggregateRelayProfile(
     {
       id,
-      name: `聚合模型 ${settings.relayProfiles.filter(isAggregateRelayProfile).length + 1}`,
+      name: `聚合供应商 ${settings.relayProfiles.filter(isAggregateRelayProfile).length + 1}`,
       model: "",
       baseUrl: "",
       upstreamBaseUrl: "",
@@ -6463,7 +6616,7 @@ function duplicateRelayProfile(settings: BackendSettings, id: string): BackendSe
   const next = {
     ...source,
     id: nextId,
-    name: `${source.name || "未命名模型"} 副本`,
+    name: `${source.name || "未命名供应商"} 副本`,
   };
   const normalizedNext = isAggregateRelayProfile(next) ? normalizeAggregateRelayProfile(next, settings) : next;
   const relayProfiles = [...settings.relayProfiles];
@@ -6515,7 +6668,7 @@ const aggregateStrategyOptions: Array<{ value: RelayAggregateStrategy; label: st
   {
     value: "failover",
     label: "失败切换",
-    description: "按成员顺序请求，失败后切到下一个模型。",
+    description: "按成员顺序请求，失败后切到下一个供应商。",
   },
   {
     value: "conversationRoundRobin",
@@ -6595,15 +6748,15 @@ function aggregateStrategyLabel(strategy: RelayAggregateStrategy): string {
 }
 
 function aggregateStrategyHelp(strategy: RelayAggregateStrategy): string {
-  if (strategy === "failover") return "失败切换会保留成员顺序，优先使用第一个可用模型。";
+  if (strategy === "failover") return "失败切换会保留成员顺序，优先使用第一个可用供应商。";
   if (strategy === "conversationRoundRobin") return "按对话轮转会让同一对话尽量保持固定成员，降低上下文漂移。";
-  if (strategy === "requestRoundRobin") return "按请求轮转会逐请求切换成员，适合模型能力接近的场景。";
+  if (strategy === "requestRoundRobin") return "按请求轮转会逐请求切换成员，适合供应商能力接近的场景。";
   return "权重轮转会读取每个成员的权重值，权重越高的成员获得更多请求。";
 }
 
 function aggregateRelayProfileValidation(profile: RelayProfile): string | null {
   const aggregate = normalizeAggregateConfig(profile.aggregate, []);
-  return aggregate.members.length >= 1 ? null : "聚合模型至少需要勾选 1 个已填写 Base URL / Key 的 API 模型。";
+  return aggregate.members.length >= 1 ? null : "聚合供应商至少需要勾选 1 个已填写 Base URL / Key 的 API 供应商。";
 }
 
 function numberOrDefault(value: string, fallback: number) {
