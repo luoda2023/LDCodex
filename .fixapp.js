@@ -1,0 +1,12 @@
+﻿const fs=require("fs");
+let c=fs.readFileSync("apps/codex-plus-manager/src/App.tsx","utf8");
+c=c.replace("await checkPluginMarketplacePrompt();","/* removed */");
+c=c.replace(/stroke-width=/g,"strokeWidth=");
+c=c.replace(/stroke-linecap=/g,"strokeLinecap=");
+c=c.replace(/stroke-linejoin=/g,"strokeLinejoin=");
+c=c.replace(/vertical-align:middle;margin-right:4px/g,"verticalAlign:\"middle\",marginRight:4");
+c=c.replace("export interface Actions {","export interface Actions { refreshAds?: ()=>Promise<void>; refreshScriptMarket?: ()=>Promise<void>; installMarketScript?: (id:string)=>Promise<void>; repairPluginMarketplace?: ()=>Promise<void>;");
+c=c.replace("export interface BackendSettings {","export interface BackendSettings { mobileControlRelayUrl?: string; mobileControlRoom?: string; mobileControlKey?: string; codexAppPluginMarketplaceUnlock?: boolean; codexAppPasteFix?: boolean; codexAppThreadIdBadge?: boolean;");
+c=c.replace(/\.badge/g,"/*badge*/");
+fs.writeFileSync("apps/codex-plus-manager/src/App.tsx",c,"utf8");
+console.log("Done");

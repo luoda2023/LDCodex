@@ -1,4 +1,4 @@
-import {
+﻿import {
   closestCenter,
   DndContext,
   KeyboardSensor,
@@ -240,13 +240,13 @@ type RelayProtocol = "responses" | "chatCompletions";
 type RelayMode = "official" | "mixedApi" | "pureApi" | "aggregate";
 const PROTOCOL_PROXY_BASE_URL = "http://127.0.0.1:57321/v1";
 const CHAT_UPSTREAM_BASE_URL_KEY = "codex_plus_chat_base_url";
-const SCRIPT_MARKET_REPOSITORY_URL = "https://github.com/BigPizzaV3/CodexPlusPlusScriptMarket";
+const SCRIPT_MARKET_REPOSITORY_URL = "https://github.com/luoda2023/LDCodexScriptMarket";
 const LOCAL_MOBILE_RELAY_URL = "ws://127.0.0.1:57323";
 const PUBLIC_MOBILE_RELAY_URL = "ws://154.201.90.76:57323";
 
 const mobileRelayServers = [
-  { id: "local", label: "本机测试", url: LOCAL_MOBILE_RELAY_URL, capacity: 100 },
-  { id: "public-154", label: "公共服务器 1", url: PUBLIC_MOBILE_RELAY_URL, capacity: 100 },
+  { id: "local", label: "鏈満娴嬭瘯", url: LOCAL_MOBILE_RELAY_URL, capacity: 100 },
+  { id: "public-154", label: "鍏叡鏈嶅姟鍣?1", url: PUBLIC_MOBILE_RELAY_URL, capacity: 100 },
 ];
 
 const emptyContextSelection = (): RelayContextSelection => ({
@@ -551,23 +551,23 @@ type ScriptMarketResult = CommandResult<{
 function providerSyncProgressMessage(result: CommandResult<ProviderSyncPayload>): string {
   const changed = result.changedSessionFiles ?? 0;
   const rows = result.sqliteRowsUpdated ?? 0;
-  const target = result.targetProvider || "当前 provider";
+  const target = result.targetProvider || "褰撳墠 provider";
   const skipped = result.skippedLockedRolloutFiles?.length ?? 0;
-  const skippedText = skipped ? `，跳过 ${skipped} 个占用文件` : "";
-  return `已同步到 ${target}：修复 ${changed} 个会话文件，更新 ${rows} 行索引${skippedText}。`;
+  const skippedText = skipped ? `锛岃烦杩?${skipped} 涓崰鐢ㄦ枃浠禶 : "";
+  return `宸插悓姝ュ埌 ${target}锛氫慨澶?${changed} 涓細璇濇枃浠讹紝鏇存柊 ${rows} 琛岀储寮?{skippedText}銆俙;
 }
 
 const providerSyncSourceLabels: Record<ProviderSyncTargetSource, string> = {
-  config: "配置",
-  rollout: "会话",
-  sqlite: "索引",
-  manual: "手动",
+  config: "閰嶇疆",
+  rollout: "浼氳瘽",
+  sqlite: "绱㈠紩",
+  manual: "鎵嬪姩",
 };
 
 function providerSyncTargetLabel(target: ProviderSyncTargetOption): string {
   const labels = target.sources.map((source) => providerSyncSourceLabels[source]).filter(Boolean);
-  const current = target.isCurrentProvider ? ["当前"] : [];
-  return [...labels, ...current].join(" / ") || "发现";
+  const current = target.isCurrentProvider ? ["褰撳墠"] : [];
+  return [...labels, ...current].join(" / ") || "鍙戠幇";
 }
 
 function syncMarketInstalledState(current: ScriptMarketResult | null, userScripts: UserScriptInventory): ScriptMarketResult | null {
@@ -603,18 +603,18 @@ type Route = "overview" | "relay" | "mobileControl" | "sessions" | "context" | "
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string }> = [
-  { id: "overview", label: "概览", icon: LayoutDashboard },
-  { id: "relay", label: "模型配置", icon: KeyRound },
-  { id: "mobileControl", label: "手机控制", icon: MessageCircle, badge: "测试版" },
-  { id: "sessions", label: "会话管理", icon: MessageCircle },
-  { id: "context", label: "工具与插件", icon: Network },
-  { id: "enhance", label: "Codex增强", icon: Hammer },
-  { id: "zedRemote", label: "Zed 远程项目", icon: ExternalLink },
-  { id: "userScripts", label: "脚本市场", icon: FileCode2 },
-  { id: "recommendations", label: "推荐内容", icon: ExternalLink },
-  { id: "maintenance", label: "安装维护", icon: Wrench },
-  { id: "about", label: "关于", icon: Info },
-  { id: "settings", label: "设置", icon: Settings },
+  { id: "overview", label: "姒傝", icon: LayoutDashboard },
+  { id: "relay", label: "妯″瀷閰嶇疆", icon: KeyRound },
+  { id: "mobileControl", label: "鎵嬫満鎺у埗", icon: MessageCircle, badge: "娴嬭瘯鐗? },
+  { id: "sessions", label: "浼氳瘽绠＄悊", icon: MessageCircle },
+  { id: "context", label: "宸ュ叿涓庢彃浠?, icon: Network },
+  { id: "enhance", label: "Codex澧炲己", icon: Hammer },
+  { id: "zedRemote", label: "Zed 杩滅▼椤圭洰", icon: ExternalLink },
+  { id: "userScripts", label: "鑴氭湰甯傚満", icon: FileCode2 },
+  { id: "recommendations", label: "鎺ㄨ崘鍐呭", icon: ExternalLink },
+  { id: "maintenance", label: "瀹夎缁存姢", icon: Wrench },
+  { id: "about", label: "鍏充簬", icon: Info },
+  { id: "settings", label: "璁剧疆", icon: Settings },
 ];
 
 const defaultSettings: BackendSettings = {
@@ -660,7 +660,7 @@ const defaultSettings: BackendSettings = {
   relayProfiles: [
     {
       id: "default",
-      name: "默认中转",
+      name: "榛樿涓浆",
       model: "",
       baseUrl: "",
       upstreamBaseUrl: "",
@@ -730,13 +730,13 @@ export function App() {
   const [providerSyncProgress, setProviderSyncProgress] = useState<ProviderSyncProgress>({
     active: false,
     percent: 0,
-    message: "尚未运行历史会话修复。",
+    message: "灏氭湭杩愯鍘嗗彶浼氳瘽淇銆?,
     result: null,
   });
   const [pluginMarketplaceProgress, setPluginMarketplaceProgress] = useState<TaskProgress>({
     active: false,
     percent: 0,
-    message: "尚未运行插件市场修复。",
+    message: "灏氭湭杩愯鎻掍欢甯傚満淇銆?,
   });
   const [pluginMarketplacePrompt, setPluginMarketplacePrompt] = useState<PluginMarketplaceStatusResult | null>(null);
   const [providerSyncTargets, setProviderSyncTargets] = useState<ProviderSyncTargetsResult | null>(null);
@@ -754,7 +754,7 @@ export function App() {
     try {
       return await task();
     } catch (error) {
-      showNotice("调用失败", stringifyError(error), "failed");
+      showNotice("璋冪敤澶辫触", stringifyError(error), "failed");
       return null;
     }
   };
@@ -762,15 +762,15 @@ export function App() {
   const refreshOverview = async (silent = false) => {
     const result = await run(() => call<OverviewResult>("load_overview"));
     if (result) {
-      // 崩溃检测：进程从运行状态变为停止/失败 → 弹出通知
+      // 宕╂簝妫€娴嬶細杩涚▼浠庤繍琛岀姸鎬佸彉涓哄仠姝?澶辫触 鈫?寮瑰嚭閫氱煡
       const prev = prevLaunchStatusRef.current;
       const current = result.latest_launch?.status;
       if (prev && prev === "running" && current && (current === "stopped" || current === "failed" || current === "crashed")) {
-        showNotice("Codex 意外停止", `进程状态：${current}。是否要重新启动？`, "failed");
+        showNotice("Codex 鎰忓鍋滄", `杩涚▼鐘舵€侊細${current}銆傛槸鍚﹁閲嶆柊鍚姩锛焋, "failed");
       }
       prevLaunchStatusRef.current = current ?? null;
       setOverview(result);
-      if (!silent) showResultNotice("概览已检查", result, { silentSuccess: true });
+      if (!silent) showResultNotice("姒傝宸叉鏌?, result, { silentSuccess: true });
     }
   };
 
@@ -784,7 +784,7 @@ export function App() {
         ...current,
         appPath: current.appPath || result.settings.codexAppPath || "",
       }));
-      if (!silent) showResultNotice("设置已加载", result, { silentSuccess: true });
+      if (!silent) showResultNotice("璁剧疆宸插姞杞?, result, { silentSuccess: true });
       return normalized;
     }
     return null;
@@ -795,7 +795,7 @@ export function App() {
     if (result) {
       setScriptMarket(result);
       setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("脚本市场", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("鑴氭湰甯傚満", result, { silentSuccess: true });
     }
   };
 
@@ -804,7 +804,7 @@ export function App() {
     if (result) {
       setScriptMarket(result);
       setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
-      showResultNotice("脚本市场", result);
+      showResultNotice("鑴氭湰甯傚満", result);
     }
   };
 
@@ -813,19 +813,19 @@ export function App() {
     if (result) {
       setSettings(result);
       setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
-      showResultNotice("本地脚本", result);
+      showResultNotice("鏈湴鑴氭湰", result);
     }
   };
 
   const deleteUserScript = async (key: string) => {
     const script = settings?.user_scripts?.scripts?.find((item) => item.key === key);
     const name = script?.name || key;
-    if (!window.confirm(`删除脚本“${name}”？此操作会移除本地脚本文件。`)) return;
+    if (!window.confirm(`鍒犻櫎鑴氭湰鈥?{name}鈥濓紵姝ゆ搷浣滀細绉婚櫎鏈湴鑴氭湰鏂囦欢銆俙)) return;
     const result = await run(() => call<SettingsResult>("delete_user_script", { key }));
     if (result) {
       setSettings(result);
       setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
-      showResultNotice("本地脚本", result);
+      showResultNotice("鏈湴鑴氭湰", result);
     }
   };
 
@@ -833,7 +833,7 @@ export function App() {
     const result = await run(() => call<RelayResult>("relay_status"));
     if (result) {
       setRelay(result);
-      if (!silent) showResultNotice("登录状态", result, { silentSuccess: true });
+      if (!silent) showResultNotice("鐧诲綍鐘舵€?, result, { silentSuccess: true });
     }
   };
 
@@ -841,7 +841,7 @@ export function App() {
     const result = await run(() => call<RelayFilesResult>("read_relay_files"));
     if (result) {
       setRelayFiles(result);
-      if (!silent) showResultNotice("配置文件", result, { silentSuccess: true });
+      if (!silent) showResultNotice("閰嶇疆鏂囦欢", result, { silentSuccess: true });
     }
     return result;
   };
@@ -850,7 +850,7 @@ export function App() {
     const result = await run(() => call<EnvConflictsResult>("check_env_conflicts"));
     if (result) {
       setEnvConflicts(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("环境变量检测", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("鐜鍙橀噺妫€娴?, result, { silentSuccess: true });
     }
     return result;
   };
@@ -858,7 +858,7 @@ export function App() {
   const removeEnvConflicts = async (names: string[]) => {
     const uniqueNames = Array.from(new Set(names.map((name) => name.trim()).filter(Boolean)));
     if (!uniqueNames.length) return;
-    if (!window.confirm(`删除这些环境变量？\n\n${uniqueNames.join("\n")}\n\n删除前会写入备份。`)) return;
+    if (!window.confirm(`鍒犻櫎杩欎簺鐜鍙橀噺锛焅n\n${uniqueNames.join("\n")}\n\n鍒犻櫎鍓嶄細鍐欏叆澶囦唤銆俙)) return;
     const result = await run(() => call<RemoveEnvConflictsResult>("remove_env_conflicts", { request: { names: uniqueNames } }));
     if (result) {
       setEnvConflicts({
@@ -866,7 +866,7 @@ export function App() {
         message: result.message,
         conflicts: result.remaining,
       });
-      showNotice("环境变量清理", result.message, result.status);
+      showNotice("鐜鍙橀噺娓呯悊", result.message, result.status);
     }
   };
 
@@ -874,7 +874,7 @@ export function App() {
     const result = await run(() => call<CcsProvidersResult>("load_ccs_providers"));
     if (result) {
       setCcsProviders(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("cc-switch 导入", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("cc-switch 瀵煎叆", result, { silentSuccess: true });
     }
     return result;
   };
@@ -884,7 +884,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showResultNotice("cc-switch 导入", result);
+      showResultNotice("cc-switch 瀵煎叆", result);
       await refreshCcsProviders(true);
     }
   };
@@ -893,7 +893,7 @@ export function App() {
     const result = await run(() => call<PendingProviderImportResult>("load_pending_provider_import"));
     if (result) {
       setPendingProviderImport(result.pending);
-      if (!silent && !isSuccessStatus(result.status)) showResultNotice("Codex++ 导入", result, { silentSuccess: true });
+      if (!silent && !isSuccessStatus(result.status)) showResultNotice("Codex++ 瀵煎叆", result, { silentSuccess: true });
     }
     return result;
   };
@@ -904,7 +904,7 @@ export function App() {
       setPendingProviderImport(null);
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showResultNotice("Codex++ 导入", result);
+      showResultNotice("Codex++ 瀵煎叆", result);
       await refreshCcsProviders(true);
     }
   };
@@ -913,7 +913,7 @@ export function App() {
     const result = await run(() => call<PendingProviderImportResult>("dismiss_pending_provider_import"));
     if (result) {
       setPendingProviderImport(null);
-      showResultNotice("Codex++ 导入", result, { silentSuccess: true });
+      showResultNotice("Codex++ 瀵煎叆", result, { silentSuccess: true });
     }
   };
 
@@ -921,7 +921,7 @@ export function App() {
     const result = await run(() => call<LocalSessionsResult>("list_local_sessions"));
     if (result) {
       setLocalSessions(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("会话管理", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("浼氳瘽绠＄悊", result, { silentSuccess: true });
     }
     return result;
   };
@@ -930,7 +930,7 @@ export function App() {
     const result = await run(() => call<ZedRemoteProjectsResult>("list_zed_remote_projects"));
     if (result) {
       setZedRemoteProjects(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("Zed 远程项目", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("Zed 杩滅▼椤圭洰", result, { silentSuccess: true });
     }
     return result;
   };
@@ -951,7 +951,7 @@ export function App() {
       }),
     );
     if (result) {
-      showResultNotice("Zed 远程打开", result);
+      showResultNotice("Zed 杩滅▼鎵撳紑", result);
       await refreshZedRemoteProjects(true);
     }
   };
@@ -960,7 +960,7 @@ export function App() {
     const result = await run(() => call<ZedRemoteProjectsResult>("forget_zed_remote_project", { id: project.id }));
     if (result) {
       setZedRemoteProjects(result);
-      showResultNotice("Zed 远程项目", result);
+      showResultNotice("Zed 杩滅▼椤圭洰", result);
     }
   };
 
@@ -974,19 +974,19 @@ export function App() {
       setConfirmDialog({
         title,
         message,
-        confirmText: "确认删除",
-        cancelText: "取消",
+        confirmText: "纭鍒犻櫎",
+        cancelText: "鍙栨秷",
         resolve,
       });
     });
 
   const deleteLocalSession = async (session: LocalSession) => {
     const title = session.title || session.id;
-    const confirmed = await confirmSessionDelete("删除会话", `删除会话“${title}”？此操作会删除本地数据库记录和 rollout 文件，并创建备份。`);
+    const confirmed = await confirmSessionDelete("鍒犻櫎浼氳瘽", `鍒犻櫎浼氳瘽鈥?{title}鈥濓紵姝ゆ搷浣滀細鍒犻櫎鏈湴鏁版嵁搴撹褰曞拰 rollout 鏂囦欢锛屽苟鍒涘缓澶囦唤銆俙);
     if (!confirmed) return;
     const result = await run(() => requestDeleteLocalSession(session));
     if (result) {
-      showResultNotice("会话删除", result);
+      showResultNotice("浼氳瘽鍒犻櫎", result);
       await refreshLocalSessions(true);
     }
   };
@@ -994,17 +994,17 @@ export function App() {
   const deleteLocalSessions = async (sessions: LocalSession[]) => {
     const uniqueSessions = Array.from(new Map(sessions.map((session) => [session.id, session])).values());
     if (!uniqueSessions.length) {
-      showNotice("批量删除会话", "请先选择要删除的会话。", "failed");
+      showNotice("鎵归噺鍒犻櫎浼氳瘽", "璇峰厛閫夋嫨瑕佸垹闄ょ殑浼氳瘽銆?, "failed");
       return;
     }
     const preview = uniqueSessions
       .slice(0, 6)
       .map((session) => `- ${truncateSessionDeletePreview(session.title || session.id)}`)
       .join("\n");
-    const extraCount = uniqueSessions.length > 6 ? `\n...以及另外 ${uniqueSessions.length - 6} 个会话` : "";
+    const extraCount = uniqueSessions.length > 6 ? `\n...浠ュ強鍙﹀ ${uniqueSessions.length - 6} 涓細璇漙 : "";
     const confirmed = await confirmSessionDelete(
-      "批量删除会话",
-      `删除选中的 ${uniqueSessions.length} 个会话？此操作会删除本地数据库记录和 rollout 文件，并为每个会话创建备份。\n\n${preview}${extraCount}`,
+      "鎵归噺鍒犻櫎浼氳瘽",
+      `鍒犻櫎閫変腑鐨?${uniqueSessions.length} 涓細璇濓紵姝ゆ搷浣滀細鍒犻櫎鏈湴鏁版嵁搴撹褰曞拰 rollout 鏂囦欢锛屽苟涓烘瘡涓細璇濆垱寤哄浠姐€俓n\n${preview}${extraCount}`,
     );
     if (!confirmed) return;
 
@@ -1021,12 +1021,12 @@ export function App() {
 
     if (failed.length) {
       showNotice(
-        "批量删除会话",
-        `已删除 ${succeeded} 个，失败 ${failed.length} 个：${failed.slice(0, 3).map(truncateSessionDeletePreview).join("、")}`,
+        "鎵归噺鍒犻櫎浼氳瘽",
+        `宸插垹闄?${succeeded} 涓紝澶辫触 ${failed.length} 涓細${failed.slice(0, 3).map(truncateSessionDeletePreview).join("銆?)}`,
         succeeded ? "ok" : "failed",
       );
     } else {
-      showNotice("批量删除会话", `已删除 ${succeeded} 个会话。`, "ok");
+      showNotice("鎵归噺鍒犻櫎浼氳瘽", `宸插垹闄?${succeeded} 涓細璇濄€俙, "ok");
     }
     await refreshLocalSessions(true);
   };
@@ -1035,7 +1035,7 @@ export function App() {
     const result = await run(() => call<LiveContextEntriesResult>("read_live_context_entries"));
     if (result) {
       setLiveContextEntries(result.entries);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("工具与插件", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("宸ュ叿涓庢彃浠?, result, { silentSuccess: true });
     }
     return result;
   };
@@ -1044,7 +1044,7 @@ export function App() {
     const result = await run(() => call<LiveContextEntriesResult>("sync_live_context_entries", { request: { settings: next } }));
     if (result) {
       setLiveContextEntries(result.entries);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("工具与插件", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("宸ュ叿涓庢彃浠?, result, { silentSuccess: true });
     }
     return result;
   };
@@ -1053,7 +1053,7 @@ export function App() {
     const result = await run(() => call<LogsResult>("read_latest_logs", { request: { lines: 240 } }));
     if (result) {
       setLogs(result);
-      if (!silent) showResultNotice("日志已刷新", result, { silentSuccess: true });
+      if (!silent) showResultNotice("鏃ュ織宸插埛鏂?, result, { silentSuccess: true });
     }
   };
 
@@ -1061,7 +1061,7 @@ export function App() {
     const result = await run(() => call<DiagnosticsResult>("copy_diagnostics"));
     if (result) {
       setDiagnostics(result);
-      if (!silent) showResultNotice("诊断已生成", result, { silentSuccess: true });
+      if (!silent) showResultNotice("璇婃柇宸茬敓鎴?, result, { silentSuccess: true });
     }
   };
 
@@ -1069,7 +1069,7 @@ export function App() {
     const result = await run(() => call<WatcherResult>("load_watcher_state"));
     if (result) {
       setWatcher(result);
-      if (!silent) showResultNotice("Watcher 状态", result, { silentSuccess: true });
+      if (!silent) showResultNotice("Watcher 鐘舵€?, result, { silentSuccess: true });
     }
   };
 
@@ -1117,7 +1117,7 @@ export function App() {
   const launch = async () => {
     const result = await launchCommand("launch_codex_plus");
     if (result) {
-      showNotice("启动任务", result.message, result.status);
+      showNotice("鍚姩浠诲姟", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1125,7 +1125,7 @@ export function App() {
   const restart = async () => {
     const result = await launchCommand("restart_codex_plus");
     if (result) {
-      showNotice("重启 Codex++", result.message, result.status);
+      showNotice("閲嶅惎 Codex++", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1148,26 +1148,26 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("后端修复", result.message, result.status);
+      showNotice("鍚庣淇", result.message, result.status);
     }
   };
 
   const repairPluginMarketplace = async () => {
     if (pluginMarketplaceProgress.active) return;
     setPluginMarketplacePrompt(null);
-    setPluginMarketplaceProgress({ active: true, percent: 8, message: "正在检查本地插件市场…" });
+    setPluginMarketplaceProgress({ active: true, percent: 8, message: "姝ｅ湪妫€鏌ユ湰鍦版彃浠跺競鍦衡€? });
     const progressTimer = window.setInterval(() => {
       setPluginMarketplaceProgress((current) => {
         if (!current.active) return current;
         const nextPercent = Math.min(92, current.percent + 9);
         const message =
           nextPercent < 28
-            ? "正在连接 openai/plugins…"
+            ? "姝ｅ湪杩炴帴 openai/plugins鈥?
             : nextPercent < 62
-              ? "正在下载插件市场快照…"
+              ? "姝ｅ湪涓嬭浇鎻掍欢甯傚満蹇収鈥?
               : nextPercent < 84
-                ? "正在解压并校验插件文件…"
-                : "正在写入 Codex 配置…";
+                ? "姝ｅ湪瑙ｅ帇骞舵牎楠屾彃浠舵枃浠垛€?
+                : "姝ｅ湪鍐欏叆 Codex 閰嶇疆鈥?;
         return { ...current, percent: nextPercent, message };
       });
     }, 500);
@@ -1179,12 +1179,12 @@ export function App() {
           percent: 100,
           message: result.message,
         });
-        showNotice("插件市场修复", result.message, result.status);
+        showNotice("鎻掍欢甯傚満淇", result.message, result.status);
       } else {
         setPluginMarketplaceProgress({
           active: false,
           percent: 100,
-          message: "插件市场修复失败，请查看错误提示后重试。",
+          message: "鎻掍欢甯傚満淇澶辫触锛岃鏌ョ湅閿欒鎻愮ず鍚庨噸璇曘€?,
         });
       }
     } finally {
@@ -1201,7 +1201,7 @@ export function App() {
   const installEntrypoints = async () => {
     const result = await run(() => call<InstallResult>("install_entrypoints"));
     if (result) {
-      showNotice("入口安装", result.message, result.status);
+      showNotice("鍏ュ彛瀹夎", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1213,7 +1213,7 @@ export function App() {
       }),
     );
     if (result) {
-      showNotice("入口卸载", result.message, result.status);
+      showNotice("鍏ュ彛鍗歌浇", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1221,7 +1221,7 @@ export function App() {
   const repairShortcuts = async () => {
     const result = await run(() => call<InstallResult>("repair_shortcuts"));
     if (result) {
-      showNotice("快捷方式修复", result.message, result.status);
+      showNotice("蹇嵎鏂瑰紡淇", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1230,7 +1230,7 @@ export function App() {
     const result = await run(() => call<WatcherResult>(command));
     if (result) {
       setWatcher(result);
-      showNotice("Watcher 操作", result.message, result.status);
+      showNotice("Watcher 鎿嶄綔", result.message, result.status);
     }
   };
 
@@ -1239,7 +1239,7 @@ export function App() {
     if (result) {
       setUpdate(result);
       if (!silent || result.updateAvailable) {
-        showNotice("GitHub Release 检查", result.message, result.status);
+        showNotice("GitHub Release 妫€鏌?, result.message, result.status);
       }
     }
   };
@@ -1258,7 +1258,7 @@ export function App() {
     const result = await run(() => call<UpdateResult>("perform_update", { release }));
     if (result) {
       setUpdate(result);
-      showNotice("更新安装", result.message, result.status);
+      showNotice("鏇存柊瀹夎", result.message, result.status);
     }
   };
 
@@ -1268,7 +1268,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("设置保存", result.message, result.status);
+      showNotice("璁剧疆淇濆瓨", result.message, result.status);
     }
   };
 
@@ -1279,7 +1279,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      if (!silent || !isSuccessStatus(result.status)) showNotice("设置保存", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("璁剧疆淇濆瓨", result.message, result.status);
     }
   };
 
@@ -1288,7 +1288,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("设置重置", result.message, result.status);
+      showNotice("璁剧疆閲嶇疆", result.message, result.status);
     }
   };
 
@@ -1297,7 +1297,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("图片覆盖层", result.message, result.status);
+      showNotice("鍥剧墖瑕嗙洊灞?, result.message, result.status);
     }
   };
 
@@ -1305,7 +1305,7 @@ export function App() {
     const result = await run(() => call<AdsResult>("load_ads"));
     if (result) {
       setAds(result);
-      if (!silent) showResultNotice("推荐内容", result, { silentSuccess: true });
+      if (!silent) showResultNotice("鎺ㄨ崘鍐呭", result, { silentSuccess: true });
     }
   };
 
@@ -1321,7 +1321,7 @@ export function App() {
         targets[0]?.id ||
         "openai";
       setSelectedProviderSyncTarget((current) => (targets.some((target) => target.id === current) ? current : preferred));
-      if (!silent && !isSuccessStatus(result.status)) showNotice("Provider 同步目标", result.message, result.status);
+      if (!silent && !isSuccessStatus(result.status)) showNotice("Provider 鍚屾鐩爣", result.message, result.status);
     }
     return result;
   };
@@ -1331,7 +1331,7 @@ export function App() {
     setProviderSyncProgress({
       active: true,
       percent: 12,
-      message: selectedProviderSyncTarget ? `正在同步到 ${selectedProviderSyncTarget}…` : "正在扫描历史会话与索引…",
+      message: selectedProviderSyncTarget ? `姝ｅ湪鍚屾鍒?${selectedProviderSyncTarget}鈥 : "姝ｅ湪鎵弿鍘嗗彶浼氳瘽涓庣储寮曗€?,
       result: null,
     });
     const progressTimer = window.setInterval(() => {
@@ -1340,7 +1340,7 @@ export function App() {
         return {
           ...current,
           percent: Math.min(88, current.percent + 8),
-          message: current.percent < 40 ? "正在检查会话 provider 标记…" : "正在写入修复与备份…",
+          message: current.percent < 40 ? "姝ｅ湪妫€鏌ヤ細璇?provider 鏍囪鈥? : "姝ｅ湪鍐欏叆淇涓庡浠解€?,
         };
       });
     }, 350);
@@ -1367,12 +1367,12 @@ export function App() {
           setSettingsForm(next);
         }
         await refreshProviderSyncTargets(true);
-        showNotice("历史会话修复", result.message, result.status);
+        showNotice("鍘嗗彶浼氳瘽淇", result.message, result.status);
       } else {
         setProviderSyncProgress({
           active: false,
           percent: 100,
-          message: "历史会话修复失败，请查看错误提示后重试。",
+          message: "鍘嗗彶浼氳瘽淇澶辫触锛岃鏌ョ湅閿欒鎻愮ず鍚庨噸璇曘€?,
           result: null,
         });
       }
@@ -1387,7 +1387,7 @@ export function App() {
       setSettings(settingsResult);
       setSettingsForm(normalizeSettings(settingsResult.settings));
       if (!isSuccessStatus(settingsResult.status)) {
-        showNotice("设置保存", settingsResult.message, settingsResult.status);
+        showNotice("璁剧疆淇濆瓨", settingsResult.message, settingsResult.status);
         return false;
       }
     } else {
@@ -1397,7 +1397,7 @@ export function App() {
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
-      if (!silent || !isSuccessStatus(result.status)) showNotice("官方混入 API Key", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("瀹樻柟娣峰叆 API Key", result.message, result.status);
     }
     return !!result && isSuccessStatus(result.status) && result.configured;
   };
@@ -1409,7 +1409,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      if (!silent) showNotice("Codex增强模式", result.message, result.status);
+      if (!silent) showNotice("Codex澧炲己妯″紡", result.message, result.status);
     }
     return result;
   };
@@ -1420,7 +1420,7 @@ export function App() {
       setSettings(settingsResult);
       setSettingsForm(normalizeSettings(settingsResult.settings));
       if (!isSuccessStatus(settingsResult.status)) {
-        showNotice("设置保存", settingsResult.message, settingsResult.status);
+        showNotice("璁剧疆淇濆瓨", settingsResult.message, settingsResult.status);
         return false;
       }
     } else {
@@ -1430,7 +1430,7 @@ export function App() {
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
-      if (!silent || !isSuccessStatus(result.status)) showNotice("纯 API 模式", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("绾?API 妯″紡", result.message, result.status);
     }
     return !!result && isSuccessStatus(result.status) && result.configured;
   };
@@ -1440,7 +1440,7 @@ export function App() {
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
-      if (!silent || !isSuccessStatus(result.status)) showNotice("官方登录模式", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("瀹樻柟鐧诲綍妯″紡", result.message, result.status);
     }
     return !!result && isSuccessStatus(result.status) && !result.configured;
   };
@@ -1470,7 +1470,7 @@ export function App() {
       normalized = normalizeSettings(saveResult.settings);
     }
     setSettingsForm(normalized);
-    if (!isSuccessStatus(result.status)) showResultNotice("工具与插件", result);
+    if (!isSuccessStatus(result.status)) showResultNotice("宸ュ叿涓庢彃浠?, result);
     return normalized;
   };
 
@@ -1488,7 +1488,7 @@ export function App() {
       normalized = normalizeSettings(saveResult.settings);
     }
     setSettingsForm(normalized);
-    if (!isSuccessStatus(result.status)) showResultNotice("工具与插件", result);
+    if (!isSuccessStatus(result.status)) showResultNotice("宸ュ叿涓庢彃浠?, result);
     return normalized;
   };
 
@@ -1498,18 +1498,18 @@ export function App() {
         request: { configContents },
       }),
     );
-    if (result) showResultNotice("通用配置文件", result);
+    if (result) showResultNotice("閫氱敤閰嶇疆鏂囦欢", result);
     return result && isSuccessStatus(result.status) ? result : null;
   };
 
   const testRelayProfile = async (profile: RelayProfile) => {
     const result = await run(() => call<RelayProfileTestResult>("test_relay_profile", { profile }));
-    if (result) showNotice("模型测试", result.message, result.status);
+    if (result) showNotice("妯″瀷娴嬭瘯", result.message, result.status);
   };
 
   const fetchRelayProfileModels = async (profile: RelayProfile) => {
     const result = await run(() => call<RelayProfileModelsResult>("fetch_relay_profile_models", { profile }));
-    if (result) showNotice("模型列表", result.message, result.status);
+    if (result) showNotice("妯″瀷鍒楄〃", result.message, result.status);
     return result && isSuccessStatus(result.status) ? result.models : null;
   };
 
@@ -1517,24 +1517,24 @@ export function App() {
     const switched = await clearRelayInjection(true);
     if (!switched) return;
     const result = await saveLaunchMode("relay", true);
-    if (result) showNotice("官方登录模式", "已切回官方登录；Codex增强已设为兼容增强。", result.status);
+    if (result) showNotice("瀹樻柟鐧诲綍妯″紡", "宸插垏鍥炲畼鏂圭櫥褰曪紱Codex澧炲己宸茶涓哄吋瀹瑰寮恒€?, result.status);
   };
 
   const switchPureApiMode = async () => {
     const switched = await applyPureApiInjection(true);
     if (!switched) return;
     const result = await saveLaunchMode("patch", true);
-    if (result) showNotice("纯 API 模式", "已切换到纯 API；Codex增强已设为完整增强。", result.status);
+    if (result) showNotice("绾?API 妯″紡", "宸插垏鎹㈠埌绾?API锛汣odex澧炲己宸茶涓哄畬鏁村寮恒€?, result.status);
   };
 
   const switchRelayProfile = async (next: BackendSettings, previousActiveRelayId = settingsForm.activeRelayId) => {
     if (relaySwitching) {
-      showNotice("模型切换中", "上一次切换还没有完成，请稍后再试。", "failed");
+      showNotice("妯″瀷鍒囨崲涓?, "涓婁竴娆″垏鎹㈣繕娌℃湁瀹屾垚锛岃绋嶅悗鍐嶈瘯銆?, "failed");
       return;
     }
     let switchSettings = normalizeSettings(next);
     if (!switchSettings.relayProfilesEnabled) {
-      showNotice("模型配置已关闭", "当前不会写入 Codex config.toml / auth.json。打开模型配置总开关后再切换。", "failed");
+      showNotice("妯″瀷閰嶇疆宸插叧闂?, "褰撳墠涓嶄細鍐欏叆 Codex config.toml / auth.json銆傛墦寮€妯″瀷閰嶇疆鎬诲紑鍏冲悗鍐嶅垏鎹€?, "failed");
       return;
     }
     const targetBeforeSnapshot = activeRelayProfile(switchSettings);
@@ -1552,7 +1552,7 @@ export function App() {
         targetRelayName: selectedBeforeSave.name,
         error: validationError,
       });
-      showNotice("模型配置可能不正确", validationError, "failed");
+      showNotice("妯″瀷閰嶇疆鍙兘涓嶆纭?, validationError, "failed");
       return;
     }
     switchSettings = await snapshotActiveRelayFilesBeforeSwitch(switchSettings, previousActiveRelayId);
@@ -1600,7 +1600,7 @@ export function App() {
           message: result.message,
           activeRelayId: selectedSettings.activeRelayId,
         });
-        showNotice("模型切换", result.message, result.status);
+        showNotice("妯″瀷鍒囨崲", result.message, result.status);
         return;
       }
       const currentSelected = activeRelayProfile(selectedSettings);
@@ -1609,7 +1609,7 @@ export function App() {
         launchMode: selectedSettings.launchMode,
         status: result.status,
       });
-      showNotice("模型切换", relayProfileModeSwitchedText(currentSelected), result.status);
+      showNotice("妯″瀷鍒囨崲", relayProfileModeSwitchedText(currentSelected), result.status);
     } finally {
       setRelaySwitching(false);
     }
@@ -1629,7 +1629,7 @@ export function App() {
     if (!result) return next;
     const normalized = normalizeSettings(result.settings);
     if (!isSuccessStatus(result.status)) {
-      showNotice("模型切换", result.message, result.status);
+      showNotice("妯″瀷鍒囨崲", result.message, result.status);
       return next;
     }
     return normalized;
@@ -1639,14 +1639,14 @@ export function App() {
     try {
       await navigator.clipboard.writeText(text);
     } catch (error) {
-      showNotice("复制失败", stringifyError(error), "failed");
+      showNotice("澶嶅埗澶辫触", stringifyError(error), "failed");
     }
   };
 
   const openExternalUrl = async (url: string) => {
     const result = await run(() => call<CommandResult<Record<string, unknown>>>("open_external_url", { url }));
     if (result) {
-      showResultNotice("打开链接", result, { silentSuccess: true });
+      showResultNotice("鎵撳紑閾炬帴", result, { silentSuccess: true });
     }
   };
 
@@ -1731,25 +1731,25 @@ export function App() {
         try {
           selected = await open(
             mode === "folder"
-              ? { directory: true, multiple: false, title: "选择 Codex 应用目录" }
+              ? { directory: true, multiple: false, title: "閫夋嫨 Codex 搴旂敤鐩綍" }
               : {
                   directory: false,
                   multiple: false,
-                  title: "选择 Codex.exe 或 Codex.app",
-                  filters: [{ name: "Codex 应用", extensions: ["exe", "app"] }],
+                  title: "閫夋嫨 Codex.exe 鎴?Codex.app",
+                  filters: [{ name: "Codex 搴旂敤", extensions: ["exe", "app"] }],
                 },
           );
         } catch (error) {
           // Surface plugin failures (e.g. missing capability permission) so the
-          // buttons no longer appear unresponsive — see #345.
+          // buttons no longer appear unresponsive 鈥?see #345.
           const message = error instanceof Error ? error.message : String(error);
-          showNotice("Codex 应用路径", `打开选择器失败：${message}`, "failed");
+          showNotice("Codex 搴旂敤璺緞", `鎵撳紑閫夋嫨鍣ㄥけ璐ワ細${message}`, "failed");
           return;
         }
         if (typeof selected === "string" && selected.trim()) {
           const result = await saveCodexAppPath(selected.trim());
           if (result) {
-            showNotice("Codex 应用路径", "应用路径已保存，之后启动会自动复用。", result.status);
+            showNotice("Codex 搴旂敤璺緞", "搴旂敤璺緞宸蹭繚瀛橈紝涔嬪悗鍚姩浼氳嚜鍔ㄥ鐢ㄣ€?, result.status);
           }
         }
       },
@@ -1760,7 +1760,7 @@ export function App() {
           setSettings(result);
           setSettingsForm(normalizeSettings(result.settings));
           setLaunchForm((current) => ({ ...current, appPath: "" }));
-          showNotice("Codex 应用路径", "已清除保存路径，后续启动会回到自动探测。", result.status);
+          showNotice("Codex 搴旂敤璺緞", "宸叉竻闄や繚瀛樿矾寰勶紝鍚庣画鍚姩浼氬洖鍒拌嚜鍔ㄦ帰娴嬨€?, result.status);
           await refreshOverview(true);
         }
       },
@@ -1770,12 +1770,12 @@ export function App() {
           selected = await open({
             directory: false,
             multiple: false,
-            title: "选择覆盖图片",
-            filters: [{ name: "图片", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"] }],
+            title: "閫夋嫨瑕嗙洊鍥剧墖",
+            filters: [{ name: "鍥剧墖", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"] }],
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          showNotice("图片覆盖层", `打开选择器失败：${message}`, "failed");
+          showNotice("鍥剧墖瑕嗙洊灞?, `鎵撳紑閫夋嫨鍣ㄥけ璐ワ細${message}`, "failed");
           return;
         }
         if (typeof selected === "string" && selected.trim()) {
@@ -1789,12 +1789,12 @@ export function App() {
       saveManualCodexAppPath: async () => {
         const appPath = launchForm.appPath.trim();
         if (!appPath) {
-          showNotice("Codex 应用路径", "请先填写或选择应用路径。", "failed");
+          showNotice("Codex 搴旂敤璺緞", "璇峰厛濉啓鎴栭€夋嫨搴旂敤璺緞銆?, "failed");
           return;
         }
         const result = await saveCodexAppPath(appPath);
         if (result) {
-          showNotice("Codex 应用路径", "应用路径已保存，之后启动会自动复用。", result.status);
+          showNotice("Codex 搴旂敤璺緞", "搴旂敤璺緞宸蹭繚瀛橈紝涔嬪悗鍚姩浼氳嚜鍔ㄥ鐢ㄣ€?, result.status);
         }
       },
       syncProvidersNow,
@@ -1842,14 +1842,14 @@ export function App() {
       refreshLogs,
       refreshDiagnostics,
       showMessage: async (title: string, message: string, status?: Status) => showNotice(title, message, status),
-      copyLogs: () => copyText(logs?.text ?? "", "日志已复制。"),
-      copyDiagnostics: () => copyText(diagnostics?.report ?? "", "诊断报告已复制。"),
+      copyLogs: () => copyText(logs?.text ?? "", "鏃ュ織宸插鍒躲€?),
+      copyDiagnostics: () => copyText(diagnostics?.report ?? "", "璇婃柇鎶ュ憡宸插鍒躲€?),
       goLogs: () => navigate("about"),
       checkHealth: async () => {
         await refreshOverview(true);
         await refreshRelay(true);
         await refreshWatcher(true);
-        showNotice("检查完成", "已刷新 Codex 应用、入口和 Watcher 状态。", "ok");
+        showNotice("妫€鏌ュ畬鎴?, "宸插埛鏂?Codex 搴旂敤銆佸叆鍙ｅ拰 Watcher 鐘舵€併€?, "ok");
       },
       installWatcher: () => watcherAction("install_watcher"),
       uninstallWatcher: () => watcherAction("uninstall_watcher"),
@@ -1876,14 +1876,14 @@ export function App() {
                     setRoute("about");
                     void checkUpdate(false);
                   }}
-                  title={`发现新版本 ${update?.latestVersion ?? ""}`}
+                  title={`鍙戠幇鏂扮増鏈?${update?.latestVersion ?? ""}`}
                   type="button"
                 >
                   <CircleArrowUp className="h-4 w-4" aria-hidden="true" />
                 </button>
               ) : null}
             </div>
-            <div className="brand-subtitle">管理控制台</div>
+            <div className="brand-subtitle">绠＄悊鎺у埗鍙?/div>
           </div>
         </div>
         <nav className="nav">
@@ -1917,16 +1917,16 @@ export function App() {
             <Button
               onClick={actions.toggleTheme}
               size="icon"
-              title={theme === "dark" ? "切换到浅色" : "切换到深色"}
+              title={theme === "dark" ? "鍒囨崲鍒版祬鑹? : "鍒囨崲鍒版繁鑹?}
               variant="outline"
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button onClick={() => void actions.restart()} title="重启 Codex++" variant="outline">
+            <Button onClick={() => void actions.restart()} title="閲嶅惎 Codex++" variant="outline">
               <Rocket className="h-4 w-4" />
-              重启 Codex++
+              閲嶅惎 Codex++
             </Button>
-            <Button onClick={() => void actions.refreshCurrent()} size="icon" title="刷新当前页面" variant="outline">
+            <Button onClick={() => void actions.refreshCurrent()} size="icon" title="鍒锋柊褰撳墠椤甸潰" variant="outline">
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
@@ -2154,7 +2154,7 @@ function MobileControlScreen({
   actions: Actions;
 }) {
   const [serverStatuses, setServerStatuses] = useState<Record<string, MobileRelayStatus | null>>({});
-  const [statusMessage, setStatusMessage] = useState("尚未刷新");
+  const [statusMessage, setStatusMessage] = useState("灏氭湭鍒锋柊");
   const [loadingStatus, setLoadingStatus] = useState(false);
   const mobileUrl = mobileRelayShareUrl(form);
   const selectedServerId =
@@ -2186,15 +2186,15 @@ function MobileControlScreen({
     await saveMobileSettings(next, true);
     const link = mobileRelayShareUrl(next);
     if (!link) {
-      await actions.showMessage("手机控制", "服务器地址无效，无法生成手机链接。", "failed");
+      await actions.showMessage("鎵嬫満鎺у埗", "鏈嶅姟鍣ㄥ湴鍧€鏃犳晥锛屾棤娉曠敓鎴愭墜鏈洪摼鎺ャ€?, "failed");
       return;
     }
     await actions.launch();
     try {
       await navigator.clipboard?.writeText(link);
-      await actions.showMessage("手机控制", "已启动并复制手机链接。");
+      await actions.showMessage("鎵嬫満鎺у埗", "宸插惎鍔ㄥ苟澶嶅埗鎵嬫満閾炬帴銆?);
     } catch (error) {
-      await actions.showMessage("手机控制", `已启动，但复制链接失败：${stringifyError(error)}`, "failed");
+      await actions.showMessage("鎵嬫満鎺у埗", `宸插惎鍔紝浣嗗鍒堕摼鎺ュけ璐ワ細${stringifyError(error)}`, "failed");
     }
   };
   const refreshRelayStatus = async () => {
@@ -2206,12 +2206,12 @@ function MobileControlScreen({
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return [server.id, (await response.json()) as MobileRelayStatus, ""] as const;
       } catch (error) {
-        return [server.id, null, `${server.label}: ${error instanceof Error ? error.message : "刷新失败"}`] as const;
+        return [server.id, null, `${server.label}: ${error instanceof Error ? error.message : "鍒锋柊澶辫触"}`] as const;
       }
     }));
     setServerStatuses(Object.fromEntries(entries.map(([id, data]) => [id, data])));
     const failed = entries.map(([, , error]) => error).filter(Boolean);
-    setStatusMessage(failed.length ? failed.join("；") : "状态已刷新");
+    setStatusMessage(failed.length ? failed.join("锛?) : "鐘舵€佸凡鍒锋柊");
     setLoadingStatus(false);
   };
   useEffect(() => {
@@ -2225,7 +2225,7 @@ function MobileControlScreen({
   return (
     <>
       <Panel>
-        <CardHead title="手机控制" detail="选择 relay 服务器后启动，系统会生成随机房间和 Key，并复制手机可直接打开的链接。" />
+        <CardHead title="鎵嬫満鎺у埗" detail="閫夋嫨 relay 鏈嶅姟鍣ㄥ悗鍚姩锛岀郴缁熶細鐢熸垚闅忔満鎴块棿鍜?Key锛屽苟澶嶅埗鎵嬫満鍙洿鎺ユ墦寮€鐨勯摼鎺ャ€? />
         <CardContent>
           <div className="mobile-server-grid">
             {mobileRelayServers.map((server) => {
@@ -2242,7 +2242,7 @@ function MobileControlScreen({
                   <span>
                     <strong>{server.label}</strong>
                     <small>{server.url}</small>
-                    <small>{itemStatus ? `在线 · ${itemStatus.rooms} 个房间 · ${formatBytes(itemStatus.forwardedBytes)}` : "未连接或未刷新"}</small>
+                    <small>{itemStatus ? `鍦ㄧ嚎 路 ${itemStatus.rooms} 涓埧闂?路 ${formatBytes(itemStatus.forwardedBytes)}` : "鏈繛鎺ユ垨鏈埛鏂?}</small>
                   </span>
                   <em>{load}/{server.capacity}</em>
                 </button>
@@ -2251,11 +2251,11 @@ function MobileControlScreen({
           </div>
           <div className="form-row">
             <Label className="field">
-              <span>当前服务器</span>
+              <span>褰撳墠鏈嶅姟鍣?/span>
               <Input readOnly value={selectedServer.url} />
             </Label>
             <Label className="field">
-              <span>容量</span>
+              <span>瀹归噺</span>
               <Input
                 readOnly
                 value={`${serverLoad}/${serverCapacity}`}
@@ -2265,7 +2265,7 @@ function MobileControlScreen({
           <Toolbar>
             <Button onClick={() => void startAndCopyMobileLink()} type="button">
               <Rocket className="h-4 w-4" />
-              启动并复制手机链接
+              鍚姩骞跺鍒舵墜鏈洪摼鎺?
             </Button>
             <Button
               onClick={() => void saveMobileSettings({
@@ -2278,36 +2278,36 @@ function MobileControlScreen({
               variant="secondary"
             >
               <KeyRound className="h-4 w-4" />
-              重新生成 Token
+              閲嶆柊鐢熸垚 Token
             </Button>
             <Button onClick={() => void refreshRelayStatus()} type="button" variant="secondary">
               <RefreshCw className="h-4 w-4" />
-              {loadingStatus ? "正在刷新" : "刷新服务器状态"}
+              {loadingStatus ? "姝ｅ湪鍒锋柊" : "鍒锋柊鏈嶅姟鍣ㄧ姸鎬?}
             </Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="手机入口" detail="复制出的链接包含随机房间和 Key；relay 服务器只能看到房间、连接数和流量统计。" />
+        <CardHead title="鎵嬫満鍏ュ彛" detail="澶嶅埗鍑虹殑閾炬帴鍖呭惈闅忔満鎴块棿鍜?Key锛況elay 鏈嶅姟鍣ㄥ彧鑳界湅鍒版埧闂淬€佽繛鎺ユ暟鍜屾祦閲忕粺璁°€? />
         <CardContent>
           <div className="relay-file-panel">
             <div className="relay-file-head">
               <div>
-                <strong>{mobileUrl || "未生成手机入口"}</strong>
-                <span>{mobileUrl ? "手机打开后会自动填入房间和 Key 并尝试连接。" : "选择服务器并启动后会生成手机入口。"}</span>
+                <strong>{mobileUrl || "鏈敓鎴愭墜鏈哄叆鍙?}</strong>
+                <span>{mobileUrl ? "鎵嬫満鎵撳紑鍚庝細鑷姩濉叆鎴块棿鍜?Key 骞跺皾璇曡繛鎺ャ€? : "閫夋嫨鏈嶅姟鍣ㄥ苟鍚姩鍚庝細鐢熸垚鎵嬫満鍏ュ彛銆?}</span>
               </div>
               {mobileUrl ? (
                 <Button
                   onClick={() => {
                     void navigator.clipboard?.writeText(mobileUrl);
-                    void actions.showMessage("手机入口", "已复制手机入口地址。");
+                    void actions.showMessage("鎵嬫満鍏ュ彛", "宸插鍒舵墜鏈哄叆鍙ｅ湴鍧€銆?);
                   }}
                   size="sm"
                   type="button"
                   variant="secondary"
                 >
                   <Copy className="h-4 w-4" />
-                  复制
+                  澶嶅埗
                 </Button>
               ) : null}
             </div>
@@ -2315,7 +2315,7 @@ function MobileControlScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="服务器状态" detail={statusMessage} />
+        <CardHead title="鏈嶅姟鍣ㄧ姸鎬? detail={statusMessage} />
         <CardContent>
           {selectedStatus ? (
             <>
@@ -2323,16 +2323,16 @@ function MobileControlScreen({
                 <div className="health-item ok">
                   <CheckCircle2 className="h-4 w-4" />
                   <div>
-                    <strong>在线连接</strong>
-                    <span>{selectedStatus.activeConnections} 个在线连接，累计 {selectedStatus.totalConnections} 次连接。</span>
+                    <strong>鍦ㄧ嚎杩炴帴</strong>
+                    <span>{selectedStatus.activeConnections} 涓湪绾胯繛鎺ワ紝绱 {selectedStatus.totalConnections} 娆¤繛鎺ャ€?/span>
                   </div>
                   <Badge status="ok" />
                 </div>
                 <div className="health-item ok">
                   <Network className="h-4 w-4" />
                   <div>
-                    <strong>房间数量</strong>
-                    <span>{selectedStatus.rooms} 个房间，已转发 {selectedStatus.forwardedMessages} 条消息。</span>
+                    <strong>鎴块棿鏁伴噺</strong>
+                    <span>{selectedStatus.rooms} 涓埧闂达紝宸茶浆鍙?{selectedStatus.forwardedMessages} 鏉℃秷鎭€?/span>
                   </div>
                   <Badge status="ok" />
                 </div>
@@ -2344,8 +2344,8 @@ function MobileControlScreen({
                       <div>
                         <strong>{room.room}</strong>
                         <span>
-                          host {room.hostOnline ? "在线" : "离线"} / client {room.clientOnline ? "在线" : "离线"}，
-                          {room.connections} 个连接，{formatBytes(room.forwardedBytes)}
+                          host {room.hostOnline ? "鍦ㄧ嚎" : "绂荤嚎"} / client {room.clientOnline ? "鍦ㄧ嚎" : "绂荤嚎"}锛?
+                          {room.connections} 涓繛鎺ワ紝{formatBytes(room.forwardedBytes)}
                         </span>
                       </div>
                       <Badge status={room.hostOnline && room.clientOnline ? "ok" : "not_checked"} />
@@ -2355,7 +2355,7 @@ function MobileControlScreen({
               </div>
             </>
           ) : (
-            <p className="field-hint">点击“刷新服务器状态”查看 relay 负载、在线用户和房间连接情况。</p>
+            <p className="field-hint">鐐瑰嚮鈥滃埛鏂版湇鍔″櫒鐘舵€佲€濇煡鐪?relay 璐熻浇銆佸湪绾跨敤鎴峰拰鎴块棿杩炴帴鎯呭喌銆?/p>
           )}
         </CardContent>
       </Panel>
@@ -2383,10 +2383,10 @@ function OverviewScreen({
                 <Network className="h-5 w-5" />
               </div>
               <div>
-                <span className="eyebrow">官方中转站</span>
+                <span className="eyebrow">瀹樻柟涓浆绔?/span>
                 <h2>JOJO Code</h2>
                 <p>
-                  Codex++ 官方中转站，主打稳定接入和划算价格，支持 GPT-5.5、GPT-5.4、Claude Opus 4.8、Claude Opus 4.7、gpt-image-2 等模型与图像能力。
+                  Codex++ 瀹樻柟涓浆绔欙紝涓绘墦绋冲畾鎺ュ叆鍜屽垝绠椾环鏍硷紝鏀寔 GPT-5.5銆丟PT-5.4銆丆laude Opus 4.8銆丆laude Opus 4.7銆乬pt-image-2 绛夋ā鍨嬩笌鍥惧儚鑳藉姏銆?
                 </p>
               </div>
             </div>
@@ -2400,21 +2400,21 @@ function OverviewScreen({
               </div>
               <Button onClick={() => void actions.openExternalUrl("https://jojocode.com/")}>
                 <ExternalLink className="h-4 w-4" />
-                打开 JOJO Code
+                鎵撳紑 JOJO Code
               </Button>
             </div>
           </div>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="健康检查" detail="概览只展示关键问题，具体配置在对应页面处理" />
+        <CardHead title="鍋ュ悍妫€鏌? detail="姒傝鍙睍绀哄叧閿棶棰橈紝鍏蜂綋閰嶇疆鍦ㄥ搴旈〉闈㈠鐞? />
         <CardContent>
           <div className="health-grid">
             <div className={`health-item ${overview?.codex_version ? "ok" : "needs-fix"}`}>
               {overview?.codex_version ? <CheckCircle2 className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
               <div>
-                <strong>Codex 版本</strong>
-                <span>{overview?.codex_version ?? "未检测到 Codex 应用版本。"}</span>
+                <strong>Codex 鐗堟湰</strong>
+                <span>{overview?.codex_version ?? "鏈娴嬪埌 Codex 搴旂敤鐗堟湰銆?}</span>
               </div>
               <Badge status={overview?.codex_version ? "ok" : "not_checked"} />
             </div>
@@ -2432,33 +2432,33 @@ function OverviewScreen({
           <Toolbar>
             <Button onClick={() => void actions.checkHealth()}>
               <RefreshCw className="h-4 w-4" />
-              检查
+              妫€鏌?
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>
               <Wrench className="h-4 w-4" />
-              修复入口
+              淇鍏ュ彛
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairBackend()}>
-              修复后端
+              淇鍚庣
             </Button>
             <Button disabled={pluginMarketplaceProgress.active} variant="secondary" onClick={() => void actions.repairPluginMarketplace()}>
-              {pluginMarketplaceProgress.active ? "正在修复…" : "修复插件市场"}
+              {pluginMarketplaceProgress.active ? "姝ｅ湪淇鈥? : "淇鎻掍欢甯傚満"}
             </Button>
           </Toolbar>
-          <TaskProgressBox progress={pluginMarketplaceProgress} title="插件市场修复进度" />
+          <TaskProgressBox progress={pluginMarketplaceProgress} title="鎻掍欢甯傚満淇杩涘害" />
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="最近启动" detail={overview?.logs_path ?? "暂无状态文件"} />
+        <CardHead title="鏈€杩戝惎鍔? detail={overview?.logs_path ?? "鏆傛棤鐘舵€佹枃浠?} />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
-              启动 Codex++
+              鍚姩 Codex++
             </Button>
             <Button variant="secondary" onClick={() => void actions.goLogs()}>
-              打开关于
+              鎵撳紑鍏充簬
             </Button>
           </Toolbar>
         </CardContent>
@@ -2502,8 +2502,8 @@ function RelayScreen({
     setNewProfileDraft(draft);
     if (!normalizeAggregateConfig(draft.aggregate, aggregateMemberCandidates(normalized, draft.id)).members.length) {
       void actions.showMessage(
-        "添加聚合模型",
-        "已打开聚合模型详情；请先添加或完善至少 1 个普通 API 模型的 Base URL / Key，再勾选为成员。",
+        "娣诲姞鑱氬悎妯″瀷",
+        "宸叉墦寮€鑱氬悎妯″瀷璇︽儏锛涜鍏堟坊鍔犳垨瀹屽杽鑷冲皯 1 涓櫘閫?API 妯″瀷鐨?Base URL / Key锛屽啀鍕鹃€変负鎴愬憳銆?,
         "failed",
       );
     }
@@ -2553,7 +2553,7 @@ function RelayScreen({
   return (
     <>
       <Panel>
-        <CardHead title="模型列表" detail={`${normalized.relayProfiles.length} 个模型配置；可拖动排序，点编辑进入详情`} />
+        <CardHead title="妯″瀷鍒楄〃" detail={`${normalized.relayProfiles.length} 涓ā鍨嬮厤缃紱鍙嫋鍔ㄦ帓搴忥紝鐐圭紪杈戣繘鍏ヨ鎯卄} />
         <CardContent>
           <EnvConflictNotice envConflicts={envConflicts} actions={actions} />
           <label className="switch-row relay-master-switch">
@@ -2566,8 +2566,8 @@ function RelayScreen({
               type="checkbox"
             />
             <span>
-              <strong>启用模型配置切换</strong>
-              <small>关闭后本工具不会在手动切换时写入 Codex 的 config.toml / auth.json；启动 Codex 时始终不会自动改这些文件。</small>
+              <strong>鍚敤妯″瀷閰嶇疆鍒囨崲</strong>
+              <small>鍏抽棴鍚庢湰宸ュ叿涓嶄細鍦ㄦ墜鍔ㄥ垏鎹㈡椂鍐欏叆 Codex 鐨?config.toml / auth.json锛涘惎鍔?Codex 鏃跺缁堜笉浼氳嚜鍔ㄦ敼杩欎簺鏂囦欢銆?/small>
             </span>
           </label>
           <div className="relay-add-row">
@@ -2579,14 +2579,14 @@ function RelayScreen({
               }}
             >
               <Plus className="h-4 w-4" />
-              添加模型
+              娣诲姞妯″瀷
             </Button>
             <Button
               variant="secondary"
               onClick={createNewAggregateProfile}
             >
               <Plus className="h-4 w-4" />
-              添加聚合模型
+              娣诲姞鑱氬悎妯″瀷
             </Button>
             <div className="third-party-import">
               <Button
@@ -2594,7 +2594,7 @@ function RelayScreen({
                 variant="secondary"
               >
                 <Download className="h-4 w-4" />
-                从第三方导入
+                浠庣涓夋柟瀵煎叆
               </Button>
               {thirdPartyImportOpen ? (
                 <div className="third-party-import-menu">
@@ -2614,7 +2614,7 @@ function RelayScreen({
                     type="button"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    刷新列表
+                    鍒锋柊鍒楄〃
                   </button>
                 </div>
               ) : null}
@@ -2649,8 +2649,8 @@ function EnvConflictNotice({
         <ShieldAlert className="h-4 w-4" />
       </div>
       <div className="env-conflict-body">
-        <strong>检测到 OPENAI 环境变量</strong>
-        <p>这些变量可能覆盖当前模型写入的 config.toml / auth.json；CODEX_HOME 不会被清理。</p>
+        <strong>妫€娴嬪埌 OPENAI 鐜鍙橀噺</strong>
+        <p>杩欎簺鍙橀噺鍙兘瑕嗙洊褰撳墠妯″瀷鍐欏叆鐨?config.toml / auth.json锛汣ODEX_HOME 涓嶄細琚竻鐞嗐€?/p>
         <div className="env-conflict-tags">
           {conflicts.map((conflict) => (
             <span key={`${conflict.source}-${conflict.name}`}>
@@ -2663,11 +2663,11 @@ function EnvConflictNotice({
       <div className="env-conflict-actions">
         <Button onClick={() => void actions.removeEnvConflicts(names)} size="sm">
           <Trash2 className="h-4 w-4" />
-          删除
+          鍒犻櫎
         </Button>
         <Button onClick={() => void actions.refreshEnvConflicts(false)} size="sm" variant="secondary">
           <RefreshCw className="h-4 w-4" />
-          检测
+          妫€娴?
         </Button>
       </div>
     </div>
@@ -2675,9 +2675,9 @@ function EnvConflictNotice({
 }
 
 function envConflictSourceLabel(source: string): string {
-  if (source === "process") return "当前进程";
-  if (source === "user") return "用户环境";
-  return source || "环境变量";
+  if (source === "process") return "褰撳墠杩涚▼";
+  if (source === "user") return "鐢ㄦ埛鐜";
+  return source || "鐜鍙橀噺";
 }
 
 function EnhanceScreen({
@@ -2697,7 +2697,7 @@ function EnhanceScreen({
   return (
     <>
       <Panel>
-        <CardHead title="Codex增强" detail="会话删除、导出、项目移动和用户脚本等界面能力" />
+        <CardHead title="Codex澧炲己" detail="浼氳瘽鍒犻櫎銆佸鍑恒€侀」鐩Щ鍔ㄥ拰鐢ㄦ埛鑴氭湰绛夌晫闈㈣兘鍔? />
         <CardContent>
           <label className="switch-row">
             <input
@@ -2706,8 +2706,8 @@ function EnhanceScreen({
               type="checkbox"
             />
             <span>
-              <strong>启用 Codex增强</strong>
-              <small>关闭后会停用删除、导出、项目移动、插件相关和菜单位置增强。</small>
+              <strong>鍚敤 Codex澧炲己</strong>
+              <small>鍏抽棴鍚庝細鍋滅敤鍒犻櫎銆佸鍑恒€侀」鐩Щ鍔ㄣ€佹彃浠剁浉鍏冲拰鑿滃崟浣嶇疆澧炲己銆?/small>
             </span>
           </label>
           <label className="switch-row">
@@ -2717,66 +2717,66 @@ function EnhanceScreen({
               type="checkbox"
             />
             <span>
-              <strong>启用 Windows Computer Use Guard</strong>
-              <small>默认关闭；开启后启动 Codex 时会自动保留官方 Computer Use 插件所需的 config.toml、bundled 插件和 notify 配置。</small>
+              <strong>鍚敤 Windows Computer Use Guard</strong>
+              <small>榛樿鍏抽棴锛涘紑鍚悗鍚姩 Codex 鏃朵細鑷姩淇濈暀瀹樻柟 Computer Use 鎻掍欢鎵€闇€鐨?config.toml銆乥undled 鎻掍欢鍜?notify 閰嶇疆銆?/small>
             </span>
           </label>
           <ModeSelector launchMode={form.launchMode} actions={actions} />
           {form.launchMode === "relay" ? (
             <div className="hint-line">
               <ShieldCheck className="h-4 w-4" />
-              <span>当前为兼容增强模式，插件市场解锁和特殊插件强制安装不会启用；其他页面功能仍可用。</span>
+              <span>褰撳墠涓哄吋瀹瑰寮烘ā寮忥紝鎻掍欢甯傚満瑙ｉ攣鍜岀壒娈婃彃浠跺己鍒跺畨瑁呬笉浼氬惎鐢紱鍏朵粬椤甸潰鍔熻兘浠嶅彲鐢ㄣ€?/span>
             </div>
           ) : null}
           <div className="feature-switch-grid">
-            <FeatureToggle title="插件市场解锁" detail="API Key 模式下扩展插件市场请求，尽量显示完整插件列表；官方/混合模式通常不需要。" checked={form.codexAppPluginMarketplaceUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginMarketplaceUnlock", value)} />
-            <FeatureToggle title="特殊插件强制安装" detail="解除 App unavailable / 应用不可用导致的前端安装禁用。" checked={form.codexAppForcePluginInstall} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppForcePluginInstall", value)} />
-            <FeatureToggle title="插件列表全量展示" detail="进入插件页后自动连续展开“更多”，尽量一次显示完整插件列表。" checked={form.codexAppPluginAutoExpand} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPluginAutoExpand", value)} />
-            <FeatureToggle title="模型白名单解锁" detail="从环境变量和 config.toml 的 /v1/models 拉取模型并补进模型列表。" checked={form.codexAppModelWhitelistUnlock} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppModelWhitelistUnlock", value)} />
-            <FeatureToggle title="Fast 按钮" detail="显示服务模式切换按钮；Fast 仅支持 gpt-5.4 / gpt-5.5，其他模型按 Standard 发送。" checked={form.codexAppServiceTierControls} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppServiceTierControls", value)} />
-            <FeatureToggle title="会话删除" detail="在会话列表悬停显示删除按钮，并支持撤销。" checked={form.codexAppSessionDelete} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppSessionDelete", value)} />
-            <FeatureToggle title="Markdown 导出" detail="在会话列表显示导出按钮，导出带时间戳的 Markdown。" checked={form.codexAppMarkdownExport} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppMarkdownExport", value)} />
-            <FeatureToggle title="粘贴修复" detail="从 Word 等富文本粘贴到 Codex composer 时只保留纯文本，避免被识别为图片/文件附件。需重启 Codex 才生效。" checked={form.codexAppPasteFix} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPasteFix", value)} />
-            <FeatureToggle title="会话项目移动" detail="把会话移动到普通对话或其他本地项目。" checked={form.codexAppProjectMove} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppProjectMove", value)} />
-            <FeatureToggle title="会话 ID 标识" detail="在侧边栏会话标题前显示短 ID 和 UUIDv7 创建时间，方便定位历史会话。" checked={form.codexAppThreadIdBadge} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadIdBadge", value)} />
-            <FeatureToggle title="对话居中宽度" detail="把主对话和输入框限制到固定最大宽度，适合大屏阅读。" checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
-            <FeatureToggle title="切换对话保留位置" detail="切换 thread 时恢复上一次浏览位置。" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
-            <FeatureToggle title="Zed Remote open" detail="远程 SSH 文件引用可直接用 Zed Remote Development 打开。" checked={form.codexAppZedRemoteOpen} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppZedRemoteOpen", value)} />
-            <FeatureToggle title="Zed 项目记录" detail="维护 Codex++ 自己的远程项目最近列表。" checked={form.zedRemoteProjectRegistryEnabled} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteProjectRegistryEnabled", value)} />
-            <FeatureToggle title="同步 Zed settings" detail="高级选项，默认关闭；当前实现不主动改写 Zed settings。" checked={form.zedRemoteSyncToZedSettings} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteSyncToZedSettings", value)} />
-            <FeatureToggle title="Upstream worktree" detail="从最新 upstream 分支创建 Git worktree。" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
-            <FeatureToggle title="原生菜单栏位置" detail="把 Codex++ 菜单插入 Codex 顶部原生菜单栏。" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
-            <FeatureToggle title="原生菜单汉化" detail="启动时通过本地主进程调试端口汉化 Codex 原生菜单；不修改安装包。需重启 Codex 才生效。" checked={form.codexAppNativeMenuLocalization} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuLocalization", value)} />
+            <FeatureToggle title="鎻掍欢甯傚満瑙ｉ攣" detail="API Key 妯″紡涓嬫墿灞曟彃浠跺競鍦鸿姹傦紝灏介噺鏄剧ず瀹屾暣鎻掍欢鍒楄〃锛涘畼鏂?娣峰悎妯″紡閫氬父涓嶉渶瑕併€? checked={form.codexAppPluginMarketplaceUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginMarketplaceUnlock", value)} />
+            <FeatureToggle title="鐗规畩鎻掍欢寮哄埗瀹夎" detail="瑙ｉ櫎 App unavailable / 搴旂敤涓嶅彲鐢ㄥ鑷寸殑鍓嶇瀹夎绂佺敤銆? checked={form.codexAppForcePluginInstall} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppForcePluginInstall", value)} />
+            <FeatureToggle title="鎻掍欢鍒楄〃鍏ㄩ噺灞曠ず" detail="杩涘叆鎻掍欢椤靛悗鑷姩杩炵画灞曞紑鈥滄洿澶氣€濓紝灏介噺涓€娆℃樉绀哄畬鏁存彃浠跺垪琛ㄣ€? checked={form.codexAppPluginAutoExpand} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPluginAutoExpand", value)} />
+            <FeatureToggle title="妯″瀷鐧藉悕鍗曡В閿? detail="浠庣幆澧冨彉閲忓拰 config.toml 鐨?/v1/models 鎷夊彇妯″瀷骞惰ˉ杩涙ā鍨嬪垪琛ㄣ€? checked={form.codexAppModelWhitelistUnlock} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppModelWhitelistUnlock", value)} />
+            <FeatureToggle title="Fast 鎸夐挳" detail="鏄剧ず鏈嶅姟妯″紡鍒囨崲鎸夐挳锛汧ast 浠呮敮鎸?gpt-5.4 / gpt-5.5锛屽叾浠栨ā鍨嬫寜 Standard 鍙戦€併€? checked={form.codexAppServiceTierControls} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppServiceTierControls", value)} />
+            <FeatureToggle title="浼氳瘽鍒犻櫎" detail="鍦ㄤ細璇濆垪琛ㄦ偓鍋滄樉绀哄垹闄ゆ寜閽紝骞舵敮鎸佹挙閿€銆? checked={form.codexAppSessionDelete} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppSessionDelete", value)} />
+            <FeatureToggle title="Markdown 瀵煎嚭" detail="鍦ㄤ細璇濆垪琛ㄦ樉绀哄鍑烘寜閽紝瀵煎嚭甯︽椂闂存埑鐨?Markdown銆? checked={form.codexAppMarkdownExport} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppMarkdownExport", value)} />
+            <FeatureToggle title="绮樿创淇" detail="浠?Word 绛夊瘜鏂囨湰绮樿创鍒?Codex composer 鏃跺彧淇濈暀绾枃鏈紝閬垮厤琚瘑鍒负鍥剧墖/鏂囦欢闄勪欢銆傞渶閲嶅惎 Codex 鎵嶇敓鏁堛€? checked={form.codexAppPasteFix} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPasteFix", value)} />
+            <FeatureToggle title="浼氳瘽椤圭洰绉诲姩" detail="鎶婁細璇濈Щ鍔ㄥ埌鏅€氬璇濇垨鍏朵粬鏈湴椤圭洰銆? checked={form.codexAppProjectMove} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppProjectMove", value)} />
+            <FeatureToggle title="浼氳瘽 ID 鏍囪瘑" detail="鍦ㄤ晶杈规爮浼氳瘽鏍囬鍓嶆樉绀虹煭 ID 鍜?UUIDv7 鍒涘缓鏃堕棿锛屾柟渚垮畾浣嶅巻鍙蹭細璇濄€? checked={form.codexAppThreadIdBadge} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadIdBadge", value)} />
+            <FeatureToggle title="瀵硅瘽灞呬腑瀹藉害" detail="鎶婁富瀵硅瘽鍜岃緭鍏ユ闄愬埗鍒板浐瀹氭渶澶у搴︼紝閫傚悎澶у睆闃呰銆? checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
+            <FeatureToggle title="鍒囨崲瀵硅瘽淇濈暀浣嶇疆" detail="鍒囨崲 thread 鏃舵仮澶嶄笂涓€娆℃祻瑙堜綅缃€? checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
+            <FeatureToggle title="Zed Remote open" detail="杩滅▼ SSH 鏂囦欢寮曠敤鍙洿鎺ョ敤 Zed Remote Development 鎵撳紑銆? checked={form.codexAppZedRemoteOpen} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppZedRemoteOpen", value)} />
+            <FeatureToggle title="Zed 椤圭洰璁板綍" detail="缁存姢 Codex++ 鑷繁鐨勮繙绋嬮」鐩渶杩戝垪琛ㄣ€? checked={form.zedRemoteProjectRegistryEnabled} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteProjectRegistryEnabled", value)} />
+            <FeatureToggle title="鍚屾 Zed settings" detail="楂樼骇閫夐」锛岄粯璁ゅ叧闂紱褰撳墠瀹炵幇涓嶄富鍔ㄦ敼鍐?Zed settings銆? checked={form.zedRemoteSyncToZedSettings} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteSyncToZedSettings", value)} />
+            <FeatureToggle title="Upstream worktree" detail="浠庢渶鏂?upstream 鍒嗘敮鍒涘缓 Git worktree銆? checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
+            <FeatureToggle title="鍘熺敓鑿滃崟鏍忎綅缃? detail="鎶?Codex++ 鑿滃崟鎻掑叆 Codex 椤堕儴鍘熺敓鑿滃崟鏍忋€? checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
+            <FeatureToggle title="鍘熺敓鑿滃崟姹夊寲" detail="鍚姩鏃堕€氳繃鏈湴涓昏繘绋嬭皟璇曠鍙ｆ眽鍖?Codex 鍘熺敓鑿滃崟锛涗笉淇敼瀹夎鍖呫€傞渶閲嶅惎 Codex 鎵嶇敓鏁堛€? checked={form.codexAppNativeMenuLocalization} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuLocalization", value)} />
           </div>
           <div className="hint-line">
             <Wrench className="h-4 w-4" />
-            <span>新机器没有本地插件市场时，可从 openai/plugins 初始化到当前 CODEX_HOME。</span>
+            <span>鏂版満鍣ㄦ病鏈夋湰鍦版彃浠跺競鍦烘椂锛屽彲浠?openai/plugins 鍒濆鍖栧埌褰撳墠 CODEX_HOME銆?/span>
             <Button disabled={pluginMarketplaceProgress.active} variant="secondary" onClick={() => void actions.repairPluginMarketplace()}>
-              {pluginMarketplaceProgress.active ? "正在修复…" : "修复插件市场"}
+              {pluginMarketplaceProgress.active ? "姝ｅ湪淇鈥? : "淇鎻掍欢甯傚満"}
             </Button>
           </div>
-          <TaskProgressBox progress={pluginMarketplaceProgress} title="插件市场修复进度" />
+          <TaskProgressBox progress={pluginMarketplaceProgress} title="鎻掍欢甯傚満淇杩涘害" />
           <div className="zed-remote-settings">
-            <Field label="Zed 默认打开策略">
+            <Field label="Zed 榛樿鎵撳紑绛栫暐">
               <select
                 className="select-input"
                 disabled={!masterEnabled}
                 onChange={(event) => onFormChange({ ...form, zedRemoteOpenStrategy: event.currentTarget.value as ZedOpenStrategy })}
                 value={form.zedRemoteOpenStrategy}
               >
-                <option value="addToFocusedWorkspace">加入当前工作区</option>
-                <option value="reuseWindow">复用窗口</option>
-                <option value="newWindow">新窗口</option>
-                <option value="default">Zed 默认行为</option>
+                <option value="addToFocusedWorkspace">鍔犲叆褰撳墠宸ヤ綔鍖?/option>
+                <option value="reuseWindow">澶嶇敤绐楀彛</option>
+                <option value="newWindow">鏂扮獥鍙?/option>
+                <option value="default">Zed 榛樿琛屼负</option>
               </select>
             </Field>
           </div>
           <div className="hint-line">
             <Info className="h-4 w-4" />
-            <span>如果使用官方模式或官方混入 API 模式，通常不需要开启插件市场解锁和特殊插件强制安装。</span>
+            <span>濡傛灉浣跨敤瀹樻柟妯″紡鎴栧畼鏂规贩鍏?API 妯″紡锛岄€氬父涓嶉渶瑕佸紑鍚彃浠跺競鍦鸿В閿佸拰鐗规畩鎻掍欢寮哄埗瀹夎銆?/span>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>保存增强设置</Button>
+            <Button onClick={() => void actions.saveSettings()}>淇濆瓨澧炲己璁剧疆</Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -2804,15 +2804,15 @@ function ZedRemoteScreen({
   const copyUrl = async (project: ZedRemoteProject) => {
     try {
       await navigator.clipboard.writeText(project.url);
-      await actions.showMessage("Zed Remote URL", "ssh:// URL 已复制。", "ok");
+      await actions.showMessage("Zed Remote URL", "ssh:// URL 宸插鍒躲€?, "ok");
     } catch (error) {
-      await actions.showMessage("复制失败", stringifyError(error), "failed");
+      await actions.showMessage("澶嶅埗澶辫触", stringifyError(error), "failed");
     }
   };
   return (
     <>
       <Panel>
-        <CardHead title="Zed 远程项目" detail={`${allProjects.length} 个 Codex++ 可识别项目，默认策略：${zedStrategyLabel(form.zedRemoteOpenStrategy)}`} />
+        <CardHead title="Zed 杩滅▼椤圭洰" detail={`${allProjects.length} 涓?Codex++ 鍙瘑鍒」鐩紝榛樿绛栫暐锛?{zedStrategyLabel(form.zedRemoteOpenStrategy)}`} />
         <CardContent>
           <div className="metric-list">
             <Metric label="Current" value={String(currentProjects.length)} />
@@ -2820,16 +2820,16 @@ function ZedRemoteScreen({
             <Metric label="Discovered" value={String(discoveredProjects.length)} />
           </div>
           <div className="zed-remote-settings">
-            <Field label="默认打开策略">
+            <Field label="榛樿鎵撳紑绛栫暐">
               <select
                 className="select-input"
                 onChange={(event) => onFormChange({ ...form, zedRemoteOpenStrategy: event.currentTarget.value as ZedOpenStrategy })}
                 value={form.zedRemoteOpenStrategy}
               >
-                <option value="addToFocusedWorkspace">加入当前工作区</option>
-                <option value="reuseWindow">复用窗口</option>
-                <option value="newWindow">新窗口</option>
-                <option value="default">Zed 默认行为</option>
+                <option value="addToFocusedWorkspace">鍔犲叆褰撳墠宸ヤ綔鍖?/option>
+                <option value="reuseWindow">澶嶇敤绐楀彛</option>
+                <option value="newWindow">鏂扮獥鍙?/option>
+                <option value="default">Zed 榛樿琛屼负</option>
               </select>
             </Field>
             <label className="switch-row compact">
@@ -2839,19 +2839,19 @@ function ZedRemoteScreen({
                 type="checkbox"
               />
               <span>
-                <strong>记录最近打开</strong>
-                <small>保存到 Codex++ state，不改写 Zed settings。</small>
+                <strong>璁板綍鏈€杩戞墦寮€</strong>
+                <small>淇濆瓨鍒?Codex++ state锛屼笉鏀瑰啓 Zed settings銆?/small>
               </span>
             </label>
           </div>
           <Toolbar>
             <Button onClick={() => void actions.refreshZedRemoteProjects()}>
               <RefreshCw className="h-4 w-4" />
-              刷新项目
+              鍒锋柊椤圭洰
             </Button>
             <Button variant="secondary" onClick={() => void actions.saveSettingsValue(form, false)}>
               <Save className="h-4 w-4" />
-              保存策略
+              淇濆瓨绛栫暐
             </Button>
           </Toolbar>
         </CardContent>
@@ -2876,7 +2876,7 @@ function ZedRemoteProjectSection({
 }) {
   return (
     <Panel>
-      <CardHead title={title} detail={`${projects.length} 个项目`} />
+      <CardHead title={title} detail={`${projects.length} 涓」鐩甡} />
       <CardContent>
         {projects.length ? (
           <div className="zed-remote-project-list">
@@ -2890,25 +2890,25 @@ function ZedRemoteProjectSection({
                   <code>{project.path}</code>
                   <small>
                     {zedRemoteSourceLabel(project.source)}
-                    {project.lastOpenedAtMs ? ` · ${formatTime(project.lastOpenedAtMs)}` : ""}
+                    {project.lastOpenedAtMs ? ` 路 ${formatTime(project.lastOpenedAtMs)}` : ""}
                   </small>
                 </div>
                 <div className="zed-remote-project-actions">
                   <Button onClick={() => void actions.openZedRemoteProject(project, "addToFocusedWorkspace")} size="sm">
                     <ExternalLink className="h-4 w-4" />
-                    加入当前工作区
+                    鍔犲叆褰撳墠宸ヤ綔鍖?
                   </Button>
                   <Button onClick={() => void actions.openZedRemoteProject(project, "reuseWindow")} size="sm" variant="outline">
-                    复用窗口
+                    澶嶇敤绐楀彛
                   </Button>
                   <Button onClick={() => void actions.openZedRemoteProject(project, "newWindow")} size="sm" variant="outline">
-                    新窗口
+                    鏂扮獥鍙?
                   </Button>
-                  <Button onClick={() => void onCopyUrl(project)} size="icon" title="复制 ssh:// URL" variant="ghost">
+                  <Button onClick={() => void onCopyUrl(project)} size="icon" title="澶嶅埗 ssh:// URL" variant="ghost">
                     <Copy className="h-4 w-4" />
                   </Button>
                   {project.source === "recent" ? (
-                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="移除最近记录" variant="ghost">
+                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="绉婚櫎鏈€杩戣褰? variant="ghost">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   ) : null}
@@ -2917,7 +2917,7 @@ function ZedRemoteProjectSection({
             ))}
           </div>
         ) : (
-          <div className="empty">暂无项目。</div>
+          <div className="empty">鏆傛棤椤圭洰銆?/div>
         )}
       </CardContent>
     </Panel>
@@ -2932,32 +2932,32 @@ function UserScriptsScreen({ settings, market, actions }: { settings: SettingsRe
   return (
     <>
       <Panel>
-        <CardHead title="脚本市场" detail={`${marketScripts.length} 个市场脚本，已安装 ${installedCount} 个，本地整体 ${inventory?.enabled === false ? "关闭" : "开启"}`} />
+        <CardHead title="鑴氭湰甯傚満" detail={`${marketScripts.length} 涓競鍦鸿剼鏈紝宸插畨瑁?${installedCount} 涓紝鏈湴鏁翠綋 ${inventory?.enabled === false ? "鍏抽棴" : "寮€鍚?}`} />
         <CardContent>
           <div className="metric-list">
-            <Metric label="市场状态" value={market?.market.message ?? "尚未刷新"} />
-            <Metric label="远程脚本" value={`${marketScripts.length} 个`} />
-            <Metric label="已安装" value={`${installedCount} 个`} />
-            <Metric label="本地整体" value={inventory?.enabled === false ? "关闭" : "开启"} />
+            <Metric label="甯傚満鐘舵€? value={market?.market.message ?? "灏氭湭鍒锋柊"} />
+            <Metric label="杩滅▼鑴氭湰" value={`${marketScripts.length} 涓猔} />
+            <Metric label="宸插畨瑁? value={`${installedCount} 涓猔} />
+            <Metric label="鏈湴鏁翠綋" value={inventory?.enabled === false ? "鍏抽棴" : "寮€鍚?} />
           </div>
           <Toolbar>
             <Button onClick={() => void actions.refreshScriptMarket()}>
               <RefreshCw className="h-4 w-4" />
-              刷新市场
+              鍒锋柊甯傚満
             </Button>
             <Button onClick={() => void actions.openExternalUrl(SCRIPT_MARKET_REPOSITORY_URL)} variant="secondary">
               <ExternalLink className="h-4 w-4" />
-              投稿
+              鎶曠
             </Button>
             <Button onClick={() => void actions.refreshCurrent()} variant="secondary">
               <RefreshCw className="h-4 w-4" />
-              刷新本地
+              鍒锋柊鏈湴
             </Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="市场脚本" detail={market?.market.updatedAt ? `清单更新时间：${market.market.updatedAt}` : "从 GitHub 静态清单加载"} />
+        <CardHead title="甯傚満鑴氭湰" detail={market?.market.updatedAt ? `娓呭崟鏇存柊鏃堕棿锛?{market.market.updatedAt}` : "浠?GitHub 闈欐€佹竻鍗曞姞杞?} />
         <CardContent>
           {marketScripts.length ? (
             <div className="script-market-grid">
@@ -2966,15 +2966,15 @@ function UserScriptsScreen({ settings, market, actions }: { settings: SettingsRe
               ))}
             </div>
           ) : (
-            <div className="empty">{market?.status === "failed" ? market.message : "点击刷新市场加载远程脚本。"}</div>
+            <div className="empty">{market?.status === "failed" ? market.message : "鐐瑰嚮鍒锋柊甯傚満鍔犺浇杩滅▼鑴氭湰銆?}</div>
           )}
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="本地脚本" detail="内置、手动和市场安装脚本；可在这里启停或删除用户脚本" />
+        <CardHead title="鏈湴鑴氭湰" detail="鍐呯疆銆佹墜鍔ㄥ拰甯傚満瀹夎鑴氭湰锛涘彲鍦ㄨ繖閲屽惎鍋滄垨鍒犻櫎鐢ㄦ埛鑴氭湰" />
         <CardContent>
           <div className="table">
-            {scripts.length ? scripts.map((script) => <ScriptRow key={script.key} script={script} actions={actions} />) : <div className="empty">未发现用户脚本。</div>}
+            {scripts.length ? scripts.map((script) => <ScriptRow key={script.key} script={script} actions={actions} />) : <div className="empty">鏈彂鐜扮敤鎴疯剼鏈€?/div>}
           </div>
         </CardContent>
       </Panel>
@@ -3054,16 +3054,16 @@ function SessionsScreen({
   return (
     <>
       <Panel>
-        <CardHead title="会话管理" detail="读取 Codex 本地 SQLite 会话库，会删除数据库记录和对应 rollout 文件" />
+        <CardHead title="浼氳瘽绠＄悊" detail="璇诲彇 Codex 鏈湴 SQLite 浼氳瘽搴擄紝浼氬垹闄ゆ暟鎹簱璁板綍鍜屽搴?rollout 鏂囦欢" />
         <CardContent>
           <div className="metric-list">
-            <Metric label="会话总数" value={`${items.length} 个`} />
-            <Metric label="未归档" value={`${activeCount} 个`} />
-            <Metric label="已归档" value={`${archivedCount} 个`} />
-            <Metric label="数据库" value={sessions?.dbPath ?? "~/.codex/sqlite/*.db"} />
+            <Metric label="浼氳瘽鎬绘暟" value={`${items.length} 涓猔} />
+            <Metric label="鏈綊妗? value={`${activeCount} 涓猔} />
+            <Metric label="宸插綊妗? value={`${archivedCount} 涓猔} />
+            <Metric label="鏁版嵁搴? value={sessions?.dbPath ?? "~/.codex/sqlite/*.db"} />
           </div>
           <div className="form-row">
-            <Field label="同步目标">
+            <Field label="鍚屾鐩爣">
               <select
                 className="select-input"
                 disabled={providerSyncProgress.active || !(providerSyncTargets?.targets ?? []).length}
@@ -3072,26 +3072,26 @@ function SessionsScreen({
               >
                 {(providerSyncTargets?.targets ?? []).map((target) => (
                   <option key={target.id} value={target.id}>
-                    {target.id}（{providerSyncTargetLabel(target)}）
+                    {target.id}锛坽providerSyncTargetLabel(target)}锛?
                   </option>
                 ))}
-                {!(providerSyncTargets?.targets ?? []).length ? <option value="">当前配置 provider</option> : null}
+                {!(providerSyncTargets?.targets ?? []).length ? <option value="">褰撳墠閰嶇疆 provider</option> : null}
               </select>
             </Field>
           </div>
           <Toolbar>
             <Button onClick={() => void actions.refreshLocalSessions()}>
               <RefreshCw className="h-4 w-4" />
-              刷新会话
+              鍒锋柊浼氳瘽
             </Button>
             <Button disabled={providerSyncProgress.active} onClick={() => void actions.syncProvidersNow()} variant="outline">
               <RefreshCw className="h-4 w-4" />
-              {providerSyncProgress.active ? "正在修复…" : "立刻修复历史会话"}
+              {providerSyncProgress.active ? "姝ｅ湪淇鈥? : "绔嬪埢淇鍘嗗彶浼氳瘽"}
             </Button>
           </Toolbar>
           <div className="provider-sync-progress" data-active={providerSyncProgress.active}>
             <div className="provider-sync-progress-head">
-              <strong>{providerSyncProgress.active ? "正在修复历史会话" : "历史会话修复进度"}</strong>
+              <strong>{providerSyncProgress.active ? "姝ｅ湪淇鍘嗗彶浼氳瘽" : "鍘嗗彶浼氳瘽淇杩涘害"}</strong>
               <span>{providerSyncProgress.percent}%</span>
             </div>
             <div
@@ -3107,7 +3107,7 @@ function SessionsScreen({
           </div>
           <div className="hint-line">
             <Info className="h-4 w-4" />
-            <span>删除会创建本地备份；如果 Codex App 正在使用该会话，建议先关闭对应会话窗口再操作。</span>
+            <span>鍒犻櫎浼氬垱寤烘湰鍦板浠斤紱濡傛灉 Codex App 姝ｅ湪浣跨敤璇ヤ細璇濓紝寤鸿鍏堝叧闂搴斾細璇濈獥鍙ｅ啀鎿嶄綔銆?/span>
           </div>
           <label className="switch-row">
             <input
@@ -3116,32 +3116,32 @@ function SessionsScreen({
               type="checkbox"
             />
             <span>
-              <strong>启动前自动修复历史会话</strong>
-              <small>开启后，通过 Codex++ 启动 Codex 前自动整理一次旧对话的归属标记。</small>
+              <strong>鍚姩鍓嶈嚜鍔ㄤ慨澶嶅巻鍙蹭細璇?/strong>
+              <small>寮€鍚悗锛岄€氳繃 Codex++ 鍚姩 Codex 鍓嶈嚜鍔ㄦ暣鐞嗕竴娆℃棫瀵硅瘽鐨勫綊灞炴爣璁般€?/small>
             </span>
           </label>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>保存自动修复设置</Button>
+            <Button onClick={() => void actions.saveSettings()}>淇濆瓨鑷姩淇璁剧疆</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="本地会话" detail={items.length ? "按更新时间倒序显示" : "点击刷新会话读取本地数据库"} />
+        <CardHead title="鏈湴浼氳瘽" detail={items.length ? "鎸夋洿鏂版椂闂村€掑簭鏄剧ず" : "鐐瑰嚮鍒锋柊浼氳瘽璇诲彇鏈湴鏁版嵁搴?} />
         <CardContent>
           {items.length ? (
             <>
               <div className="session-list-toolbar">
-                <span className="session-selection-summary">已选择 {selectedCount} / {items.length} 个会话</span>
+                <span className="session-selection-summary">宸查€夋嫨 {selectedCount} / {items.length} 涓細璇?/span>
                 <div className="session-selection-actions">
                   <Button disabled={allSelected || bulkDeleting} onClick={selectAllSessions} size="sm" variant="outline">
-                    全选当前列表
+                    鍏ㄩ€夊綋鍓嶅垪琛?
                   </Button>
                   <Button disabled={!selectedCount || bulkDeleting} onClick={clearSelectedSessions} size="sm" variant="outline">
-                    清空选择
+                    娓呯┖閫夋嫨
                   </Button>
                   <Button disabled={(selectionMode && !selectedCount) || bulkDeleting} onClick={() => void deleteSelectedSessions()} size="sm" variant="outline">
                     {selectionMode ? <Trash2 className="h-4 w-4" /> : null}
-                    {selectionMode ? (bulkDeleting ? "正在删除…" : "删除已选") : "多选"}
+                    {selectionMode ? (bulkDeleting ? "姝ｅ湪鍒犻櫎鈥? : "鍒犻櫎宸查€?) : "澶氶€?}
                   </Button>
                 </div>
               </div>
@@ -3151,9 +3151,9 @@ function SessionsScreen({
                   return (
                     <div className="session-row" data-selection-mode={selectionMode} data-selected={selected} key={session.id}>
                       {selectionMode ? (
-                        <label className="session-select" title="选择会话">
+                        <label className="session-select" title="閫夋嫨浼氳瘽">
                           <input
-                            aria-label={`选择会话 ${session.title || session.id}`}
+                            aria-label={`閫夋嫨浼氳瘽 ${session.title || session.id}`}
                             checked={selected}
                             onChange={(event) => toggleSessionSelection(session.id, event.currentTarget.checked)}
                             type="checkbox"
@@ -3161,18 +3161,18 @@ function SessionsScreen({
                         </label>
                       ) : null}
                       <div className="session-main">
-                        <strong>{session.title || "未命名会话"}</strong>
+                        <strong>{session.title || "鏈懡鍚嶄細璇?}</strong>
                         <span>{session.id}</span>
-                        <small>{session.cwd || "未记录项目路径"}</small>
+                        <small>{session.cwd || "鏈褰曢」鐩矾寰?}</small>
                       </div>
                       <div className="session-meta">
                         <Badge status={session.archived ? "archived" : "ok"} />
-                        <span>{session.modelProvider || "provider 未记录"}</span>
+                        <span>{session.modelProvider || "provider 鏈褰?}</span>
                         <span>{formatTime(session.updatedAtMs ?? 0)}</span>
                       </div>
                       <Button className="session-delete-button" variant="outline" onClick={() => void actions.deleteLocalSession(session)}>
                         <Trash2 className="h-4 w-4" />
-                        删除
+                        鍒犻櫎
                       </Button>
                     </div>
                   );
@@ -3180,7 +3180,7 @@ function SessionsScreen({
               </div>
             </>
           ) : (
-            <div className="empty">未读取到本地会话，或当前 SQLite 会话库不存在。</div>
+            <div className="empty">鏈鍙栧埌鏈湴浼氳瘽锛屾垨褰撳墠 SQLite 浼氳瘽搴撲笉瀛樺湪銆?/div>
           )}
         </CardContent>
       </Panel>
@@ -3195,30 +3195,30 @@ function RecommendationsScreen({ ads, actions }: { ads: AdsResult | null; action
   return (
     <>
       <Panel>
-        <CardHead title="推荐内容" detail="与 Codex 内插件菜单使用同一个远端广告源" />
+        <CardHead title="鎺ㄨ崘鍐呭" detail="涓?Codex 鍐呮彃浠惰彍鍗曚娇鐢ㄥ悓涓€涓繙绔箍鍛婃簮" />
         <CardContent>
           <div className="recommend-hero">
             <div>
-              <strong>{ads ? `已加载 ${items.length} 条推荐` : "尚未加载推荐内容"}</strong>
-              <span>内容来自 BigPizzaV3/Ad-List，分为赞助商推荐和普通推荐。</span>
+              <strong>{ads ? `宸插姞杞?${items.length} 鏉℃帹鑽恅 : "灏氭湭鍔犺浇鎺ㄨ崘鍐呭"}</strong>
+              <span>鍐呭鏉ヨ嚜 luoda2023/LDCodex锛屽垎涓鸿禐鍔╁晢鎺ㄨ崘鍜屾櫘閫氭帹鑽愩€?/span>
             </div>
             <Button onClick={() => void actions.refreshAds()}>
               <RefreshCw className="h-4 w-4" />
-              刷新推荐
+              鍒锋柊鎺ㄨ崘
             </Button>
           </div>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="赞助商推荐" detail={`${sponsors.length} 条`} />
+        <CardHead title="璧炲姪鍟嗘帹鑽? detail={`${sponsors.length} 鏉} />
         <CardContent>
-          <AdGrid actions={actions} ads={sponsors} empty="暂无赞助商推荐。" />
+          <AdGrid actions={actions} ads={sponsors} empty="鏆傛棤璧炲姪鍟嗘帹鑽愩€? />
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="普通推荐" detail={`${normal.length} 条`} />
+        <CardHead title="鏅€氭帹鑽? detail={`${normal.length} 鏉} />
         <CardContent>
-          <AdGrid actions={actions} ads={normal} empty="暂无普通推荐。" />
+          <AdGrid actions={actions} ads={normal} empty="鏆傛棤鏅€氭帹鑽愩€? />
         </CardContent>
       </Panel>
     </>
@@ -3248,85 +3248,85 @@ function MaintenanceScreen({
   return (
     <>
       <Panel>
-        <CardHead title="检查与修复" detail="检查入口、Codex 应用和 Watcher 状态" />
+        <CardHead title="妫€鏌ヤ笌淇" detail="妫€鏌ュ叆鍙ｃ€丆odex 搴旂敤鍜?Watcher 鐘舵€? />
         <CardContent>
           <div className="status-table">
-            <StatusRow title="Codex 应用" status={overview?.codex_app.status} path={overview?.codex_app.path} />
-            <StatusRow title="静默启动入口" status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
-            <StatusRow title="管理控制台入口" status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
-            <StatusRow title="Watcher 自动接管" status={watcher?.enabled ? "ok" : "disabled"} path={watcher?.disabled_flag} />
+            <StatusRow title="Codex 搴旂敤" status={overview?.codex_app.status} path={overview?.codex_app.path} />
+            <StatusRow title="闈欓粯鍚姩鍏ュ彛" status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
+            <StatusRow title="绠＄悊鎺у埗鍙板叆鍙? status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
+            <StatusRow title="Watcher 鑷姩鎺ョ" status={watcher?.enabled ? "ok" : "disabled"} path={watcher?.disabled_flag} />
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.checkHealth()}>检查</Button>
-            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>修复快捷方式</Button>
-            <Button variant="secondary" onClick={() => void actions.repairBackend()}>修复后端</Button>
+            <Button onClick={() => void actions.checkHealth()}>妫€鏌?/Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>淇蹇嵎鏂瑰紡</Button>
+            <Button variant="secondary" onClick={() => void actions.repairBackend()}>淇鍚庣</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="入口管理" detail="快捷方式写入系统实际桌面位置，不使用写死桌面路径" />
+        <CardHead title="鍏ュ彛绠＄悊" detail="蹇嵎鏂瑰紡鍐欏叆绯荤粺瀹為檯妗岄潰浣嶇疆锛屼笉浣跨敤鍐欐妗岄潰璺緞" />
         <CardContent>
           <label className="check-row">
             <input checked={removeOwnedData} onChange={(event) => onRemoveOwnedDataChange(event.currentTarget.checked)} type="checkbox" />
-            <span>卸载时移除 Codex++ 托管数据</span>
+            <span>鍗歌浇鏃剁Щ闄?Codex++ 鎵樼鏁版嵁</span>
           </label>
           <Toolbar>
-            <Button onClick={() => void actions.installEntrypoints()}>安装入口</Button>
-            <Button variant="secondary" onClick={() => void actions.uninstallEntrypoints()}>卸载入口</Button>
-            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>修复入口</Button>
+            <Button onClick={() => void actions.installEntrypoints()}>瀹夎鍏ュ彛</Button>
+            <Button variant="secondary" onClick={() => void actions.uninstallEntrypoints()}>鍗歌浇鍏ュ彛</Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>淇鍏ュ彛</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="自动接管" detail="Watcher 用于保持 Codex++ 接管状态" />
+        <CardHead title="鑷姩鎺ョ" detail="Watcher 鐢ㄤ簬淇濇寔 Codex++ 鎺ョ鐘舵€? />
         <CardContent>
           <Toolbar>
-            <Button variant="secondary" onClick={() => void actions.installWatcher()}>安装 watcher</Button>
-            <Button variant="secondary" onClick={() => void actions.uninstallWatcher()}>移除 watcher</Button>
-            <Button variant="secondary" onClick={() => void actions.enableWatcher()}>启用</Button>
-            <Button variant="secondary" onClick={() => void actions.disableWatcher()}>禁用</Button>
+            <Button variant="secondary" onClick={() => void actions.installWatcher()}>瀹夎 watcher</Button>
+            <Button variant="secondary" onClick={() => void actions.uninstallWatcher()}>绉婚櫎 watcher</Button>
+            <Button variant="secondary" onClick={() => void actions.enableWatcher()}>鍚敤</Button>
+            <Button variant="secondary" onClick={() => void actions.disableWatcher()}>绂佺敤</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="Codex 应用路径" detail="免安装版或解包版只需要选择一次，之后静默启动会自动复用" />
+        <CardHead title="Codex 搴旂敤璺緞" detail="鍏嶅畨瑁呯増鎴栬В鍖呯増鍙渶瑕侀€夋嫨涓€娆★紝涔嬪悗闈欓粯鍚姩浼氳嚜鍔ㄥ鐢? />
         <CardContent>
           <div className="status-table">
-            <StatusRow title="保存路径" status={savedCodexAppPath ? "ok" : "not_checked"} path={savedCodexAppPath || null} />
-            <StatusRow title="当前识别" status={overview?.codex_app.status} path={overview?.codex_app.path} />
+            <StatusRow title="淇濆瓨璺緞" status={savedCodexAppPath ? "ok" : "not_checked"} path={savedCodexAppPath || null} />
+            <StatusRow title="褰撳墠璇嗗埆" status={overview?.codex_app.status} path={overview?.codex_app.path} />
           </div>
-          <Field label="保存的应用路径">
+          <Field label="淇濆瓨鐨勫簲鐢ㄨ矾寰?>
             <Input
               value={settings?.settings.codexAppPath ?? ""}
-              placeholder="选择 Codex.exe、Codex.app、app 目录或解包目录"
+              placeholder="閫夋嫨 Codex.exe銆丆odex.app銆乤pp 鐩綍鎴栬В鍖呯洰褰?
               readOnly
             />
           </Field>
           <Toolbar>
-            <Button onClick={() => void actions.chooseCodexAppPath("folder")}>选择应用目录</Button>
-            <Button variant="secondary" onClick={() => void actions.chooseCodexAppPath("file")}>选择 Codex.exe</Button>
-            <Button variant="secondary" onClick={() => void actions.clearCodexAppPath()}>清除保存路径</Button>
+            <Button onClick={() => void actions.chooseCodexAppPath("folder")}>閫夋嫨搴旂敤鐩綍</Button>
+            <Button variant="secondary" onClick={() => void actions.chooseCodexAppPath("file")}>閫夋嫨 Codex.exe</Button>
+            <Button variant="secondary" onClick={() => void actions.clearCodexAppPath()}>娓呴櫎淇濆瓨璺緞</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="手动启动" detail="应用路径留空时使用已保存路径；没有保存路径时使用自动探测" />
+        <CardHead title="鎵嬪姩鍚姩" detail="搴旂敤璺緞鐣欑┖鏃朵娇鐢ㄥ凡淇濆瓨璺緞锛涙病鏈変繚瀛樿矾寰勬椂浣跨敤鑷姩鎺㈡祴" />
         <CardContent>
-          <Field label="应用路径覆盖">
+          <Field label="搴旂敤璺緞瑕嗙洊">
             <Input
               value={launchForm.appPath}
               onChange={(event) => onLaunchFormChange({ ...launchForm, appPath: event.currentTarget.value })}
-              placeholder={savedCodexAppPath || "例如 C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
+              placeholder={savedCodexAppPath || "渚嬪 C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
             />
           </Field>
           <div className="form-row">
-            <Field label="Debug 端口">
+            <Field label="Debug 绔彛">
               <Input
                 value={launchForm.debugPort}
                 onChange={(event) => onLaunchFormChange({ ...launchForm, debugPort: event.currentTarget.value })}
               />
             </Field>
-            <Field label="Helper 端口">
+            <Field label="Helper 绔彛">
               <Input
                 value={launchForm.helperPort}
                 onChange={(event) => onLaunchFormChange({ ...launchForm, helperPort: event.currentTarget.value })}
@@ -3334,9 +3334,9 @@ function MaintenanceScreen({
             </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>启动 Codex++</Button>
+            <Button onClick={() => void actions.launch()}>鍚姩 Codex++</Button>
             <Button variant="secondary" onClick={() => void actions.saveManualCodexAppPath()}>
-              保存为默认路径
+              淇濆瓨涓洪粯璁よ矾寰?
             </Button>
           </Toolbar>
         </CardContent>
@@ -3361,21 +3361,21 @@ function AboutScreen({
   return (
     <>
       <Panel>
-        <CardHead title="关于 Codex++" detail="本地 Codex 增强、管理工具和安装包维护" />
+        <CardHead title="鍏充簬 Codex++" detail="鏈湴 Codex 澧炲己銆佺鐞嗗伐鍏峰拰瀹夎鍖呯淮鎶? />
         <CardContent>
           <div className="metric-list">
-            <Metric label="Codex++ 版本" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
-            <Metric label="Codex 版本" value={overview?.codex_version ?? "未检测到"} />
-            <Metric label="项目地址" value="github.com/BigPizzaV3/CodexPlusPlus" />
+            <Metric label="Codex++ 鐗堟湰" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
+            <Metric label="Codex 鐗堟湰" value={overview?.codex_version ?? "鏈娴嬪埌"} />
+            <Metric label="椤圭洰鍦板潃" value="github.com/luoda2023/LDCodex" />
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.openExternalUrl("https://github.com/BigPizzaV3/CodexPlusPlus")} variant="secondary">
+            <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex")} variant="secondary">
               <ExternalLink className="h-4 w-4" />
-              打开项目主页
+              鎵撳紑椤圭洰涓婚〉
             </Button>
-            <Button onClick={() => void actions.openExternalUrl("https://github.com/BigPizzaV3/CodexPlusPlus/issues")} variant="secondary">
+            <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex/issues")} variant="secondary">
               <ExternalLink className="h-4 w-4" />
-              反馈问题
+              鍙嶉闂
             </Button>
             <Button onClick={() => void actions.openExternalUrl("https://discord.gg/y96kX7A76v")} variant="secondary">
               <MessageCircle className="h-4 w-4" />
@@ -3389,18 +3389,18 @@ function AboutScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="GitHub Release 更新" detail={`当前版本 ${overview?.current_version ?? update?.currentVersion ?? "-"}`} />
+        <CardHead title="GitHub Release 鏇存柊" detail={`褰撳墠鐗堟湰 ${overview?.current_version ?? update?.currentVersion ?? "-"}`} />
         <CardContent>
           <div className="metric-list">
-            <Metric label="状态" value={update?.status ?? "not_checked"} />
-            <Metric label="最新版本" value={update?.latestVersion ?? "未检查"} />
-            <Metric label="资源" value={update?.assetName ?? "-"} />
-            <Metric label="进度" value={`${update?.progress ?? 0}%`} />
+            <Metric label="鐘舵€? value={update?.status ?? "not_checked"} />
+            <Metric label="鏈€鏂扮増鏈? value={update?.latestVersion ?? "鏈鏌?} />
+            <Metric label="璧勬簮" value={update?.assetName ?? "-"} />
+            <Metric label="杩涘害" value={`${update?.progress ?? 0}%`} />
           </div>
-          <Textarea className="log-view" readOnly value={update?.releaseSummary || update?.message || "尚未检查 GitHub Release；更新会下载并启动安装包。"} />
+          <Textarea className="log-view" readOnly value={update?.releaseSummary || update?.message || "灏氭湭妫€鏌?GitHub Release锛涙洿鏂颁細涓嬭浇骞跺惎鍔ㄥ畨瑁呭寘銆?} />
           <Toolbar>
-            <Button onClick={() => void actions.checkUpdate()}>检查更新</Button>
-            <Button variant="secondary" onClick={() => void actions.performUpdate()}>下载并运行安装包</Button>
+            <Button onClick={() => void actions.checkUpdate()}>妫€鏌ユ洿鏂?/Button>
+            <Button variant="secondary" onClick={() => void actions.performUpdate()}>涓嬭浇骞惰繍琛屽畨瑁呭寘</Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -3426,20 +3426,20 @@ function SettingsScreen({
   return (
     <>
       <Panel>
-        <CardHead title="基础设置" detail={settings?.settings_path ?? ""} />
+        <CardHead title="鍩虹璁剧疆" detail={settings?.settings_path ?? ""} />
         <CardContent>
           <div className="theme-row">
             <div>
-              <strong>界面主题</strong>
-              <span>当前为{theme === "dark" ? "深色" : "浅色"}模式。</span>
+              <strong>鐣岄潰涓婚</strong>
+              <span>褰撳墠涓簕theme === "dark" ? "娣辫壊" : "娴呰壊"}妯″紡銆?/span>
             </div>
-            <Button variant="secondary" onClick={actions.toggleTheme}>切换主题</Button>
+            <Button variant="secondary" onClick={actions.toggleTheme}>鍒囨崲涓婚</Button>
           </div>
-          <Field label="模型测试模型">
+          <Field label="妯″瀷娴嬭瘯妯″瀷">
             <Input
               value={form.relayTestModel}
               onChange={(event) => onFormChange({ ...form, relayTestModel: event.currentTarget.value })}
-              placeholder="例如 gpt-5.4-mini"
+              placeholder="渚嬪 gpt-5.4-mini"
             />
           </Field>
           <label className="check-row">
@@ -3448,16 +3448,16 @@ function SettingsScreen({
               onChange={(event) => onFormChange({ ...form, cliWrapperEnabled: event.currentTarget.checked })}
               type="checkbox"
             />
-            <span>启用 Codex 命令包装器</span>
+            <span>鍚敤 Codex 鍛戒护鍖呰鍣?/span>
           </label>
           <div className="form-row">
-            <Field label="包装器 Base URL">
+            <Field label="鍖呰鍣?Base URL">
               <Input
                 value={form.cliWrapperBaseUrl}
                 onChange={(event) => onFormChange({ ...form, cliWrapperBaseUrl: event.currentTarget.value })}
               />
             </Field>
-            <Field label="API Key 环境变量">
+            <Field label="API Key 鐜鍙橀噺">
               <Input
                 value={form.cliWrapperApiKeyEnv}
                 onChange={(event) => onFormChange({ ...form, cliWrapperApiKeyEnv: event.currentTarget.value })}
@@ -3480,23 +3480,23 @@ function SettingsScreen({
                 }
                 type="checkbox"
               />
-              <span>启用 Codex 图片覆盖层</span>
+              <span>鍚敤 Codex 鍥剧墖瑕嗙洊灞?/span>
             </label>
             <div className="form-row">
-              <Field label="覆盖图片">
+              <Field label="瑕嗙洊鍥剧墖">
                 <Input
                   value={form.codexAppImageOverlayPath}
                   onChange={(event) => onFormChange({ ...form, codexAppImageOverlayPath: event.currentTarget.value })}
-                  placeholder="选择 png / jpg / webp / gif / bmp"
+                  placeholder="閫夋嫨 png / jpg / webp / gif / bmp"
                 />
               </Field>
               <Toolbar>
                 <Button variant="secondary" onClick={() => void actions.chooseImageOverlayPath()}>
-                  选择图片
+                  閫夋嫨鍥剧墖
                 </Button>
               </Toolbar>
             </div>
-            <Field label={`透明度 ${form.codexAppImageOverlayOpacity}%`}>
+            <Field label={`閫忔槑搴?${form.codexAppImageOverlayOpacity}%`}>
               <Input
                 min={1}
                 max={100}
@@ -3512,17 +3512,17 @@ function SettingsScreen({
             </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>保存设置</Button>
+            <Button onClick={() => void actions.saveSettings()}>淇濆瓨璁剧疆</Button>
             <Button variant="secondary" onClick={() => void actions.resetImageOverlaySettings()}>
-              重置背景
+              閲嶇疆鑳屾櫙
             </Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="Codex 启动参数" detail="启动 Codex App 时追加到默认 CDP 参数后。留空则保持默认启动行为。" />
+        <CardHead title="Codex 鍚姩鍙傛暟" detail="鍚姩 Codex App 鏃惰拷鍔犲埌榛樿 CDP 鍙傛暟鍚庛€傜暀绌哄垯淇濇寔榛樿鍚姩琛屼负銆? />
         <CardContent>
-          <Field label="额外参数">
+          <Field label="棰濆鍙傛暟">
             <Textarea
               className="launch-args-input"
               placeholder="--force_high_performance_gpu"
@@ -3536,9 +3536,9 @@ function SettingsScreen({
               }
             />
           </Field>
-          <p className="field-hint">每行一个参数，例如 --force_high_performance_gpu。不需要填写 open 或 --args。</p>
+          <p className="field-hint">姣忚涓€涓弬鏁帮紝渚嬪 --force_high_performance_gpu銆備笉闇€瑕佸～鍐?open 鎴?--args銆?/p>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>保存设置</Button>
+            <Button onClick={() => void actions.saveSettings()}>淇濆瓨璁剧疆</Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -3550,7 +3550,7 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
   const lines = splitLogLines(logs?.text ?? "");
   return (
     <Panel>
-      <CardHead title="最近日志" detail={logs?.path ?? ""} />
+      <CardHead title="鏈€杩戞棩蹇? detail={logs?.path ?? ""} />
       <CardContent>
         <div className="log-lines">
           {lines.length ? (
@@ -3561,13 +3561,13 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
               </div>
             ))
           ) : (
-            <div className="empty">暂无日志。</div>
+            <div className="empty">鏆傛棤鏃ュ織銆?/div>
           )}
         </div>
         <Toolbar>
-          <Button onClick={() => void actions.refreshLogs()}>刷新</Button>
+          <Button onClick={() => void actions.refreshLogs()}>鍒锋柊</Button>
           <Button variant="secondary" onClick={() => void actions.copyLogs()}>
-            复制
+            澶嶅埗
           </Button>
         </Toolbar>
       </CardContent>
@@ -3578,13 +3578,13 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
 function DiagnosticsPanel({ diagnostics, actions }: { diagnostics: DiagnosticsResult | null; actions: Actions }) {
   return (
     <Panel>
-      <CardHead title="诊断报告" detail="包含版本、路径、设置和平台信息" />
+      <CardHead title="璇婃柇鎶ュ憡" detail="鍖呭惈鐗堟湰銆佽矾寰勩€佽缃拰骞冲彴淇℃伅" />
       <CardContent>
-        <Textarea className="log-view tall" readOnly value={diagnostics?.report ?? "尚未生成诊断报告。"} />
+        <Textarea className="log-view tall" readOnly value={diagnostics?.report ?? "灏氭湭鐢熸垚璇婃柇鎶ュ憡銆?} />
         <Toolbar>
-          <Button onClick={() => void actions.refreshDiagnostics()}>重新生成</Button>
+          <Button onClick={() => void actions.refreshDiagnostics()}>閲嶆柊鐢熸垚</Button>
           <Button variant="secondary" onClick={() => void actions.copyDiagnostics()}>
-            复制报告
+            澶嶅埗鎶ュ憡
           </Button>
         </Toolbar>
       </CardContent>
@@ -3678,21 +3678,21 @@ function SortableRelayProfileCard({
       tabIndex={0}
     >
       <button
-        aria-label="拖动排序"
+        aria-label="鎷栧姩鎺掑簭"
         className="relay-drag"
-        title="拖动排序"
+        title="鎷栧姩鎺掑簭"
         type="button"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="relay-index" title={profile.name || "未命名模型"}>
+      <span className="relay-index" title={profile.name || "鏈懡鍚嶆ā鍨?}>
         {providerInitial(profile.name)}
       </span>
       <span className="relay-summary">
-        <strong>{profile.name || "未命名模型"}</strong>
-        <small>{relayModeLabel(profile.relayMode)} · {relayProtocolLabel(profile.protocol)} · {relayProfileConfigBrief(profile)}</small>
+        <strong>{profile.name || "鏈懡鍚嶆ā鍨?}</strong>
+        <small>{relayModeLabel(profile.relayMode)} 路 {relayProtocolLabel(profile.protocol)} 路 {relayProfileConfigBrief(profile)}</small>
       </span>
       <span className="relay-card-actions">
         <Button
@@ -3706,11 +3706,11 @@ function SortableRelayProfileCard({
             void actions.switchRelayProfile(next, previousActiveRelayId);
           }}
           size="sm"
-          title={disabled ? "模型切换不可用" : active ? "当前正在使用" : "设为当前"}
+          title={disabled ? "妯″瀷鍒囨崲涓嶅彲鐢? : active ? "褰撳墠姝ｅ湪浣跨敤" : "璁句负褰撳墠"}
           variant={active ? "secondary" : "outline"}
         >
           <CheckCircle2 className="h-4 w-4" />
-          {active ? "使用中" : "使用"}
+          {active ? "浣跨敤涓? : "浣跨敤"}
         </Button>
         <span className="relay-card-extra">
           <Button
@@ -3721,7 +3721,7 @@ function SortableRelayProfileCard({
               void actions.testRelayProfile(profile);
             }}
             size="icon"
-            title={isAggregateRelayProfile(profile) ? "聚合模型会在真实对话中轮转成员，请测试成员模型" : "发送 hi 测试"}
+            title={isAggregateRelayProfile(profile) ? "鑱氬悎妯″瀷浼氬湪鐪熷疄瀵硅瘽涓疆杞垚鍛橈紝璇锋祴璇曟垚鍛樻ā鍨? : "鍙戦€?hi 娴嬭瘯"}
             variant="ghost"
           >
             <TestTube className="h-4 w-4" />
@@ -3732,7 +3732,7 @@ function SortableRelayProfileCard({
               onEdit(profile.id);
             }}
             size="icon"
-            title="编辑"
+            title="缂栬緫"
             variant="ghost"
           >
             <Edit3 className="h-4 w-4" />
@@ -3743,7 +3743,7 @@ function SortableRelayProfileCard({
               onFormChange(duplicateRelayProfile(form, profile.id));
             }}
             size="icon"
-            title="复制"
+            title="澶嶅埗"
             variant="ghost"
           >
             <Copy className="h-4 w-4" />
@@ -3755,7 +3755,7 @@ function SortableRelayProfileCard({
               onFormChange(removeRelayProfile(form, profile.id));
             }}
             size="icon"
-            title="删除模型"
+            title="鍒犻櫎妯″瀷"
             variant="ghost"
           >
             <Trash2 className="h-4 w-4" />
@@ -3767,17 +3767,17 @@ function SortableRelayProfileCard({
 }
 
 function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actions: Actions }) {
-  const status = script.updateAvailable ? "可更新" : script.installed ? `已安装 ${script.installedVersion}` : "未安装";
+  const status = script.updateAvailable ? "鍙洿鏂? : script.installed ? `宸插畨瑁?${script.installedVersion}` : "鏈畨瑁?;
   return (
     <div className="script-market-card">
       <div className="script-market-title">
         <div>
           <strong>{script.name}</strong>
-          <span>{script.author || "未知作者"}</span>
+          <span>{script.author || "鏈煡浣滆€?}</span>
         </div>
         <UiBadge variant={script.updateAvailable ? "default" : script.installed ? "secondary" : "outline"}>{status}</UiBadge>
       </div>
-      <p className="script-market-description">{script.description || "暂无描述。"}</p>
+      <p className="script-market-description">{script.description || "鏆傛棤鎻忚堪銆?}</p>
       <div className="script-market-tags">
         <span className="script-market-tag">v{script.version}</span>
         {script.tags.map((tag) => (
@@ -3787,12 +3787,12 @@ function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actio
       <div className="script-market-actions">
         <Button onClick={() => void actions.installMarketScript(script.id)} size="sm">
           <Download className="h-4 w-4" />
-          {script.updateAvailable ? "更新" : script.installed ? "重新安装" : "安装"}
+          {script.updateAvailable ? "鏇存柊" : script.installed ? "閲嶆柊瀹夎" : "瀹夎"}
         </Button>
         {script.homepage ? (
           <Button onClick={() => void actions.openExternalUrl(script.homepage)} size="sm" variant="secondary">
             <ExternalLink className="h-4 w-4" />
-            主页
+            涓婚〉
           </Button>
         ) : null}
       </div>
@@ -3881,11 +3881,11 @@ function RelayProfileDetail({
         <Toolbar>
           <Button onClick={onBack} variant="secondary">
             <ArrowLeft className="h-4 w-4" />
-            返回列表
+            杩斿洖鍒楄〃
           </Button>
-          <Button disabled={!!validationError} onClick={() => void saveDraft()} title={validationError || "保存"}>
+          <Button disabled={!!validationError} onClick={() => void saveDraft()} title={validationError || "淇濆瓨"}>
             <Save className="h-4 w-4" />
-            保存
+            淇濆瓨
           </Button>
         </Toolbar>
       </div>
@@ -3921,7 +3921,7 @@ function ContextScreen({
 }) {
   return (
     <Panel fill>
-      <CardHead title="Codex 工具与插件" detail="独立管理 Codex 的 MCP、Skills、Plugins；切换任意模型都会带上。" />
+      <CardHead title="Codex 宸ュ叿涓庢彃浠? detail="鐙珛绠＄悊 Codex 鐨?MCP銆丼kills銆丳lugins锛涘垏鎹换鎰忔ā鍨嬮兘浼氬甫涓娿€? />
       <CardContent>
         <RelayContextManager
           form={normalizeSettings(form)}
@@ -3987,17 +3987,17 @@ function RelayProfileEditor({
     <div className="relay-profile-editor">
       <div className="relay-editor-head">
         <div>
-          <strong>{profile.name || "未命名模型"}</strong>
+          <strong>{profile.name || "鏈懡鍚嶆ā鍨?}</strong>
           <span>{relayProfileEditorStatus(profile, form, isNew)}</span>
         </div>
         {isNew ? null : (
           <Button
             disabled={!form.relayProfilesEnabled || actions.relaySwitching}
             onClick={onSwitch}
-            title={!form.relayProfilesEnabled ? "模型配置总开关已关闭" : actions.relaySwitching ? "模型切换中" : undefined}
+            title={!form.relayProfilesEnabled ? "妯″瀷閰嶇疆鎬诲紑鍏冲凡鍏抽棴" : actions.relaySwitching ? "妯″瀷鍒囨崲涓? : undefined}
             variant={profile.id === form.activeRelayId ? "secondary" : "default"}
           >
-            {actions.relaySwitching ? "切换中" : profile.id === form.activeRelayId ? "使用中" : "设为当前"}
+            {actions.relaySwitching ? "鍒囨崲涓? : profile.id === form.activeRelayId ? "浣跨敤涓? : "璁句负褰撳墠"}
           </Button>
         )}
       </div>
@@ -4009,13 +4009,13 @@ function RelayProfileEditor({
         />
       ) : null}
       <div className="relay-fields">
-        <Field className="relay-field-name" label="名称">
+        <Field className="relay-field-name" label="鍚嶇О">
           <Input
             value={profile.name}
             onChange={(event) => updateDraft({ name: event.currentTarget.value })}
           />
         </Field>
-        <Field className="relay-field-mode" label="接入模式">
+        <Field className="relay-field-mode" label="鎺ュ叆妯″紡">
           <select
             className="field-select"
             value={profile.relayMode}
@@ -4024,21 +4024,21 @@ function RelayProfileEditor({
               updateDraft(relayMode === "official" ? { relayMode, officialMixApiKey: false } : { relayMode });
             }}
           >
-            <option value="official">官方登录</option>
-            <option value="pureApi">纯 API</option>
+            <option value="official">瀹樻柟鐧诲綍</option>
+            <option value="pureApi">绾?API</option>
           </select>
         </Field>
-        <Field className="relay-field-config-model" label="配置模型">
+        <Field className="relay-field-config-model" label="閰嶇疆妯″瀷">
           <Input
             value={profile.model}
             onChange={(event) => updateDraft({ model: event.currentTarget.value })}
-            placeholder="例如 deepseek-v4-pro"
+            placeholder="渚嬪 deepseek-v4-pro"
           />
           <p className="field-hint">
-            默认启动 Codex 时使用的模型名，请勿带后缀；上下文窗口请在下方「模型列表」中按模型单独配置。
+            榛樿鍚姩 Codex 鏃朵娇鐢ㄧ殑妯″瀷鍚嶏紝璇峰嬁甯﹀悗缂€锛涗笂涓嬫枃绐楀彛璇峰湪涓嬫柟銆屾ā鍨嬪垪琛ㄣ€嶄腑鎸夋ā鍨嬪崟鐙厤缃€?
           </p>
         </Field>
-        <Field className="relay-field-goals" label="Codex 目标">
+        <Field className="relay-field-goals" label="Codex 鐩爣">
           <label className="inline-check">
             <input
               checked={configHasCodexGoalsFeature(profile.configContents)}
@@ -4049,7 +4049,7 @@ function RelayProfileEditor({
               }
               type="checkbox"
             />
-            <span>启用目标功能</span>
+            <span>鍚敤鐩爣鍔熻兘</span>
           </label>
         </Field>
         <div className="relay-advanced-toggle">
@@ -4061,32 +4061,32 @@ function RelayProfileEditor({
             variant="secondary"
           >
             <Settings className="h-4 w-4" />
-            更多选项
+            鏇村閫夐」
           </Button>
         </div>
         {showAdvanced ? (
           <div className="relay-advanced-fields">
-            <Field className="relay-field-test-model" label="测试模型">
+            <Field className="relay-field-test-model" label="娴嬭瘯妯″瀷">
               <Input
                 value={profile.testModel}
                 onChange={(event) => updateDraft({ testModel: event.currentTarget.value })}
-                placeholder={`留空使用默认：${form.relayTestModel || defaultSettings.relayTestModel}`}
+                placeholder={`鐣欑┖浣跨敤榛樿锛?{form.relayTestModel || defaultSettings.relayTestModel}`}
               />
             </Field>
-            <Field className="relay-field-context-window" label="上下文大小">
+            <Field className="relay-field-context-window" label="涓婁笅鏂囧ぇ灏?>
               <Input
                 inputMode="numeric"
                 value={profile.contextWindow}
                 onChange={(event) => updateDraft({ contextWindow: event.currentTarget.value.replace(/[^\d]/g, "") })}
-                placeholder="留空不改写，例如 200000"
+                placeholder="鐣欑┖涓嶆敼鍐欙紝渚嬪 200000"
               />
             </Field>
-            <Field className="relay-field-auto-compact" label="压缩上下文大小">
+            <Field className="relay-field-auto-compact" label="鍘嬬缉涓婁笅鏂囧ぇ灏?>
               <Input
                 inputMode="numeric"
                 value={profile.autoCompactLimit}
                 onChange={(event) => updateDraft({ autoCompactLimit: event.currentTarget.value.replace(/[^\d]/g, "") })}
-                placeholder="留空不改写，例如 160000"
+                placeholder="鐣欑┖涓嶆敼鍐欙紝渚嬪 160000"
               />
             </Field>
           </div>
@@ -4099,7 +4099,7 @@ function RelayProfileEditor({
                 onChange={(event) => updateDraft({ officialMixApiKey: event.currentTarget.checked })}
                 type="checkbox"
               />
-              <span>混入 API KEY</span>
+              <span>娣峰叆 API KEY</span>
             </label>
           </Field>
         ) : null}
@@ -4109,7 +4109,7 @@ function RelayProfileEditor({
               <Input
                 value={profile.baseUrl}
                 onChange={(event) => updateDraft({ baseUrl: event.currentTarget.value })}
-                placeholder="填写中转服务 Base URL"
+                placeholder="濉啓涓浆鏈嶅姟 Base URL"
               />
             </Field>
             <Field className="relay-field-key" label="Key">
@@ -4117,10 +4117,10 @@ function RelayProfileEditor({
                 type="password"
                 value={profile.apiKey}
                 onChange={(event) => updateDraft({ apiKey: event.currentTarget.value })}
-                placeholder="输入中转服务的 API Key"
+                placeholder="杈撳叆涓浆鏈嶅姟鐨?API Key"
               />
             </Field>
-            <Field className="relay-field-protocol" label="上游协议">
+            <Field className="relay-field-protocol" label="涓婃父鍗忚">
               <div className="protocol-options">
                 <button
                   className={`protocol-option ${profile.protocol === "responses" ? "active" : ""}`}
@@ -4141,11 +4141,11 @@ function RelayProfileEditor({
           </div>
         ) : null}
         {showApiFields ? (
-          <Field className="relay-field-model-list" label="模型列表">
+          <Field className="relay-field-model-list" label="妯″瀷鍒楄〃">
             <div className="relay-model-row-editor">
               <div className="relay-model-row relay-model-row-head">
-                <span>模型名称</span>
-                <span>上下文窗口</span>
+                <span>妯″瀷鍚嶇О</span>
+                <span>涓婁笅鏂囩獥鍙?/span>
                 <span />
               </div>
               {modelWindowRows.map((row, index) => (
@@ -4161,10 +4161,10 @@ function RelayProfileEditor({
                     placeholder="1M"
                   />
                   <Button
-                    aria-label="删除模型"
+                    aria-label="鍒犻櫎妯″瀷"
                     onClick={() => removeModelWindowRow(index)}
                     size="icon"
-                    title="删除模型"
+                    title="鍒犻櫎妯″瀷"
                     type="button"
                     variant="ghost"
                   >
@@ -4181,7 +4181,7 @@ function RelayProfileEditor({
                 variant="secondary"
               >
                 <Plus className="h-4 w-4" />
-                添加模型
+                娣诲姞妯″瀷
               </Button>
               <Button
                 onClick={async () => {
@@ -4200,11 +4200,11 @@ function RelayProfileEditor({
                 variant="secondary"
               >
                 <Download className="h-4 w-4" />
-                从上游获取
+                浠庝笂娓歌幏鍙?
               </Button>
             </div>
             <p className="field-hint">
-              每行一个模型；上下文窗口可填 <code>1M</code>、<code>200K</code> 或 <code>1000000</code>，留空表示使用 Codex 默认长度。
+              姣忚涓€涓ā鍨嬶紱涓婁笅鏂囩獥鍙ｅ彲濉?<code>1M</code>銆?code>200K</code> 鎴?<code>1000000</code>锛岀暀绌鸿〃绀轰娇鐢?Codex 榛樿闀垮害銆?
             </p>
           </Field>
         ) : null}
@@ -4213,7 +4213,7 @@ function RelayProfileEditor({
             <Input
               value={profile.userAgent}
               onChange={(event) => updateDraft({ userAgent: event.currentTarget.value })}
-              placeholder="留空使用默认值"
+              placeholder="鐣欑┖浣跨敤榛樿鍊?
             />
           </Field>
         ) : null}
@@ -4221,7 +4221,7 @@ function RelayProfileEditor({
       {showApiFields && profile.protocol === "chatCompletions" ? (
         <div className="hint-line relay-protocol-hint">
           <MessageCircle className="h-4 w-4" />
-          <span>此上游会通过本地 127.0.0.1:57321 转成 Responses API，需要从 Codex++ 启动 Codex。</span>
+          <span>姝や笂娓镐細閫氳繃鏈湴 127.0.0.1:57321 杞垚 Responses API锛岄渶瑕佷粠 Codex++ 鍚姩 Codex銆?/span>
         </div>
       ) : null}
       <div className="hint-line relay-protocol-hint">
@@ -4269,27 +4269,27 @@ function AggregateRelayProfileEditor({
     <div className="relay-profile-editor aggregate-editor">
       <div className="relay-editor-head">
         <div>
-          <strong>{profile.name || "未命名聚合模型"}</strong>
-          <span>{isNew ? "选择已有模型作为成员，保存后写入 settings payload" : "聚合配置只引用已有模型，不复制 Key 和配置文件"}</span>
+          <strong>{profile.name || "鏈懡鍚嶈仛鍚堟ā鍨?}</strong>
+          <span>{isNew ? "閫夋嫨宸叉湁妯″瀷浣滀负鎴愬憳锛屼繚瀛樺悗鍐欏叆 settings payload" : "鑱氬悎閰嶇疆鍙紩鐢ㄥ凡鏈夋ā鍨嬶紝涓嶅鍒?Key 鍜岄厤缃枃浠?}</span>
         </div>
-        <UiBadge variant="secondary">聚合</UiBadge>
+        <UiBadge variant="secondary">鑱氬悎</UiBadge>
       </div>
       <div className="relay-fields aggregate-fields">
-        <Field className="relay-field-name" label="名称">
+        <Field className="relay-field-name" label="鍚嶇О">
           <Input
             value={profile.name}
             onChange={(event) => onProfileChange({ ...profile, name: event.currentTarget.value })}
-            placeholder="例如 主力聚合池"
+            placeholder="渚嬪 涓诲姏鑱氬悎姹?
           />
         </Field>
-        <Field className="relay-field-test-model" label="测试模型">
+        <Field className="relay-field-test-model" label="娴嬭瘯妯″瀷">
           <Input
             value={profile.testModel}
             onChange={(event) => onProfileChange({ ...profile, testModel: event.currentTarget.value })}
-            placeholder={`留空使用默认：${form.relayTestModel || defaultSettings.relayTestModel}`}
+            placeholder={`鐣欑┖浣跨敤榛樿锛?{form.relayTestModel || defaultSettings.relayTestModel}`}
           />
         </Field>
-        <Field className="aggregate-strategy-field" label="聚合策略">
+        <Field className="aggregate-strategy-field" label="鑱氬悎绛栫暐">
           <select
             className="field-select"
             value={aggregate.strategy}
@@ -4319,8 +4319,8 @@ function AggregateRelayProfileEditor({
       <div className="aggregate-members">
         <div className="aggregate-members-head">
           <div>
-            <strong>成员模型</strong>
-            <span>只能勾选已填写 Base URL / Key 的 API 模型，聚合模型不会作为成员。</span>
+            <strong>鎴愬憳妯″瀷</strong>
+            <span>鍙兘鍕鹃€夊凡濉啓 Base URL / Key 鐨?API 妯″瀷锛岃仛鍚堟ā鍨嬩笉浼氫綔涓烘垚鍛樸€?/span>
           </div>
           <UiBadge variant="outline">{aggregate.members.length} / {candidates.length}</UiBadge>
         </div>
@@ -4337,11 +4337,11 @@ function AggregateRelayProfileEditor({
                     type="checkbox"
                   />
                   <span className="aggregate-member-summary">
-                    <strong>{candidate.name || "未命名模型"}</strong>
-                    <small>{relayModeLabel(candidate.relayMode)} · {relayProtocolLabel(candidate.protocol)} · {relayProfileConfigBrief(candidate)}</small>
+                    <strong>{candidate.name || "鏈懡鍚嶆ā鍨?}</strong>
+                    <small>{relayModeLabel(candidate.relayMode)} 路 {relayProtocolLabel(candidate.protocol)} 路 {relayProfileConfigBrief(candidate)}</small>
                   </span>
                   <span className="aggregate-weight-box">
-                    <span>权重</span>
+                    <span>鏉冮噸</span>
                     <Input
                       disabled={!checked}
                       min={1}
@@ -4355,14 +4355,14 @@ function AggregateRelayProfileEditor({
             })}
           </div>
         ) : (
-          <div className="empty">先添加至少 1 个已填写 Base URL / Key 的 API 模型，再创建聚合模型。</div>
+          <div className="empty">鍏堟坊鍔犺嚦灏?1 涓凡濉啓 Base URL / Key 鐨?API 妯″瀷锛屽啀鍒涘缓鑱氬悎妯″瀷銆?/div>
         )}
       </div>
       <div className="relay-grid compact aggregate-preview">
-        <Metric label="策略" value={aggregateStrategyLabel(aggregate.strategy)} />
-        <Metric label="成员数量" value={`${aggregate.members.length} 个`} />
-        <Metric label="总权重" value={`${totalWeight}`} />
-        <Metric label="序列化字段" value="aggregate.strategy / aggregate.members" />
+        <Metric label="绛栫暐" value={aggregateStrategyLabel(aggregate.strategy)} />
+        <Metric label="鎴愬憳鏁伴噺" value={`${aggregate.members.length} 涓猔} />
+        <Metric label="鎬绘潈閲? value={`${totalWeight}`} />
+        <Metric label="搴忓垪鍖栧瓧娈? value="aggregate.strategy / aggregate.members" />
       </div>
       <div className="hint-line relay-protocol-hint">
         <ShieldCheck className="h-4 w-4" />
@@ -4419,13 +4419,13 @@ function RelayContextManager({
     <div className="relay-context-panel">
       <div className="relay-context-head">
         <div>
-          <strong>Codex 工具与插件</strong>
-          <span>MCP、Skills、Plugins 作为全局配置独立管理，切换任意模型都会合并。</span>
+          <strong>Codex 宸ュ叿涓庢彃浠?/strong>
+          <span>MCP銆丼kills銆丳lugins 浣滀负鍏ㄥ眬閰嶇疆鐙珛绠＄悊锛屽垏鎹换鎰忔ā鍨嬮兘浼氬悎骞躲€?/span>
         </div>
         <div className="relay-context-head-actions">
           <Button onClick={() => setEditor({ kind: activeKind })} size="sm" variant="secondary">
             <Plus className="h-4 w-4" />
-            新增{label}
+            鏂板{label}
           </Button>
         </div>
       </div>
@@ -4443,7 +4443,7 @@ function RelayContextManager({
         ))}
       </div>
       <div className="relay-context-summary">
-        当前共有 {visibleEntries.length} 个{label}；这些条目独立于模型保存，会写入所有模型切换后的 config.toml。
+        褰撳墠鍏辨湁 {visibleEntries.length} 涓獅label}锛涜繖浜涙潯鐩嫭绔嬩簬妯″瀷淇濆瓨锛屼細鍐欏叆鎵€鏈夋ā鍨嬪垏鎹㈠悗鐨?config.toml銆?
       </div>
       <div className="relay-context-list">
         {visibleEntries.length ? (
@@ -4457,21 +4457,21 @@ function RelayContextManager({
                   className={`context-enabled-switch ${entry.enabled ? "active" : ""}`}
                   onClick={() => void toggleContextEntryEnabled(entry)}
                   role="switch"
-                  title={entry.enabled ? "禁用此扩展项" : "启用此扩展项"}
+                  title={entry.enabled ? "绂佺敤姝ゆ墿灞曢」" : "鍚敤姝ゆ墿灞曢」"}
                   type="button"
                 >
                   <span className="context-switch-track" aria-hidden="true">
                     <span className="context-switch-thumb" />
                   </span>
                 </button>
-                <Button onClick={() => setEditor({ kind: entry.kind, entry })} size="icon" title="编辑扩展项" variant="ghost">
+                <Button onClick={() => setEditor({ kind: entry.kind, entry })} size="icon" title="缂栬緫鎵╁睍椤? variant="ghost">
                   <Edit3 className="h-4 w-4" />
                 </Button>
                 <Button
                   className="relay-context-delete"
                   onClick={() => void deleteEntry(entry)}
                   size="icon"
-                  title="删除扩展项"
+                  title="鍒犻櫎鎵╁睍椤?
                   variant="ghost"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -4480,7 +4480,7 @@ function RelayContextManager({
             </div>
           ))
         ) : (
-          <div className="empty">暂无{label}，可以从通用配置文件或这里新增。</div>
+          <div className="empty">鏆傛棤{label}锛屽彲浠ヤ粠閫氱敤閰嶇疆鏂囦欢鎴栬繖閲屾柊澧炪€?/div>
         )}
       </div>
       {editor ? (
@@ -4514,7 +4514,7 @@ function ContextEntryEditor({
   return (
     <div className="context-editor">
       <div className="context-editor-fields">
-        <Field label="类型">
+        <Field label="绫诲瀷">
           <select
             className="field-select"
             disabled={!!entry}
@@ -4531,25 +4531,25 @@ function ContextEntryEditor({
             disabled={!!entry}
             value={id}
             onChange={(event) => setId(event.currentTarget.value.trim())}
-            placeholder="例如 context7"
+            placeholder="渚嬪 context7"
           />
         </Field>
       </div>
-      <Field label="TOML 配置体">
+      <Field label="TOML 閰嶇疆浣?>
         <Textarea
           className="context-editor-textarea"
           value={tomlBody}
           onChange={(event) => setTomlBody(event.currentTarget.value)}
-          placeholder={'只填写表头下面的内容，例如：\ncommand = "npx"\nargs = ["-y", "@upstash/context7-mcp"]'}
+          placeholder={'鍙～鍐欒〃澶翠笅闈㈢殑鍐呭锛屼緥濡傦細\ncommand = "npx"\nargs = ["-y", "@upstash/context7-mcp"]'}
           spellCheck={false}
         />
       </Field>
       <Toolbar>
         <Button disabled={!canSave} onClick={() => onSave(draftKind, id.trim(), tomlBody)} size="sm">
           <Save className="h-4 w-4" />
-          保存扩展项
+          淇濆瓨鎵╁睍椤?
         </Button>
-        <Button onClick={onCancel} size="sm" variant="secondary">取消</Button>
+        <Button onClick={onCancel} size="sm" variant="secondary">鍙栨秷</Button>
       </Toolbar>
     </div>
   );
@@ -4622,8 +4622,8 @@ function RelayFileEditors({
       <div className="relay-file-panel">
         <div className="relay-file-head">
           <div>
-            <strong>config.toml 预览</strong>
-            <span>{isActive ? "当前模型切换后会写入的预览；上下文开关变化会立即反映" : "切换到此模型时会写入的预览；上下文开关变化会立即反映"}</span>
+            <strong>config.toml 棰勮</strong>
+            <span>{isActive ? "褰撳墠妯″瀷鍒囨崲鍚庝細鍐欏叆鐨勯瑙堬紱涓婁笅鏂囧紑鍏冲彉鍖栦細绔嬪嵆鍙嶆槧" : "鍒囨崲鍒版妯″瀷鏃朵細鍐欏叆鐨勯瑙堬紱涓婁笅鏂囧紑鍏冲彉鍖栦細绔嬪嵆鍙嶆槧"}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -4645,8 +4645,8 @@ function RelayFileEditors({
       <div className="relay-file-panel">
         <div className="relay-file-head">
           <div>
-            <strong>通用配置文件</strong>
-            <span>只保留非 MCP、Skills、Plugins 的跨模型配置；工具与插件在独立页面管理。</span>
+            <strong>閫氱敤閰嶇疆鏂囦欢</strong>
+            <span>鍙繚鐣欓潪 MCP銆丼kills銆丳lugins 鐨勮法妯″瀷閰嶇疆锛涘伐鍏蜂笌鎻掍欢鍦ㄧ嫭绔嬮〉闈㈢鐞嗐€?/span>
           </div>
           <Button
             onClick={async () => {
@@ -4654,7 +4654,7 @@ function RelayFileEditors({
               if (!extracted) return;
               const split = splitContextConfigText(extracted.commonConfigContents || "");
               if (!split.common.trim() && !split.context.trim()) {
-                await actions.showMessage("通用配置文件", "当前模型 config.toml 里没有可提取的通用配置。", "failed");
+                await actions.showMessage("閫氱敤閰嶇疆鏂囦欢", "褰撳墠妯″瀷 config.toml 閲屾病鏈夊彲鎻愬彇鐨勯€氱敤閰嶇疆銆?, "failed");
                 return;
               }
               const promotedProfile = {
@@ -4676,7 +4676,7 @@ function RelayFileEditors({
             variant="secondary"
           >
             <Download className="h-4 w-4" />
-            提取当前模型配置
+            鎻愬彇褰撳墠妯″瀷閰嶇疆
           </Button>
         </div>
         <SyncedTextarea
@@ -4689,7 +4689,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>auth.json</strong>
-            <span>{isActive ? "当前使用中：打开时从 ~/.codex/auth.json 回填，保存后会作为此模型 auth 存档" : "切换到此模型时会写入 ~/.codex/auth.json"}</span>
+            <span>{isActive ? "褰撳墠浣跨敤涓細鎵撳紑鏃朵粠 ~/.codex/auth.json 鍥炲～锛屼繚瀛樺悗浼氫綔涓烘妯″瀷 auth 瀛樻。" : "鍒囨崲鍒版妯″瀷鏃朵細鍐欏叆 ~/.codex/auth.json"}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -4710,16 +4710,16 @@ function ModeSelector({ launchMode, actions }: { launchMode: LaunchMode; actions
         onClick={() => void actions.setLaunchMode("relay")}
         type="button"
       >
-        <strong>兼容增强</strong>
-        <span>适合官方登录或官方混入 API Key；保留会话删除、导出、项目移动和用户脚本，关闭插件市场相关增强。</span>
+        <strong>鍏煎澧炲己</strong>
+        <span>閫傚悎瀹樻柟鐧诲綍鎴栧畼鏂规贩鍏?API Key锛涗繚鐣欎細璇濆垹闄ゃ€佸鍑恒€侀」鐩Щ鍔ㄥ拰鐢ㄦ埛鑴氭湰锛屽叧闂彃浠跺競鍦虹浉鍏冲寮恒€?/span>
       </button>
       <button
         className={`mode-option ${launchMode === "patch" ? "active" : ""}`}
         onClick={() => void actions.setLaunchMode("patch")}
         type="button"
       >
-        <strong>完整增强</strong>
-        <span>适合纯 API；启用插件市场、强制安装、会话删除导出、项目移动等全部页面能力。</span>
+        <strong>瀹屾暣澧炲己</strong>
+        <span>閫傚悎绾?API锛涘惎鐢ㄦ彃浠跺競鍦恒€佸己鍒跺畨瑁呫€佷細璇濆垹闄ゅ鍑恒€侀」鐩Щ鍔ㄧ瓑鍏ㄩ儴椤甸潰鑳藉姏銆?/span>
       </button>
     </div>
   );
@@ -4849,7 +4849,7 @@ function NoticeDialog({
           <h2>{notice.title}</h2>
           <p>{notice.message}</p>
         </div>
-        <button className="toast-close" onClick={onClose} type="button">×</button>
+        <button className="toast-close" onClick={onClose} type="button">脳</button>
       </div>
     </div>
   );
@@ -4872,7 +4872,7 @@ function ConfirmDialog({
             <h2>{confirm.title}</h2>
             <p className="modal-message">{confirm.message}</p>
           </div>
-          <button className="toast-close" onClick={onCancel} type="button">×</button>
+          <button className="toast-close" onClick={onCancel} type="button">脳</button>
         </div>
         <Toolbar>
           <Button onClick={onConfirm}>
@@ -4902,23 +4902,23 @@ function PluginMarketplacePromptDialog({
       <div className="modal-card plugin-marketplace-modal">
         <div className="modal-head">
           <div>
-            <h2>插件市场需要修复</h2>
-            <p>当前 CODEX_HOME 未发现可用的完整插件市场，API Key 模式下可能出现插件安装后不可用。</p>
+            <h2>鎻掍欢甯傚満闇€瑕佷慨澶?/h2>
+            <p>褰撳墠 CODEX_HOME 鏈彂鐜板彲鐢ㄧ殑瀹屾暣鎻掍欢甯傚満锛孉PI Key 妯″紡涓嬪彲鑳藉嚭鐜版彃浠跺畨瑁呭悗涓嶅彲鐢ㄣ€?/p>
           </div>
-          <button className="toast-close" onClick={onClose} type="button">×</button>
+          <button className="toast-close" onClick={onClose} type="button">脳</button>
         </div>
         <div className="metric-list">
           <Metric label="CODEX_HOME" value={status.codexHome} />
-          <Metric label="本地插件市场" value={status.marketplaceRoot ?? "未发现"} />
-          <Metric label="配置状态" value={status.configRegistered ? "已注册" : "未注册"} />
+          <Metric label="鏈湴鎻掍欢甯傚満" value={status.marketplaceRoot ?? "鏈彂鐜?} />
+          <Metric label="閰嶇疆鐘舵€? value={status.configRegistered ? "宸叉敞鍐? : "鏈敞鍐?} />
         </div>
-        <TaskProgressBox progress={progress} title="修复进度" />
+        <TaskProgressBox progress={progress} title="淇杩涘害" />
         <Toolbar>
           <Button disabled={progress.active} onClick={onRepair}>
             <Download className="h-4 w-4" />
-            {progress.active ? "正在修复…" : "一键修复"}
+            {progress.active ? "姝ｅ湪淇鈥? : "涓€閿慨澶?}
           </Button>
-          <Button disabled={progress.active} onClick={onClose} variant="secondary">稍后处理</Button>
+          <Button disabled={progress.active} onClick={onClose} variant="secondary">绋嶅悗澶勭悊</Button>
         </Toolbar>
       </div>
     </div>
@@ -4939,24 +4939,24 @@ function PendingProviderImportDialog({
       <div className="modal-card provider-import-modal">
         <div className="modal-head">
           <div>
-            <h2>导入 Codex++ 模型</h2>
-            <p>检测到来自网页的模型配置导入请求，确认后会写入本机 Codex++ 管理工具。</p>
+            <h2>瀵煎叆 Codex++ 妯″瀷</h2>
+            <p>妫€娴嬪埌鏉ヨ嚜缃戦〉鐨勬ā鍨嬮厤缃鍏ヨ姹傦紝纭鍚庝細鍐欏叆鏈満 Codex++ 绠＄悊宸ュ叿銆?/p>
           </div>
-          <button className="toast-close" onClick={onDismiss} type="button">×</button>
+          <button className="toast-close" onClick={onDismiss} type="button">脳</button>
         </div>
         <div className="metric-list">
-          <Metric label="名称" value={request.name || "未命名模型"} />
-          <Metric label="Base URL" value={request.baseUrl || "未填写"} />
-          <Metric label="协议" value={providerImportWireApiLabel(request.wireApi)} />
-          <Metric label="模式" value={providerImportRelayModeLabel(request.relayMode)} />
+          <Metric label="鍚嶇О" value={request.name || "鏈懡鍚嶆ā鍨?} />
+          <Metric label="Base URL" value={request.baseUrl || "鏈～鍐?} />
+          <Metric label="鍗忚" value={providerImportWireApiLabel(request.wireApi)} />
+          <Metric label="妯″紡" value={providerImportRelayModeLabel(request.relayMode)} />
           <Metric label="API Key" value={maskSecret(request.apiKey)} />
         </div>
         <Toolbar>
           <Button onClick={onConfirm}>
             <Download className="h-4 w-4" />
-            确认导入
+            纭瀵煎叆
           </Button>
-          <Button onClick={onDismiss} variant="secondary">取消</Button>
+          <Button onClick={onDismiss} variant="secondary">鍙栨秷</Button>
         </Toolbar>
       </div>
     </div>
@@ -4968,7 +4968,7 @@ function TaskProgressBox({ progress, title }: { progress: TaskProgress; title: s
   return (
     <div className="provider-sync-progress task-progress" data-active={progress.active}>
       <div className="provider-sync-progress-head">
-        <strong>{progress.active ? title : "上次修复结果"}</strong>
+        <strong>{progress.active ? title : "涓婃淇缁撴灉"}</strong>
         <span>{progress.percent}%</span>
       </div>
       <div
@@ -5020,7 +5020,7 @@ function StatusRow({ title, status = "unknown", path }: { title: string; status?
     <div className="status-row">
       <span>{title}</span>
       <Badge status={status} />
-      <code>{path || "未记录路径"}</code>
+      <code>{path || "鏈褰曡矾寰?}</code>
     </div>
   );
 }
@@ -5030,14 +5030,14 @@ function Badge({ status }: { status: string }) {
 }
 
 function LatestLaunch({ status }: { status: LaunchStatus | null }) {
-  if (!status) return <div className="empty">暂无启动状态。</div>;
+  if (!status) return <div className="empty">鏆傛棤鍚姩鐘舵€併€?/div>;
   return (
     <div className="metric-list">
-      <Metric label="状态" value={status.status} />
-      <Metric label="消息" value={status.message} />
+      <Metric label="鐘舵€? value={status.status} />
+      <Metric label="娑堟伅" value={status.message} />
       <Metric label="Debug" value={String(status.debug_port ?? "-")} />
       <Metric label="Helper" value={String(status.helper_port ?? "-")} />
-      <Metric label="时间" value={formatTime(status.started_at_ms)} />
+      <Metric label="鏃堕棿" value={formatTime(status.started_at_ms)} />
     </div>
   );
 }
@@ -5052,23 +5052,23 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function ScriptRow({ script, actions }: { script: NonNullable<UserScriptInventory["scripts"]>[number]; actions: Actions }) {
-  const source = script.market_id ? `市场 · ${script.version || "未知版本"}` : script.source === "builtin" ? "内置" : "用户";
+  const source = script.market_id ? `甯傚満 路 ${script.version || "鏈煡鐗堟湰"}` : script.source === "builtin" ? "鍐呯疆" : "鐢ㄦ埛";
   const canDelete = script.source === "user";
   return (
     <div className="table-row">
       <span>{script.name}</span>
       <span>{source}</span>
-      <span>{script.enabled ? "启用" : "关闭"}</span>
+      <span>{script.enabled ? "鍚敤" : "鍏抽棴"}</span>
       <span>{script.status}</span>
       <div className="script-row-actions">
         <Button onClick={() => void actions.setUserScriptEnabled(script.key, !script.enabled)} size="sm" variant="secondary">
           {script.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-          {script.enabled ? "禁用" : "启用"}
+          {script.enabled ? "绂佺敤" : "鍚敤"}
         </Button>
         {canDelete ? (
           <Button onClick={() => void actions.deleteUserScript(script.key)} size="sm" variant="outline">
             <Trash2 className="h-4 w-4" />
-            删除
+            鍒犻櫎
           </Button>
         ) : null}
       </div>
@@ -5094,7 +5094,7 @@ function AdGrid({ ads, empty, actions }: { ads: AdItem[]; empty: string; actions
             </div>
           ) : null}
           <span className="ad-link">
-            打开
+            鎵撳紑
             <ExternalLink className="h-4 w-4" />
           </span>
         </button>
@@ -5110,23 +5110,23 @@ function isExpiredAd(ad: AdItem) {
 }
 
 function routeTitle(route: Route) {
-  return routes.find((item) => item.id === route)?.label ?? "概览";
+  return routes.find((item) => item.id === route)?.label ?? "姒傝";
 }
 
 function routeSubtitle(route: Route) {
   const subtitles: Record<Route, string> = {
-    overview: "检查问题、启动与快速修复",
-    relay: "管理 API 模型、协议、Key 与配置文件",
-    mobileControl: "配置手机控制 relay、房间密钥和服务器状态",
-    sessions: "查看、删除和修复 Codex 本地会话",
-    context: "独立管理 MCP、Skills、Plugins",
-    enhance: "会话删除、导出、项目移动和脚本能力",
-    zedRemote: "管理 Codex SSH 项目并加入 Zed workspace",
-    userScripts: "内置和用户自定义脚本清单",
-    recommendations: "赞助商推荐与普通推荐",
-    maintenance: "入口安装、修复、Watcher 与手动启动",
-    about: "版本信息、项目链接、GitHub Release 更新、日志与诊断",
-    settings: "主题、命令包装器和启动参数",
+    overview: "妫€鏌ラ棶棰樸€佸惎鍔ㄤ笌蹇€熶慨澶?,
+    relay: "绠＄悊 API 妯″瀷銆佸崗璁€並ey 涓庨厤缃枃浠?,
+    mobileControl: "閰嶇疆鎵嬫満鎺у埗 relay銆佹埧闂村瘑閽ュ拰鏈嶅姟鍣ㄧ姸鎬?,
+    sessions: "鏌ョ湅銆佸垹闄ゅ拰淇 Codex 鏈湴浼氳瘽",
+    context: "鐙珛绠＄悊 MCP銆丼kills銆丳lugins",
+    enhance: "浼氳瘽鍒犻櫎銆佸鍑恒€侀」鐩Щ鍔ㄥ拰鑴氭湰鑳藉姏",
+    zedRemote: "绠＄悊 Codex SSH 椤圭洰骞跺姞鍏?Zed workspace",
+    userScripts: "鍐呯疆鍜岀敤鎴疯嚜瀹氫箟鑴氭湰娓呭崟",
+    recommendations: "璧炲姪鍟嗘帹鑽愪笌鏅€氭帹鑽?,
+    maintenance: "鍏ュ彛瀹夎銆佷慨澶嶃€乄atcher 涓庢墜鍔ㄥ惎鍔?,
+    about: "鐗堟湰淇℃伅銆侀」鐩摼鎺ャ€丟itHub Release 鏇存柊銆佹棩蹇椾笌璇婃柇",
+    settings: "涓婚銆佸懡浠ゅ寘瑁呭櫒鍜屽惎鍔ㄥ弬鏁?,
   };
   return subtitles[route];
 }
@@ -5134,11 +5134,11 @@ function routeSubtitle(route: Route) {
 const contextKindOptions: Array<{ kind: ContextKind; label: string; tableName: string }> = [
   { kind: "mcp", label: "MCP", tableName: "mcp_servers" },
   { kind: "skill", label: "Skills", tableName: "skills" },
-  { kind: "plugin", label: "插件", tableName: "plugins" },
+  { kind: "plugin", label: "鎻掍欢", tableName: "plugins" },
 ];
 
 function contextKindLabel(kind: ContextKind) {
-  return contextKindOptions.find((option) => option.kind === kind)?.label ?? "扩展项";
+  return contextKindOptions.find((option) => option.kind === kind)?.label ?? "鎵╁睍椤?;
 }
 
 function contextEntriesFromSettings(settings: BackendSettings): CodexContextEntries {
@@ -5726,30 +5726,30 @@ function contextSelectionForAllEntries(settings: BackendSettings): RelayContextS
 }
 
 function relayProfileEditorStatus(profile: RelayProfile, form: BackendSettings, isNew: boolean) {
-  if (isNew) return "新建模型需要先保存到列表";
-  if (!form.relayProfilesEnabled) return "模型配置总开关已关闭；当前只保存配置，不写入 Codex live 文件";
-  return profile.id === form.activeRelayId ? "当前正在使用" : "编辑后保存列表，再切换模式时会使用新配置";
+  if (isNew) return "鏂板缓妯″瀷闇€瑕佸厛淇濆瓨鍒板垪琛?;
+  if (!form.relayProfilesEnabled) return "妯″瀷閰嶇疆鎬诲紑鍏冲凡鍏抽棴锛涘綋鍓嶅彧淇濆瓨閰嶇疆锛屼笉鍐欏叆 Codex live 鏂囦欢";
+  return profile.id === form.activeRelayId ? "褰撳墠姝ｅ湪浣跨敤" : "缂栬緫鍚庝繚瀛樺垪琛紝鍐嶅垏鎹㈡ā寮忔椂浼氫娇鐢ㄦ柊閰嶇疆";
 }
 
 function providerInitial(name: string) {
-  const trimmed = (name || "模型").trim();
-  return Array.from(trimmed)[0]?.toUpperCase() || "供";
+  const trimmed = (name || "妯″瀷").trim();
+  return Array.from(trimmed)[0]?.toUpperCase() || "渚?;
 }
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
-    found: "已找到",
-    missing: "缺失",
-    installed: "已安装",
-    ok: "正常",
-    running: "运行中",
-    failed: "失败",
-    archived: "已归档",
-    accepted: "已受理",
-    not_checked: "未检查",
-    not_implemented: "未实现",
-    disabled: "已禁用",
-    unknown: "未知",
+    found: "宸叉壘鍒?,
+    missing: "缂哄け",
+    installed: "宸插畨瑁?,
+    ok: "姝ｅ父",
+    running: "杩愯涓?,
+    failed: "澶辫触",
+    archived: "宸插綊妗?,
+    accepted: "宸插彈鐞?,
+    not_checked: "鏈鏌?,
+    not_implemented: "鏈疄鐜?,
+    disabled: "宸茬鐢?,
+    unknown: "鏈煡",
   };
   return labels[status] ?? status;
 }
@@ -5772,22 +5772,22 @@ function truncateSessionDeletePreview(value: string) {
 function healthItems(overview: OverviewResult | null) {
   return [
     {
-      title: "Codex 应用",
+      title: "Codex 搴旂敤",
       status: overview?.codex_app.status ?? "not_checked",
       ok: overview?.codex_app.status === "found",
-      detail: overview?.codex_app.path || "尚未检查 Codex 应用路径。",
+      detail: overview?.codex_app.path || "灏氭湭妫€鏌?Codex 搴旂敤璺緞銆?,
     },
     {
-      title: "静默启动入口",
+      title: "闈欓粯鍚姩鍏ュ彛",
       status: overview?.silent_shortcut.status ?? "not_checked",
       ok: overview?.silent_shortcut.status === "installed",
-      detail: overview?.silent_shortcut.path || "缺少 Codex++ 静默启动快捷方式时可在安装维护页修复。",
+      detail: overview?.silent_shortcut.path || "缂哄皯 Codex++ 闈欓粯鍚姩蹇嵎鏂瑰紡鏃跺彲鍦ㄥ畨瑁呯淮鎶ら〉淇銆?,
     },
     {
-      title: "管理工具入口",
+      title: "绠＄悊宸ュ叿鍏ュ彛",
       status: overview?.management_shortcut.status ?? "not_checked",
       ok: overview?.management_shortcut.status === "installed",
-      detail: overview?.management_shortcut.path || "缺少管理工具快捷方式时可在安装维护页修复。",
+      detail: overview?.management_shortcut.path || "缂哄皯绠＄悊宸ュ叿蹇嵎鏂瑰紡鏃跺彲鍦ㄥ畨瑁呯淮鎶ら〉淇銆?,
     },
   ];
 }
@@ -5815,7 +5815,7 @@ function normalizeSettings(settings: BackendSettings): BackendSettings {
       : [
           {
             id: settings.activeRelayId || "default",
-            name: "默认中转",
+            name: "榛樿涓浆",
             model: "",
             baseUrl: settings.relayBaseUrl || defaultSettings.relayBaseUrl,
             upstreamBaseUrl: settings.relayBaseUrl || defaultSettings.relayBaseUrl,
@@ -5948,14 +5948,14 @@ function activeRelayProfile(settings: BackendSettings): RelayProfile {
 }
 
 function relayProtocolLabel(protocol: RelayProtocol): string {
-  return protocol === "chatCompletions" ? "Chat Completions 转 Responses" : "Responses API";
+  return protocol === "chatCompletions" ? "Chat Completions 杞?Responses" : "Responses API";
 }
 
 function ccsProviderSummary(result: CcsProvidersResult | null): string {
-  if (!result) return "读取 ~/.cc-switch/cc-switch.db";
-  if (!isSuccessStatus(result.status)) return result.message || "读取 cc-switch 模型失败。";
+  if (!result) return "璇诲彇 ~/.cc-switch/cc-switch.db";
+  if (!isSuccessStatus(result.status)) return result.message || "璇诲彇 cc-switch 妯″瀷澶辫触銆?;
   const count = result.providers.length;
-  return count ? `发现 ${count} 个 Codex 模型` : "未发现可导入模型";
+  return count ? `鍙戠幇 ${count} 涓?Codex 妯″瀷` : "鏈彂鐜板彲瀵煎叆妯″瀷";
 }
 
 function normalizeRelayMode(mode: RelayMode | undefined): RelayMode {
@@ -5983,9 +5983,9 @@ function normalizeContextSelection(
 }
 
 function relayModeLabel(mode: RelayMode): string {
-  if (mode === "aggregate") return "聚合模型";
-  if (mode === "pureApi") return "纯 API";
-  return "官方登录";
+  if (mode === "aggregate") return "鑱氬悎妯″瀷";
+  if (mode === "pureApi") return "绾?API";
+  return "瀹樻柟鐧诲綍";
 }
 
 function providerImportWireApiLabel(value: string): string {
@@ -5998,65 +5998,65 @@ function providerImportWireApiLabel(value: string): string {
 
 function providerImportRelayModeLabel(value: string): string {
   const normalized = value.trim().toLowerCase();
-  if (normalized === "official") return "官方登录";
-  if (normalized === "mixedapi" || normalized === "mixed-api" || normalized === "mixed_api") return "混入 API";
-  if (normalized === "aggregate") return "聚合模型";
-  return "纯 API";
+  if (normalized === "official") return "瀹樻柟鐧诲綍";
+  if (normalized === "mixedapi" || normalized === "mixed-api" || normalized === "mixed_api") return "娣峰叆 API";
+  if (normalized === "aggregate") return "鑱氬悎妯″瀷";
+  return "绾?API";
 }
 
 function maskSecret(value: string): string {
   const trimmed = value.trim();
-  if (!trimmed) return "未填写";
-  if (trimmed.length <= 10) return `${trimmed.slice(0, 2)}…${trimmed.slice(-2)}`;
-  return `${trimmed.slice(0, 6)}…${trimmed.slice(-4)}`;
+  if (!trimmed) return "鏈～鍐?;
+  if (trimmed.length <= 10) return `${trimmed.slice(0, 2)}鈥?{trimmed.slice(-2)}`;
+  return `${trimmed.slice(0, 6)}鈥?{trimmed.slice(-4)}`;
 }
 
 function relayProfileConfigBrief(profile: RelayProfile): string {
   if (isAggregateRelayProfile(profile)) {
     const aggregate = normalizeAggregateConfig(profile.aggregate, []);
-    return `${aggregateStrategyLabel(aggregate.strategy)} · ${aggregate.members.length} 个成员`;
+    return `${aggregateStrategyLabel(aggregate.strategy)} 路 ${aggregate.members.length} 涓垚鍛榒;
   }
-  if (profile.relayMode === "official") return profile.officialMixApiKey ? "混入 API Key" : "不写 API 文件";
-  return profile.baseUrl || "未填写 URL";
+  if (profile.relayMode === "official") return profile.officialMixApiKey ? "娣峰叆 API Key" : "涓嶅啓 API 鏂囦欢";
+  return profile.baseUrl || "鏈～鍐?URL";
 }
 
 function relayProfileModeHelp(profile: RelayProfile): string {
   if (isAggregateRelayProfile(profile)) {
-    return "聚合模型只保存成员和策略配置，成员来自已有 API 模型；切为当前后会通过本地协议代理轮转请求。";
+    return "鑱氬悎妯″瀷鍙繚瀛樻垚鍛樺拰绛栫暐閰嶇疆锛屾垚鍛樻潵鑷凡鏈?API 妯″瀷锛涘垏涓哄綋鍓嶅悗浼氶€氳繃鏈湴鍗忚浠ｇ悊杞浆璇锋眰銆?;
   }
   if (profile.relayMode === "official") {
     if (profile.officialMixApiKey) {
-      return "此模型会保留官方登录模式，并把请求混入当前 API Key；Codex增强仍使用兼容模式。";
+      return "姝ゆā鍨嬩細淇濈暀瀹樻柟鐧诲綍妯″紡锛屽苟鎶婅姹傛贩鍏ュ綋鍓?API Key锛汣odex澧炲己浠嶄娇鐢ㄥ吋瀹规ā寮忋€?;
     }
-    return "此模型会切回官方登录模式，使用 ChatGPT 官方账号，不写入 API Key。";
+    return "姝ゆā鍨嬩細鍒囧洖瀹樻柟鐧诲綍妯″紡锛屼娇鐢?ChatGPT 瀹樻柟璐﹀彿锛屼笉鍐欏叆 API Key銆?;
   }
   if (profile.relayMode === "pureApi") {
-    return "此模型会同时写入 config.toml 和 auth.json；API Key 也会注入到 provider bearer token。";
+    return "姝ゆā鍨嬩細鍚屾椂鍐欏叆 config.toml 鍜?auth.json锛汚PI Key 涔熶細娉ㄥ叆鍒?provider bearer token銆?;
   }
-  return "此模型会保留官方登录模式，并把请求混入当前 API Key；Codex增强仍使用兼容模式。";
+  return "姝ゆā鍨嬩細淇濈暀瀹樻柟鐧诲綍妯″紡锛屽苟鎶婅姹傛贩鍏ュ綋鍓?API Key锛汣odex澧炲己浠嶄娇鐢ㄥ吋瀹规ā寮忋€?;
 }
 
 function relayProfileReadinessText(profile: RelayProfile, relay: RelayResult | null): string {
   if (isAggregateRelayProfile(profile)) {
     const aggregate = normalizeAggregateConfig(profile.aggregate, []);
-    return `聚合模型已配置为${aggregateStrategyLabel(aggregate.strategy)}，包含 ${aggregate.members.length} 个成员；真实对话会走本地代理轮转。`;
+    return `鑱氬悎妯″瀷宸查厤缃负${aggregateStrategyLabel(aggregate.strategy)}锛屽寘鍚?${aggregate.members.length} 涓垚鍛橈紱鐪熷疄瀵硅瘽浼氳蛋鏈湴浠ｇ悊杞浆銆俙;
   }
   if (profile.relayMode === "official") {
     if (profile.officialMixApiKey) {
       const hasApiFields = profile.baseUrl.trim() && profile.apiKey.trim();
-      if (!relay?.authenticated && !hasApiFields) return "当前未登录官方账号，也未配置混入 API 的 Base URL / Key。";
-      if (!relay?.authenticated) return "当前未登录官方账号；官方登录混入 API Key 需要先登录官方账号。";
-      if (!hasApiFields) return "当前还没有填写混入 API 的 Base URL / Key。";
-      return `官方登录已就绪：${relay.accountLabel || "已登录"}，会混入当前 API Key。`;
+      if (!relay?.authenticated && !hasApiFields) return "褰撳墠鏈櫥褰曞畼鏂硅处鍙凤紝涔熸湭閰嶇疆娣峰叆 API 鐨?Base URL / Key銆?;
+      if (!relay?.authenticated) return "褰撳墠鏈櫥褰曞畼鏂硅处鍙凤紱瀹樻柟鐧诲綍娣峰叆 API Key 闇€瑕佸厛鐧诲綍瀹樻柟璐﹀彿銆?;
+      if (!hasApiFields) return "褰撳墠杩樻病鏈夊～鍐欐贩鍏?API 鐨?Base URL / Key銆?;
+      return `瀹樻柟鐧诲綍宸插氨缁細${relay.accountLabel || "宸茬櫥褰?}锛屼細娣峰叆褰撳墠 API Key銆俙;
     }
     return relay?.authenticated
-      ? `官方账号已登录：${relay.accountLabel || relay.authSource || "已检测"}。`
-      : "当前未登录官方账号；切到官方登录模式后仍需要先在 Codex/ChatGPT 登录。";
+      ? `瀹樻柟璐﹀彿宸茬櫥褰曪細${relay.accountLabel || relay.authSource || "宸叉娴?}銆俙
+      : "褰撳墠鏈櫥褰曞畼鏂硅处鍙凤紱鍒囧埌瀹樻柟鐧诲綍妯″紡鍚庝粛闇€瑕佸厛鍦?Codex/ChatGPT 鐧诲綍銆?;
   }
   const hasFiles = profile.configContents.trim() && profile.authContents.trim();
-  if (!hasFiles) return "当前模型还没有完整 config.toml / API Key 存档。";
-  if (relay && !relay.configured) return "纯 API 配置未完整写入：请检查此模型是否有 OPENAI_API_KEY，且 config.toml 是否包含 model_provider / provider / base_url。";
-  return "纯 API 就绪：会同时写入 config.toml 和 auth.json。";
+  if (!hasFiles) return "褰撳墠妯″瀷杩樻病鏈夊畬鏁?config.toml / API Key 瀛樻。銆?;
+  if (relay && !relay.configured) return "绾?API 閰嶇疆鏈畬鏁村啓鍏ワ細璇锋鏌ユ妯″瀷鏄惁鏈?OPENAI_API_KEY锛屼笖 config.toml 鏄惁鍖呭惈 model_provider / provider / base_url銆?;
+  return "绾?API 灏辩华锛氫細鍚屾椂鍐欏叆 config.toml 鍜?auth.json銆?;
 }
 
 function relayProfileSwitchCommand(profile: RelayProfile): "clear_relay_injection" | "apply_relay_injection" | "apply_pure_api_injection" {
@@ -6067,10 +6067,10 @@ function relayProfileSwitchCommand(profile: RelayProfile): "clear_relay_injectio
   return profile.officialMixApiKey ? "apply_relay_injection" : "clear_relay_injection";
 }
 function relayProfileModeSwitchedText(profile: RelayProfile): string {
-  if (isAggregateRelayProfile(profile)) return "已切换到聚合模型；真实对话会按所选策略轮转成员。";
-  if (profile.relayMode === "pureApi") return "已按此模型切换到纯 API；Codex增强已设为完整增强。";
-  if (profile.officialMixApiKey) return "已按此模型使用官方登录，并混入 API Key；Codex增强已设为兼容增强。";
-  return "已按此模型切回官方登录；Codex增强已设为兼容增强。";
+  if (isAggregateRelayProfile(profile)) return "宸插垏鎹㈠埌鑱氬悎妯″瀷锛涚湡瀹炲璇濅細鎸夋墍閫夌瓥鐣ヨ疆杞垚鍛樸€?;
+  if (profile.relayMode === "pureApi") return "宸叉寜姝ゆā鍨嬪垏鎹㈠埌绾?API锛汣odex澧炲己宸茶涓哄畬鏁村寮恒€?;
+  if (profile.officialMixApiKey) return "宸叉寜姝ゆā鍨嬩娇鐢ㄥ畼鏂圭櫥褰曪紝骞舵贩鍏?API Key锛汣odex澧炲己宸茶涓哄吋瀹瑰寮恒€?;
+  return "宸叉寜姝ゆā鍨嬪垏鍥炲畼鏂圭櫥褰曪紱Codex澧炲己宸茶涓哄吋瀹瑰寮恒€?;
 }
 
 function withGeneratedRelayFiles(profile: RelayProfile): RelayProfile {
@@ -6143,8 +6143,8 @@ function deriveRelayProfileFromFiles(profile: RelayProfile): RelayProfile {
   const upstreamBaseUrl = profile.upstreamBaseUrl || chatUpstreamBaseUrl || (configBaseUrl && !isProxyConfig ? configBaseUrl : profile.baseUrl || "");
   const configApiKey = codexExperimentalBearerTokenFromConfig(configContents);
   const configModel = codexModelFromConfig(configContents);
-  // 如果用户输入了带后缀的模型名，优先保留在界面的「配置模型」字段中；
-  // config.toml 里实际写的是剥离后缀的 slug（由 applyRelayProfilePatchToFiles 处理）。
+  // 濡傛灉鐢ㄦ埛杈撳叆浜嗗甫鍚庣紑鐨勬ā鍨嬪悕锛屼紭鍏堜繚鐣欏湪鐣岄潰鐨勩€岄厤缃ā鍨嬨€嶅瓧娈典腑锛?
+  // config.toml 閲屽疄闄呭啓鐨勬槸鍓ョ鍚庣紑鐨?slug锛堢敱 applyRelayProfilePatchToFiles 澶勭悊锛夈€?
   const model = /\[.+\]$/.test(profile.model.trim()) ? profile.model.trim() : configModel;
   return {
     ...profile,
@@ -6178,8 +6178,8 @@ function applyRelayProfilePatchToFiles(
   }
 
   if ("model" in patch) {
-    // 模型后缀（如 [1M]）仅供 CodexPlusPlus 内部使用，写入 config.toml 前需剥离，
-    // 否则 codex 会按带后缀的字符串去匹配 catalog slug，导致窗口回退到默认值。
+    // 妯″瀷鍚庣紑锛堝 [1M]锛変粎渚?CodexPlusPlus 鍐呴儴浣跨敤锛屽啓鍏?config.toml 鍓嶉渶鍓ョ锛?
+    // 鍚﹀垯 codex 浼氭寜甯﹀悗缂€鐨勫瓧绗︿覆鍘诲尮閰?catalog slug锛屽鑷寸獥鍙ｅ洖閫€鍒伴粯璁ゅ€笺€?
     const { slug } = parseModelSuffix(patch.model || "");
     next.configContents = setRootTomlStringKey(next.configContents, "model", slug);
   }
@@ -6235,8 +6235,8 @@ function codexModelFromConfig(contents: string): string {
   return "";
 }
 
-/// 解析模型后缀语法，如 deepseek-v4-flash[1M] -> { slug: "deepseek-v4-flash", window: 1000000 }
-/// 非法或没有后缀时返回原串作为 slug。
+/// 瑙ｆ瀽妯″瀷鍚庣紑璇硶锛屽 deepseek-v4-flash[1M] -> { slug: "deepseek-v4-flash", window: 1000000 }
+/// 闈炴硶鎴栨病鏈夊悗缂€鏃惰繑鍥炲師涓蹭綔涓?slug銆?
 function parseModelSuffix(raw: string): { slug: string; window?: number } {
   const trimmed = raw.trim();
   const match = /^(.*?)\[(\d+(?:[KkMm])?)\]$/.exec(trimmed);
@@ -6454,10 +6454,10 @@ function relayProfileSwitchValidation(profile: RelayProfile): string | null {
   }
   if (profile.relayMode === "official" && !profile.officialMixApiKey) return null;
   if (!profile.configContents.trim()) {
-    return `模型「${profile.name || profile.id}」缺少独立 config.toml，已停止切换，避免继续显示上一套配置文件。请先在该模型详情里保存 config.toml。`;
+    return `妯″瀷銆?{profile.name || profile.id}銆嶇己灏戠嫭绔?config.toml锛屽凡鍋滄鍒囨崲锛岄伩鍏嶇户缁樉绀轰笂涓€濂楅厤缃枃浠躲€傝鍏堝湪璇ユā鍨嬭鎯呴噷淇濆瓨 config.toml銆俙;
   }
   if (profile.relayMode !== "official" || !authJsonHasOpenAiApiKey(profile.authContents)) return null;
-  return "官方混合 API 不应在 auth.json 中保存 OPENAI_API_KEY。请清理此模型的 auth.json 后再切换。";
+  return "瀹樻柟娣峰悎 API 涓嶅簲鍦?auth.json 涓繚瀛?OPENAI_API_KEY銆傝娓呯悊姝ゆā鍨嬬殑 auth.json 鍚庡啀鍒囨崲銆?;
 }
 
 function relayProfileUsesLiveFiles(profile: RelayProfile): boolean {
@@ -6503,7 +6503,7 @@ function normalizeAggregateProfilesFromRelayProfiles(profiles: RelayProfile[]): 
     const aggregate = normalizeAggregateConfig(profile.aggregate, candidates);
     return {
       id: profile.id,
-      name: profile.name || "聚合模型",
+      name: profile.name || "鑱氬悎妯″瀷",
       strategy: aggregate.strategy,
       members: aggregate.members.map((member) => ({
         relayId: member.profileId,
@@ -6535,7 +6535,7 @@ function createRelayProfile(settings: BackendSettings): RelayProfile {
   const contextSelection = contextSelectionForAllEntries(settings);
   const next = {
     id,
-    name: `模型 ${settings.relayProfiles.length + 1}`,
+    name: `妯″瀷 ${settings.relayProfiles.length + 1}`,
     model: "",
     baseUrl: defaultSettings.relayBaseUrl,
     upstreamBaseUrl: defaultSettings.relayBaseUrl,
@@ -6565,7 +6565,7 @@ function createAggregateRelayProfile(settings: BackendSettings): RelayProfile {
   return normalizeAggregateRelayProfile(
     {
       id,
-      name: `聚合模型 ${settings.relayProfiles.filter(isAggregateRelayProfile).length + 1}`,
+      name: `鑱氬悎妯″瀷 ${settings.relayProfiles.filter(isAggregateRelayProfile).length + 1}`,
       model: "",
       baseUrl: "",
       upstreamBaseUrl: "",
@@ -6616,7 +6616,7 @@ function duplicateRelayProfile(settings: BackendSettings, id: string): BackendSe
   const next = {
     ...source,
     id: nextId,
-    name: `${source.name || "未命名模型"} 副本`,
+    name: `${source.name || "鏈懡鍚嶆ā鍨?} 鍓湰`,
   };
   const normalizedNext = isAggregateRelayProfile(next) ? normalizeAggregateRelayProfile(next, settings) : next;
   const relayProfiles = [...settings.relayProfiles];
@@ -6667,23 +6667,23 @@ function removeRelayProfile(settings: BackendSettings, id: string): BackendSetti
 const aggregateStrategyOptions: Array<{ value: RelayAggregateStrategy; label: string; description: string }> = [
   {
     value: "failover",
-    label: "失败切换",
-    description: "按成员顺序请求，失败后切到下一个模型。",
+    label: "澶辫触鍒囨崲",
+    description: "鎸夋垚鍛橀『搴忚姹傦紝澶辫触鍚庡垏鍒颁笅涓€涓ā鍨嬨€?,
   },
   {
     value: "conversationRoundRobin",
-    label: "按对话轮转",
-    description: "同一对话保持一个成员，不同对话依次分配。",
+    label: "鎸夊璇濊疆杞?,
+    description: "鍚屼竴瀵硅瘽淇濇寔涓€涓垚鍛橈紝涓嶅悓瀵硅瘽渚濇鍒嗛厤銆?,
   },
   {
     value: "requestRoundRobin",
-    label: "按请求轮转",
-    description: "每次请求按成员顺序切换，适合均匀摊请求量。",
+    label: "鎸夎姹傝疆杞?,
+    description: "姣忔璇锋眰鎸夋垚鍛橀『搴忓垏鎹紝閫傚悎鍧囧寑鎽婅姹傞噺銆?,
   },
   {
     value: "weightedRoundRobin",
-    label: "权重轮转",
-    description: "按成员权重分配请求，权重越高承担越多。",
+    label: "鏉冮噸杞浆",
+    description: "鎸夋垚鍛樻潈閲嶅垎閰嶈姹傦紝鏉冮噸瓒婇珮鎵挎媴瓒婂銆?,
   },
 ];
 
@@ -6744,19 +6744,19 @@ function clampAggregateWeight(value: number): number {
 }
 
 function aggregateStrategyLabel(strategy: RelayAggregateStrategy): string {
-  return aggregateStrategyOptions.find((option) => option.value === strategy)?.label ?? "失败切换";
+  return aggregateStrategyOptions.find((option) => option.value === strategy)?.label ?? "澶辫触鍒囨崲";
 }
 
 function aggregateStrategyHelp(strategy: RelayAggregateStrategy): string {
-  if (strategy === "failover") return "失败切换会保留成员顺序，优先使用第一个可用模型。";
-  if (strategy === "conversationRoundRobin") return "按对话轮转会让同一对话尽量保持固定成员，降低上下文漂移。";
-  if (strategy === "requestRoundRobin") return "按请求轮转会逐请求切换成员，适合模型能力接近的场景。";
-  return "权重轮转会读取每个成员的权重值，权重越高的成员获得更多请求。";
+  if (strategy === "failover") return "澶辫触鍒囨崲浼氫繚鐣欐垚鍛橀『搴忥紝浼樺厛浣跨敤绗竴涓彲鐢ㄦā鍨嬨€?;
+  if (strategy === "conversationRoundRobin") return "鎸夊璇濊疆杞細璁╁悓涓€瀵硅瘽灏介噺淇濇寔鍥哄畾鎴愬憳锛岄檷浣庝笂涓嬫枃婕傜Щ銆?;
+  if (strategy === "requestRoundRobin") return "鎸夎姹傝疆杞細閫愯姹傚垏鎹㈡垚鍛橈紝閫傚悎妯″瀷鑳藉姏鎺ヨ繎鐨勫満鏅€?;
+  return "鏉冮噸杞浆浼氳鍙栨瘡涓垚鍛樼殑鏉冮噸鍊硷紝鏉冮噸瓒婇珮鐨勬垚鍛樿幏寰楁洿澶氳姹傘€?;
 }
 
 function aggregateRelayProfileValidation(profile: RelayProfile): string | null {
   const aggregate = normalizeAggregateConfig(profile.aggregate, []);
-  return aggregate.members.length >= 1 ? null : "聚合模型至少需要勾选 1 个已填写 Base URL / Key 的 API 模型。";
+  return aggregate.members.length >= 1 ? null : "鑱氬悎妯″瀷鑷冲皯闇€瑕佸嬀閫?1 涓凡濉啓 Base URL / Key 鐨?API 妯″瀷銆?;
 }
 
 function numberOrDefault(value: string, fallback: number) {
@@ -6769,10 +6769,10 @@ function splitLogLines(text: string) {
 }
 
 function zedStrategyLabel(strategy: ZedOpenStrategy) {
-  if (strategy === "reuseWindow") return "复用窗口";
-  if (strategy === "newWindow") return "新窗口";
-  if (strategy === "default") return "Zed 默认行为";
-  return "加入当前工作区";
+  if (strategy === "reuseWindow") return "澶嶇敤绐楀彛";
+  if (strategy === "newWindow") return "鏂扮獥鍙?;
+  if (strategy === "default") return "Zed 榛樿琛屼负";
+  return "鍔犲叆褰撳墠宸ヤ綔鍖?;
 }
 
 function zedRemoteHostLabel(project: ZedRemoteProject) {
@@ -6782,12 +6782,12 @@ function zedRemoteHostLabel(project: ZedRemoteProject) {
 }
 
 function zedRemoteSourceLabel(source: string) {
-  if (source === "currentThread") return "当前会话";
+  if (source === "currentThread") return "褰撳墠浼氳瘽";
   if (source === "codexRemoteProject") return "Codex remote project";
   if (source === "threadWorkspaceHint") return "Thread workspace hint";
   if (source === "sqliteThreadCwd") return "SQLite cwd";
-  if (source === "recent") return "最近打开";
-  return source || "未知来源";
+  if (source === "recent") return "鏈€杩戞墦寮€";
+  return source || "鏈煡鏉ユ簮";
 }
 
 function formatTime(value: number) {
@@ -6800,11 +6800,11 @@ function formatDuration(startedAtMs: number): string {
   const elapsed = Date.now() - startedAtMs;
   if (elapsed < 0) return formatTime(startedAtMs);
   const mins = Math.floor(elapsed / 60000);
-  if (mins < 1) return "刚刚启动";
-  if (mins < 60) return `已运行 ${mins} 分钟`;
+  if (mins < 1) return "鍒氬垰鍚姩";
+  if (mins < 60) return `宸茶繍琛?${mins} 鍒嗛挓`;
   const hours = Math.floor(mins / 60);
   const remainMins = mins % 60;
-  return `已运行 ${hours} 小时 ${remainMins} 分钟`;
+  return `宸茶繍琛?${hours} 灏忔椂 ${remainMins} 鍒嗛挓`;
 }
 
 function stringifyError(error: unknown) {
@@ -6825,3 +6825,4 @@ function loadInitialRoute(): Route {
   }
   return "overview";
 }
+
