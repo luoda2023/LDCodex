@@ -1,4 +1,4 @@
-ï»¿import {
+import {
   closestCenter,
   DndContext,
   KeyboardSensor,
@@ -245,8 +245,8 @@ const LOCAL_MOBILE_RELAY_URL = "ws://127.0.0.1:57323";
 const PUBLIC_MOBILE_RELAY_URL = "ws://154.201.90.76:57323";
 
 const mobileRelayServers = [
-  { id: "local", label: "æœ¬æœºæµ‹è¯•", url: LOCAL_MOBILE_RELAY_URL, capacity: 100 },
-  { id: "public-154", label: "å…¬å…±æœåŠ¡å™¨ 1", url: PUBLIC_MOBILE_RELAY_URL, capacity: 100 },
+  { id: "local", label: "±¾»ú²âÊÔ", url: LOCAL_MOBILE_RELAY_URL, capacity: 100 },
+  { id: "public-154", label: "¹«¹²·şÎñÆ÷ 1", url: PUBLIC_MOBILE_RELAY_URL, capacity: 100 },
 ];
 
 const emptyContextSelection = (): RelayContextSelection => ({
@@ -551,23 +551,23 @@ type ScriptMarketResult = CommandResult<{
 function providerSyncProgressMessage(result: CommandResult<ProviderSyncPayload>): string {
   const changed = result.changedSessionFiles ?? 0;
   const rows = result.sqliteRowsUpdated ?? 0;
-  const target = result.targetProvider || "å½“å‰ provider";
+  const target = result.targetProvider || "µ±Ç° provider";
   const skipped = result.skippedLockedRolloutFiles?.length ?? 0;
-  const skippedText = skipped ? `ï¼Œè·³è¿‡ ${skipped} ä¸ªå ç”¨æ–‡ä»¶` : "";
-  return `å·²åŒæ­¥åˆ° ${target}ï¼šä¿®å¤ ${changed} ä¸ªä¼šè¯æ–‡ä»¶ï¼Œæ›´æ–° ${rows} è¡Œç´¢å¼•${skippedText}ã€‚`;
+  const skippedText = skipped ? `£¬Ìø¹ı ${skipped} ¸öÕ¼ÓÃÎÄ¼ş` : "";
+  return `ÒÑÍ¬²½µ½ ${target}£ºĞŞ¸´ ${changed} ¸ö»á»°ÎÄ¼ş£¬¸üĞÂ ${rows} ĞĞË÷Òı${skippedText}¡£`;
 }
 
 const providerSyncSourceLabels: Record<ProviderSyncTargetSource, string> = {
-  config: "é…ç½®",
-  rollout: "ä¼šè¯",
-  sqlite: "ç´¢å¼•",
-  manual: "æ‰‹åŠ¨",
+  config: "ÅäÖÃ",
+  rollout: "»á»°",
+  sqlite: "Ë÷Òı",
+  manual: "ÊÖ¶¯",
 };
 
 function providerSyncTargetLabel(target: ProviderSyncTargetOption): string {
   const labels = target.sources.map((source) => providerSyncSourceLabels[source]).filter(Boolean);
-  const current = target.isCurrentProvider ? ["å½“å‰"] : [];
-  return [...labels, ...current].join(" / ") || "å‘ç°";
+  const current = target.isCurrentProvider ? ["µ±Ç°"] : [];
+  return [...labels, ...current].join(" / ") || "·¢ÏÖ";
 }
 
 function syncMarketInstalledState(current: ScriptMarketResult | null, userScripts: UserScriptInventory): ScriptMarketResult | null {
@@ -603,18 +603,18 @@ type Route = "overview" | "relay" | "mobileControl" | "sessions" | "context" | "
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string }> = [
-  { id: "overview", label: "æ¦‚è§ˆ", icon: LayoutDashboard },
-  { id: "relay", label: "æ¨¡å‹é…ç½®", icon: KeyRound },
-  { id: "mobileControl", label: "æ‰‹æœºæ§åˆ¶", icon: MessageCircle, badge: "æµ‹è¯•ç‰ˆ" },
-  { id: "sessions", label: "ä¼šè¯ç®¡ç†", icon: MessageCircle },
-  { id: "context", label: "å·¥å…·ä¸æ’ä»¶", icon: Network },
-  { id: "enhance", label: "Codexå¢å¼º", icon: Hammer },
-  { id: "zedRemote", label: "Zed è¿œç¨‹é¡¹ç›®", icon: ExternalLink },
-  { id: "userScripts", label: "è„šæœ¬å¸‚åœº", icon: FileCode2 },
-  { id: "recommendations", label: "æ¨èå†…å®¹", icon: ExternalLink },
-  { id: "maintenance", label: "å®‰è£…ç»´æŠ¤", icon: Wrench },
-  { id: "about", label: "å…³äº", icon: Info },
-  { id: "settings", label: "è®¾ç½®", icon: Settings },
+  { id: "overview", label: "¸ÅÀÀ", icon: LayoutDashboard },
+  { id: "relay", label: "Ä£ĞÍÅäÖÃ", icon: KeyRound },
+  { id: "mobileControl", label: "ÊÖ»ú¿ØÖÆ", icon: MessageCircle, badge: "²âÊÔ°æ" },
+  { id: "sessions", label: "»á»°¹ÜÀí", icon: MessageCircle },
+  { id: "context", label: "¹¤¾ßÓë²å¼ş", icon: Network },
+  { id: "enhance", label: "CodexÔöÇ¿", icon: Hammer },
+  { id: "zedRemote", label: "Zed Ô¶³ÌÏîÄ¿", icon: ExternalLink },
+  { id: "userScripts", label: "½Å±¾ÊĞ³¡", icon: FileCode2 },
+  { id: "recommendations", label: "ÍÆ¼öÄÚÈİ", icon: ExternalLink },
+  { id: "maintenance", label: "°²×°Î¬»¤", icon: Wrench },
+  { id: "about", label: "¹ØÓÚ", icon: Info },
+  { id: "settings", label: "ÉèÖÃ", icon: Settings },
 ];
 
 const defaultSettings: BackendSettings = {
@@ -660,7 +660,7 @@ const defaultSettings: BackendSettings = {
   relayProfiles: [
     {
       id: "default",
-      name: "é»˜è®¤ä¸­è½¬",
+      name: "Ä¬ÈÏÖĞ×ª",
       model: "",
       baseUrl: "",
       upstreamBaseUrl: "",
@@ -730,13 +730,13 @@ export function App() {
   const [providerSyncProgress, setProviderSyncProgress] = useState<ProviderSyncProgress>({
     active: false,
     percent: 0,
-    message: "å°šæœªè¿è¡Œå†å²ä¼šè¯ä¿®å¤ã€‚",
+    message: "ÉĞÎ´ÔËĞĞÀúÊ·»á»°ĞŞ¸´¡£",
     result: null,
   });
   const [pluginMarketplaceProgress, setPluginMarketplaceProgress] = useState<TaskProgress>({
     active: false,
     percent: 0,
-    message: "å°šæœªè¿è¡Œæ’ä»¶å¸‚åœºä¿®å¤ã€‚",
+    message: "ÉĞÎ´ÔËĞĞ²å¼şÊĞ³¡ĞŞ¸´¡£",
   });
   const [pluginMarketplacePrompt, setPluginMarketplacePrompt] = useState<PluginMarketplaceStatusResult | null>(null);
   const [providerSyncTargets, setProviderSyncTargets] = useState<ProviderSyncTargetsResult | null>(null);
@@ -754,7 +754,7 @@ export function App() {
     try {
       return await task();
     } catch (error) {
-      showNotice("è°ƒç”¨å¤±è´¥", stringifyError(error), "failed");
+      showNotice("µ÷ÓÃÊ§°Ü", stringifyError(error), "failed");
       return null;
     }
   };
@@ -762,15 +762,15 @@ export function App() {
   const refreshOverview = async (silent = false) => {
     const result = await run(() => call<OverviewResult>("load_overview"));
     if (result) {
-      // å´©æºƒæ£€æµ‹ï¼šè¿›ç¨‹ä»è¿è¡ŒçŠ¶æ€å˜ä¸ºåœæ­¢/å¤±è´¥ â†’ å¼¹å‡ºé€šçŸ¥
+      // ±ÀÀ£¼ì²â£º½ø³Ì´ÓÔËĞĞ×´Ì¬±äÎªÍ£Ö¹/Ê§°Ü ¡ú µ¯³öÍ¨Öª
       const prev = prevLaunchStatusRef.current;
       const current = result.latest_launch?.status;
       if (prev && prev === "running" && current && (current === "stopped" || current === "failed" || current === "crashed")) {
-        showNotice("Codex æ„å¤–åœæ­¢", `è¿›ç¨‹çŠ¶æ€ï¼š${current}ã€‚æ˜¯å¦è¦é‡æ–°å¯åŠ¨ï¼Ÿ`, "failed");
+        showNotice("Codex ÒâÍâÍ£Ö¹", `½ø³Ì×´Ì¬£º${current}¡£ÊÇ·ñÒªÖØĞÂÆô¶¯£¿`, "failed");
       }
       prevLaunchStatusRef.current = current ?? null;
       setOverview(result);
-      if (!silent) showResultNotice("æ¦‚è§ˆå·²æ£€æŸ¥", result, { silentSuccess: true });
+      if (!silent) showResultNotice("¸ÅÀÀÒÑ¼ì²é", result, { silentSuccess: true });
     }
   };
 
@@ -784,7 +784,7 @@ export function App() {
         ...current,
         appPath: current.appPath || result.settings.codexAppPath || "",
       }));
-      if (!silent) showResultNotice("è®¾ç½®å·²åŠ è½½", result, { silentSuccess: true });
+      if (!silent) showResultNotice("ÉèÖÃÒÑ¼ÓÔØ", result, { silentSuccess: true });
       return normalized;
     }
     return null;
@@ -795,7 +795,7 @@ export function App() {
     if (result) {
       setScriptMarket(result);
       setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("è„šæœ¬å¸‚åœº", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("½Å±¾ÊĞ³¡", result, { silentSuccess: true });
     }
   };
 
@@ -804,7 +804,7 @@ export function App() {
     if (result) {
       setScriptMarket(result);
       setSettings((current) => (current ? { ...current, user_scripts: result.user_scripts } : current));
-      showResultNotice("è„šæœ¬å¸‚åœº", result);
+      showResultNotice("½Å±¾ÊĞ³¡", result);
     }
   };
 
@@ -813,19 +813,19 @@ export function App() {
     if (result) {
       setSettings(result);
       setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
-      showResultNotice("æœ¬åœ°è„šæœ¬", result);
+      showResultNotice("±¾µØ½Å±¾", result);
     }
   };
 
   const deleteUserScript = async (key: string) => {
     const script = settings?.user_scripts?.scripts?.find((item) => item.key === key);
     const name = script?.name || key;
-    if (!window.confirm(`åˆ é™¤è„šæœ¬â€œ${name}â€ï¼Ÿæ­¤æ“ä½œä¼šç§»é™¤æœ¬åœ°è„šæœ¬æ–‡ä»¶ã€‚`)) return;
+    if (!window.confirm(`É¾³ı½Å±¾¡°${name}¡±£¿´Ë²Ù×÷»áÒÆ³ı±¾µØ½Å±¾ÎÄ¼ş¡£`)) return;
     const result = await run(() => call<SettingsResult>("delete_user_script", { key }));
     if (result) {
       setSettings(result);
       setScriptMarket((current) => syncMarketInstalledState(current, result.user_scripts));
-      showResultNotice("æœ¬åœ°è„šæœ¬", result);
+      showResultNotice("±¾µØ½Å±¾", result);
     }
   };
 
@@ -833,7 +833,7 @@ export function App() {
     const result = await run(() => call<RelayResult>("relay_status"));
     if (result) {
       setRelay(result);
-      if (!silent) showResultNotice("ç™»å½•çŠ¶æ€", result, { silentSuccess: true });
+      if (!silent) showResultNotice("µÇÂ¼×´Ì¬", result, { silentSuccess: true });
     }
   };
 
@@ -841,7 +841,7 @@ export function App() {
     const result = await run(() => call<RelayFilesResult>("read_relay_files"));
     if (result) {
       setRelayFiles(result);
-      if (!silent) showResultNotice("é…ç½®æ–‡ä»¶", result, { silentSuccess: true });
+      if (!silent) showResultNotice("ÅäÖÃÎÄ¼ş", result, { silentSuccess: true });
     }
     return result;
   };
@@ -850,7 +850,7 @@ export function App() {
     const result = await run(() => call<EnvConflictsResult>("check_env_conflicts"));
     if (result) {
       setEnvConflicts(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("ç¯å¢ƒå˜é‡æ£€æµ‹", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("»·¾³±äÁ¿¼ì²â", result, { silentSuccess: true });
     }
     return result;
   };
@@ -858,7 +858,7 @@ export function App() {
   const removeEnvConflicts = async (names: string[]) => {
     const uniqueNames = Array.from(new Set(names.map((name) => name.trim()).filter(Boolean)));
     if (!uniqueNames.length) return;
-    if (!window.confirm(`åˆ é™¤è¿™äº›ç¯å¢ƒå˜é‡ï¼Ÿ\n\n${uniqueNames.join("\n")}\n\nåˆ é™¤å‰ä¼šå†™å…¥å¤‡ä»½ã€‚`)) return;
+    if (!window.confirm(`É¾³ıÕâĞ©»·¾³±äÁ¿£¿\n\n${uniqueNames.join("\n")}\n\nÉ¾³ıÇ°»áĞ´Èë±¸·İ¡£`)) return;
     const result = await run(() => call<RemoveEnvConflictsResult>("remove_env_conflicts", { request: { names: uniqueNames } }));
     if (result) {
       setEnvConflicts({
@@ -866,7 +866,7 @@ export function App() {
         message: result.message,
         conflicts: result.remaining,
       });
-      showNotice("ç¯å¢ƒå˜é‡æ¸…ç†", result.message, result.status);
+      showNotice("»·¾³±äÁ¿ÇåÀí", result.message, result.status);
     }
   };
 
@@ -874,7 +874,7 @@ export function App() {
     const result = await run(() => call<CcsProvidersResult>("load_ccs_providers"));
     if (result) {
       setCcsProviders(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("cc-switch å¯¼å…¥", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("cc-switch µ¼Èë", result, { silentSuccess: true });
     }
     return result;
   };
@@ -884,7 +884,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showResultNotice("cc-switch å¯¼å…¥", result);
+      showResultNotice("cc-switch µ¼Èë", result);
       await refreshCcsProviders(true);
     }
   };
@@ -893,7 +893,7 @@ export function App() {
     const result = await run(() => call<PendingProviderImportResult>("load_pending_provider_import"));
     if (result) {
       setPendingProviderImport(result.pending);
-      if (!silent && !isSuccessStatus(result.status)) showResultNotice("LDCodex å¯¼å…¥", result, { silentSuccess: true });
+      if (!silent && !isSuccessStatus(result.status)) showResultNotice("LDCodex µ¼Èë", result, { silentSuccess: true });
     }
     return result;
   };
@@ -904,7 +904,7 @@ export function App() {
       setPendingProviderImport(null);
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showResultNotice("LDCodex å¯¼å…¥", result);
+      showResultNotice("LDCodex µ¼Èë", result);
       await refreshCcsProviders(true);
     }
   };
@@ -913,7 +913,7 @@ export function App() {
     const result = await run(() => call<PendingProviderImportResult>("dismiss_pending_provider_import"));
     if (result) {
       setPendingProviderImport(null);
-      showResultNotice("LDCodex å¯¼å…¥", result, { silentSuccess: true });
+      showResultNotice("LDCodex µ¼Èë", result, { silentSuccess: true });
     }
   };
 
@@ -921,7 +921,7 @@ export function App() {
     const result = await run(() => call<LocalSessionsResult>("list_local_sessions"));
     if (result) {
       setLocalSessions(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("ä¼šè¯ç®¡ç†", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("»á»°¹ÜÀí", result, { silentSuccess: true });
     }
     return result;
   };
@@ -930,7 +930,7 @@ export function App() {
     const result = await run(() => call<ZedRemoteProjectsResult>("list_zed_remote_projects"));
     if (result) {
       setZedRemoteProjects(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("Zed è¿œç¨‹é¡¹ç›®", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("Zed Ô¶³ÌÏîÄ¿", result, { silentSuccess: true });
     }
     return result;
   };
@@ -951,7 +951,7 @@ export function App() {
       }),
     );
     if (result) {
-      showResultNotice("Zed è¿œç¨‹æ‰“å¼€", result);
+      showResultNotice("Zed Ô¶³Ì´ò¿ª", result);
       await refreshZedRemoteProjects(true);
     }
   };
@@ -960,7 +960,7 @@ export function App() {
     const result = await run(() => call<ZedRemoteProjectsResult>("forget_zed_remote_project", { id: project.id }));
     if (result) {
       setZedRemoteProjects(result);
-      showResultNotice("Zed è¿œç¨‹é¡¹ç›®", result);
+      showResultNotice("Zed Ô¶³ÌÏîÄ¿", result);
     }
   };
 
@@ -974,19 +974,19 @@ export function App() {
       setConfirmDialog({
         title,
         message,
-        confirmText: "ç¡®è®¤åˆ é™¤",
-        cancelText: "å–æ¶ˆ",
+        confirmText: "È·ÈÏÉ¾³ı",
+        cancelText: "È¡Ïû",
         resolve,
       });
     });
 
   const deleteLocalSession = async (session: LocalSession) => {
     const title = session.title || session.id;
-    const confirmed = await confirmSessionDelete("åˆ é™¤ä¼šè¯", `åˆ é™¤ä¼šè¯â€œ${title}â€ï¼Ÿæ­¤æ“ä½œä¼šåˆ é™¤æœ¬åœ°æ•°æ®åº“è®°å½•å’Œ rollout æ–‡ä»¶ï¼Œå¹¶åˆ›å»ºå¤‡ä»½ã€‚`);
+    const confirmed = await confirmSessionDelete("É¾³ı»á»°", `É¾³ı»á»°¡°${title}¡±£¿´Ë²Ù×÷»áÉ¾³ı±¾µØÊı¾İ¿â¼ÇÂ¼ºÍ rollout ÎÄ¼ş£¬²¢´´½¨±¸·İ¡£`);
     if (!confirmed) return;
     const result = await run(() => requestDeleteLocalSession(session));
     if (result) {
-      showResultNotice("ä¼šè¯åˆ é™¤", result);
+      showResultNotice("»á»°É¾³ı", result);
       await refreshLocalSessions(true);
     }
   };
@@ -994,17 +994,17 @@ export function App() {
   const deleteLocalSessions = async (sessions: LocalSession[]) => {
     const uniqueSessions = Array.from(new Map(sessions.map((session) => [session.id, session])).values());
     if (!uniqueSessions.length) {
-      showNotice("æ‰¹é‡åˆ é™¤ä¼šè¯", "è¯·å…ˆé€‰æ‹©è¦åˆ é™¤çš„ä¼šè¯ã€‚", "failed");
+      showNotice("ÅúÁ¿É¾³ı»á»°", "ÇëÏÈÑ¡ÔñÒªÉ¾³ıµÄ»á»°¡£", "failed");
       return;
     }
     const preview = uniqueSessions
       .slice(0, 6)
       .map((session) => `- ${truncateSessionDeletePreview(session.title || session.id)}`)
       .join("\n");
-    const extraCount = uniqueSessions.length > 6 ? `\n...ä»¥åŠå¦å¤– ${uniqueSessions.length - 6} ä¸ªä¼šè¯` : "";
+    const extraCount = uniqueSessions.length > 6 ? `\n...ÒÔ¼°ÁíÍâ ${uniqueSessions.length - 6} ¸ö»á»°` : "";
     const confirmed = await confirmSessionDelete(
-      "æ‰¹é‡åˆ é™¤ä¼šè¯",
-      `åˆ é™¤é€‰ä¸­çš„ ${uniqueSessions.length} ä¸ªä¼šè¯ï¼Ÿæ­¤æ“ä½œä¼šåˆ é™¤æœ¬åœ°æ•°æ®åº“è®°å½•å’Œ rollout æ–‡ä»¶ï¼Œå¹¶ä¸ºæ¯ä¸ªä¼šè¯åˆ›å»ºå¤‡ä»½ã€‚\n\n${preview}${extraCount}`,
+      "ÅúÁ¿É¾³ı»á»°",
+      `É¾³ıÑ¡ÖĞµÄ ${uniqueSessions.length} ¸ö»á»°£¿´Ë²Ù×÷»áÉ¾³ı±¾µØÊı¾İ¿â¼ÇÂ¼ºÍ rollout ÎÄ¼ş£¬²¢ÎªÃ¿¸ö»á»°´´½¨±¸·İ¡£\n\n${preview}${extraCount}`,
     );
     if (!confirmed) return;
 
@@ -1021,12 +1021,12 @@ export function App() {
 
     if (failed.length) {
       showNotice(
-        "æ‰¹é‡åˆ é™¤ä¼šè¯",
-        `å·²åˆ é™¤ ${succeeded} ä¸ªï¼Œå¤±è´¥ ${failed.length} ä¸ªï¼š${failed.slice(0, 3).map(truncateSessionDeletePreview).join("ã€")}`,
+        "ÅúÁ¿É¾³ı»á»°",
+        `ÒÑÉ¾³ı ${succeeded} ¸ö£¬Ê§°Ü ${failed.length} ¸ö£º${failed.slice(0, 3).map(truncateSessionDeletePreview).join("¡¢")}`,
         succeeded ? "ok" : "failed",
       );
     } else {
-      showNotice("æ‰¹é‡åˆ é™¤ä¼šè¯", `å·²åˆ é™¤ ${succeeded} ä¸ªä¼šè¯ã€‚`, "ok");
+      showNotice("ÅúÁ¿É¾³ı»á»°", `ÒÑÉ¾³ı ${succeeded} ¸ö»á»°¡£`, "ok");
     }
     await refreshLocalSessions(true);
   };
@@ -1035,7 +1035,7 @@ export function App() {
     const result = await run(() => call<LiveContextEntriesResult>("read_live_context_entries"));
     if (result) {
       setLiveContextEntries(result.entries);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("å·¥å…·ä¸æ’ä»¶", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("¹¤¾ßÓë²å¼ş", result, { silentSuccess: true });
     }
     return result;
   };
@@ -1044,7 +1044,7 @@ export function App() {
     const result = await run(() => call<LiveContextEntriesResult>("sync_live_context_entries", { request: { settings: next } }));
     if (result) {
       setLiveContextEntries(result.entries);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("å·¥å…·ä¸æ’ä»¶", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("¹¤¾ßÓë²å¼ş", result, { silentSuccess: true });
     }
     return result;
   };
@@ -1053,7 +1053,7 @@ export function App() {
     const result = await run(() => call<LogsResult>("read_latest_logs", { request: { lines: 240 } }));
     if (result) {
       setLogs(result);
-      if (!silent) showResultNotice("æ—¥å¿—å·²åˆ·æ–°", result, { silentSuccess: true });
+      if (!silent) showResultNotice("ÈÕÖ¾ÒÑË¢ĞÂ", result, { silentSuccess: true });
     }
   };
 
@@ -1061,7 +1061,7 @@ export function App() {
     const result = await run(() => call<DiagnosticsResult>("copy_diagnostics"));
     if (result) {
       setDiagnostics(result);
-      if (!silent) showResultNotice("è¯Šæ–­å·²ç”Ÿæˆ", result, { silentSuccess: true });
+      if (!silent) showResultNotice("Õï¶ÏÒÑÉú³É", result, { silentSuccess: true });
     }
   };
 
@@ -1069,7 +1069,7 @@ export function App() {
     const result = await run(() => call<WatcherResult>("load_watcher_state"));
     if (result) {
       setWatcher(result);
-      if (!silent) showResultNotice("Watcher çŠ¶æ€", result, { silentSuccess: true });
+      if (!silent) showResultNotice("Watcher ×´Ì¬", result, { silentSuccess: true });
     }
   };
 
@@ -1117,7 +1117,7 @@ export function App() {
   const launch = async () => {
     const result = await launchCommand("launch_codex_plus");
     if (result) {
-      showNotice("å¯åŠ¨ä»»åŠ¡", result.message, result.status);
+      showNotice("Æô¶¯ÈÎÎñ", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1125,7 +1125,7 @@ export function App() {
   const restart = async () => {
     const result = await launchCommand("restart_codex_plus");
     if (result) {
-      showNotice("é‡å¯ LDCodex", result.message, result.status);
+      showNotice("ÖØÆô LDCodex", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1148,26 +1148,26 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("åç«¯ä¿®å¤", result.message, result.status);
+      showNotice("ºó¶ËĞŞ¸´", result.message, result.status);
     }
   };
 
   const repairPluginMarketplace = async () => {
     if (pluginMarketplaceProgress.active) return;
     setPluginMarketplacePrompt(null);
-    setPluginMarketplaceProgress({ active: true, percent: 8, message: "æ­£åœ¨æ£€æŸ¥æœ¬åœ°æ’ä»¶å¸‚åœºâ€¦" });
+    setPluginMarketplaceProgress({ active: true, percent: 8, message: "ÕıÔÚ¼ì²é±¾µØ²å¼şÊĞ³¡¡­" });
     const progressTimer = window.setInterval(() => {
       setPluginMarketplaceProgress((current) => {
         if (!current.active) return current;
         const nextPercent = Math.min(92, current.percent + 9);
         const message =
           nextPercent < 28
-            ? "æ­£åœ¨è¿æ¥ openai/pluginsâ€¦"
+            ? "ÕıÔÚÁ¬½Ó openai/plugins¡­"
             : nextPercent < 62
-              ? "æ­£åœ¨ä¸‹è½½æ’ä»¶å¸‚åœºå¿«ç…§â€¦"
+              ? "ÕıÔÚÏÂÔØ²å¼şÊĞ³¡¿ìÕÕ¡­"
               : nextPercent < 84
-                ? "æ­£åœ¨è§£å‹å¹¶æ ¡éªŒæ’ä»¶æ–‡ä»¶â€¦"
-                : "æ­£åœ¨å†™å…¥ Codex é…ç½®â€¦";
+                ? "ÕıÔÚ½âÑ¹²¢Ğ£Ñé²å¼şÎÄ¼ş¡­"
+                : "ÕıÔÚĞ´Èë Codex ÅäÖÃ¡­";
         return { ...current, percent: nextPercent, message };
       });
     }, 500);
@@ -1179,12 +1179,12 @@ export function App() {
           percent: 100,
           message: result.message,
         });
-        showNotice("æ’ä»¶å¸‚åœºä¿®å¤", result.message, result.status);
+        showNotice("²å¼şÊĞ³¡ĞŞ¸´", result.message, result.status);
       } else {
         setPluginMarketplaceProgress({
           active: false,
           percent: 100,
-          message: "æ’ä»¶å¸‚åœºä¿®å¤å¤±è´¥ï¼Œè¯·æŸ¥çœ‹é”™è¯¯æç¤ºåé‡è¯•ã€‚",
+          message: "²å¼şÊĞ³¡ĞŞ¸´Ê§°Ü£¬Çë²é¿´´íÎóÌáÊ¾ºóÖØÊÔ¡£",
         });
       }
     } finally {
@@ -1201,7 +1201,7 @@ export function App() {
   const installEntrypoints = async () => {
     const result = await run(() => call<InstallResult>("install_entrypoints"));
     if (result) {
-      showNotice("å…¥å£å®‰è£…", result.message, result.status);
+      showNotice("Èë¿Ú°²×°", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1213,7 +1213,7 @@ export function App() {
       }),
     );
     if (result) {
-      showNotice("å…¥å£å¸è½½", result.message, result.status);
+      showNotice("Èë¿ÚĞ¶ÔØ", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1221,7 +1221,7 @@ export function App() {
   const repairShortcuts = async () => {
     const result = await run(() => call<InstallResult>("repair_shortcuts"));
     if (result) {
-      showNotice("å¿«æ·æ–¹å¼ä¿®å¤", result.message, result.status);
+      showNotice("¿ì½İ·½Ê½ĞŞ¸´", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1230,7 +1230,7 @@ export function App() {
     const result = await run(() => call<WatcherResult>(command));
     if (result) {
       setWatcher(result);
-      showNotice("Watcher æ“ä½œ", result.message, result.status);
+      showNotice("Watcher ²Ù×÷", result.message, result.status);
     }
   };
 
@@ -1239,7 +1239,7 @@ export function App() {
     if (result) {
       setUpdate(result);
       if (!silent || result.updateAvailable) {
-        showNotice("GitHub Release æ£€æŸ¥", result.message, result.status);
+        showNotice("GitHub Release ¼ì²é", result.message, result.status);
       }
     }
   };
@@ -1258,7 +1258,7 @@ export function App() {
     const result = await run(() => call<UpdateResult>("perform_update", { release }));
     if (result) {
       setUpdate(result);
-      showNotice("æ›´æ–°å®‰è£…", result.message, result.status);
+      showNotice("¸üĞÂ°²×°", result.message, result.status);
     }
   };
 
@@ -1268,7 +1268,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("è®¾ç½®ä¿å­˜", result.message, result.status);
+      showNotice("ÉèÖÃ±£´æ", result.message, result.status);
     }
   };
 
@@ -1279,7 +1279,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      if (!silent || !isSuccessStatus(result.status)) showNotice("è®¾ç½®ä¿å­˜", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("ÉèÖÃ±£´æ", result.message, result.status);
     }
   };
 
@@ -1288,7 +1288,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("è®¾ç½®é‡ç½®", result.message, result.status);
+      showNotice("ÉèÖÃÖØÖÃ", result.message, result.status);
     }
   };
 
@@ -1297,7 +1297,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("å›¾ç‰‡è¦†ç›–å±‚", result.message, result.status);
+      showNotice("Í¼Æ¬¸²¸Ç²ã", result.message, result.status);
     }
   };
 
@@ -1305,7 +1305,7 @@ export function App() {
     const result = await run(() => call<AdsResult>("load_ads"));
     if (result) {
       setAds(result);
-      if (!silent) showResultNotice("æ¨èå†…å®¹", result, { silentSuccess: true });
+      if (!silent) showResultNotice("ÍÆ¼öÄÚÈİ", result, { silentSuccess: true });
     }
   };
 
@@ -1321,7 +1321,7 @@ export function App() {
         targets[0]?.id ||
         "openai";
       setSelectedProviderSyncTarget((current) => (targets.some((target) => target.id === current) ? current : preferred));
-      if (!silent && !isSuccessStatus(result.status)) showNotice("Provider åŒæ­¥ç›®æ ‡", result.message, result.status);
+      if (!silent && !isSuccessStatus(result.status)) showNotice("Provider Í¬²½Ä¿±ê", result.message, result.status);
     }
     return result;
   };
@@ -1331,7 +1331,7 @@ export function App() {
     setProviderSyncProgress({
       active: true,
       percent: 12,
-      message: selectedProviderSyncTarget ? `æ­£åœ¨åŒæ­¥åˆ° ${selectedProviderSyncTarget}â€¦` : "æ­£åœ¨æ‰«æå†å²ä¼šè¯ä¸ç´¢å¼•â€¦",
+      message: selectedProviderSyncTarget ? `ÕıÔÚÍ¬²½µ½ ${selectedProviderSyncTarget}¡­` : "ÕıÔÚÉ¨ÃèÀúÊ·»á»°ÓëË÷Òı¡­",
       result: null,
     });
     const progressTimer = window.setInterval(() => {
@@ -1340,7 +1340,7 @@ export function App() {
         return {
           ...current,
           percent: Math.min(88, current.percent + 8),
-          message: current.percent < 40 ? "æ­£åœ¨æ£€æŸ¥ä¼šè¯ provider æ ‡è®°â€¦" : "æ­£åœ¨å†™å…¥ä¿®å¤ä¸å¤‡ä»½â€¦",
+          message: current.percent < 40 ? "ÕıÔÚ¼ì²é»á»° provider ±ê¼Ç¡­" : "ÕıÔÚĞ´ÈëĞŞ¸´Óë±¸·İ¡­",
         };
       });
     }, 350);
@@ -1367,12 +1367,12 @@ export function App() {
           setSettingsForm(next);
         }
         await refreshProviderSyncTargets(true);
-        showNotice("å†å²ä¼šè¯ä¿®å¤", result.message, result.status);
+        showNotice("ÀúÊ·»á»°ĞŞ¸´", result.message, result.status);
       } else {
         setProviderSyncProgress({
           active: false,
           percent: 100,
-          message: "å†å²ä¼šè¯ä¿®å¤å¤±è´¥ï¼Œè¯·æŸ¥çœ‹é”™è¯¯æç¤ºåé‡è¯•ã€‚",
+          message: "ÀúÊ·»á»°ĞŞ¸´Ê§°Ü£¬Çë²é¿´´íÎóÌáÊ¾ºóÖØÊÔ¡£",
           result: null,
         });
       }
@@ -1387,7 +1387,7 @@ export function App() {
       setSettings(settingsResult);
       setSettingsForm(normalizeSettings(settingsResult.settings));
       if (!isSuccessStatus(settingsResult.status)) {
-        showNotice("è®¾ç½®ä¿å­˜", settingsResult.message, settingsResult.status);
+        showNotice("ÉèÖÃ±£´æ", settingsResult.message, settingsResult.status);
         return false;
       }
     } else {
@@ -1397,7 +1397,7 @@ export function App() {
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
-      if (!silent || !isSuccessStatus(result.status)) showNotice("å®˜æ–¹æ··å…¥ API Key", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("¹Ù·½»ìÈë API Key", result.message, result.status);
     }
     return !!result && isSuccessStatus(result.status) && result.configured;
   };
@@ -1409,7 +1409,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      if (!silent) showNotice("Codexå¢å¼ºæ¨¡å¼", result.message, result.status);
+      if (!silent) showNotice("CodexÔöÇ¿Ä£Ê½", result.message, result.status);
     }
     return result;
   };
@@ -1420,7 +1420,7 @@ export function App() {
       setSettings(settingsResult);
       setSettingsForm(normalizeSettings(settingsResult.settings));
       if (!isSuccessStatus(settingsResult.status)) {
-        showNotice("è®¾ç½®ä¿å­˜", settingsResult.message, settingsResult.status);
+        showNotice("ÉèÖÃ±£´æ", settingsResult.message, settingsResult.status);
         return false;
       }
     } else {
@@ -1430,7 +1430,7 @@ export function App() {
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
-      if (!silent || !isSuccessStatus(result.status)) showNotice("çº¯ API æ¨¡å¼", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("´¿ API Ä£Ê½", result.message, result.status);
     }
     return !!result && isSuccessStatus(result.status) && result.configured;
   };
@@ -1440,7 +1440,7 @@ export function App() {
     if (result) {
       setRelay(result);
       await refreshRelayFiles(true);
-      if (!silent || !isSuccessStatus(result.status)) showNotice("å®˜æ–¹ç™»å½•æ¨¡å¼", result.message, result.status);
+      if (!silent || !isSuccessStatus(result.status)) showNotice("¹Ù·½µÇÂ¼Ä£Ê½", result.message, result.status);
     }
     return !!result && isSuccessStatus(result.status) && !result.configured;
   };
@@ -1470,7 +1470,7 @@ export function App() {
       normalized = normalizeSettings(saveResult.settings);
     }
     setSettingsForm(normalized);
-    if (!isSuccessStatus(result.status)) showResultNotice("å·¥å…·ä¸æ’ä»¶", result);
+    if (!isSuccessStatus(result.status)) showResultNotice("¹¤¾ßÓë²å¼ş", result);
     return normalized;
   };
 
@@ -1488,7 +1488,7 @@ export function App() {
       normalized = normalizeSettings(saveResult.settings);
     }
     setSettingsForm(normalized);
-    if (!isSuccessStatus(result.status)) showResultNotice("å·¥å…·ä¸æ’ä»¶", result);
+    if (!isSuccessStatus(result.status)) showResultNotice("¹¤¾ßÓë²å¼ş", result);
     return normalized;
   };
 
@@ -1498,18 +1498,18 @@ export function App() {
         request: { configContents },
       }),
     );
-    if (result) showResultNotice("é€šç”¨é…ç½®æ–‡ä»¶", result);
+    if (result) showResultNotice("Í¨ÓÃÅäÖÃÎÄ¼ş", result);
     return result && isSuccessStatus(result.status) ? result : null;
   };
 
   const testRelayProfile = async (profile: RelayProfile) => {
     const result = await run(() => call<RelayProfileTestResult>("test_relay_profile", { profile }));
-    if (result) showNotice("æ¨¡å‹æµ‹è¯•", result.message, result.status);
+    if (result) showNotice("Ä£ĞÍ²âÊÔ", result.message, result.status);
   };
 
   const fetchRelayProfileModels = async (profile: RelayProfile) => {
     const result = await run(() => call<RelayProfileModelsResult>("fetch_relay_profile_models", { profile }));
-    if (result) showNotice("æ¨¡å‹åˆ—è¡¨", result.message, result.status);
+    if (result) showNotice("Ä£ĞÍÁĞ±í", result.message, result.status);
     return result && isSuccessStatus(result.status) ? result.models : null;
   };
 
@@ -1517,24 +1517,24 @@ export function App() {
     const switched = await clearRelayInjection(true);
     if (!switched) return;
     const result = await saveLaunchMode("relay", true);
-    if (result) showNotice("å®˜æ–¹ç™»å½•æ¨¡å¼", "å·²åˆ‡å›å®˜æ–¹ç™»å½•ï¼›Codexå¢å¼ºå·²è®¾ä¸ºå…¼å®¹å¢å¼ºã€‚", result.status);
+    if (result) showNotice("¹Ù·½µÇÂ¼Ä£Ê½", "ÒÑÇĞ»Ø¹Ù·½µÇÂ¼£»CodexÔöÇ¿ÒÑÉèÎª¼æÈİÔöÇ¿¡£", result.status);
   };
 
   const switchPureApiMode = async () => {
     const switched = await applyPureApiInjection(true);
     if (!switched) return;
     const result = await saveLaunchMode("patch", true);
-    if (result) showNotice("çº¯ API æ¨¡å¼", "å·²åˆ‡æ¢åˆ°çº¯ APIï¼›Codexå¢å¼ºå·²è®¾ä¸ºå®Œæ•´å¢å¼ºã€‚", result.status);
+    if (result) showNotice("´¿ API Ä£Ê½", "ÒÑÇĞ»»µ½´¿ API£»CodexÔöÇ¿ÒÑÉèÎªÍêÕûÔöÇ¿¡£", result.status);
   };
 
   const switchRelayProfile = async (next: BackendSettings, previousActiveRelayId = settingsForm.activeRelayId) => {
     if (relaySwitching) {
-      showNotice("æ¨¡å‹åˆ‡æ¢ä¸­", "ä¸Šä¸€æ¬¡åˆ‡æ¢è¿˜æ²¡æœ‰å®Œæˆï¼Œè¯·ç¨åå†è¯•ã€‚", "failed");
+      showNotice("Ä£ĞÍÇĞ»»ÖĞ", "ÉÏÒ»´ÎÇĞ»»»¹Ã»ÓĞÍê³É£¬ÇëÉÔºóÔÙÊÔ¡£", "failed");
       return;
     }
     let switchSettings = normalizeSettings(next);
     if (!switchSettings.relayProfilesEnabled) {
-      showNotice("æ¨¡å‹é…ç½®å·²å…³é—­", "å½“å‰ä¸ä¼šå†™å…¥ Codex config.toml / auth.jsonã€‚æ‰“å¼€ä¾›åº”å•†é…ç½®æ€»å¼€å…³åå†åˆ‡æ¢ã€‚", "failed");
+      showNotice("Ä£ĞÍÅäÖÃÒÑ¹Ø±Õ", "µ±Ç°²»»áĞ´Èë Codex config.toml / auth.json¡£´ò¿ªÄ£ĞÍÅäÖÃ×Ü¿ª¹ØºóÔÙÇĞ»»¡£", "failed");
       return;
     }
     const targetBeforeSnapshot = activeRelayProfile(switchSettings);
@@ -1552,7 +1552,7 @@ export function App() {
         targetRelayName: selectedBeforeSave.name,
         error: validationError,
       });
-      showNotice("ä¾›åº”å•†é…ç½®å¯èƒ½ä¸æ­£ç¡®", validationError, "failed");
+      showNotice("Ä£ĞÍÅäÖÃ¿ÉÄÜ²»ÕıÈ·", validationError, "failed");
       return;
     }
     switchSettings = await snapshotActiveRelayFilesBeforeSwitch(switchSettings, previousActiveRelayId);
@@ -1600,7 +1600,7 @@ export function App() {
           message: result.message,
           activeRelayId: selectedSettings.activeRelayId,
         });
-        showNotice("ä¾›åº”å•†åˆ‡æ¢", result.message, result.status);
+        showNotice("¹©Ó¦ÉÌÇĞ»»", result.message, result.status);
         return;
       }
       const currentSelected = activeRelayProfile(selectedSettings);
@@ -1609,7 +1609,7 @@ export function App() {
         launchMode: selectedSettings.launchMode,
         status: result.status,
       });
-      showNotice("ä¾›åº”å•†åˆ‡æ¢", relayProfileModeSwitchedText(currentSelected), result.status);
+      showNotice("¹©Ó¦ÉÌÇĞ»»", relayProfileModeSwitchedText(currentSelected), result.status);
     } finally {
       setRelaySwitching(false);
     }
@@ -1629,7 +1629,7 @@ export function App() {
     if (!result) return next;
     const normalized = normalizeSettings(result.settings);
     if (!isSuccessStatus(result.status)) {
-      showNotice("ä¾›åº”å•†åˆ‡æ¢", result.message, result.status);
+      showNotice("¹©Ó¦ÉÌÇĞ»»", result.message, result.status);
       return next;
     }
     return normalized;
@@ -1639,14 +1639,14 @@ export function App() {
     try {
       await navigator.clipboard.writeText(text);
     } catch (error) {
-      showNotice("å¤åˆ¶å¤±è´¥", stringifyError(error), "failed");
+      showNotice("¸´ÖÆÊ§°Ü", stringifyError(error), "failed");
     }
   };
 
   const openExternalUrl = async (url: string) => {
     const result = await run(() => call<CommandResult<Record<string, unknown>>>("open_external_url", { url }));
     if (result) {
-      showResultNotice("æ‰“å¼€é“¾æ¥", result, { silentSuccess: true });
+      showResultNotice("´ò¿ªÁ´½Ó", result, { silentSuccess: true });
     }
   };
 
@@ -1731,25 +1731,25 @@ export function App() {
         try {
           selected = await open(
             mode === "folder"
-              ? { directory: true, multiple: false, title: "é€‰æ‹© Codex åº”ç”¨ç›®å½•" }
+              ? { directory: true, multiple: false, title: "Ñ¡Ôñ Codex Ó¦ÓÃÄ¿Â¼" }
               : {
                   directory: false,
                   multiple: false,
-                  title: "é€‰æ‹© Codex.exe æˆ– Codex.app",
-                  filters: [{ name: "Codex åº”ç”¨", extensions: ["exe", "app"] }],
+                  title: "Ñ¡Ôñ Codex.exe »ò Codex.app",
+                  filters: [{ name: "Codex Ó¦ÓÃ", extensions: ["exe", "app"] }],
                 },
           );
         } catch (error) {
           // Surface plugin failures (e.g. missing capability permission) so the
-          // buttons no longer appear unresponsive â€” see #345.
+          // buttons no longer appear unresponsive ¡ª see #345.
           const message = error instanceof Error ? error.message : String(error);
-          showNotice("Codex åº”ç”¨è·¯å¾„", `æ‰“å¼€é€‰æ‹©å™¨å¤±è´¥ï¼š${message}`, "failed");
+          showNotice("Codex Ó¦ÓÃÂ·¾¶", `´ò¿ªÑ¡ÔñÆ÷Ê§°Ü£º${message}`, "failed");
           return;
         }
         if (typeof selected === "string" && selected.trim()) {
           const result = await saveCodexAppPath(selected.trim());
           if (result) {
-            showNotice("Codex åº”ç”¨è·¯å¾„", "åº”ç”¨è·¯å¾„å·²ä¿å­˜ï¼Œä¹‹åå¯åŠ¨ä¼šè‡ªåŠ¨å¤ç”¨ã€‚", result.status);
+            showNotice("Codex Ó¦ÓÃÂ·¾¶", "Ó¦ÓÃÂ·¾¶ÒÑ±£´æ£¬Ö®ºóÆô¶¯»á×Ô¶¯¸´ÓÃ¡£", result.status);
           }
         }
       },
@@ -1760,7 +1760,7 @@ export function App() {
           setSettings(result);
           setSettingsForm(normalizeSettings(result.settings));
           setLaunchForm((current) => ({ ...current, appPath: "" }));
-          showNotice("Codex åº”ç”¨è·¯å¾„", "å·²æ¸…é™¤ä¿å­˜è·¯å¾„ï¼Œåç»­å¯åŠ¨ä¼šå›åˆ°è‡ªåŠ¨æ¢æµ‹ã€‚", result.status);
+          showNotice("Codex Ó¦ÓÃÂ·¾¶", "ÒÑÇå³ı±£´æÂ·¾¶£¬ºóĞøÆô¶¯»á»Øµ½×Ô¶¯Ì½²â¡£", result.status);
           await refreshOverview(true);
         }
       },
@@ -1770,12 +1770,12 @@ export function App() {
           selected = await open({
             directory: false,
             multiple: false,
-            title: "é€‰æ‹©è¦†ç›–å›¾ç‰‡",
-            filters: [{ name: "å›¾ç‰‡", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"] }],
+            title: "Ñ¡Ôñ¸²¸ÇÍ¼Æ¬",
+            filters: [{ name: "Í¼Æ¬", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"] }],
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          showNotice("å›¾ç‰‡è¦†ç›–å±‚", `æ‰“å¼€é€‰æ‹©å™¨å¤±è´¥ï¼š${message}`, "failed");
+          showNotice("Í¼Æ¬¸²¸Ç²ã", `´ò¿ªÑ¡ÔñÆ÷Ê§°Ü£º${message}`, "failed");
           return;
         }
         if (typeof selected === "string" && selected.trim()) {
@@ -1789,12 +1789,12 @@ export function App() {
       saveManualCodexAppPath: async () => {
         const appPath = launchForm.appPath.trim();
         if (!appPath) {
-          showNotice("Codex åº”ç”¨è·¯å¾„", "è¯·å…ˆå¡«å†™æˆ–é€‰æ‹©åº”ç”¨è·¯å¾„ã€‚", "failed");
+          showNotice("Codex Ó¦ÓÃÂ·¾¶", "ÇëÏÈÌîĞ´»òÑ¡ÔñÓ¦ÓÃÂ·¾¶¡£", "failed");
           return;
         }
         const result = await saveCodexAppPath(appPath);
         if (result) {
-          showNotice("Codex åº”ç”¨è·¯å¾„", "åº”ç”¨è·¯å¾„å·²ä¿å­˜ï¼Œä¹‹åå¯åŠ¨ä¼šè‡ªåŠ¨å¤ç”¨ã€‚", result.status);
+          showNotice("Codex Ó¦ÓÃÂ·¾¶", "Ó¦ÓÃÂ·¾¶ÒÑ±£´æ£¬Ö®ºóÆô¶¯»á×Ô¶¯¸´ÓÃ¡£", result.status);
         }
       },
       syncProvidersNow,
@@ -1842,14 +1842,14 @@ export function App() {
       refreshLogs,
       refreshDiagnostics,
       showMessage: async (title: string, message: string, status?: Status) => showNotice(title, message, status),
-      copyLogs: () => copyText(logs?.text ?? "", "æ—¥å¿—å·²å¤åˆ¶ã€‚"),
-      copyDiagnostics: () => copyText(diagnostics?.report ?? "", "è¯Šæ–­æŠ¥å‘Šå·²å¤åˆ¶ã€‚"),
+      copyLogs: () => copyText(logs?.text ?? "", "ÈÕÖ¾ÒÑ¸´ÖÆ¡£"),
+      copyDiagnostics: () => copyText(diagnostics?.report ?? "", "Õï¶Ï±¨¸æÒÑ¸´ÖÆ¡£"),
       goLogs: () => navigate("about"),
       checkHealth: async () => {
         await refreshOverview(true);
         await refreshRelay(true);
         await refreshWatcher(true);
-        showNotice("æ£€æŸ¥å®Œæˆ", "å·²åˆ·æ–° Codex åº”ç”¨ã€å…¥å£å’Œ Watcher çŠ¶æ€ã€‚", "ok");
+        showNotice("¼ì²éÍê³É", "ÒÑË¢ĞÂ Codex Ó¦ÓÃ¡¢Èë¿ÚºÍ Watcher ×´Ì¬¡£", "ok");
       },
       installWatcher: () => watcherAction("install_watcher"),
       uninstallWatcher: () => watcherAction("uninstall_watcher"),
@@ -1876,14 +1876,14 @@ export function App() {
                     setRoute("about");
                     void checkUpdate(false);
                   }}
-                  title={`å‘ç°æ–°ç‰ˆæœ¬ ${update?.latestVersion ?? ""}`}
+                  title={`·¢ÏÖĞÂ°æ±¾ ${update?.latestVersion ?? ""}`}
                   type="button"
                 >
                   <CircleArrowUp className="h-4 w-4" aria-hidden="true" />
                 </button>
               ) : null}
             </div>
-            <div className="brand-subtitle">ç®¡ç†æ§åˆ¶å°</div>
+            <div className="brand-subtitle">¹ÜÀí¿ØÖÆÌ¨</div>
           </div>
         </div>
         <nav className="nav">
@@ -1917,16 +1917,16 @@ export function App() {
             <Button
               onClick={actions.toggleTheme}
               size="icon"
-              title={theme === "dark" ? "åˆ‡æ¢åˆ°æµ…è‰²" : "åˆ‡æ¢åˆ°æ·±è‰²"}
+              title={theme === "dark" ? "ÇĞ»»µ½Ç³É«" : "ÇĞ»»µ½ÉîÉ«"}
               variant="outline"
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button onClick={() => void actions.restart()} title="é‡å¯ LDCodex" variant="outline">
+            <Button onClick={() => void actions.restart()} title="ÖØÆô LDCodex" variant="outline">
               <Rocket className="h-4 w-4" />
-              é‡å¯ LDCodex
+              ÖØÆô LDCodex
             </Button>
-            <Button onClick={() => void actions.refreshCurrent()} size="icon" title="åˆ·æ–°å½“å‰é¡µé¢" variant="outline">
+            <Button onClick={() => void actions.refreshCurrent()} size="icon" title="Ë¢ĞÂµ±Ç°Ò³Ãæ" variant="outline">
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
@@ -2154,7 +2154,7 @@ function MobileControlScreen({
   actions: Actions;
 }) {
   const [serverStatuses, setServerStatuses] = useState<Record<string, MobileRelayStatus | null>>({});
-  const [statusMessage, setStatusMessage] = useState("å°šæœªåˆ·æ–°");
+  const [statusMessage, setStatusMessage] = useState("ÉĞÎ´Ë¢ĞÂ");
   const [loadingStatus, setLoadingStatus] = useState(false);
   const mobileUrl = mobileRelayShareUrl(form);
   const selectedServerId =
@@ -2186,15 +2186,15 @@ function MobileControlScreen({
     await saveMobileSettings(next, true);
     const link = mobileRelayShareUrl(next);
     if (!link) {
-      await actions.showMessage("æ‰‹æœºæ§åˆ¶", "æœåŠ¡å™¨åœ°å€æ— æ•ˆï¼Œæ— æ³•ç”Ÿæˆæ‰‹æœºé“¾æ¥ã€‚", "failed");
+      await actions.showMessage("ÊÖ»ú¿ØÖÆ", "·şÎñÆ÷µØÖ·ÎŞĞ§£¬ÎŞ·¨Éú³ÉÊÖ»úÁ´½Ó¡£", "failed");
       return;
     }
     await actions.launch();
     try {
       await navigator.clipboard?.writeText(link);
-      await actions.showMessage("æ‰‹æœºæ§åˆ¶", "å·²å¯åŠ¨å¹¶å¤åˆ¶æ‰‹æœºé“¾æ¥ã€‚");
+      await actions.showMessage("ÊÖ»ú¿ØÖÆ", "ÒÑÆô¶¯²¢¸´ÖÆÊÖ»úÁ´½Ó¡£");
     } catch (error) {
-      await actions.showMessage("æ‰‹æœºæ§åˆ¶", `å·²å¯åŠ¨ï¼Œä½†å¤åˆ¶é“¾æ¥å¤±è´¥ï¼š${stringifyError(error)}`, "failed");
+      await actions.showMessage("ÊÖ»ú¿ØÖÆ", `ÒÑÆô¶¯£¬µ«¸´ÖÆÁ´½ÓÊ§°Ü£º${stringifyError(error)}`, "failed");
     }
   };
   const refreshRelayStatus = async () => {
@@ -2206,12 +2206,12 @@ function MobileControlScreen({
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return [server.id, (await response.json()) as MobileRelayStatus, ""] as const;
       } catch (error) {
-        return [server.id, null, `${server.label}: ${error instanceof Error ? error.message : "åˆ·æ–°å¤±è´¥"}`] as const;
+        return [server.id, null, `${server.label}: ${error instanceof Error ? error.message : "Ë¢ĞÂÊ§°Ü"}`] as const;
       }
     }));
     setServerStatuses(Object.fromEntries(entries.map(([id, data]) => [id, data])));
     const failed = entries.map(([, , error]) => error).filter(Boolean);
-    setStatusMessage(failed.length ? failed.join("ï¼›") : "çŠ¶æ€å·²åˆ·æ–°");
+    setStatusMessage(failed.length ? failed.join("£»") : "×´Ì¬ÒÑË¢ĞÂ");
     setLoadingStatus(false);
   };
   useEffect(() => {
@@ -2225,7 +2225,7 @@ function MobileControlScreen({
   return (
     <>
       <Panel>
-        <CardHead title="æ‰‹æœºæ§åˆ¶" detail="é€‰æ‹© relay æœåŠ¡å™¨åå¯åŠ¨ï¼Œç³»ç»Ÿä¼šç”Ÿæˆéšæœºæˆ¿é—´å’Œ Keyï¼Œå¹¶å¤åˆ¶æ‰‹æœºå¯ç›´æ¥æ‰“å¼€çš„é“¾æ¥ã€‚" />
+        <CardHead title="ÊÖ»ú¿ØÖÆ" detail="Ñ¡Ôñ relay ·şÎñÆ÷ºóÆô¶¯£¬ÏµÍ³»áÉú³ÉËæ»ú·¿¼äºÍ Key£¬²¢¸´ÖÆÊÖ»ú¿ÉÖ±½Ó´ò¿ªµÄÁ´½Ó¡£" />
         <CardContent>
           <div className="mobile-server-grid">
             {mobileRelayServers.map((server) => {
@@ -2242,7 +2242,7 @@ function MobileControlScreen({
                   <span>
                     <strong>{server.label}</strong>
                     <small>{server.url}</small>
-                    <small>{itemStatus ? `åœ¨çº¿ Â· ${itemStatus.rooms} ä¸ªæˆ¿é—´ Â· ${formatBytes(itemStatus.forwardedBytes)}` : "æœªè¿æ¥æˆ–æœªåˆ·æ–°"}</small>
+                    <small>{itemStatus ? `ÔÚÏß ¡¤ ${itemStatus.rooms} ¸ö·¿¼ä ¡¤ ${formatBytes(itemStatus.forwardedBytes)}` : "Î´Á¬½Ó»òÎ´Ë¢ĞÂ"}</small>
                   </span>
                   <em>{load}/{server.capacity}</em>
                 </button>
@@ -2251,11 +2251,11 @@ function MobileControlScreen({
           </div>
           <div className="form-row">
             <Label className="field">
-              <span>å½“å‰æœåŠ¡å™¨</span>
+              <span>µ±Ç°·şÎñÆ÷</span>
               <Input readOnly value={selectedServer.url} />
             </Label>
             <Label className="field">
-              <span>å®¹é‡</span>
+              <span>ÈİÁ¿</span>
               <Input
                 readOnly
                 value={`${serverLoad}/${serverCapacity}`}
@@ -2265,7 +2265,7 @@ function MobileControlScreen({
           <Toolbar>
             <Button onClick={() => void startAndCopyMobileLink()} type="button">
               <Rocket className="h-4 w-4" />
-              å¯åŠ¨å¹¶å¤åˆ¶æ‰‹æœºé“¾æ¥
+              Æô¶¯²¢¸´ÖÆÊÖ»úÁ´½Ó
             </Button>
             <Button
               onClick={() => void saveMobileSettings({
@@ -2278,36 +2278,36 @@ function MobileControlScreen({
               variant="secondary"
             >
               <KeyRound className="h-4 w-4" />
-              é‡æ–°ç”Ÿæˆ Token
+              ÖØĞÂÉú³É Token
             </Button>
             <Button onClick={() => void refreshRelayStatus()} type="button" variant="secondary">
               <RefreshCw className="h-4 w-4" />
-              {loadingStatus ? "æ­£åœ¨åˆ·æ–°" : "åˆ·æ–°æœåŠ¡å™¨çŠ¶æ€"}
+              {loadingStatus ? "ÕıÔÚË¢ĞÂ" : "Ë¢ĞÂ·şÎñÆ÷×´Ì¬"}
             </Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="æ‰‹æœºå…¥å£" detail="å¤åˆ¶å‡ºçš„é“¾æ¥åŒ…å«éšæœºæˆ¿é—´å’Œ Keyï¼›relay æœåŠ¡å™¨åªèƒ½çœ‹åˆ°æˆ¿é—´ã€è¿æ¥æ•°å’Œæµé‡ç»Ÿè®¡ã€‚" />
+        <CardHead title="ÊÖ»úÈë¿Ú" detail="¸´ÖÆ³öµÄÁ´½Ó°üº¬Ëæ»ú·¿¼äºÍ Key£»relay ·şÎñÆ÷Ö»ÄÜ¿´µ½·¿¼ä¡¢Á¬½ÓÊıºÍÁ÷Á¿Í³¼Æ¡£" />
         <CardContent>
           <div className="relay-file-panel">
             <div className="relay-file-head">
               <div>
-                <strong>{mobileUrl || "æœªç”Ÿæˆæ‰‹æœºå…¥å£"}</strong>
-                <span>{mobileUrl ? "æ‰‹æœºæ‰“å¼€åä¼šè‡ªåŠ¨å¡«å…¥æˆ¿é—´å’Œ Key å¹¶å°è¯•è¿æ¥ã€‚" : "é€‰æ‹©æœåŠ¡å™¨å¹¶å¯åŠ¨åä¼šç”Ÿæˆæ‰‹æœºå…¥å£ã€‚"}</span>
+                <strong>{mobileUrl || "Î´Éú³ÉÊÖ»úÈë¿Ú"}</strong>
+                <span>{mobileUrl ? "ÊÖ»ú´ò¿ªºó»á×Ô¶¯ÌîÈë·¿¼äºÍ Key ²¢³¢ÊÔÁ¬½Ó¡£" : "Ñ¡Ôñ·şÎñÆ÷²¢Æô¶¯ºó»áÉú³ÉÊÖ»úÈë¿Ú¡£"}</span>
               </div>
               {mobileUrl ? (
                 <Button
                   onClick={() => {
                     void navigator.clipboard?.writeText(mobileUrl);
-                    void actions.showMessage("æ‰‹æœºå…¥å£", "å·²å¤åˆ¶æ‰‹æœºå…¥å£åœ°å€ã€‚");
+                    void actions.showMessage("ÊÖ»úÈë¿Ú", "ÒÑ¸´ÖÆÊÖ»úÈë¿ÚµØÖ·¡£");
                   }}
                   size="sm"
                   type="button"
                   variant="secondary"
                 >
                   <Copy className="h-4 w-4" />
-                  å¤åˆ¶
+                  ¸´ÖÆ
                 </Button>
               ) : null}
             </div>
@@ -2315,7 +2315,7 @@ function MobileControlScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="æœåŠ¡å™¨çŠ¶æ€" detail={statusMessage} />
+        <CardHead title="·şÎñÆ÷×´Ì¬" detail={statusMessage} />
         <CardContent>
           {selectedStatus ? (
             <>
@@ -2323,16 +2323,16 @@ function MobileControlScreen({
                 <div className="health-item ok">
                   <CheckCircle2 className="h-4 w-4" />
                   <div>
-                    <strong>åœ¨çº¿è¿æ¥</strong>
-                    <span>{selectedStatus.activeConnections} ä¸ªåœ¨çº¿è¿æ¥ï¼Œç´¯è®¡ {selectedStatus.totalConnections} æ¬¡è¿æ¥ã€‚</span>
+                    <strong>ÔÚÏßÁ¬½Ó</strong>
+                    <span>{selectedStatus.activeConnections} ¸öÔÚÏßÁ¬½Ó£¬ÀÛ¼Æ {selectedStatus.totalConnections} ´ÎÁ¬½Ó¡£</span>
                   </div>
                   <Badge status="ok" />
                 </div>
                 <div className="health-item ok">
                   <Network className="h-4 w-4" />
                   <div>
-                    <strong>æˆ¿é—´æ•°é‡</strong>
-                    <span>{selectedStatus.rooms} ä¸ªæˆ¿é—´ï¼Œå·²è½¬å‘ {selectedStatus.forwardedMessages} æ¡æ¶ˆæ¯ã€‚</span>
+                    <strong>·¿¼äÊıÁ¿</strong>
+                    <span>{selectedStatus.rooms} ¸ö·¿¼ä£¬ÒÑ×ª·¢ {selectedStatus.forwardedMessages} ÌõÏûÏ¢¡£</span>
                   </div>
                   <Badge status="ok" />
                 </div>
@@ -2344,8 +2344,8 @@ function MobileControlScreen({
                       <div>
                         <strong>{room.room}</strong>
                         <span>
-                          host {room.hostOnline ? "åœ¨çº¿" : "ç¦»çº¿"} / client {room.clientOnline ? "åœ¨çº¿" : "ç¦»çº¿"}ï¼Œ
-                          {room.connections} ä¸ªè¿æ¥ï¼Œ{formatBytes(room.forwardedBytes)}
+                          host {room.hostOnline ? "ÔÚÏß" : "ÀëÏß"} / client {room.clientOnline ? "ÔÚÏß" : "ÀëÏß"}£¬
+                          {room.connections} ¸öÁ¬½Ó£¬{formatBytes(room.forwardedBytes)}
                         </span>
                       </div>
                       <Badge status={room.hostOnline && room.clientOnline ? "ok" : "not_checked"} />
@@ -2355,7 +2355,7 @@ function MobileControlScreen({
               </div>
             </>
           ) : (
-            <p className="field-hint">ç‚¹å‡»â€œåˆ·æ–°æœåŠ¡å™¨çŠ¶æ€â€æŸ¥çœ‹ relay è´Ÿè½½ã€åœ¨çº¿ç”¨æˆ·å’Œæˆ¿é—´è¿æ¥æƒ…å†µã€‚</p>
+            <p className="field-hint">µã»÷¡°Ë¢ĞÂ·şÎñÆ÷×´Ì¬¡±²é¿´ relay ¸ºÔØ¡¢ÔÚÏßÓÃ»§ºÍ·¿¼äÁ¬½ÓÇé¿ö¡£</p>
           )}
         </CardContent>
       </Panel>
@@ -2383,10 +2383,10 @@ function OverviewScreen({
                 <Network className="h-5 w-5" />
               </div>
               <div>
-                <span className="eyebrow">å®˜æ–¹ä¸­è½¬ç«™</span>
+                <span className="eyebrow">¹Ù·½ÖĞ×ªÕ¾</span>
                 <h2>JOJO Code</h2>
                 <p>
-                  LDCodex å®˜æ–¹ä¸­è½¬ç«™ï¼Œä¸»æ‰“ç¨³å®šæ¥å…¥å’Œåˆ’ç®—ä»·æ ¼ï¼Œæ”¯æŒ GPT-5.5ã€GPT-5.4ã€Claude Opus 4.8ã€Claude Opus 4.7ã€gpt-image-2 ç­‰æ¨¡å‹ä¸å›¾åƒèƒ½åŠ›ã€‚
+                  LDCodex ¹Ù·½ÖĞ×ªÕ¾£¬Ö÷´òÎÈ¶¨½ÓÈëºÍ»®Ëã¼Û¸ñ£¬Ö§³Ö GPT-5.5¡¢GPT-5.4¡¢Claude Opus 4.8¡¢Claude Opus 4.7¡¢gpt-image-2 µÈÄ£ĞÍÓëÍ¼ÏñÄÜÁ¦¡£
                 </p>
               </div>
             </div>
@@ -2400,21 +2400,21 @@ function OverviewScreen({
               </div>
               <Button onClick={() => void actions.openExternalUrl("https://jojocode.com/")}>
                 <ExternalLink className="h-4 w-4" />
-                æ‰“å¼€ JOJO Code
+                ´ò¿ª JOJO Code
               </Button>
             </div>
           </div>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="å¥åº·æ£€æŸ¥" detail="æ¦‚è§ˆåªå±•ç¤ºå…³é”®é—®é¢˜ï¼Œå…·ä½“é…ç½®åœ¨å¯¹åº”é¡µé¢å¤„ç†" />
+        <CardHead title="½¡¿µ¼ì²é" detail="¸ÅÀÀÖ»Õ¹Ê¾¹Ø¼üÎÊÌâ£¬¾ßÌåÅäÖÃÔÚ¶ÔÓ¦Ò³Ãæ´¦Àí" />
         <CardContent>
           <div className="health-grid">
             <div className={`health-item ${overview?.codex_version ? "ok" : "needs-fix"}`}>
               {overview?.codex_version ? <CheckCircle2 className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
               <div>
-                <strong>Codex ç‰ˆæœ¬</strong>
-                <span>{overview?.codex_version ?? "æœªæ£€æµ‹åˆ° Codex åº”ç”¨ç‰ˆæœ¬ã€‚"}</span>
+                <strong>Codex °æ±¾</strong>
+                <span>{overview?.codex_version ?? "Î´¼ì²âµ½ Codex Ó¦ÓÃ°æ±¾¡£"}</span>
               </div>
               <Badge status={overview?.codex_version ? "ok" : "not_checked"} />
             </div>
@@ -2432,33 +2432,33 @@ function OverviewScreen({
           <Toolbar>
             <Button onClick={() => void actions.checkHealth()}>
               <RefreshCw className="h-4 w-4" />
-              æ£€æŸ¥
+              ¼ì²é
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>
               <Wrench className="h-4 w-4" />
-              ä¿®å¤å…¥å£
+              ĞŞ¸´Èë¿Ú
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairBackend()}>
-              ä¿®å¤åç«¯
+              ĞŞ¸´ºó¶Ë
             </Button>
             <Button disabled={pluginMarketplaceProgress.active} variant="secondary" onClick={() => void actions.repairPluginMarketplace()}>
-              {pluginMarketplaceProgress.active ? "æ­£åœ¨ä¿®å¤â€¦" : "ä¿®å¤æ’ä»¶å¸‚åœº"}
+              {pluginMarketplaceProgress.active ? "ÕıÔÚĞŞ¸´¡­" : "ĞŞ¸´²å¼şÊĞ³¡"}
             </Button>
           </Toolbar>
-          <TaskProgressBox progress={pluginMarketplaceProgress} title="æ’ä»¶å¸‚åœºä¿®å¤è¿›åº¦" />
+          <TaskProgressBox progress={pluginMarketplaceProgress} title="²å¼şÊĞ³¡ĞŞ¸´½ø¶È" />
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="æœ€è¿‘å¯åŠ¨" detail={overview?.logs_path ?? "æš‚æ— çŠ¶æ€æ–‡ä»¶"} />
+        <CardHead title="×î½üÆô¶¯" detail={overview?.logs_path ?? "ÔİÎŞ×´Ì¬ÎÄ¼ş"} />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
-              å¯åŠ¨ LDCodex
+              Æô¶¯ LDCodex
             </Button>
             <Button variant="secondary" onClick={() => void actions.goLogs()}>
-              æ‰“å¼€å…³äº
+              ´ò¿ª¹ØÓÚ
             </Button>
           </Toolbar>
         </CardContent>
@@ -2502,8 +2502,8 @@ function RelayScreen({
     setNewProfileDraft(draft);
     if (!normalizeAggregateConfig(draft.aggregate, aggregateMemberCandidates(normalized, draft.id)).members.length) {
       void actions.showMessage(
-        "æ·»åŠ èšåˆä¾›åº”å•†",
-        "å·²æ‰“å¼€èšåˆä¾›åº”å•†è¯¦æƒ…ï¼›è¯·å…ˆæ·»åŠ æˆ–å®Œå–„è‡³å°‘ 1 ä¸ªæ™®é€š API ä¾›åº”å•†çš„ Base URL / Keyï¼Œå†å‹¾é€‰ä¸ºæˆå‘˜ã€‚",
+        "Ìí¼Ó¾ÛºÏ¹©Ó¦ÉÌ",
+        "ÒÑ´ò¿ª¾ÛºÏ¹©Ó¦ÉÌÏêÇé£»ÇëÏÈÌí¼Ó»òÍêÉÆÖÁÉÙ 1 ¸öÆÕÍ¨ API ¹©Ó¦ÉÌµÄ Base URL / Key£¬ÔÙ¹´Ñ¡Îª³ÉÔ±¡£",
         "failed",
       );
     }
@@ -2553,7 +2553,7 @@ function RelayScreen({
   return (
     <>
       <Panel>
-        <CardHead title="ä¾›åº”å•†åˆ—è¡¨" detail={`${normalized.relayProfiles.length} ä¸ªä¾›åº”å•†é…ç½®ï¼›å¯æ‹–åŠ¨æ’åºï¼Œç‚¹ç¼–è¾‘è¿›å…¥è¯¦æƒ…`} />
+        <CardHead title="¹©Ó¦ÉÌÁĞ±í" detail={`${normalized.relayProfiles.length} ¸öÄ£ĞÍÅäÖÃ£»¿ÉÍÏ¶¯ÅÅĞò£¬µã±à¼­½øÈëÏêÇé`} />
         <CardContent>
           <EnvConflictNotice envConflicts={envConflicts} actions={actions} />
           <label className="switch-row relay-master-switch">
@@ -2566,8 +2566,8 @@ function RelayScreen({
               type="checkbox"
             />
             <span>
-              <strong>å¯ç”¨ä¾›åº”å•†é…ç½®åˆ‡æ¢</strong>
-              <small>å…³é—­åæœ¬å·¥å…·ä¸ä¼šåœ¨æ‰‹åŠ¨åˆ‡æ¢æ—¶å†™å…¥ Codex çš„ config.toml / auth.jsonï¼›å¯åŠ¨ Codex æ—¶å§‹ç»ˆä¸ä¼šè‡ªåŠ¨æ”¹è¿™äº›æ–‡ä»¶ã€‚</small>
+              <strong>ÆôÓÃÄ£ĞÍÅäÖÃÇĞ»»</strong>
+              <small>¹Ø±Õºó±¾¹¤¾ß²»»áÔÚÊÖ¶¯ÇĞ»»Ê±Ğ´Èë Codex µÄ config.toml / auth.json£»Æô¶¯ Codex Ê±Ê¼ÖÕ²»»á×Ô¶¯¸ÄÕâĞ©ÎÄ¼ş¡£</small>
             </span>
           </label>
           <div className="relay-add-row">
@@ -2579,14 +2579,14 @@ function RelayScreen({
               }}
             >
               <Plus className="h-4 w-4" />
-              æ·»åŠ ä¾›åº”å•†
+              Ìí¼Ó¹©Ó¦ÉÌ
             </Button>
             <Button
               variant="secondary"
               onClick={createNewAggregateProfile}
             >
               <Plus className="h-4 w-4" />
-              æ·»åŠ èšåˆä¾›åº”å•†
+              Ìí¼Ó¾ÛºÏ¹©Ó¦ÉÌ
             </Button>
             <div className="third-party-import">
               <Button
@@ -2594,7 +2594,7 @@ function RelayScreen({
                 variant="secondary"
               >
                 <Download className="h-4 w-4" />
-                ä»ç¬¬ä¸‰æ–¹å¯¼å…¥
+                ´ÓµÚÈı·½µ¼Èë
               </Button>
               {thirdPartyImportOpen ? (
                 <div className="third-party-import-menu">
@@ -2614,7 +2614,7 @@ function RelayScreen({
                     type="button"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    åˆ·æ–°åˆ—è¡¨
+                    Ë¢ĞÂÁĞ±í
                   </button>
                 </div>
               ) : null}
@@ -2649,8 +2649,8 @@ function EnvConflictNotice({
         <ShieldAlert className="h-4 w-4" />
       </div>
       <div className="env-conflict-body">
-        <strong>æ£€æµ‹åˆ° OPENAI ç¯å¢ƒå˜é‡</strong>
-        <p>è¿™äº›å˜é‡å¯èƒ½è¦†ç›–å½“å‰ä¾›åº”å•†å†™å…¥çš„ config.toml / auth.jsonï¼›CODEX_HOME ä¸ä¼šè¢«æ¸…ç†ã€‚</p>
+        <strong>¼ì²âµ½ OPENAI »·¾³±äÁ¿</strong>
+        <p>ÕâĞ©±äÁ¿¿ÉÄÜ¸²¸Çµ±Ç°¹©Ó¦ÉÌĞ´ÈëµÄ config.toml / auth.json£»CODEX_HOME ²»»á±»ÇåÀí¡£</p>
         <div className="env-conflict-tags">
           {conflicts.map((conflict) => (
             <span key={`${conflict.source}-${conflict.name}`}>
@@ -2663,11 +2663,11 @@ function EnvConflictNotice({
       <div className="env-conflict-actions">
         <Button onClick={() => void actions.removeEnvConflicts(names)} size="sm">
           <Trash2 className="h-4 w-4" />
-          åˆ é™¤
+          É¾³ı
         </Button>
         <Button onClick={() => void actions.refreshEnvConflicts(false)} size="sm" variant="secondary">
           <RefreshCw className="h-4 w-4" />
-          æ£€æµ‹
+          ¼ì²â
         </Button>
       </div>
     </div>
@@ -2675,9 +2675,9 @@ function EnvConflictNotice({
 }
 
 function envConflictSourceLabel(source: string): string {
-  if (source === "process") return "å½“å‰è¿›ç¨‹";
-  if (source === "user") return "ç”¨æˆ·ç¯å¢ƒ";
-  return source || "ç¯å¢ƒå˜é‡";
+  if (source === "process") return "µ±Ç°½ø³Ì";
+  if (source === "user") return "ÓÃ»§»·¾³";
+  return source || "»·¾³±äÁ¿";
 }
 
 function EnhanceScreen({
@@ -2697,7 +2697,7 @@ function EnhanceScreen({
   return (
     <>
       <Panel>
-        <CardHead title="Codexå¢å¼º" detail="ä¼šè¯åˆ é™¤ã€å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨å’Œç”¨æˆ·è„šæœ¬ç­‰ç•Œé¢èƒ½åŠ›" />
+        <CardHead title="CodexÔöÇ¿" detail="»á»°É¾³ı¡¢µ¼³ö¡¢ÏîÄ¿ÒÆ¶¯ºÍÓÃ»§½Å±¾µÈ½çÃæÄÜÁ¦" />
         <CardContent>
           <label className="switch-row">
             <input
@@ -2706,8 +2706,8 @@ function EnhanceScreen({
               type="checkbox"
             />
             <span>
-              <strong>å¯ç”¨ Codexå¢å¼º</strong>
-              <small>å…³é—­åä¼šåœç”¨åˆ é™¤ã€å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨ã€æ’ä»¶ç›¸å…³å’Œèœå•ä½ç½®å¢å¼ºã€‚</small>
+              <strong>ÆôÓÃ CodexÔöÇ¿</strong>
+              <small>¹Ø±Õºó»áÍ£ÓÃÉ¾³ı¡¢µ¼³ö¡¢ÏîÄ¿ÒÆ¶¯¡¢²å¼şÏà¹ØºÍ²Ëµ¥Î»ÖÃÔöÇ¿¡£</small>
             </span>
           </label>
           <label className="switch-row">
@@ -2717,66 +2717,66 @@ function EnhanceScreen({
               type="checkbox"
             />
             <span>
-              <strong>å¯ç”¨ Windows Computer Use Guard</strong>
-              <small>é»˜è®¤å…³é—­ï¼›å¼€å¯åå¯åŠ¨ Codex æ—¶ä¼šè‡ªåŠ¨ä¿ç•™å®˜æ–¹ Computer Use æ’ä»¶æ‰€éœ€çš„ config.tomlã€bundled æ’ä»¶å’Œ notify é…ç½®ã€‚</small>
+              <strong>ÆôÓÃ Windows Computer Use Guard</strong>
+              <small>Ä¬ÈÏ¹Ø±Õ£»¿ªÆôºóÆô¶¯ Codex Ê±»á×Ô¶¯±£Áô¹Ù·½ Computer Use ²å¼şËùĞèµÄ config.toml¡¢bundled ²å¼şºÍ notify ÅäÖÃ¡£</small>
             </span>
           </label>
           <ModeSelector launchMode={form.launchMode} actions={actions} />
           {form.launchMode === "relay" ? (
             <div className="hint-line">
               <ShieldCheck className="h-4 w-4" />
-              <span>å½“å‰ä¸ºå…¼å®¹å¢å¼ºæ¨¡å¼ï¼Œæ’ä»¶å¸‚åœºè§£é”å’Œç‰¹æ®Šæ’ä»¶å¼ºåˆ¶å®‰è£…ä¸ä¼šå¯ç”¨ï¼›å…¶ä»–é¡µé¢åŠŸèƒ½ä»å¯ç”¨ã€‚</span>
+              <span>µ±Ç°Îª¼æÈİÔöÇ¿Ä£Ê½£¬²å¼şÊĞ³¡½âËøºÍÌØÊâ²å¼şÇ¿ÖÆ°²×°²»»áÆôÓÃ£»ÆäËûÒ³Ãæ¹¦ÄÜÈÔ¿ÉÓÃ¡£</span>
             </div>
           ) : null}
           <div className="feature-switch-grid">
-            <FeatureToggle title="æ’ä»¶å¸‚åœºè§£é”" detail="API Key æ¨¡å¼ä¸‹æ‰©å±•æ’ä»¶å¸‚åœºè¯·æ±‚ï¼Œå°½é‡æ˜¾ç¤ºå®Œæ•´æ’ä»¶åˆ—è¡¨ï¼›å®˜æ–¹/æ··åˆæ¨¡å¼é€šå¸¸ä¸éœ€è¦ã€‚" checked={form.codexAppPluginMarketplaceUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginMarketplaceUnlock", value)} />
-            <FeatureToggle title="ç‰¹æ®Šæ’ä»¶å¼ºåˆ¶å®‰è£…" detail="è§£é™¤ App unavailable / åº”ç”¨ä¸å¯ç”¨å¯¼è‡´çš„å‰ç«¯å®‰è£…ç¦ç”¨ã€‚" checked={form.codexAppForcePluginInstall} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppForcePluginInstall", value)} />
-            <FeatureToggle title="æ’ä»¶åˆ—è¡¨å…¨é‡å±•ç¤º" detail="è¿›å…¥æ’ä»¶é¡µåè‡ªåŠ¨è¿ç»­å±•å¼€â€œæ›´å¤šâ€ï¼Œå°½é‡ä¸€æ¬¡æ˜¾ç¤ºå®Œæ•´æ’ä»¶åˆ—è¡¨ã€‚" checked={form.codexAppPluginAutoExpand} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPluginAutoExpand", value)} />
-            <FeatureToggle title="æ¨¡å‹ç™½åå•è§£é”" detail="ä»ç¯å¢ƒå˜é‡å’Œ config.toml çš„ /v1/models æ‹‰å–æ¨¡å‹å¹¶è¡¥è¿›æ¨¡å‹åˆ—è¡¨ã€‚" checked={form.codexAppModelWhitelistUnlock} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppModelWhitelistUnlock", value)} />
-            <FeatureToggle title="Fast æŒ‰é’®" detail="æ˜¾ç¤ºæœåŠ¡æ¨¡å¼åˆ‡æ¢æŒ‰é’®ï¼›Fast ä»…æ”¯æŒ gpt-5.4 / gpt-5.5ï¼Œå…¶ä»–æ¨¡å‹æŒ‰ Standard å‘é€ã€‚" checked={form.codexAppServiceTierControls} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppServiceTierControls", value)} />
-            <FeatureToggle title="ä¼šè¯åˆ é™¤" detail="åœ¨ä¼šè¯åˆ—è¡¨æ‚¬åœæ˜¾ç¤ºåˆ é™¤æŒ‰é’®ï¼Œå¹¶æ”¯æŒæ’¤é”€ã€‚" checked={form.codexAppSessionDelete} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppSessionDelete", value)} />
-            <FeatureToggle title="Markdown å¯¼å‡º" detail="åœ¨ä¼šè¯åˆ—è¡¨æ˜¾ç¤ºå¯¼å‡ºæŒ‰é’®ï¼Œå¯¼å‡ºå¸¦æ—¶é—´æˆ³çš„ Markdownã€‚" checked={form.codexAppMarkdownExport} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppMarkdownExport", value)} />
-            <FeatureToggle title="ç²˜è´´ä¿®å¤" detail="ä» Word ç­‰å¯Œæ–‡æœ¬ç²˜è´´åˆ° Codex composer æ—¶åªä¿ç•™çº¯æ–‡æœ¬ï¼Œé¿å…è¢«è¯†åˆ«ä¸ºå›¾ç‰‡/æ–‡ä»¶é™„ä»¶ã€‚éœ€é‡å¯ Codex æ‰ç”Ÿæ•ˆã€‚" checked={form.codexAppPasteFix} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPasteFix", value)} />
-            <FeatureToggle title="ä¼šè¯é¡¹ç›®ç§»åŠ¨" detail="æŠŠä¼šè¯ç§»åŠ¨åˆ°æ™®é€šå¯¹è¯æˆ–å…¶ä»–æœ¬åœ°é¡¹ç›®ã€‚" checked={form.codexAppProjectMove} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppProjectMove", value)} />
-            <FeatureToggle title="ä¼šè¯ ID æ ‡è¯†" detail="åœ¨ä¾§è¾¹æ ä¼šè¯æ ‡é¢˜å‰æ˜¾ç¤ºçŸ­ ID å’Œ UUIDv7 åˆ›å»ºæ—¶é—´ï¼Œæ–¹ä¾¿å®šä½å†å²ä¼šè¯ã€‚" checked={form.codexAppThreadIdBadge} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadIdBadge", value)} />
-            <FeatureToggle title="å¯¹è¯å±…ä¸­å®½åº¦" detail="æŠŠä¸»å¯¹è¯å’Œè¾“å…¥æ¡†é™åˆ¶åˆ°å›ºå®šæœ€å¤§å®½åº¦ï¼Œé€‚åˆå¤§å±é˜…è¯»ã€‚" checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
-            <FeatureToggle title="åˆ‡æ¢å¯¹è¯ä¿ç•™ä½ç½®" detail="åˆ‡æ¢ thread æ—¶æ¢å¤ä¸Šä¸€æ¬¡æµè§ˆä½ç½®ã€‚" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
-            <FeatureToggle title="Zed Remote open" detail="è¿œç¨‹ SSH æ–‡ä»¶å¼•ç”¨å¯ç›´æ¥ç”¨ Zed Remote Development æ‰“å¼€ã€‚" checked={form.codexAppZedRemoteOpen} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppZedRemoteOpen", value)} />
-            <FeatureToggle title="Zed é¡¹ç›®è®°å½•" detail="ç»´æŠ¤ LDCodex è‡ªå·±çš„è¿œç¨‹é¡¹ç›®æœ€è¿‘åˆ—è¡¨ã€‚" checked={form.zedRemoteProjectRegistryEnabled} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteProjectRegistryEnabled", value)} />
-            <FeatureToggle title="åŒæ­¥ Zed settings" detail="é«˜çº§é€‰é¡¹ï¼Œé»˜è®¤å…³é—­ï¼›å½“å‰å®ç°ä¸ä¸»åŠ¨æ”¹å†™ Zed settingsã€‚" checked={form.zedRemoteSyncToZedSettings} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteSyncToZedSettings", value)} />
-            <FeatureToggle title="Upstream worktree" detail="ä»æœ€æ–° upstream åˆ†æ”¯åˆ›å»º Git worktreeã€‚" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
-            <FeatureToggle title="åŸç”Ÿèœå•æ ä½ç½®" detail="æŠŠ LDCodex èœå•æ’å…¥ Codex é¡¶éƒ¨åŸç”Ÿèœå•æ ã€‚" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
-            <FeatureToggle title="åŸç”Ÿèœå•æ±‰åŒ–" detail="å¯åŠ¨æ—¶é€šè¿‡æœ¬åœ°ä¸»è¿›ç¨‹è°ƒè¯•ç«¯å£æ±‰åŒ– Codex åŸç”Ÿèœå•ï¼›ä¸ä¿®æ”¹å®‰è£…åŒ…ã€‚éœ€é‡å¯ Codex æ‰ç”Ÿæ•ˆã€‚" checked={form.codexAppNativeMenuLocalization} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuLocalization", value)} />
+            <FeatureToggle title="²å¼şÊĞ³¡½âËø" detail="API Key Ä£Ê½ÏÂÀ©Õ¹²å¼şÊĞ³¡ÇëÇó£¬¾¡Á¿ÏÔÊ¾ÍêÕû²å¼şÁĞ±í£»¹Ù·½/»ìºÏÄ£Ê½Í¨³£²»ĞèÒª¡£" checked={form.codexAppPluginMarketplaceUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginMarketplaceUnlock", value)} />
+            <FeatureToggle title="ÌØÊâ²å¼şÇ¿ÖÆ°²×°" detail="½â³ı App unavailable / Ó¦ÓÃ²»¿ÉÓÃµ¼ÖÂµÄÇ°¶Ë°²×°½ûÓÃ¡£" checked={form.codexAppForcePluginInstall} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppForcePluginInstall", value)} />
+            <FeatureToggle title="²å¼şÁĞ±íÈ«Á¿Õ¹Ê¾" detail="½øÈë²å¼şÒ³ºó×Ô¶¯Á¬ĞøÕ¹¿ª¡°¸ü¶à¡±£¬¾¡Á¿Ò»´ÎÏÔÊ¾ÍêÕû²å¼şÁĞ±í¡£" checked={form.codexAppPluginAutoExpand} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPluginAutoExpand", value)} />
+            <FeatureToggle title="Ä£ĞÍ°×Ãûµ¥½âËø" detail="´Ó»·¾³±äÁ¿ºÍ config.toml µÄ /v1/models À­È¡Ä£ĞÍ²¢²¹½øÄ£ĞÍÁĞ±í¡£" checked={form.codexAppModelWhitelistUnlock} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppModelWhitelistUnlock", value)} />
+            <FeatureToggle title="Fast °´Å¥" detail="ÏÔÊ¾·şÎñÄ£Ê½ÇĞ»»°´Å¥£»Fast ½öÖ§³Ö gpt-5.4 / gpt-5.5£¬ÆäËûÄ£ĞÍ°´ Standard ·¢ËÍ¡£" checked={form.codexAppServiceTierControls} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppServiceTierControls", value)} />
+            <FeatureToggle title="»á»°É¾³ı" detail="ÔÚ»á»°ÁĞ±íĞüÍ£ÏÔÊ¾É¾³ı°´Å¥£¬²¢Ö§³Ö³·Ïú¡£" checked={form.codexAppSessionDelete} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppSessionDelete", value)} />
+            <FeatureToggle title="Markdown µ¼³ö" detail="ÔÚ»á»°ÁĞ±íÏÔÊ¾µ¼³ö°´Å¥£¬µ¼³ö´øÊ±¼ä´ÁµÄ Markdown¡£" checked={form.codexAppMarkdownExport} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppMarkdownExport", value)} />
+            <FeatureToggle title="Õ³ÌùĞŞ¸´" detail="´Ó Word µÈ¸»ÎÄ±¾Õ³Ìùµ½ Codex composer Ê±Ö»±£Áô´¿ÎÄ±¾£¬±ÜÃâ±»Ê¶±ğÎªÍ¼Æ¬/ÎÄ¼ş¸½¼ş¡£ĞèÖØÆô Codex ²ÅÉúĞ§¡£" checked={form.codexAppPasteFix} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPasteFix", value)} />
+            <FeatureToggle title="»á»°ÏîÄ¿ÒÆ¶¯" detail="°Ñ»á»°ÒÆ¶¯µ½ÆÕÍ¨¶Ô»°»òÆäËû±¾µØÏîÄ¿¡£" checked={form.codexAppProjectMove} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppProjectMove", value)} />
+            <FeatureToggle title="»á»° ID ±êÊ¶" detail="ÔÚ²à±ßÀ¸»á»°±êÌâÇ°ÏÔÊ¾¶Ì ID ºÍ UUIDv7 ´´½¨Ê±¼ä£¬·½±ã¶¨Î»ÀúÊ·»á»°¡£" checked={form.codexAppThreadIdBadge} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadIdBadge", value)} />
+            <FeatureToggle title="¶Ô»°¾ÓÖĞ¿í¶È" detail="°ÑÖ÷¶Ô»°ºÍÊäÈë¿òÏŞÖÆµ½¹Ì¶¨×î´ó¿í¶È£¬ÊÊºÏ´óÆÁÔÄ¶Á¡£" checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
+            <FeatureToggle title="ÇĞ»»¶Ô»°±£ÁôÎ»ÖÃ" detail="ÇĞ»» thread Ê±»Ö¸´ÉÏÒ»´Îä¯ÀÀÎ»ÖÃ¡£" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
+            <FeatureToggle title="Zed Remote open" detail="Ô¶³Ì SSH ÎÄ¼şÒıÓÃ¿ÉÖ±½ÓÓÃ Zed Remote Development ´ò¿ª¡£" checked={form.codexAppZedRemoteOpen} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppZedRemoteOpen", value)} />
+            <FeatureToggle title="Zed ÏîÄ¿¼ÇÂ¼" detail="Î¬»¤ LDCodex ×Ô¼ºµÄÔ¶³ÌÏîÄ¿×î½üÁĞ±í¡£" checked={form.zedRemoteProjectRegistryEnabled} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteProjectRegistryEnabled", value)} />
+            <FeatureToggle title="Í¬²½ Zed settings" detail="¸ß¼¶Ñ¡Ïî£¬Ä¬ÈÏ¹Ø±Õ£»µ±Ç°ÊµÏÖ²»Ö÷¶¯¸ÄĞ´ Zed settings¡£" checked={form.zedRemoteSyncToZedSettings} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("zedRemoteSyncToZedSettings", value)} />
+            <FeatureToggle title="Upstream worktree" detail="´Ó×îĞÂ upstream ·ÖÖ§´´½¨ Git worktree¡£" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
+            <FeatureToggle title="Ô­Éú²Ëµ¥À¸Î»ÖÃ" detail="°Ñ LDCodex ²Ëµ¥²åÈë Codex ¶¥²¿Ô­Éú²Ëµ¥À¸¡£" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
+            <FeatureToggle title="Ô­Éú²Ëµ¥ºº»¯" detail="Æô¶¯Ê±Í¨¹ı±¾µØÖ÷½ø³Ìµ÷ÊÔ¶Ë¿Úºº»¯ Codex Ô­Éú²Ëµ¥£»²»ĞŞ¸Ä°²×°°ü¡£ĞèÖØÆô Codex ²ÅÉúĞ§¡£" checked={form.codexAppNativeMenuLocalization} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuLocalization", value)} />
           </div>
           <div className="hint-line">
             <Wrench className="h-4 w-4" />
-            <span>æ–°æœºå™¨æ²¡æœ‰æœ¬åœ°æ’ä»¶å¸‚åœºæ—¶ï¼Œå¯ä» openai/plugins åˆå§‹åŒ–åˆ°å½“å‰ CODEX_HOMEã€‚</span>
+            <span>ĞÂ»úÆ÷Ã»ÓĞ±¾µØ²å¼şÊĞ³¡Ê±£¬¿É´Ó openai/plugins ³õÊ¼»¯µ½µ±Ç° CODEX_HOME¡£</span>
             <Button disabled={pluginMarketplaceProgress.active} variant="secondary" onClick={() => void actions.repairPluginMarketplace()}>
-              {pluginMarketplaceProgress.active ? "æ­£åœ¨ä¿®å¤â€¦" : "ä¿®å¤æ’ä»¶å¸‚åœº"}
+              {pluginMarketplaceProgress.active ? "ÕıÔÚĞŞ¸´¡­" : "ĞŞ¸´²å¼şÊĞ³¡"}
             </Button>
           </div>
-          <TaskProgressBox progress={pluginMarketplaceProgress} title="æ’ä»¶å¸‚åœºä¿®å¤è¿›åº¦" />
+          <TaskProgressBox progress={pluginMarketplaceProgress} title="²å¼şÊĞ³¡ĞŞ¸´½ø¶È" />
           <div className="zed-remote-settings">
-            <Field label="Zed é»˜è®¤æ‰“å¼€ç­–ç•¥">
+            <Field label="Zed Ä¬ÈÏ´ò¿ª²ßÂÔ">
               <select
                 className="select-input"
                 disabled={!masterEnabled}
                 onChange={(event) => onFormChange({ ...form, zedRemoteOpenStrategy: event.currentTarget.value as ZedOpenStrategy })}
                 value={form.zedRemoteOpenStrategy}
               >
-                <option value="addToFocusedWorkspace">åŠ å…¥å½“å‰å·¥ä½œåŒº</option>
-                <option value="reuseWindow">å¤ç”¨çª—å£</option>
-                <option value="newWindow">æ–°çª—å£</option>
-                <option value="default">Zed é»˜è®¤è¡Œä¸º</option>
+                <option value="addToFocusedWorkspace">¼ÓÈëµ±Ç°¹¤×÷Çø</option>
+                <option value="reuseWindow">¸´ÓÃ´°¿Ú</option>
+                <option value="newWindow">ĞÂ´°¿Ú</option>
+                <option value="default">Zed Ä¬ÈÏĞĞÎª</option>
               </select>
             </Field>
           </div>
           <div className="hint-line">
             <Info className="h-4 w-4" />
-            <span>å¦‚æœä½¿ç”¨å®˜æ–¹æ¨¡å¼æˆ–å®˜æ–¹æ··å…¥ API æ¨¡å¼ï¼Œé€šå¸¸ä¸éœ€è¦å¼€å¯æ’ä»¶å¸‚åœºè§£é”å’Œç‰¹æ®Šæ’ä»¶å¼ºåˆ¶å®‰è£…ã€‚</span>
+            <span>Èç¹ûÊ¹ÓÃ¹Ù·½Ä£Ê½»ò¹Ù·½»ìÈë API Ä£Ê½£¬Í¨³£²»ĞèÒª¿ªÆô²å¼şÊĞ³¡½âËøºÍÌØÊâ²å¼şÇ¿ÖÆ°²×°¡£</span>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>ä¿å­˜å¢å¼ºè®¾ç½®</Button>
+            <Button onClick={() => void actions.saveSettings()}>±£´æÔöÇ¿ÉèÖÃ</Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -2804,15 +2804,15 @@ function ZedRemoteScreen({
   const copyUrl = async (project: ZedRemoteProject) => {
     try {
       await navigator.clipboard.writeText(project.url);
-      await actions.showMessage("Zed Remote URL", "ssh:// URL å·²å¤åˆ¶ã€‚", "ok");
+      await actions.showMessage("Zed Remote URL", "ssh:// URL ÒÑ¸´ÖÆ¡£", "ok");
     } catch (error) {
-      await actions.showMessage("å¤åˆ¶å¤±è´¥", stringifyError(error), "failed");
+      await actions.showMessage("¸´ÖÆÊ§°Ü", stringifyError(error), "failed");
     }
   };
   return (
     <>
       <Panel>
-        <CardHead title="Zed è¿œç¨‹é¡¹ç›®" detail={`${allProjects.length} ä¸ª LDCodex å¯è¯†åˆ«é¡¹ç›®ï¼Œé»˜è®¤ç­–ç•¥ï¼š${zedStrategyLabel(form.zedRemoteOpenStrategy)}`} />
+        <CardHead title="Zed Ô¶³ÌÏîÄ¿" detail={`${allProjects.length} ¸ö LDCodex ¿ÉÊ¶±ğÏîÄ¿£¬Ä¬ÈÏ²ßÂÔ£º${zedStrategyLabel(form.zedRemoteOpenStrategy)}`} />
         <CardContent>
           <div className="metric-list">
             <Metric label="Current" value={String(currentProjects.length)} />
@@ -2820,16 +2820,16 @@ function ZedRemoteScreen({
             <Metric label="Discovered" value={String(discoveredProjects.length)} />
           </div>
           <div className="zed-remote-settings">
-            <Field label="é»˜è®¤æ‰“å¼€ç­–ç•¥">
+            <Field label="Ä¬ÈÏ´ò¿ª²ßÂÔ">
               <select
                 className="select-input"
                 onChange={(event) => onFormChange({ ...form, zedRemoteOpenStrategy: event.currentTarget.value as ZedOpenStrategy })}
                 value={form.zedRemoteOpenStrategy}
               >
-                <option value="addToFocusedWorkspace">åŠ å…¥å½“å‰å·¥ä½œåŒº</option>
-                <option value="reuseWindow">å¤ç”¨çª—å£</option>
-                <option value="newWindow">æ–°çª—å£</option>
-                <option value="default">Zed é»˜è®¤è¡Œä¸º</option>
+                <option value="addToFocusedWorkspace">¼ÓÈëµ±Ç°¹¤×÷Çø</option>
+                <option value="reuseWindow">¸´ÓÃ´°¿Ú</option>
+                <option value="newWindow">ĞÂ´°¿Ú</option>
+                <option value="default">Zed Ä¬ÈÏĞĞÎª</option>
               </select>
             </Field>
             <label className="switch-row compact">
@@ -2839,19 +2839,19 @@ function ZedRemoteScreen({
                 type="checkbox"
               />
               <span>
-                <strong>è®°å½•æœ€è¿‘æ‰“å¼€</strong>
-                <small>ä¿å­˜åˆ° LDCodex stateï¼Œä¸æ”¹å†™ Zed settingsã€‚</small>
+                <strong>¼ÇÂ¼×î½ü´ò¿ª</strong>
+                <small>±£´æµ½ LDCodex state£¬²»¸ÄĞ´ Zed settings¡£</small>
               </span>
             </label>
           </div>
           <Toolbar>
             <Button onClick={() => void actions.refreshZedRemoteProjects()}>
               <RefreshCw className="h-4 w-4" />
-              åˆ·æ–°é¡¹ç›®
+              Ë¢ĞÂÏîÄ¿
             </Button>
             <Button variant="secondary" onClick={() => void actions.saveSettingsValue(form, false)}>
               <Save className="h-4 w-4" />
-              ä¿å­˜ç­–ç•¥
+              ±£´æ²ßÂÔ
             </Button>
           </Toolbar>
         </CardContent>
@@ -2876,7 +2876,7 @@ function ZedRemoteProjectSection({
 }) {
   return (
     <Panel>
-      <CardHead title={title} detail={`${projects.length} ä¸ªé¡¹ç›®`} />
+      <CardHead title={title} detail={`${projects.length} ¸öÏîÄ¿`} />
       <CardContent>
         {projects.length ? (
           <div className="zed-remote-project-list">
@@ -2890,25 +2890,25 @@ function ZedRemoteProjectSection({
                   <code>{project.path}</code>
                   <small>
                     {zedRemoteSourceLabel(project.source)}
-                    {project.lastOpenedAtMs ? ` Â· ${formatTime(project.lastOpenedAtMs)}` : ""}
+                    {project.lastOpenedAtMs ? ` ¡¤ ${formatTime(project.lastOpenedAtMs)}` : ""}
                   </small>
                 </div>
                 <div className="zed-remote-project-actions">
                   <Button onClick={() => void actions.openZedRemoteProject(project, "addToFocusedWorkspace")} size="sm">
                     <ExternalLink className="h-4 w-4" />
-                    åŠ å…¥å½“å‰å·¥ä½œåŒº
+                    ¼ÓÈëµ±Ç°¹¤×÷Çø
                   </Button>
                   <Button onClick={() => void actions.openZedRemoteProject(project, "reuseWindow")} size="sm" variant="outline">
-                    å¤ç”¨çª—å£
+                    ¸´ÓÃ´°¿Ú
                   </Button>
                   <Button onClick={() => void actions.openZedRemoteProject(project, "newWindow")} size="sm" variant="outline">
-                    æ–°çª—å£
+                    ĞÂ´°¿Ú
                   </Button>
-                  <Button onClick={() => void onCopyUrl(project)} size="icon" title="å¤åˆ¶ ssh:// URL" variant="ghost">
+                  <Button onClick={() => void onCopyUrl(project)} size="icon" title="¸´ÖÆ ssh:// URL" variant="ghost">
                     <Copy className="h-4 w-4" />
                   </Button>
                   {project.source === "recent" ? (
-                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="ç§»é™¤æœ€è¿‘è®°å½•" variant="ghost">
+                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="ÒÆ³ı×î½ü¼ÇÂ¼" variant="ghost">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   ) : null}
@@ -2917,7 +2917,7 @@ function ZedRemoteProjectSection({
             ))}
           </div>
         ) : (
-          <div className="empty">æš‚æ— é¡¹ç›®ã€‚</div>
+          <div className="empty">ÔİÎŞÏîÄ¿¡£</div>
         )}
       </CardContent>
     </Panel>
@@ -2932,32 +2932,32 @@ function UserScriptsScreen({ settings, market, actions }: { settings: SettingsRe
   return (
     <>
       <Panel>
-        <CardHead title="è„šæœ¬å¸‚åœº" detail={`${marketScripts.length} ä¸ªå¸‚åœºè„šæœ¬ï¼Œå·²å®‰è£… ${installedCount} ä¸ªï¼Œæœ¬åœ°æ•´ä½“ ${inventory?.enabled === false ? "å…³é—­" : "å¼€å¯"}`} />
+        <CardHead title="½Å±¾ÊĞ³¡" detail={`${marketScripts.length} ¸öÊĞ³¡½Å±¾£¬ÒÑ°²×° ${installedCount} ¸ö£¬±¾µØÕûÌå ${inventory?.enabled === false ? "¹Ø±Õ" : "¿ªÆô"}`} />
         <CardContent>
           <div className="metric-list">
-            <Metric label="å¸‚åœºçŠ¶æ€" value={market?.market.message ?? "å°šæœªåˆ·æ–°"} />
-            <Metric label="è¿œç¨‹è„šæœ¬" value={`${marketScripts.length} ä¸ª`} />
-            <Metric label="å·²å®‰è£…" value={`${installedCount} ä¸ª`} />
-            <Metric label="æœ¬åœ°æ•´ä½“" value={inventory?.enabled === false ? "å…³é—­" : "å¼€å¯"} />
+            <Metric label="ÊĞ³¡×´Ì¬" value={market?.market.message ?? "ÉĞÎ´Ë¢ĞÂ"} />
+            <Metric label="Ô¶³Ì½Å±¾" value={`${marketScripts.length} ¸ö`} />
+            <Metric label="ÒÑ°²×°" value={`${installedCount} ¸ö`} />
+            <Metric label="±¾µØÕûÌå" value={inventory?.enabled === false ? "¹Ø±Õ" : "¿ªÆô"} />
           </div>
           <Toolbar>
             <Button onClick={() => void actions.refreshScriptMarket()}>
               <RefreshCw className="h-4 w-4" />
-              åˆ·æ–°å¸‚åœº
+              Ë¢ĞÂÊĞ³¡
             </Button>
             <Button onClick={() => void actions.openExternalUrl(SCRIPT_MARKET_REPOSITORY_URL)} variant="secondary">
               <ExternalLink className="h-4 w-4" />
-              æŠ•ç¨¿
+              Í¶¸å
             </Button>
             <Button onClick={() => void actions.refreshCurrent()} variant="secondary">
               <RefreshCw className="h-4 w-4" />
-              åˆ·æ–°æœ¬åœ°
+              Ë¢ĞÂ±¾µØ
             </Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="å¸‚åœºè„šæœ¬" detail={market?.market.updatedAt ? `æ¸…å•æ›´æ–°æ—¶é—´ï¼š${market.market.updatedAt}` : "ä» GitHub é™æ€æ¸…å•åŠ è½½"} />
+        <CardHead title="ÊĞ³¡½Å±¾" detail={market?.market.updatedAt ? `Çåµ¥¸üĞÂÊ±¼ä£º${market.market.updatedAt}` : "´Ó GitHub ¾²Ì¬Çåµ¥¼ÓÔØ"} />
         <CardContent>
           {marketScripts.length ? (
             <div className="script-market-grid">
@@ -2966,15 +2966,15 @@ function UserScriptsScreen({ settings, market, actions }: { settings: SettingsRe
               ))}
             </div>
           ) : (
-            <div className="empty">{market?.status === "failed" ? market.message : "ç‚¹å‡»åˆ·æ–°å¸‚åœºåŠ è½½è¿œç¨‹è„šæœ¬ã€‚"}</div>
+            <div className="empty">{market?.status === "failed" ? market.message : "µã»÷Ë¢ĞÂÊĞ³¡¼ÓÔØÔ¶³Ì½Å±¾¡£"}</div>
           )}
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="æœ¬åœ°è„šæœ¬" detail="å†…ç½®ã€æ‰‹åŠ¨å’Œå¸‚åœºå®‰è£…è„šæœ¬ï¼›å¯åœ¨è¿™é‡Œå¯åœæˆ–åˆ é™¤ç”¨æˆ·è„šæœ¬" />
+        <CardHead title="±¾µØ½Å±¾" detail="ÄÚÖÃ¡¢ÊÖ¶¯ºÍÊĞ³¡°²×°½Å±¾£»¿ÉÔÚÕâÀïÆôÍ£»òÉ¾³ıÓÃ»§½Å±¾" />
         <CardContent>
           <div className="table">
-            {scripts.length ? scripts.map((script) => <ScriptRow key={script.key} script={script} actions={actions} />) : <div className="empty">æœªå‘ç°ç”¨æˆ·è„šæœ¬ã€‚</div>}
+            {scripts.length ? scripts.map((script) => <ScriptRow key={script.key} script={script} actions={actions} />) : <div className="empty">Î´·¢ÏÖÓÃ»§½Å±¾¡£</div>}
           </div>
         </CardContent>
       </Panel>
@@ -3054,16 +3054,16 @@ function SessionsScreen({
   return (
     <>
       <Panel>
-        <CardHead title="ä¼šè¯ç®¡ç†" detail="è¯»å– Codex æœ¬åœ° SQLite ä¼šè¯åº“ï¼Œä¼šåˆ é™¤æ•°æ®åº“è®°å½•å’Œå¯¹åº” rollout æ–‡ä»¶" />
+        <CardHead title="»á»°¹ÜÀí" detail="¶ÁÈ¡ Codex ±¾µØ SQLite »á»°¿â£¬»áÉ¾³ıÊı¾İ¿â¼ÇÂ¼ºÍ¶ÔÓ¦ rollout ÎÄ¼ş" />
         <CardContent>
           <div className="metric-list">
-            <Metric label="ä¼šè¯æ€»æ•°" value={`${items.length} ä¸ª`} />
-            <Metric label="æœªå½’æ¡£" value={`${activeCount} ä¸ª`} />
-            <Metric label="å·²å½’æ¡£" value={`${archivedCount} ä¸ª`} />
-            <Metric label="æ•°æ®åº“" value={sessions?.dbPath ?? "~/.codex/sqlite/*.db"} />
+            <Metric label="»á»°×ÜÊı" value={`${items.length} ¸ö`} />
+            <Metric label="Î´¹éµµ" value={`${activeCount} ¸ö`} />
+            <Metric label="ÒÑ¹éµµ" value={`${archivedCount} ¸ö`} />
+            <Metric label="Êı¾İ¿â" value={sessions?.dbPath ?? "~/.codex/sqlite/*.db"} />
           </div>
           <div className="form-row">
-            <Field label="åŒæ­¥ç›®æ ‡">
+            <Field label="Í¬²½Ä¿±ê">
               <select
                 className="select-input"
                 disabled={providerSyncProgress.active || !(providerSyncTargets?.targets ?? []).length}
@@ -3072,26 +3072,26 @@ function SessionsScreen({
               >
                 {(providerSyncTargets?.targets ?? []).map((target) => (
                   <option key={target.id} value={target.id}>
-                    {target.id}ï¼ˆ{providerSyncTargetLabel(target)}ï¼‰
+                    {target.id}£¨{providerSyncTargetLabel(target)}£©
                   </option>
                 ))}
-                {!(providerSyncTargets?.targets ?? []).length ? <option value="">å½“å‰é…ç½® provider</option> : null}
+                {!(providerSyncTargets?.targets ?? []).length ? <option value="">µ±Ç°ÅäÖÃ provider</option> : null}
               </select>
             </Field>
           </div>
           <Toolbar>
             <Button onClick={() => void actions.refreshLocalSessions()}>
               <RefreshCw className="h-4 w-4" />
-              åˆ·æ–°ä¼šè¯
+              Ë¢ĞÂ»á»°
             </Button>
             <Button disabled={providerSyncProgress.active} onClick={() => void actions.syncProvidersNow()} variant="outline">
               <RefreshCw className="h-4 w-4" />
-              {providerSyncProgress.active ? "æ­£åœ¨ä¿®å¤â€¦" : "ç«‹åˆ»ä¿®å¤å†å²ä¼šè¯"}
+              {providerSyncProgress.active ? "ÕıÔÚĞŞ¸´¡­" : "Á¢¿ÌĞŞ¸´ÀúÊ·»á»°"}
             </Button>
           </Toolbar>
           <div className="provider-sync-progress" data-active={providerSyncProgress.active}>
             <div className="provider-sync-progress-head">
-              <strong>{providerSyncProgress.active ? "æ­£åœ¨ä¿®å¤å†å²ä¼šè¯" : "å†å²ä¼šè¯ä¿®å¤è¿›åº¦"}</strong>
+              <strong>{providerSyncProgress.active ? "ÕıÔÚĞŞ¸´ÀúÊ·»á»°" : "ÀúÊ·»á»°ĞŞ¸´½ø¶È"}</strong>
               <span>{providerSyncProgress.percent}%</span>
             </div>
             <div
@@ -3107,7 +3107,7 @@ function SessionsScreen({
           </div>
           <div className="hint-line">
             <Info className="h-4 w-4" />
-            <span>åˆ é™¤ä¼šåˆ›å»ºæœ¬åœ°å¤‡ä»½ï¼›å¦‚æœ Codex App æ­£åœ¨ä½¿ç”¨è¯¥ä¼šè¯ï¼Œå»ºè®®å…ˆå…³é—­å¯¹åº”ä¼šè¯çª—å£å†æ“ä½œã€‚</span>
+            <span>É¾³ı»á´´½¨±¾µØ±¸·İ£»Èç¹û Codex App ÕıÔÚÊ¹ÓÃ¸Ã»á»°£¬½¨ÒéÏÈ¹Ø±Õ¶ÔÓ¦»á»°´°¿ÚÔÙ²Ù×÷¡£</span>
           </div>
           <label className="switch-row">
             <input
@@ -3116,32 +3116,32 @@ function SessionsScreen({
               type="checkbox"
             />
             <span>
-              <strong>å¯åŠ¨å‰è‡ªåŠ¨ä¿®å¤å†å²ä¼šè¯</strong>
-              <small>å¼€å¯åï¼Œé€šè¿‡ LDCodex å¯åŠ¨ Codex å‰è‡ªåŠ¨æ•´ç†ä¸€æ¬¡æ—§å¯¹è¯çš„å½’å±æ ‡è®°ã€‚</small>
+              <strong>Æô¶¯Ç°×Ô¶¯ĞŞ¸´ÀúÊ·»á»°</strong>
+              <small>¿ªÆôºó£¬Í¨¹ı LDCodex Æô¶¯ Codex Ç°×Ô¶¯ÕûÀíÒ»´Î¾É¶Ô»°µÄ¹éÊô±ê¼Ç¡£</small>
             </span>
           </label>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>ä¿å­˜è‡ªåŠ¨ä¿®å¤è®¾ç½®</Button>
+            <Button onClick={() => void actions.saveSettings()}>±£´æ×Ô¶¯ĞŞ¸´ÉèÖÃ</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="æœ¬åœ°ä¼šè¯" detail={items.length ? "æŒ‰æ›´æ–°æ—¶é—´å€’åºæ˜¾ç¤º" : "ç‚¹å‡»åˆ·æ–°ä¼šè¯è¯»å–æœ¬åœ°æ•°æ®åº“"} />
+        <CardHead title="±¾µØ»á»°" detail={items.length ? "°´¸üĞÂÊ±¼äµ¹ĞòÏÔÊ¾" : "µã»÷Ë¢ĞÂ»á»°¶ÁÈ¡±¾µØÊı¾İ¿â"} />
         <CardContent>
           {items.length ? (
             <>
               <div className="session-list-toolbar">
-                <span className="session-selection-summary">å·²é€‰æ‹© {selectedCount} / {items.length} ä¸ªä¼šè¯</span>
+                <span className="session-selection-summary">ÒÑÑ¡Ôñ {selectedCount} / {items.length} ¸ö»á»°</span>
                 <div className="session-selection-actions">
                   <Button disabled={allSelected || bulkDeleting} onClick={selectAllSessions} size="sm" variant="outline">
-                    å…¨é€‰å½“å‰åˆ—è¡¨
+                    È«Ñ¡µ±Ç°ÁĞ±í
                   </Button>
                   <Button disabled={!selectedCount || bulkDeleting} onClick={clearSelectedSessions} size="sm" variant="outline">
-                    æ¸…ç©ºé€‰æ‹©
+                    Çå¿ÕÑ¡Ôñ
                   </Button>
                   <Button disabled={(selectionMode && !selectedCount) || bulkDeleting} onClick={() => void deleteSelectedSessions()} size="sm" variant="outline">
                     {selectionMode ? <Trash2 className="h-4 w-4" /> : null}
-                    {selectionMode ? (bulkDeleting ? "æ­£åœ¨åˆ é™¤â€¦" : "åˆ é™¤å·²é€‰") : "å¤šé€‰"}
+                    {selectionMode ? (bulkDeleting ? "ÕıÔÚÉ¾³ı¡­" : "É¾³ıÒÑÑ¡") : "¶àÑ¡"}
                   </Button>
                 </div>
               </div>
@@ -3151,9 +3151,9 @@ function SessionsScreen({
                   return (
                     <div className="session-row" data-selection-mode={selectionMode} data-selected={selected} key={session.id}>
                       {selectionMode ? (
-                        <label className="session-select" title="é€‰æ‹©ä¼šè¯">
+                        <label className="session-select" title="Ñ¡Ôñ»á»°">
                           <input
-                            aria-label={`é€‰æ‹©ä¼šè¯ ${session.title || session.id}`}
+                            aria-label={`Ñ¡Ôñ»á»° ${session.title || session.id}`}
                             checked={selected}
                             onChange={(event) => toggleSessionSelection(session.id, event.currentTarget.checked)}
                             type="checkbox"
@@ -3161,18 +3161,18 @@ function SessionsScreen({
                         </label>
                       ) : null}
                       <div className="session-main">
-                        <strong>{session.title || "æœªå‘½åä¼šè¯"}</strong>
+                        <strong>{session.title || "Î´ÃüÃû»á»°"}</strong>
                         <span>{session.id}</span>
-                        <small>{session.cwd || "æœªè®°å½•é¡¹ç›®è·¯å¾„"}</small>
+                        <small>{session.cwd || "Î´¼ÇÂ¼ÏîÄ¿Â·¾¶"}</small>
                       </div>
                       <div className="session-meta">
                         <Badge status={session.archived ? "archived" : "ok"} />
-                        <span>{session.modelProvider || "provider æœªè®°å½•"}</span>
+                        <span>{session.modelProvider || "provider Î´¼ÇÂ¼"}</span>
                         <span>{formatTime(session.updatedAtMs ?? 0)}</span>
                       </div>
                       <Button className="session-delete-button" variant="outline" onClick={() => void actions.deleteLocalSession(session)}>
                         <Trash2 className="h-4 w-4" />
-                        åˆ é™¤
+                        É¾³ı
                       </Button>
                     </div>
                   );
@@ -3180,7 +3180,7 @@ function SessionsScreen({
               </div>
             </>
           ) : (
-            <div className="empty">æœªè¯»å–åˆ°æœ¬åœ°ä¼šè¯ï¼Œæˆ–å½“å‰ SQLite ä¼šè¯åº“ä¸å­˜åœ¨ã€‚</div>
+            <div className="empty">Î´¶ÁÈ¡µ½±¾µØ»á»°£¬»òµ±Ç° SQLite »á»°¿â²»´æÔÚ¡£</div>
           )}
         </CardContent>
       </Panel>
@@ -3195,30 +3195,30 @@ function RecommendationsScreen({ ads, actions }: { ads: AdsResult | null; action
   return (
     <>
       <Panel>
-        <CardHead title="æ¨èå†…å®¹" detail="ä¸ Codex å†…æ’ä»¶èœå•ä½¿ç”¨åŒä¸€ä¸ªè¿œç«¯å¹¿å‘Šæº" />
+        <CardHead title="ÍÆ¼öÄÚÈİ" detail="Óë Codex ÄÚ²å¼ş²Ëµ¥Ê¹ÓÃÍ¬Ò»¸öÔ¶¶Ë¹ã¸æÔ´" />
         <CardContent>
           <div className="recommend-hero">
             <div>
-              <strong>{ads ? `å·²åŠ è½½ ${items.length} æ¡æ¨è` : "å°šæœªåŠ è½½æ¨èå†…å®¹"}</strong>
-              <span>å†…å®¹æ¥è‡ª luoda2023/Ad-Listï¼Œåˆ†ä¸ºèµåŠ©å•†æ¨èå’Œæ™®é€šæ¨èã€‚</span>
+              <strong>{ads ? `ÒÑ¼ÓÔØ ${items.length} ÌõÍÆ¼ö` : "ÉĞÎ´¼ÓÔØÍÆ¼öÄÚÈİ"}</strong>
+              <span>ÄÚÈİÀ´×Ô luoda2023/Ad-List£¬·ÖÎªÔŞÖúÉÌÍÆ¼öºÍÆÕÍ¨ÍÆ¼ö¡£</span>
             </div>
             <Button onClick={() => void actions.refreshAds()}>
               <RefreshCw className="h-4 w-4" />
-              åˆ·æ–°æ¨è
+              Ë¢ĞÂÍÆ¼ö
             </Button>
           </div>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="èµåŠ©å•†æ¨è" detail={`${sponsors.length} æ¡`} />
+        <CardHead title="ÔŞÖúÉÌÍÆ¼ö" detail={`${sponsors.length} Ìõ`} />
         <CardContent>
-          <AdGrid actions={actions} ads={sponsors} empty="æš‚æ— èµåŠ©å•†æ¨èã€‚" />
+          <AdGrid actions={actions} ads={sponsors} empty="ÔİÎŞÔŞÖúÉÌÍÆ¼ö¡£" />
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="æ™®é€šæ¨è" detail={`${normal.length} æ¡`} />
+        <CardHead title="ÆÕÍ¨ÍÆ¼ö" detail={`${normal.length} Ìõ`} />
         <CardContent>
-          <AdGrid actions={actions} ads={normal} empty="æš‚æ— æ™®é€šæ¨èã€‚" />
+          <AdGrid actions={actions} ads={normal} empty="ÔİÎŞÆÕÍ¨ÍÆ¼ö¡£" />
         </CardContent>
       </Panel>
     </>
@@ -3248,85 +3248,85 @@ function MaintenanceScreen({
   return (
     <>
       <Panel>
-        <CardHead title="æ£€æŸ¥ä¸ä¿®å¤" detail="æ£€æŸ¥å…¥å£ã€Codex åº”ç”¨å’Œ Watcher çŠ¶æ€" />
+        <CardHead title="¼ì²éÓëĞŞ¸´" detail="¼ì²éÈë¿Ú¡¢Codex Ó¦ÓÃºÍ Watcher ×´Ì¬" />
         <CardContent>
           <div className="status-table">
-            <StatusRow title="Codex åº”ç”¨" status={overview?.codex_app.status} path={overview?.codex_app.path} />
-            <StatusRow title="é™é»˜å¯åŠ¨å…¥å£" status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
-            <StatusRow title="ç®¡ç†æ§åˆ¶å°å…¥å£" status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
-            <StatusRow title="Watcher è‡ªåŠ¨æ¥ç®¡" status={watcher?.enabled ? "ok" : "disabled"} path={watcher?.disabled_flag} />
+            <StatusRow title="Codex Ó¦ÓÃ" status={overview?.codex_app.status} path={overview?.codex_app.path} />
+            <StatusRow title="¾²Ä¬Æô¶¯Èë¿Ú" status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
+            <StatusRow title="¹ÜÀí¿ØÖÆÌ¨Èë¿Ú" status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
+            <StatusRow title="Watcher ×Ô¶¯½Ó¹Ü" status={watcher?.enabled ? "ok" : "disabled"} path={watcher?.disabled_flag} />
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.checkHealth()}>æ£€æŸ¥</Button>
-            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>ä¿®å¤å¿«æ·æ–¹å¼</Button>
-            <Button variant="secondary" onClick={() => void actions.repairBackend()}>ä¿®å¤åç«¯</Button>
+            <Button onClick={() => void actions.checkHealth()}>¼ì²é</Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>ĞŞ¸´¿ì½İ·½Ê½</Button>
+            <Button variant="secondary" onClick={() => void actions.repairBackend()}>ĞŞ¸´ºó¶Ë</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="å…¥å£ç®¡ç†" detail="å¿«æ·æ–¹å¼å†™å…¥ç³»ç»Ÿå®é™…æ¡Œé¢ä½ç½®ï¼Œä¸ä½¿ç”¨å†™æ­»æ¡Œé¢è·¯å¾„" />
+        <CardHead title="Èë¿Ú¹ÜÀí" detail="¿ì½İ·½Ê½Ğ´ÈëÏµÍ³Êµ¼Ê×ÀÃæÎ»ÖÃ£¬²»Ê¹ÓÃĞ´ËÀ×ÀÃæÂ·¾¶" />
         <CardContent>
           <label className="check-row">
             <input checked={removeOwnedData} onChange={(event) => onRemoveOwnedDataChange(event.currentTarget.checked)} type="checkbox" />
-            <span>å¸è½½æ—¶ç§»é™¤ LDCodex æ‰˜ç®¡æ•°æ®</span>
+            <span>Ğ¶ÔØÊ±ÒÆ³ı LDCodex ÍĞ¹ÜÊı¾İ</span>
           </label>
           <Toolbar>
-            <Button onClick={() => void actions.installEntrypoints()}>å®‰è£…å…¥å£</Button>
-            <Button variant="secondary" onClick={() => void actions.uninstallEntrypoints()}>å¸è½½å…¥å£</Button>
-            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>ä¿®å¤å…¥å£</Button>
+            <Button onClick={() => void actions.installEntrypoints()}>°²×°Èë¿Ú</Button>
+            <Button variant="secondary" onClick={() => void actions.uninstallEntrypoints()}>Ğ¶ÔØÈë¿Ú</Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>ĞŞ¸´Èë¿Ú</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="è‡ªåŠ¨æ¥ç®¡" detail="Watcher ç”¨äºä¿æŒ LDCodex æ¥ç®¡çŠ¶æ€" />
+        <CardHead title="×Ô¶¯½Ó¹Ü" detail="Watcher ÓÃÓÚ±£³Ö LDCodex ½Ó¹Ü×´Ì¬" />
         <CardContent>
           <Toolbar>
-            <Button variant="secondary" onClick={() => void actions.installWatcher()}>å®‰è£… watcher</Button>
-            <Button variant="secondary" onClick={() => void actions.uninstallWatcher()}>ç§»é™¤ watcher</Button>
-            <Button variant="secondary" onClick={() => void actions.enableWatcher()}>å¯ç”¨</Button>
-            <Button variant="secondary" onClick={() => void actions.disableWatcher()}>ç¦ç”¨</Button>
+            <Button variant="secondary" onClick={() => void actions.installWatcher()}>°²×° watcher</Button>
+            <Button variant="secondary" onClick={() => void actions.uninstallWatcher()}>ÒÆ³ı watcher</Button>
+            <Button variant="secondary" onClick={() => void actions.enableWatcher()}>ÆôÓÃ</Button>
+            <Button variant="secondary" onClick={() => void actions.disableWatcher()}>½ûÓÃ</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="Codex åº”ç”¨è·¯å¾„" detail="å…å®‰è£…ç‰ˆæˆ–è§£åŒ…ç‰ˆåªéœ€è¦é€‰æ‹©ä¸€æ¬¡ï¼Œä¹‹åé™é»˜å¯åŠ¨ä¼šè‡ªåŠ¨å¤ç”¨" />
+        <CardHead title="Codex Ó¦ÓÃÂ·¾¶" detail="Ãâ°²×°°æ»ò½â°ü°æÖ»ĞèÒªÑ¡ÔñÒ»´Î£¬Ö®ºó¾²Ä¬Æô¶¯»á×Ô¶¯¸´ÓÃ" />
         <CardContent>
           <div className="status-table">
-            <StatusRow title="ä¿å­˜è·¯å¾„" status={savedCodexAppPath ? "ok" : "not_checked"} path={savedCodexAppPath || null} />
-            <StatusRow title="å½“å‰è¯†åˆ«" status={overview?.codex_app.status} path={overview?.codex_app.path} />
+            <StatusRow title="±£´æÂ·¾¶" status={savedCodexAppPath ? "ok" : "not_checked"} path={savedCodexAppPath || null} />
+            <StatusRow title="µ±Ç°Ê¶±ğ" status={overview?.codex_app.status} path={overview?.codex_app.path} />
           </div>
-          <Field label="ä¿å­˜çš„åº”ç”¨è·¯å¾„">
+          <Field label="±£´æµÄÓ¦ÓÃÂ·¾¶">
             <Input
               value={settings?.settings.codexAppPath ?? ""}
-              placeholder="é€‰æ‹© Codex.exeã€Codex.appã€app ç›®å½•æˆ–è§£åŒ…ç›®å½•"
+              placeholder="Ñ¡Ôñ Codex.exe¡¢Codex.app¡¢app Ä¿Â¼»ò½â°üÄ¿Â¼"
               readOnly
             />
           </Field>
           <Toolbar>
-            <Button onClick={() => void actions.chooseCodexAppPath("folder")}>é€‰æ‹©åº”ç”¨ç›®å½•</Button>
-            <Button variant="secondary" onClick={() => void actions.chooseCodexAppPath("file")}>é€‰æ‹© Codex.exe</Button>
-            <Button variant="secondary" onClick={() => void actions.clearCodexAppPath()}>æ¸…é™¤ä¿å­˜è·¯å¾„</Button>
+            <Button onClick={() => void actions.chooseCodexAppPath("folder")}>Ñ¡ÔñÓ¦ÓÃÄ¿Â¼</Button>
+            <Button variant="secondary" onClick={() => void actions.chooseCodexAppPath("file")}>Ñ¡Ôñ Codex.exe</Button>
+            <Button variant="secondary" onClick={() => void actions.clearCodexAppPath()}>Çå³ı±£´æÂ·¾¶</Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="æ‰‹åŠ¨å¯åŠ¨" detail="åº”ç”¨è·¯å¾„ç•™ç©ºæ—¶ä½¿ç”¨å·²ä¿å­˜è·¯å¾„ï¼›æ²¡æœ‰ä¿å­˜è·¯å¾„æ—¶ä½¿ç”¨è‡ªåŠ¨æ¢æµ‹" />
+        <CardHead title="ÊÖ¶¯Æô¶¯" detail="Ó¦ÓÃÂ·¾¶Áô¿ÕÊ±Ê¹ÓÃÒÑ±£´æÂ·¾¶£»Ã»ÓĞ±£´æÂ·¾¶Ê±Ê¹ÓÃ×Ô¶¯Ì½²â" />
         <CardContent>
-          <Field label="åº”ç”¨è·¯å¾„è¦†ç›–">
+          <Field label="Ó¦ÓÃÂ·¾¶¸²¸Ç">
             <Input
               value={launchForm.appPath}
               onChange={(event) => onLaunchFormChange({ ...launchForm, appPath: event.currentTarget.value })}
-              placeholder={savedCodexAppPath || "ä¾‹å¦‚ C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
+              placeholder={savedCodexAppPath || "ÀıÈç C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
             />
           </Field>
           <div className="form-row">
-            <Field label="è°ƒè¯•ç«¯å£">
+            <Field label="µ÷ÊÔ¶Ë¿Ú">
               <Input
                 value={launchForm.debugPort}
                 onChange={(event) => onLaunchFormChange({ ...launchForm, debugPort: event.currentTarget.value })}
               />
             </Field>
-            <Field label="è¾…åŠ©ç«¯å£">
+            <Field label="¸¨Öú¶Ë¿Ú">
               <Input
                 value={launchForm.helperPort}
                 onChange={(event) => onLaunchFormChange({ ...launchForm, helperPort: event.currentTarget.value })}
@@ -3334,9 +3334,9 @@ function MaintenanceScreen({
             </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>å¯åŠ¨ LDCodex</Button>
+            <Button onClick={() => void actions.launch()}>Æô¶¯ LDCodex</Button>
             <Button variant="secondary" onClick={() => void actions.saveManualCodexAppPath()}>
-              ä¿å­˜ä¸ºé»˜è®¤è·¯å¾„
+              ±£´æÎªÄ¬ÈÏÂ·¾¶
             </Button>
           </Toolbar>
         </CardContent>
@@ -3361,21 +3361,21 @@ function AboutScreen({
   return (
     <>
       <Panel>
-        <CardHead title="å…³äº LDCodex" detail="æœ¬åœ° Codex å¢å¼ºã€ç®¡ç†å·¥å…·å’Œå®‰è£…åŒ…ç»´æŠ¤" />
+        <CardHead title="¹ØÓÚ LDCodex" detail="±¾µØ Codex ÔöÇ¿¡¢¹ÜÀí¹¤¾ßºÍ°²×°°üÎ¬»¤" />
         <CardContent>
           <div className="metric-list">
-            <Metric label="LDCodex ç‰ˆæœ¬" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
-            <Metric label="Codex ç‰ˆæœ¬" value={overview?.codex_version ?? "æœªæ£€æµ‹åˆ°"} />
-            <Metric label="é¡¹ç›®åœ°å€" value="github.com/luoda2023/LDCodex" />
+            <Metric label="LDCodex °æ±¾" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
+            <Metric label="Codex °æ±¾" value={overview?.codex_version ?? "Î´¼ì²âµ½"} />
+            <Metric label="ÏîÄ¿µØÖ·" value="github.com/luoda2023/LDCodex" />
           </div>
           <Toolbar>
             <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex")} variant="secondary">
               <ExternalLink className="h-4 w-4" />
-              æ‰“å¼€é¡¹ç›®ä¸»é¡µ
+              ´ò¿ªÏîÄ¿Ö÷Ò³
             </Button>
             <Button onClick={() => void actions.openExternalUrl("https://github.com/luoda2023/LDCodex/issues")} variant="secondary">
               <ExternalLink className="h-4 w-4" />
-              åé¦ˆé—®é¢˜
+              ·´À¡ÎÊÌâ
             </Button>
             <Button onClick={() => void actions.openExternalUrl("https://discord.gg/y96kX7A76v")} variant="secondary">
               <MessageCircle className="h-4 w-4" />
@@ -3389,18 +3389,18 @@ function AboutScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="GitHub Release æ›´æ–°" detail={`å½“å‰ç‰ˆæœ¬ ${overview?.current_version ?? update?.currentVersion ?? "-"}`} />
+        <CardHead title="GitHub Release ¸üĞÂ" detail={`µ±Ç°°æ±¾ ${overview?.current_version ?? update?.currentVersion ?? "-"}`} />
         <CardContent>
           <div className="metric-list">
-            <Metric label="çŠ¶æ€" value={update?.status ?? "not_checked"} />
-            <Metric label="æœ€æ–°ç‰ˆæœ¬" value={update?.latestVersion ?? "æœªæ£€æŸ¥"} />
-            <Metric label="èµ„æº" value={update?.assetName ?? "-"} />
-            <Metric label="è¿›åº¦" value={`${update?.progress ?? 0}%`} />
+            <Metric label="×´Ì¬" value={update?.status ?? "not_checked"} />
+            <Metric label="×îĞÂ°æ±¾" value={update?.latestVersion ?? "Î´¼ì²é"} />
+            <Metric label="×ÊÔ´" value={update?.assetName ?? "-"} />
+            <Metric label="½ø¶È" value={`${update?.progress ?? 0}%`} />
           </div>
-          <Textarea className="log-view" readOnly value={update?.releaseSummary || update?.message || "å°šæœªæ£€æŸ¥ GitHub Releaseï¼›æ›´æ–°ä¼šä¸‹è½½å¹¶å¯åŠ¨å®‰è£…åŒ…ã€‚"} />
+          <Textarea className="log-view" readOnly value={update?.releaseSummary || update?.message || "ÉĞÎ´¼ì²é GitHub Release£»¸üĞÂ»áÏÂÔØ²¢Æô¶¯°²×°°ü¡£"} />
           <Toolbar>
-            <Button onClick={() => void actions.checkUpdate()}>æ£€æŸ¥æ›´æ–°</Button>
-            <Button variant="secondary" onClick={() => void actions.performUpdate()}>ä¸‹è½½å¹¶è¿è¡Œå®‰è£…åŒ…</Button>
+            <Button onClick={() => void actions.checkUpdate()}>¼ì²é¸üĞÂ</Button>
+            <Button variant="secondary" onClick={() => void actions.performUpdate()}>ÏÂÔØ²¢ÔËĞĞ°²×°°ü</Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -3426,20 +3426,20 @@ function SettingsScreen({
   return (
     <>
       <Panel>
-        <CardHead title="åŸºç¡€è®¾ç½®" detail={settings?.settings_path ?? ""} />
+        <CardHead title="»ù´¡ÉèÖÃ" detail={settings?.settings_path ?? ""} />
         <CardContent>
           <div className="theme-row">
             <div>
-              <strong>ç•Œé¢ä¸»é¢˜</strong>
-              <span>å½“å‰ä¸º{theme === "dark" ? "æ·±è‰²" : "æµ…è‰²"}æ¨¡å¼ã€‚</span>
+              <strong>½çÃæÖ÷Ìâ</strong>
+              <span>µ±Ç°Îª{theme === "dark" ? "ÉîÉ«" : "Ç³É«"}Ä£Ê½¡£</span>
             </div>
-            <Button variant="secondary" onClick={actions.toggleTheme}>åˆ‡æ¢ä¸»é¢˜</Button>
+            <Button variant="secondary" onClick={actions.toggleTheme}>ÇĞ»»Ö÷Ìâ</Button>
           </div>
-          <Field label="ä¾›åº”å•†æµ‹è¯•æ¨¡å‹">
+          <Field label="¹©Ó¦ÉÌ²âÊÔÄ£ĞÍ">
             <Input
               value={form.relayTestModel}
               onChange={(event) => onFormChange({ ...form, relayTestModel: event.currentTarget.value })}
-              placeholder="ä¾‹å¦‚ gpt-5.4-mini"
+              placeholder="ÀıÈç gpt-5.4-mini"
             />
           </Field>
           <label className="check-row">
@@ -3448,16 +3448,16 @@ function SettingsScreen({
               onChange={(event) => onFormChange({ ...form, cliWrapperEnabled: event.currentTarget.checked })}
               type="checkbox"
             />
-            <span>å¯ç”¨ Codex å‘½ä»¤åŒ…è£…å™¨</span>
+            <span>ÆôÓÃ Codex ÃüÁî°ü×°Æ÷</span>
           </label>
           <div className="form-row">
-            <Field label="åŒ…è£…å™¨ Base URL">
+            <Field label="°ü×°Æ÷ Base URL">
               <Input
                 value={form.cliWrapperBaseUrl}
                 onChange={(event) => onFormChange({ ...form, cliWrapperBaseUrl: event.currentTarget.value })}
               />
             </Field>
-            <Field label="API Key ç¯å¢ƒå˜é‡">
+            <Field label="API Key »·¾³±äÁ¿">
               <Input
                 value={form.cliWrapperApiKeyEnv}
                 onChange={(event) => onFormChange({ ...form, cliWrapperApiKeyEnv: event.currentTarget.value })}
@@ -3480,23 +3480,23 @@ function SettingsScreen({
                 }
                 type="checkbox"
               />
-              <span>å¯ç”¨ Codex å›¾ç‰‡è¦†ç›–å±‚</span>
+              <span>ÆôÓÃ Codex Í¼Æ¬¸²¸Ç²ã</span>
             </label>
             <div className="form-row">
-              <Field label="è¦†ç›–å›¾ç‰‡">
+              <Field label="¸²¸ÇÍ¼Æ¬">
                 <Input
                   value={form.codexAppImageOverlayPath}
                   onChange={(event) => onFormChange({ ...form, codexAppImageOverlayPath: event.currentTarget.value })}
-                  placeholder="é€‰æ‹© png / jpg / webp / gif / bmp"
+                  placeholder="Ñ¡Ôñ png / jpg / webp / gif / bmp"
                 />
               </Field>
               <Toolbar>
                 <Button variant="secondary" onClick={() => void actions.chooseImageOverlayPath()}>
-                  é€‰æ‹©å›¾ç‰‡
+                  Ñ¡ÔñÍ¼Æ¬
                 </Button>
               </Toolbar>
             </div>
-            <Field label={`é€æ˜åº¦ ${form.codexAppImageOverlayOpacity}%`}>
+            <Field label={`Í¸Ã÷¶È ${form.codexAppImageOverlayOpacity}%`}>
               <Input
                 min={1}
                 max={100}
@@ -3512,17 +3512,17 @@ function SettingsScreen({
             </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>ä¿å­˜è®¾ç½®</Button>
+            <Button onClick={() => void actions.saveSettings()}>±£´æÉèÖÃ</Button>
             <Button variant="secondary" onClick={() => void actions.resetImageOverlaySettings()}>
-              é‡ç½®èƒŒæ™¯
+              ÖØÖÃ±³¾°
             </Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="Codex å¯åŠ¨å‚æ•°" detail="å¯åŠ¨ Codex App æ—¶è¿½åŠ åˆ°é»˜è®¤ CDP å‚æ•°åã€‚ç•™ç©ºåˆ™ä¿æŒé»˜è®¤å¯åŠ¨è¡Œä¸ºã€‚" />
+        <CardHead title="Codex Æô¶¯²ÎÊı" detail="Æô¶¯ Codex App Ê±×·¼Óµ½Ä¬ÈÏ CDP ²ÎÊıºó¡£Áô¿ÕÔò±£³ÖÄ¬ÈÏÆô¶¯ĞĞÎª¡£" />
         <CardContent>
-          <Field label="é¢å¤–å‚æ•°">
+          <Field label="¶îÍâ²ÎÊı">
             <Textarea
               className="launch-args-input"
               placeholder="--force_high_performance_gpu"
@@ -3536,9 +3536,9 @@ function SettingsScreen({
               }
             />
           </Field>
-          <p className="field-hint">æ¯è¡Œä¸€ä¸ªå‚æ•°ï¼Œä¾‹å¦‚ --force_high_performance_gpuã€‚ä¸éœ€è¦å¡«å†™ open æˆ– --argsã€‚</p>
+          <p className="field-hint">Ã¿ĞĞÒ»¸ö²ÎÊı£¬ÀıÈç --force_high_performance_gpu¡£²»ĞèÒªÌîĞ´ open »ò --args¡£</p>
           <Toolbar>
-            <Button onClick={() => void actions.saveSettings()}>ä¿å­˜è®¾ç½®</Button>
+            <Button onClick={() => void actions.saveSettings()}>±£´æÉèÖÃ</Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -3550,7 +3550,7 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
   const lines = splitLogLines(logs?.text ?? "");
   return (
     <Panel>
-      <CardHead title="æœ€è¿‘æ—¥å¿—" detail={logs?.path ?? ""} />
+      <CardHead title="×î½üÈÕÖ¾" detail={logs?.path ?? ""} />
       <CardContent>
         <div className="log-lines">
           {lines.length ? (
@@ -3561,13 +3561,13 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
               </div>
             ))
           ) : (
-            <div className="empty">æš‚æ— æ—¥å¿—ã€‚</div>
+            <div className="empty">ÔİÎŞÈÕÖ¾¡£</div>
           )}
         </div>
         <Toolbar>
-          <Button onClick={() => void actions.refreshLogs()}>åˆ·æ–°</Button>
+          <Button onClick={() => void actions.refreshLogs()}>Ë¢ĞÂ</Button>
           <Button variant="secondary" onClick={() => void actions.copyLogs()}>
-            å¤åˆ¶
+            ¸´ÖÆ
           </Button>
         </Toolbar>
       </CardContent>
@@ -3578,13 +3578,13 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
 function DiagnosticsPanel({ diagnostics, actions }: { diagnostics: DiagnosticsResult | null; actions: Actions }) {
   return (
     <Panel>
-      <CardHead title="è¯Šæ–­æŠ¥å‘Š" detail="åŒ…å«ç‰ˆæœ¬ã€è·¯å¾„ã€è®¾ç½®å’Œå¹³å°ä¿¡æ¯" />
+      <CardHead title="Õï¶Ï±¨¸æ" detail="°üº¬°æ±¾¡¢Â·¾¶¡¢ÉèÖÃºÍÆ½Ì¨ĞÅÏ¢" />
       <CardContent>
-        <Textarea className="log-view tall" readOnly value={diagnostics?.report ?? "å°šæœªç”Ÿæˆè¯Šæ–­æŠ¥å‘Šã€‚"} />
+        <Textarea className="log-view tall" readOnly value={diagnostics?.report ?? "ÉĞÎ´Éú³ÉÕï¶Ï±¨¸æ¡£"} />
         <Toolbar>
-          <Button onClick={() => void actions.refreshDiagnostics()}>é‡æ–°ç”Ÿæˆ</Button>
+          <Button onClick={() => void actions.refreshDiagnostics()}>ÖØĞÂÉú³É</Button>
           <Button variant="secondary" onClick={() => void actions.copyDiagnostics()}>
-            å¤åˆ¶æŠ¥å‘Š
+            ¸´ÖÆ±¨¸æ
           </Button>
         </Toolbar>
       </CardContent>
@@ -3678,21 +3678,21 @@ function SortableRelayProfileCard({
       tabIndex={0}
     >
       <button
-        aria-label="æ‹–åŠ¨æ’åº"
+        aria-label="ÍÏ¶¯ÅÅĞò"
         className="relay-drag"
-        title="æ‹–åŠ¨æ’åº"
+        title="ÍÏ¶¯ÅÅĞò"
         type="button"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="relay-index" title={profile.name || "æœªå‘½åä¾›åº”å•†"}>
+      <span className="relay-index" title={profile.name || "Î´ÃüÃû¹©Ó¦ÉÌ"}>
         {providerInitial(profile.name)}
       </span>
       <span className="relay-summary">
-        <strong>{profile.name || "æœªå‘½åä¾›åº”å•†"}</strong>
-        <small>{relayModeLabel(profile.relayMode)} Â· {relayProtocolLabel(profile.protocol)} Â· {relayProfileConfigBrief(profile)}</small>
+        <strong>{profile.name || "Î´ÃüÃû¹©Ó¦ÉÌ"}</strong>
+        <small>{relayModeLabel(profile.relayMode)} ¡¤ {relayProtocolLabel(profile.protocol)} ¡¤ {relayProfileConfigBrief(profile)}</small>
       </span>
       <span className="relay-card-actions">
         <Button
@@ -3706,11 +3706,11 @@ function SortableRelayProfileCard({
             void actions.switchRelayProfile(next, previousActiveRelayId);
           }}
           size="sm"
-          title={disabled ? "ä¾›åº”å•†åˆ‡æ¢ä¸å¯ç”¨" : active ? "å½“å‰æ­£åœ¨ä½¿ç”¨" : "è®¾ä¸ºå½“å‰"}
+          title={disabled ? "¹©Ó¦ÉÌÇĞ»»²»¿ÉÓÃ" : active ? "µ±Ç°ÕıÔÚÊ¹ÓÃ" : "ÉèÎªµ±Ç°"}
           variant={active ? "secondary" : "outline"}
         >
           <CheckCircle2 className="h-4 w-4" />
-          {active ? "ä½¿ç”¨ä¸­" : "ä½¿ç”¨"}
+          {active ? "Ê¹ÓÃÖĞ" : "Ê¹ÓÃ"}
         </Button>
         <span className="relay-card-extra">
           <Button
@@ -3721,7 +3721,7 @@ function SortableRelayProfileCard({
               void actions.testRelayProfile(profile);
             }}
             size="icon"
-            title={isAggregateRelayProfile(profile) ? "èšåˆä¾›åº”å•†ä¼šåœ¨çœŸå®å¯¹è¯ä¸­è½®è½¬æˆå‘˜ï¼Œè¯·æµ‹è¯•æˆå‘˜ä¾›åº”å•†" : "å‘é€ hi æµ‹è¯•"}
+            title={isAggregateRelayProfile(profile) ? "¾ÛºÏ¹©Ó¦ÉÌ»áÔÚÕæÊµ¶Ô»°ÖĞÂÖ×ª³ÉÔ±£¬Çë²âÊÔ³ÉÔ±¹©Ó¦ÉÌ" : "·¢ËÍ hi ²âÊÔ"}
             variant="ghost"
           >
             <TestTube className="h-4 w-4" />
@@ -3732,7 +3732,7 @@ function SortableRelayProfileCard({
               onEdit(profile.id);
             }}
             size="icon"
-            title="ç¼–è¾‘"
+            title="±à¼­"
             variant="ghost"
           >
             <Edit3 className="h-4 w-4" />
@@ -3743,7 +3743,7 @@ function SortableRelayProfileCard({
               onFormChange(duplicateRelayProfile(form, profile.id));
             }}
             size="icon"
-            title="å¤åˆ¶"
+            title="¸´ÖÆ"
             variant="ghost"
           >
             <Copy className="h-4 w-4" />
@@ -3755,7 +3755,7 @@ function SortableRelayProfileCard({
               onFormChange(removeRelayProfile(form, profile.id));
             }}
             size="icon"
-            title="åˆ é™¤ä¾›åº”å•†"
+            title="É¾³ı¹©Ó¦ÉÌ"
             variant="ghost"
           >
             <Trash2 className="h-4 w-4" />
@@ -3767,17 +3767,17 @@ function SortableRelayProfileCard({
 }
 
 function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actions: Actions }) {
-  const status = script.updateAvailable ? "å¯æ›´æ–°" : script.installed ? `å·²å®‰è£… ${script.installedVersion}` : "æœªå®‰è£…";
+  const status = script.updateAvailable ? "¿É¸üĞÂ" : script.installed ? `ÒÑ°²×° ${script.installedVersion}` : "Î´°²×°";
   return (
     <div className="script-market-card">
       <div className="script-market-title">
         <div>
           <strong>{script.name}</strong>
-          <span>{script.author || "æœªçŸ¥ä½œè€…"}</span>
+          <span>{script.author || "Î´Öª×÷Õß"}</span>
         </div>
         <UiBadge variant={script.updateAvailable ? "default" : script.installed ? "secondary" : "outline"}>{status}</UiBadge>
       </div>
-      <p className="script-market-description">{script.description || "æš‚æ— æè¿°ã€‚"}</p>
+      <p className="script-market-description">{script.description || "ÔİÎŞÃèÊö¡£"}</p>
       <div className="script-market-tags">
         <span className="script-market-tag">v{script.version}</span>
         {script.tags.map((tag) => (
@@ -3787,12 +3787,12 @@ function MarketScriptCard({ script, actions }: { script: ScriptMarketItem; actio
       <div className="script-market-actions">
         <Button onClick={() => void actions.installMarketScript(script.id)} size="sm">
           <Download className="h-4 w-4" />
-          {script.updateAvailable ? "æ›´æ–°" : script.installed ? "é‡æ–°å®‰è£…" : "å®‰è£…"}
+          {script.updateAvailable ? "¸üĞÂ" : script.installed ? "ÖØĞÂ°²×°" : "°²×°"}
         </Button>
         {script.homepage ? (
           <Button onClick={() => void actions.openExternalUrl(script.homepage)} size="sm" variant="secondary">
             <ExternalLink className="h-4 w-4" />
-            ä¸»é¡µ
+            Ö÷Ò³
           </Button>
         ) : null}
       </div>
@@ -3881,11 +3881,11 @@ function RelayProfileDetail({
         <Toolbar>
           <Button onClick={onBack} variant="secondary">
             <ArrowLeft className="h-4 w-4" />
-            è¿”å›åˆ—è¡¨
+            ·µ»ØÁĞ±í
           </Button>
-          <Button disabled={!!validationError} onClick={() => void saveDraft()} title={validationError || "ä¿å­˜"}>
+          <Button disabled={!!validationError} onClick={() => void saveDraft()} title={validationError || "±£´æ"}>
             <Save className="h-4 w-4" />
-            ä¿å­˜
+            ±£´æ
           </Button>
         </Toolbar>
       </div>
@@ -3921,7 +3921,7 @@ function ContextScreen({
 }) {
   return (
     <Panel fill>
-      <CardHead title="Codex å·¥å…·ä¸æ’ä»¶" detail="ç‹¬ç«‹ç®¡ç† Codex çš„ MCPã€Skillsã€Pluginsï¼›åˆ‡æ¢ä»»æ„ä¾›åº”å•†éƒ½ä¼šå¸¦ä¸Šã€‚" />
+      <CardHead title="Codex ¹¤¾ßÓë²å¼ş" detail="¶ÀÁ¢¹ÜÀí Codex µÄ MCP¡¢Skills¡¢Plugins£»ÇĞ»»ÈÎÒâ¹©Ó¦ÉÌ¶¼»á´øÉÏ¡£" />
       <CardContent>
         <RelayContextManager
           form={normalizeSettings(form)}
@@ -3987,17 +3987,17 @@ function RelayProfileEditor({
     <div className="relay-profile-editor">
       <div className="relay-editor-head">
         <div>
-          <strong>{profile.name || "æœªå‘½åä¾›åº”å•†"}</strong>
+          <strong>{profile.name || "Î´ÃüÃû¹©Ó¦ÉÌ"}</strong>
           <span>{relayProfileEditorStatus(profile, form, isNew)}</span>
         </div>
         {isNew ? null : (
           <Button
             disabled={!form.relayProfilesEnabled || actions.relaySwitching}
             onClick={onSwitch}
-            title={!form.relayProfilesEnabled ? "ä¾›åº”å•†é…ç½®æ€»å¼€å…³å·²å…³é—­" : actions.relaySwitching ? "æ¨¡å‹åˆ‡æ¢ä¸­" : undefined}
+            title={!form.relayProfilesEnabled ? "Ä£ĞÍÅäÖÃ×Ü¿ª¹ØÒÑ¹Ø±Õ" : actions.relaySwitching ? "Ä£ĞÍÇĞ»»ÖĞ" : undefined}
             variant={profile.id === form.activeRelayId ? "secondary" : "default"}
           >
-            {actions.relaySwitching ? "åˆ‡æ¢ä¸­" : profile.id === form.activeRelayId ? "ä½¿ç”¨ä¸­" : "è®¾ä¸ºå½“å‰"}
+            {actions.relaySwitching ? "ÇĞ»»ÖĞ" : profile.id === form.activeRelayId ? "Ê¹ÓÃÖĞ" : "ÉèÎªµ±Ç°"}
           </Button>
         )}
       </div>
@@ -4009,13 +4009,13 @@ function RelayProfileEditor({
         />
       ) : null}
       <div className="relay-fields">
-        <Field className="relay-field-name" label="åç§°">
+        <Field className="relay-field-name" label="Ãû³Æ">
           <Input
             value={profile.name}
             onChange={(event) => updateDraft({ name: event.currentTarget.value })}
           />
         </Field>
-        <Field className="relay-field-mode" label="æ¥å…¥æ¨¡å¼">
+        <Field className="relay-field-mode" label="½ÓÈëÄ£Ê½">
           <select
             className="field-select"
             value={profile.relayMode}
@@ -4024,21 +4024,21 @@ function RelayProfileEditor({
               updateDraft(relayMode === "official" ? { relayMode, officialMixApiKey: false } : { relayMode });
             }}
           >
-            <option value="official">å®˜æ–¹ç™»å½•</option>
-            <option value="pureApi">çº¯ API</option>
+            <option value="official">¹Ù·½µÇÂ¼</option>
+            <option value="pureApi">´¿ API</option>
           </select>
         </Field>
-        <Field className="relay-field-config-model" label="é…ç½®æ¨¡å‹">
+        <Field className="relay-field-config-model" label="ÅäÖÃÄ£ĞÍ">
           <Input
             value={profile.model}
             onChange={(event) => updateDraft({ model: event.currentTarget.value })}
-            placeholder="ä¾‹å¦‚ deepseek-v4-pro"
+            placeholder="ÀıÈç deepseek-v4-pro"
           />
           <p className="field-hint">
-            é»˜è®¤å¯åŠ¨ Codex æ—¶ä½¿ç”¨çš„æ¨¡å‹åï¼Œè¯·å‹¿å¸¦åç¼€ï¼›ä¸Šä¸‹æ–‡çª—å£è¯·åœ¨ä¸‹æ–¹ã€Œæ¨¡å‹åˆ—è¡¨ã€ä¸­æŒ‰æ¨¡å‹å•ç‹¬é…ç½®ã€‚
+            Ä¬ÈÏÆô¶¯ Codex Ê±Ê¹ÓÃµÄÄ£ĞÍÃû£¬ÇëÎğ´øºó×º£»ÉÏÏÂÎÄ´°¿ÚÇëÔÚÏÂ·½¡¸Ä£ĞÍÁĞ±í¡¹ÖĞ°´Ä£ĞÍµ¥¶ÀÅäÖÃ¡£
           </p>
         </Field>
-        <Field className="relay-field-goals" label="Codex ç›®æ ‡">
+        <Field className="relay-field-goals" label="Codex Ä¿±ê">
           <label className="inline-check">
             <input
               checked={configHasCodexGoalsFeature(profile.configContents)}
@@ -4049,7 +4049,7 @@ function RelayProfileEditor({
               }
               type="checkbox"
             />
-            <span>å¯ç”¨ç›®æ ‡åŠŸèƒ½</span>
+            <span>ÆôÓÃÄ¿±ê¹¦ÄÜ</span>
           </label>
         </Field>
         <div className="relay-advanced-toggle">
@@ -4061,32 +4061,32 @@ function RelayProfileEditor({
             variant="secondary"
           >
             <Settings className="h-4 w-4" />
-            æ›´å¤šé€‰é¡¹
+            ¸ü¶àÑ¡Ïî
           </Button>
         </div>
         {showAdvanced ? (
           <div className="relay-advanced-fields">
-            <Field className="relay-field-test-model" label="æµ‹è¯•æ¨¡å‹">
+            <Field className="relay-field-test-model" label="²âÊÔÄ£ĞÍ">
               <Input
                 value={profile.testModel}
                 onChange={(event) => updateDraft({ testModel: event.currentTarget.value })}
-                placeholder={`ç•™ç©ºä½¿ç”¨é»˜è®¤ï¼š${form.relayTestModel || defaultSettings.relayTestModel}`}
+                placeholder={`Áô¿ÕÊ¹ÓÃÄ¬ÈÏ£º${form.relayTestModel || defaultSettings.relayTestModel}`}
               />
             </Field>
-            <Field className="relay-field-context-window" label="ä¸Šä¸‹æ–‡å¤§å°">
+            <Field className="relay-field-context-window" label="ÉÏÏÂÎÄ´óĞ¡">
               <Input
                 inputMode="numeric"
                 value={profile.contextWindow}
                 onChange={(event) => updateDraft({ contextWindow: event.currentTarget.value.replace(/[^\d]/g, "") })}
-                placeholder="ç•™ç©ºä¸æ”¹å†™ï¼Œä¾‹å¦‚ 200000"
+                placeholder="Áô¿Õ²»¸ÄĞ´£¬ÀıÈç 200000"
               />
             </Field>
-            <Field className="relay-field-auto-compact" label="å‹ç¼©ä¸Šä¸‹æ–‡å¤§å°">
+            <Field className="relay-field-auto-compact" label="Ñ¹ËõÉÏÏÂÎÄ´óĞ¡">
               <Input
                 inputMode="numeric"
                 value={profile.autoCompactLimit}
                 onChange={(event) => updateDraft({ autoCompactLimit: event.currentTarget.value.replace(/[^\d]/g, "") })}
-                placeholder="ç•™ç©ºä¸æ”¹å†™ï¼Œä¾‹å¦‚ 160000"
+                placeholder="Áô¿Õ²»¸ÄĞ´£¬ÀıÈç 160000"
               />
             </Field>
           </div>
@@ -4099,7 +4099,7 @@ function RelayProfileEditor({
                 onChange={(event) => updateDraft({ officialMixApiKey: event.currentTarget.checked })}
                 type="checkbox"
               />
-              <span>æ··å…¥ API KEY</span>
+              <span>»ìÈë API KEY</span>
             </label>
           </Field>
         ) : null}
@@ -4109,7 +4109,7 @@ function RelayProfileEditor({
               <Input
                 value={profile.baseUrl}
                 onChange={(event) => updateDraft({ baseUrl: event.currentTarget.value })}
-                placeholder="å¡«å†™ä¸­è½¬æœåŠ¡ Base URL"
+                placeholder="ÌîĞ´ÖĞ×ª·şÎñ Base URL"
               />
             </Field>
             <Field className="relay-field-key" label="Key">
@@ -4117,10 +4117,10 @@ function RelayProfileEditor({
                 type="password"
                 value={profile.apiKey}
                 onChange={(event) => updateDraft({ apiKey: event.currentTarget.value })}
-                placeholder="è¾“å…¥ä¸­è½¬æœåŠ¡çš„ API Key"
+                placeholder="ÊäÈëÖĞ×ª·şÎñµÄ API Key"
               />
             </Field>
-            <Field className="relay-field-protocol" label="ä¸Šæ¸¸åè®®">
+            <Field className="relay-field-protocol" label="ÉÏÓÎĞ­Òé">
               <div className="protocol-options">
                 <button
                   className={`protocol-option ${profile.protocol === "responses" ? "active" : ""}`}
@@ -4141,11 +4141,11 @@ function RelayProfileEditor({
           </div>
         ) : null}
         {showApiFields ? (
-          <Field className="relay-field-model-list" label="æ¨¡å‹åˆ—è¡¨">
+          <Field className="relay-field-model-list" label="Ä£ĞÍÁĞ±í">
             <div className="relay-model-row-editor">
               <div className="relay-model-row relay-model-row-head">
-                <span>æ¨¡å‹åç§°</span>
-                <span>ä¸Šä¸‹æ–‡çª—å£</span>
+                <span>Ä£ĞÍÃû³Æ</span>
+                <span>ÉÏÏÂÎÄ´°¿Ú</span>
                 <span />
               </div>
               {modelWindowRows.map((row, index) => (
@@ -4161,10 +4161,10 @@ function RelayProfileEditor({
                     placeholder="1M"
                   />
                   <Button
-                    aria-label="åˆ é™¤æ¨¡å‹"
+                    aria-label="É¾³ıÄ£ĞÍ"
                     onClick={() => removeModelWindowRow(index)}
                     size="icon"
-                    title="åˆ é™¤æ¨¡å‹"
+                    title="É¾³ıÄ£ĞÍ"
                     type="button"
                     variant="ghost"
                   >
@@ -4181,7 +4181,7 @@ function RelayProfileEditor({
                 variant="secondary"
               >
                 <Plus className="h-4 w-4" />
-                æ·»åŠ æ¨¡å‹
+                Ìí¼ÓÄ£ĞÍ
               </Button>
               <Button
                 onClick={async () => {
@@ -4200,11 +4200,11 @@ function RelayProfileEditor({
                 variant="secondary"
               >
                 <Download className="h-4 w-4" />
-                ä»ä¸Šæ¸¸è·å–
+                ´ÓÉÏÓÎ»ñÈ¡
               </Button>
             </div>
             <p className="field-hint">
-              æ¯è¡Œä¸€ä¸ªæ¨¡å‹ï¼›ä¸Šä¸‹æ–‡çª—å£å¯å¡« <code>1M</code>ã€<code>200K</code> æˆ– <code>1000000</code>ï¼Œç•™ç©ºè¡¨ç¤ºä½¿ç”¨ Codex é»˜è®¤é•¿åº¦ã€‚
+              Ã¿ĞĞÒ»¸öÄ£ĞÍ£»ÉÏÏÂÎÄ´°¿Ú¿ÉÌî <code>1M</code>¡¢<code>200K</code> »ò <code>1000000</code>£¬Áô¿Õ±íÊ¾Ê¹ÓÃ Codex Ä¬ÈÏ³¤¶È¡£
             </p>
           </Field>
         ) : null}
@@ -4213,7 +4213,7 @@ function RelayProfileEditor({
             <Input
               value={profile.userAgent}
               onChange={(event) => updateDraft({ userAgent: event.currentTarget.value })}
-              placeholder="ç•™ç©ºä½¿ç”¨é»˜è®¤å€¼"
+              placeholder="Áô¿ÕÊ¹ÓÃÄ¬ÈÏÖµ"
             />
           </Field>
         ) : null}
@@ -4221,7 +4221,7 @@ function RelayProfileEditor({
       {showApiFields && profile.protocol === "chatCompletions" ? (
         <div className="hint-line relay-protocol-hint">
           <MessageCircle className="h-4 w-4" />
-          <span>æ­¤ä¸Šæ¸¸ä¼šé€šè¿‡æœ¬åœ° 127.0.0.1:57321 è½¬æˆ Responses APIï¼Œéœ€è¦ä» LDCodex å¯åŠ¨ Codexã€‚</span>
+          <span>´ËÉÏÓÎ»áÍ¨¹ı±¾µØ 127.0.0.1:57321 ×ª³É Responses API£¬ĞèÒª´Ó LDCodex Æô¶¯ Codex¡£</span>
         </div>
       ) : null}
       <div className="hint-line relay-protocol-hint">
@@ -4269,27 +4269,27 @@ function AggregateRelayProfileEditor({
     <div className="relay-profile-editor aggregate-editor">
       <div className="relay-editor-head">
         <div>
-          <strong>{profile.name || "æœªå‘½åèšåˆä¾›åº”å•†"}</strong>
-          <span>{isNew ? "é€‰æ‹©å·²æœ‰ä¾›åº”å•†ä½œä¸ºæˆå‘˜ï¼Œä¿å­˜åå†™å…¥ settings payload" : "èšåˆé…ç½®åªå¼•ç”¨å·²æœ‰ä¾›åº”å•†ï¼Œä¸å¤åˆ¶ Key å’Œé…ç½®æ–‡ä»¶"}</span>
+          <strong>{profile.name || "Î´ÃüÃû¾ÛºÏ¹©Ó¦ÉÌ"}</strong>
+          <span>{isNew ? "Ñ¡ÔñÒÑÓĞ¹©Ó¦ÉÌ×÷Îª³ÉÔ±£¬±£´æºóĞ´Èë settings payload" : "¾ÛºÏÅäÖÃÖ»ÒıÓÃÒÑÓĞ¹©Ó¦ÉÌ£¬²»¸´ÖÆ Key ºÍÅäÖÃÎÄ¼ş"}</span>
         </div>
-        <UiBadge variant="secondary">èšåˆ</UiBadge>
+        <UiBadge variant="secondary">¾ÛºÏ</UiBadge>
       </div>
       <div className="relay-fields aggregate-fields">
-        <Field className="relay-field-name" label="åç§°">
+        <Field className="relay-field-name" label="Ãû³Æ">
           <Input
             value={profile.name}
             onChange={(event) => onProfileChange({ ...profile, name: event.currentTarget.value })}
-            placeholder="ä¾‹å¦‚ ä¸»åŠ›èšåˆæ± "
+            placeholder="ÀıÈç Ö÷Á¦¾ÛºÏ³Ø"
           />
         </Field>
-        <Field className="relay-field-test-model" label="æµ‹è¯•æ¨¡å‹">
+        <Field className="relay-field-test-model" label="²âÊÔÄ£ĞÍ">
           <Input
             value={profile.testModel}
             onChange={(event) => onProfileChange({ ...profile, testModel: event.currentTarget.value })}
-            placeholder={`ç•™ç©ºä½¿ç”¨é»˜è®¤ï¼š${form.relayTestModel || defaultSettings.relayTestModel}`}
+            placeholder={`Áô¿ÕÊ¹ÓÃÄ¬ÈÏ£º${form.relayTestModel || defaultSettings.relayTestModel}`}
           />
         </Field>
-        <Field className="aggregate-strategy-field" label="èšåˆç­–ç•¥">
+        <Field className="aggregate-strategy-field" label="¾ÛºÏ²ßÂÔ">
           <select
             className="field-select"
             value={aggregate.strategy}
@@ -4319,8 +4319,8 @@ function AggregateRelayProfileEditor({
       <div className="aggregate-members">
         <div className="aggregate-members-head">
           <div>
-            <strong>æˆå‘˜ä¾›åº”å•†</strong>
-            <span>åªèƒ½å‹¾é€‰å·²å¡«å†™ Base URL / Key çš„ API ä¾›åº”å•†ï¼Œèšåˆä¾›åº”å•†ä¸ä¼šä½œä¸ºæˆå‘˜ã€‚</span>
+            <strong>³ÉÔ±¹©Ó¦ÉÌ</strong>
+            <span>Ö»ÄÜ¹´Ñ¡ÒÑÌîĞ´ Base URL / Key µÄ API ¹©Ó¦ÉÌ£¬¾ÛºÏ¹©Ó¦ÉÌ²»»á×÷Îª³ÉÔ±¡£</span>
           </div>
           <UiBadge variant="outline">{aggregate.members.length} / {candidates.length}</UiBadge>
         </div>
@@ -4337,11 +4337,11 @@ function AggregateRelayProfileEditor({
                     type="checkbox"
                   />
                   <span className="aggregate-member-summary">
-                    <strong>{candidate.name || "æœªå‘½åä¾›åº”å•†"}</strong>
-                    <small>{relayModeLabel(candidate.relayMode)} Â· {relayProtocolLabel(candidate.protocol)} Â· {relayProfileConfigBrief(candidate)}</small>
+                    <strong>{candidate.name || "Î´ÃüÃû¹©Ó¦ÉÌ"}</strong>
+                    <small>{relayModeLabel(candidate.relayMode)} ¡¤ {relayProtocolLabel(candidate.protocol)} ¡¤ {relayProfileConfigBrief(candidate)}</small>
                   </span>
                   <span className="aggregate-weight-box">
-                    <span>æƒé‡</span>
+                    <span>È¨ÖØ</span>
                     <Input
                       disabled={!checked}
                       min={1}
@@ -4355,14 +4355,14 @@ function AggregateRelayProfileEditor({
             })}
           </div>
         ) : (
-          <div className="empty">å…ˆæ·»åŠ è‡³å°‘ 1 ä¸ªå·²å¡«å†™ Base URL / Key çš„ API ä¾›åº”å•†ï¼Œå†åˆ›å»ºèšåˆä¾›åº”å•†ã€‚</div>
+          <div className="empty">ÏÈÌí¼ÓÖÁÉÙ 1 ¸öÒÑÌîĞ´ Base URL / Key µÄ API ¹©Ó¦ÉÌ£¬ÔÙ´´½¨¾ÛºÏ¹©Ó¦ÉÌ¡£</div>
         )}
       </div>
       <div className="relay-grid compact aggregate-preview">
-        <Metric label="ç­–ç•¥" value={aggregateStrategyLabel(aggregate.strategy)} />
-        <Metric label="æˆå‘˜æ•°é‡" value={`${aggregate.members.length} ä¸ª`} />
-        <Metric label="æ€»æƒé‡" value={`${totalWeight}`} />
-        <Metric label="åºåˆ—åŒ–å­—æ®µ" value="aggregate.strategy / aggregate.members" />
+        <Metric label="²ßÂÔ" value={aggregateStrategyLabel(aggregate.strategy)} />
+        <Metric label="³ÉÔ±ÊıÁ¿" value={`${aggregate.members.length} ¸ö`} />
+        <Metric label="×ÜÈ¨ÖØ" value={`${totalWeight}`} />
+        <Metric label="ĞòÁĞ»¯×Ö¶Î" value="aggregate.strategy / aggregate.members" />
       </div>
       <div className="hint-line relay-protocol-hint">
         <ShieldCheck className="h-4 w-4" />
@@ -4419,13 +4419,13 @@ function RelayContextManager({
     <div className="relay-context-panel">
       <div className="relay-context-head">
         <div>
-          <strong>Codex å·¥å…·ä¸æ’ä»¶</strong>
-          <span>MCPã€Skillsã€Plugins ä½œä¸ºå…¨å±€é…ç½®ç‹¬ç«‹ç®¡ç†ï¼Œåˆ‡æ¢ä»»æ„ä¾›åº”å•†éƒ½ä¼šåˆå¹¶ã€‚</span>
+          <strong>Codex ¹¤¾ßÓë²å¼ş</strong>
+          <span>MCP¡¢Skills¡¢Plugins ×÷ÎªÈ«¾ÖÅäÖÃ¶ÀÁ¢¹ÜÀí£¬ÇĞ»»ÈÎÒâ¹©Ó¦ÉÌ¶¼»áºÏ²¢¡£</span>
         </div>
         <div className="relay-context-head-actions">
           <Button onClick={() => setEditor({ kind: activeKind })} size="sm" variant="secondary">
             <Plus className="h-4 w-4" />
-            æ–°å¢{label}
+            ĞÂÔö{label}
           </Button>
         </div>
       </div>
@@ -4443,7 +4443,7 @@ function RelayContextManager({
         ))}
       </div>
       <div className="relay-context-summary">
-        å½“å‰å…±æœ‰ {visibleEntries.length} ä¸ª{label}ï¼›è¿™äº›æ¡ç›®ç‹¬ç«‹äºä¾›åº”å•†ä¿å­˜ï¼Œä¼šå†™å…¥æ‰€æœ‰ä¾›åº”å•†åˆ‡æ¢åçš„ config.tomlã€‚
+        µ±Ç°¹²ÓĞ {visibleEntries.length} ¸ö{label}£»ÕâĞ©ÌõÄ¿¶ÀÁ¢ÓÚ¹©Ó¦ÉÌ±£´æ£¬»áĞ´ÈëËùÓĞ¹©Ó¦ÉÌÇĞ»»ºóµÄ config.toml¡£
       </div>
       <div className="relay-context-list">
         {visibleEntries.length ? (
@@ -4457,21 +4457,21 @@ function RelayContextManager({
                   className={`context-enabled-switch ${entry.enabled ? "active" : ""}`}
                   onClick={() => void toggleContextEntryEnabled(entry)}
                   role="switch"
-                  title={entry.enabled ? "ç¦ç”¨æ­¤æ‰©å±•é¡¹" : "å¯ç”¨æ­¤æ‰©å±•é¡¹"}
+                  title={entry.enabled ? "½ûÓÃ´ËÀ©Õ¹Ïî" : "ÆôÓÃ´ËÀ©Õ¹Ïî"}
                   type="button"
                 >
                   <span className="context-switch-track" aria-hidden="true">
                     <span className="context-switch-thumb" />
                   </span>
                 </button>
-                <Button onClick={() => setEditor({ kind: entry.kind, entry })} size="icon" title="ç¼–è¾‘æ‰©å±•é¡¹" variant="ghost">
+                <Button onClick={() => setEditor({ kind: entry.kind, entry })} size="icon" title="±à¼­À©Õ¹Ïî" variant="ghost">
                   <Edit3 className="h-4 w-4" />
                 </Button>
                 <Button
                   className="relay-context-delete"
                   onClick={() => void deleteEntry(entry)}
                   size="icon"
-                  title="åˆ é™¤æ‰©å±•é¡¹"
+                  title="É¾³ıÀ©Õ¹Ïî"
                   variant="ghost"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -4480,7 +4480,7 @@ function RelayContextManager({
             </div>
           ))
         ) : (
-          <div className="empty">æš‚æ— {label}ï¼Œå¯ä»¥ä»é€šç”¨é…ç½®æ–‡ä»¶æˆ–è¿™é‡Œæ–°å¢ã€‚</div>
+          <div className="empty">ÔİÎŞ{label}£¬¿ÉÒÔ´ÓÍ¨ÓÃÅäÖÃÎÄ¼ş»òÕâÀïĞÂÔö¡£</div>
         )}
       </div>
       {editor ? (
@@ -4514,7 +4514,7 @@ function ContextEntryEditor({
   return (
     <div className="context-editor">
       <div className="context-editor-fields">
-        <Field label="ç±»å‹">
+        <Field label="ÀàĞÍ">
           <select
             className="field-select"
             disabled={!!entry}
@@ -4531,25 +4531,25 @@ function ContextEntryEditor({
             disabled={!!entry}
             value={id}
             onChange={(event) => setId(event.currentTarget.value.trim())}
-            placeholder="ä¾‹å¦‚ context7"
+            placeholder="ÀıÈç context7"
           />
         </Field>
       </div>
-      <Field label="TOML é…ç½®ä½“">
+      <Field label="TOML ÅäÖÃÌå">
         <Textarea
           className="context-editor-textarea"
           value={tomlBody}
           onChange={(event) => setTomlBody(event.currentTarget.value)}
-          placeholder={'åªå¡«å†™è¡¨å¤´ä¸‹é¢çš„å†…å®¹ï¼Œä¾‹å¦‚ï¼š\ncommand = "npx"\nargs = ["-y", "@upstash/context7-mcp"]'}
+          placeholder={'Ö»ÌîĞ´±íÍ·ÏÂÃæµÄÄÚÈİ£¬ÀıÈç£º\ncommand = "npx"\nargs = ["-y", "@upstash/context7-mcp"]'}
           spellCheck={false}
         />
       </Field>
       <Toolbar>
         <Button disabled={!canSave} onClick={() => onSave(draftKind, id.trim(), tomlBody)} size="sm">
           <Save className="h-4 w-4" />
-          ä¿å­˜æ‰©å±•é¡¹
+          ±£´æÀ©Õ¹Ïî
         </Button>
-        <Button onClick={onCancel} size="sm" variant="secondary">å–æ¶ˆ</Button>
+        <Button onClick={onCancel} size="sm" variant="secondary">È¡Ïû</Button>
       </Toolbar>
     </div>
   );
@@ -4622,8 +4622,8 @@ function RelayFileEditors({
       <div className="relay-file-panel">
         <div className="relay-file-head">
           <div>
-            <strong>config.toml é¢„è§ˆ</strong>
-            <span>{isActive ? "å½“å‰ä¾›åº”å•†åˆ‡æ¢åä¼šå†™å…¥çš„é¢„è§ˆï¼›ä¸Šä¸‹æ–‡å¼€å…³å˜åŒ–ä¼šç«‹å³åæ˜ " : "åˆ‡æ¢åˆ°æ­¤ä¾›åº”å•†æ—¶ä¼šå†™å…¥çš„é¢„è§ˆï¼›ä¸Šä¸‹æ–‡å¼€å…³å˜åŒ–ä¼šç«‹å³åæ˜ "}</span>
+            <strong>config.toml Ô¤ÀÀ</strong>
+            <span>{isActive ? "µ±Ç°¹©Ó¦ÉÌÇĞ»»ºó»áĞ´ÈëµÄÔ¤ÀÀ£»ÉÏÏÂÎÄ¿ª¹Ø±ä»¯»áÁ¢¼´·´Ó³" : "ÇĞ»»µ½´Ë¹©Ó¦ÉÌÊ±»áĞ´ÈëµÄÔ¤ÀÀ£»ÉÏÏÂÎÄ¿ª¹Ø±ä»¯»áÁ¢¼´·´Ó³"}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -4645,8 +4645,8 @@ function RelayFileEditors({
       <div className="relay-file-panel">
         <div className="relay-file-head">
           <div>
-            <strong>é€šç”¨é…ç½®æ–‡ä»¶</strong>
-            <span>åªä¿ç•™é MCPã€Skillsã€Plugins çš„è·¨ä¾›åº”å•†é…ç½®ï¼›å·¥å…·ä¸æ’ä»¶åœ¨ç‹¬ç«‹é¡µé¢ç®¡ç†ã€‚</span>
+            <strong>Í¨ÓÃÅäÖÃÎÄ¼ş</strong>
+            <span>Ö»±£Áô·Ç MCP¡¢Skills¡¢Plugins µÄ¿çÄ£ĞÍÅäÖÃ£»¹¤¾ßÓë²å¼şÔÚ¶ÀÁ¢Ò³Ãæ¹ÜÀí¡£</span>
           </div>
           <Button
             onClick={async () => {
@@ -4654,7 +4654,7 @@ function RelayFileEditors({
               if (!extracted) return;
               const split = splitContextConfigText(extracted.commonConfigContents || "");
               if (!split.common.trim() && !split.context.trim()) {
-                await actions.showMessage("é€šç”¨é…ç½®æ–‡ä»¶", "å½“å‰ä¾›åº”å•† config.toml é‡Œæ²¡æœ‰å¯æå–çš„é€šç”¨é…ç½®ã€‚", "failed");
+                await actions.showMessage("Í¨ÓÃÅäÖÃÎÄ¼ş", "µ±Ç°¹©Ó¦ÉÌ config.toml ÀïÃ»ÓĞ¿ÉÌáÈ¡µÄÍ¨ÓÃÅäÖÃ¡£", "failed");
                 return;
               }
               const promotedProfile = {
@@ -4676,7 +4676,7 @@ function RelayFileEditors({
             variant="secondary"
           >
             <Download className="h-4 w-4" />
-            æå–å½“å‰ä¾›åº”å•†é…ç½®
+            ÌáÈ¡µ±Ç°Ä£ĞÍÅäÖÃ
           </Button>
         </div>
         <SyncedTextarea
@@ -4689,7 +4689,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>auth.json</strong>
-            <span>{isActive ? "å½“å‰ä½¿ç”¨ä¸­ï¼šæ‰“å¼€æ—¶ä» ~/.codex/auth.json å›å¡«ï¼Œä¿å­˜åä¼šä½œä¸ºæ­¤ä¾›åº”å•† auth å­˜æ¡£" : "åˆ‡æ¢åˆ°æ­¤ä¾›åº”å•†æ—¶ä¼šå†™å…¥ ~/.codex/auth.json"}</span>
+            <span>{isActive ? "µ±Ç°Ê¹ÓÃÖĞ£º´ò¿ªÊ±´Ó ~/.codex/auth.json »ØÌî£¬±£´æºó»á×÷Îª´Ë¹©Ó¦ÉÌ auth ´æµµ" : "ÇĞ»»µ½´Ë¹©Ó¦ÉÌÊ±»áĞ´Èë ~/.codex/auth.json"}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -4710,16 +4710,16 @@ function ModeSelector({ launchMode, actions }: { launchMode: LaunchMode; actions
         onClick={() => void actions.setLaunchMode("relay")}
         type="button"
       >
-        <strong>å…¼å®¹å¢å¼º</strong>
-        <span>é€‚åˆå®˜æ–¹ç™»å½•æˆ–å®˜æ–¹æ··å…¥ API Keyï¼›ä¿ç•™ä¼šè¯åˆ é™¤ã€å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨å’Œç”¨æˆ·è„šæœ¬ï¼Œå…³é—­æ’ä»¶å¸‚åœºç›¸å…³å¢å¼ºã€‚</span>
+        <strong>¼æÈİÔöÇ¿</strong>
+        <span>ÊÊºÏ¹Ù·½µÇÂ¼»ò¹Ù·½»ìÈë API Key£»±£Áô»á»°É¾³ı¡¢µ¼³ö¡¢ÏîÄ¿ÒÆ¶¯ºÍÓÃ»§½Å±¾£¬¹Ø±Õ²å¼şÊĞ³¡Ïà¹ØÔöÇ¿¡£</span>
       </button>
       <button
         className={`mode-option ${launchMode === "patch" ? "active" : ""}`}
         onClick={() => void actions.setLaunchMode("patch")}
         type="button"
       >
-        <strong>å®Œæ•´å¢å¼º</strong>
-        <span>é€‚åˆçº¯ APIï¼›å¯ç”¨æ’ä»¶å¸‚åœºã€å¼ºåˆ¶å®‰è£…ã€ä¼šè¯åˆ é™¤å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨ç­‰å…¨éƒ¨é¡µé¢èƒ½åŠ›ã€‚</span>
+        <strong>ÍêÕûÔöÇ¿</strong>
+        <span>ÊÊºÏ´¿ API£»ÆôÓÃ²å¼şÊĞ³¡¡¢Ç¿ÖÆ°²×°¡¢»á»°É¾³ıµ¼³ö¡¢ÏîÄ¿ÒÆ¶¯µÈÈ«²¿Ò³ÃæÄÜÁ¦¡£</span>
       </button>
     </div>
   );
@@ -4849,7 +4849,7 @@ function NoticeDialog({
           <h2>{notice.title}</h2>
           <p>{notice.message}</p>
         </div>
-        <button className="toast-close" onClick={onClose} type="button">Ã—</button>
+        <button className="toast-close" onClick={onClose} type="button">¡Á</button>
       </div>
     </div>
   );
@@ -4872,7 +4872,7 @@ function ConfirmDialog({
             <h2>{confirm.title}</h2>
             <p className="modal-message">{confirm.message}</p>
           </div>
-          <button className="toast-close" onClick={onCancel} type="button">Ã—</button>
+          <button className="toast-close" onClick={onCancel} type="button">¡Á</button>
         </div>
         <Toolbar>
           <Button onClick={onConfirm}>
@@ -4902,23 +4902,23 @@ function PluginMarketplacePromptDialog({
       <div className="modal-card plugin-marketplace-modal">
         <div className="modal-head">
           <div>
-            <h2>æ’ä»¶å¸‚åœºéœ€è¦ä¿®å¤</h2>
-            <p>å½“å‰ CODEX_HOME æœªå‘ç°å¯ç”¨çš„å®Œæ•´æ’ä»¶å¸‚åœºï¼ŒAPI Key æ¨¡å¼ä¸‹å¯èƒ½å‡ºç°æ’ä»¶å®‰è£…åä¸å¯ç”¨ã€‚</p>
+            <h2>²å¼şÊĞ³¡ĞèÒªĞŞ¸´</h2>
+            <p>µ±Ç° CODEX_HOME Î´·¢ÏÖ¿ÉÓÃµÄÍêÕû²å¼şÊĞ³¡£¬API Key Ä£Ê½ÏÂ¿ÉÄÜ³öÏÖ²å¼ş°²×°ºó²»¿ÉÓÃ¡£</p>
           </div>
-          <button className="toast-close" onClick={onClose} type="button">Ã—</button>
+          <button className="toast-close" onClick={onClose} type="button">¡Á</button>
         </div>
         <div className="metric-list">
           <Metric label="CODEX_HOME" value={status.codexHome} />
-          <Metric label="æœ¬åœ°æ’ä»¶å¸‚åœº" value={status.marketplaceRoot ?? "æœªå‘ç°"} />
-          <Metric label="é…ç½®çŠ¶æ€" value={status.configRegistered ? "å·²æ³¨å†Œ" : "æœªæ³¨å†Œ"} />
+          <Metric label="±¾µØ²å¼şÊĞ³¡" value={status.marketplaceRoot ?? "Î´·¢ÏÖ"} />
+          <Metric label="ÅäÖÃ×´Ì¬" value={status.configRegistered ? "ÒÑ×¢²á" : "Î´×¢²á"} />
         </div>
-        <TaskProgressBox progress={progress} title="ä¿®å¤è¿›åº¦" />
+        <TaskProgressBox progress={progress} title="ĞŞ¸´½ø¶È" />
         <Toolbar>
           <Button disabled={progress.active} onClick={onRepair}>
             <Download className="h-4 w-4" />
-            {progress.active ? "æ­£åœ¨ä¿®å¤â€¦" : "ä¸€é”®ä¿®å¤"}
+            {progress.active ? "ÕıÔÚĞŞ¸´¡­" : "Ò»¼üĞŞ¸´"}
           </Button>
-          <Button disabled={progress.active} onClick={onClose} variant="secondary">ç¨åå¤„ç†</Button>
+          <Button disabled={progress.active} onClick={onClose} variant="secondary">ÉÔºó´¦Àí</Button>
         </Toolbar>
       </div>
     </div>
@@ -4939,24 +4939,24 @@ function PendingProviderImportDialog({
       <div className="modal-card provider-import-modal">
         <div className="modal-head">
           <div>
-            <h2>å¯¼å…¥ LDCodex ä¾›åº”å•†</h2>
-            <p>æ£€æµ‹åˆ°æ¥è‡ªç½‘é¡µçš„ä¾›åº”å•†é…ç½®å¯¼å…¥è¯·æ±‚ï¼Œç¡®è®¤åä¼šå†™å…¥æœ¬æœº LDCodex ç®¡ç†å·¥å…·ã€‚</p>
+            <h2>µ¼Èë LDCodex ¹©Ó¦ÉÌ</h2>
+            <p>¼ì²âµ½À´×ÔÍøÒ³µÄÄ£ĞÍÅäÖÃµ¼ÈëÇëÇó£¬È·ÈÏºó»áĞ´Èë±¾»ú LDCodex ¹ÜÀí¹¤¾ß¡£</p>
           </div>
-          <button className="toast-close" onClick={onDismiss} type="button">Ã—</button>
+          <button className="toast-close" onClick={onDismiss} type="button">¡Á</button>
         </div>
         <div className="metric-list">
-          <Metric label="åç§°" value={request.name || "æœªå‘½åä¾›åº”å•†"} />
-          <Metric label="Base URL" value={request.baseUrl || "æœªå¡«å†™"} />
-          <Metric label="åè®®" value={providerImportWireApiLabel(request.wireApi)} />
-          <Metric label="æ¨¡å¼" value={providerImportRelayModeLabel(request.relayMode)} />
+          <Metric label="Ãû³Æ" value={request.name || "Î´ÃüÃû¹©Ó¦ÉÌ"} />
+          <Metric label="Base URL" value={request.baseUrl || "Î´ÌîĞ´"} />
+          <Metric label="Ğ­Òé" value={providerImportWireApiLabel(request.wireApi)} />
+          <Metric label="Ä£Ê½" value={providerImportRelayModeLabel(request.relayMode)} />
           <Metric label="API Key" value={maskSecret(request.apiKey)} />
         </div>
         <Toolbar>
           <Button onClick={onConfirm}>
             <Download className="h-4 w-4" />
-            ç¡®è®¤å¯¼å…¥
+            È·ÈÏµ¼Èë
           </Button>
-          <Button onClick={onDismiss} variant="secondary">å–æ¶ˆ</Button>
+          <Button onClick={onDismiss} variant="secondary">È¡Ïû</Button>
         </Toolbar>
       </div>
     </div>
@@ -4968,7 +4968,7 @@ function TaskProgressBox({ progress, title }: { progress: TaskProgress; title: s
   return (
     <div className="provider-sync-progress task-progress" data-active={progress.active}>
       <div className="provider-sync-progress-head">
-        <strong>{progress.active ? title : "ä¸Šæ¬¡ä¿®å¤ç»“æœ"}</strong>
+        <strong>{progress.active ? title : "ÉÏ´ÎĞŞ¸´½á¹û"}</strong>
         <span>{progress.percent}%</span>
       </div>
       <div
@@ -5020,7 +5020,7 @@ function StatusRow({ title, status = "unknown", path }: { title: string; status?
     <div className="status-row">
       <span>{title}</span>
       <Badge status={status} />
-      <code>{path || "æœªè®°å½•è·¯å¾„"}</code>
+      <code>{path || "Î´¼ÇÂ¼Â·¾¶"}</code>
     </div>
   );
 }
@@ -5030,14 +5030,14 @@ function Badge({ status }: { status: string }) {
 }
 
 function LatestLaunch({ status }: { status: LaunchStatus | null }) {
-  if (!status) return <div className="empty">æš‚æ— å¯åŠ¨çŠ¶æ€ã€‚</div>;
+  if (!status) return <div className="empty">ÔİÎŞÆô¶¯×´Ì¬¡£</div>;
   return (
     <div className="metric-list">
-      <Metric label="çŠ¶æ€" value={status.status} />
-      <Metric label="æ¶ˆæ¯" value={status.message} />
+      <Metric label="×´Ì¬" value={status.status} />
+      <Metric label="ÏûÏ¢" value={status.message} />
       <Metric label="Debug" value={String(status.debug_port ?? "-")} />
       <Metric label="Helper" value={String(status.helper_port ?? "-")} />
-      <Metric label="æ—¶é—´" value={formatTime(status.started_at_ms)} />
+      <Metric label="Ê±¼ä" value={formatTime(status.started_at_ms)} />
     </div>
   );
 }
@@ -5052,23 +5052,23 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function ScriptRow({ script, actions }: { script: NonNullable<UserScriptInventory["scripts"]>[number]; actions: Actions }) {
-  const source = script.market_id ? `å¸‚åœº Â· ${script.version || "æœªçŸ¥ç‰ˆæœ¬"}` : script.source === "builtin" ? "å†…ç½®" : "ç”¨æˆ·";
+  const source = script.market_id ? `ÊĞ³¡ ¡¤ ${script.version || "Î´Öª°æ±¾"}` : script.source === "builtin" ? "ÄÚÖÃ" : "ÓÃ»§";
   const canDelete = script.source === "user";
   return (
     <div className="table-row">
       <span>{script.name}</span>
       <span>{source}</span>
-      <span>{script.enabled ? "å¯ç”¨" : "å…³é—­"}</span>
+      <span>{script.enabled ? "ÆôÓÃ" : "¹Ø±Õ"}</span>
       <span>{script.status}</span>
       <div className="script-row-actions">
         <Button onClick={() => void actions.setUserScriptEnabled(script.key, !script.enabled)} size="sm" variant="secondary">
           {script.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-          {script.enabled ? "ç¦ç”¨" : "å¯ç”¨"}
+          {script.enabled ? "½ûÓÃ" : "ÆôÓÃ"}
         </Button>
         {canDelete ? (
           <Button onClick={() => void actions.deleteUserScript(script.key)} size="sm" variant="outline">
             <Trash2 className="h-4 w-4" />
-            åˆ é™¤
+            É¾³ı
           </Button>
         ) : null}
       </div>
@@ -5094,7 +5094,7 @@ function AdGrid({ ads, empty, actions }: { ads: AdItem[]; empty: string; actions
             </div>
           ) : null}
           <span className="ad-link">
-            æ‰“å¼€
+            ´ò¿ª
             <ExternalLink className="h-4 w-4" />
           </span>
         </button>
@@ -5110,23 +5110,23 @@ function isExpiredAd(ad: AdItem) {
 }
 
 function routeTitle(route: Route) {
-  return routes.find((item) => item.id === route)?.label ?? "æ¦‚è§ˆ";
+  return routes.find((item) => item.id === route)?.label ?? "¸ÅÀÀ";
 }
 
 function routeSubtitle(route: Route) {
   const subtitles: Record<Route, string> = {
-    overview: "æ£€æŸ¥é—®é¢˜ã€å¯åŠ¨ä¸å¿«é€Ÿä¿®å¤",
-    relay: "ç®¡ç† API ä¾›åº”å•†ã€åè®®ã€Key ä¸é…ç½®æ–‡ä»¶",
-    mobileControl: "é…ç½®æ‰‹æœºæ§åˆ¶ relayã€æˆ¿é—´å¯†é’¥å’ŒæœåŠ¡å™¨çŠ¶æ€",
-    sessions: "æŸ¥çœ‹ã€åˆ é™¤å’Œä¿®å¤ Codex æœ¬åœ°ä¼šè¯",
-    context: "ç‹¬ç«‹ç®¡ç† MCPã€Skillsã€Plugins",
-    enhance: "ä¼šè¯åˆ é™¤ã€å¯¼å‡ºã€é¡¹ç›®ç§»åŠ¨å’Œè„šæœ¬èƒ½åŠ›",
-    zedRemote: "ç®¡ç† Codex SSH é¡¹ç›®å¹¶åŠ å…¥ Zed workspace",
-    userScripts: "å†…ç½®å’Œç”¨æˆ·è‡ªå®šä¹‰è„šæœ¬æ¸…å•",
-    recommendations: "èµåŠ©å•†æ¨èä¸æ™®é€šæ¨è",
-    maintenance: "å…¥å£å®‰è£…ã€ä¿®å¤ã€Watcher ä¸æ‰‹åŠ¨å¯åŠ¨",
-    about: "ç‰ˆæœ¬ä¿¡æ¯ã€é¡¹ç›®é“¾æ¥ã€GitHub Release æ›´æ–°ã€æ—¥å¿—ä¸è¯Šæ–­",
-    settings: "ä¸»é¢˜ã€å‘½ä»¤åŒ…è£…å™¨å’Œå¯åŠ¨å‚æ•°",
+    overview: "¼ì²éÎÊÌâ¡¢Æô¶¯Óë¿ìËÙĞŞ¸´",
+    relay: "¹ÜÀí API ¹©Ó¦ÉÌ¡¢Ğ­Òé¡¢Key ÓëÅäÖÃÎÄ¼ş",
+    mobileControl: "ÅäÖÃÊÖ»ú¿ØÖÆ relay¡¢·¿¼äÃÜÔ¿ºÍ·şÎñÆ÷×´Ì¬",
+    sessions: "²é¿´¡¢É¾³ıºÍĞŞ¸´ Codex ±¾µØ»á»°",
+    context: "¶ÀÁ¢¹ÜÀí MCP¡¢Skills¡¢Plugins",
+    enhance: "»á»°É¾³ı¡¢µ¼³ö¡¢ÏîÄ¿ÒÆ¶¯ºÍ½Å±¾ÄÜÁ¦",
+    zedRemote: "¹ÜÀí Codex SSH ÏîÄ¿²¢¼ÓÈë Zed workspace",
+    userScripts: "ÄÚÖÃºÍÓÃ»§×Ô¶¨Òå½Å±¾Çåµ¥",
+    recommendations: "ÔŞÖúÉÌÍÆ¼öÓëÆÕÍ¨ÍÆ¼ö",
+    maintenance: "Èë¿Ú°²×°¡¢ĞŞ¸´¡¢Watcher ÓëÊÖ¶¯Æô¶¯",
+    about: "°æ±¾ĞÅÏ¢¡¢ÏîÄ¿Á´½Ó¡¢GitHub Release ¸üĞÂ¡¢ÈÕÖ¾ÓëÕï¶Ï",
+    settings: "Ö÷Ìâ¡¢ÃüÁî°ü×°Æ÷ºÍÆô¶¯²ÎÊı",
   };
   return subtitles[route];
 }
@@ -5134,11 +5134,11 @@ function routeSubtitle(route: Route) {
 const contextKindOptions: Array<{ kind: ContextKind; label: string; tableName: string }> = [
   { kind: "mcp", label: "MCP", tableName: "mcp_servers" },
   { kind: "skill", label: "Skills", tableName: "skills" },
-  { kind: "plugin", label: "æ’ä»¶", tableName: "plugins" },
+  { kind: "plugin", label: "²å¼ş", tableName: "plugins" },
 ];
 
 function contextKindLabel(kind: ContextKind) {
-  return contextKindOptions.find((option) => option.kind === kind)?.label ?? "æ‰©å±•é¡¹";
+  return contextKindOptions.find((option) => option.kind === kind)?.label ?? "À©Õ¹Ïî";
 }
 
 function contextEntriesFromSettings(settings: BackendSettings): CodexContextEntries {
@@ -5726,30 +5726,30 @@ function contextSelectionForAllEntries(settings: BackendSettings): RelayContextS
 }
 
 function relayProfileEditorStatus(profile: RelayProfile, form: BackendSettings, isNew: boolean) {
-  if (isNew) return "æ–°å»ºä¾›åº”å•†éœ€è¦å…ˆä¿å­˜åˆ°åˆ—è¡¨";
-  if (!form.relayProfilesEnabled) return "ä¾›åº”å•†é…ç½®æ€»å¼€å…³å·²å…³é—­ï¼›å½“å‰åªä¿å­˜é…ç½®ï¼Œä¸å†™å…¥ Codex live æ–‡ä»¶";
-  return profile.id === form.activeRelayId ? "å½“å‰æ­£åœ¨ä½¿ç”¨" : "ç¼–è¾‘åä¿å­˜åˆ—è¡¨ï¼Œå†åˆ‡æ¢æ¨¡å¼æ—¶ä¼šä½¿ç”¨æ–°é…ç½®";
+  if (isNew) return "ĞÂ½¨¹©Ó¦ÉÌĞèÒªÏÈ±£´æµ½ÁĞ±í";
+  if (!form.relayProfilesEnabled) return "Ä£ĞÍÅäÖÃ×Ü¿ª¹ØÒÑ¹Ø±Õ£»µ±Ç°Ö»±£´æÅäÖÃ£¬²»Ğ´Èë Codex live ÎÄ¼ş";
+  return profile.id === form.activeRelayId ? "µ±Ç°ÕıÔÚÊ¹ÓÃ" : "±à¼­ºó±£´æÁĞ±í£¬ÔÙÇĞ»»Ä£Ê½Ê±»áÊ¹ÓÃĞÂÅäÖÃ";
 }
 
 function providerInitial(name: string) {
-  const trimmed = (name || "ä¾›åº”å•†").trim();
-  return Array.from(trimmed)[0]?.toUpperCase() || "ä¾›";
+  const trimmed = (name || "¹©Ó¦ÉÌ").trim();
+  return Array.from(trimmed)[0]?.toUpperCase() || "¹©";
 }
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
-    found: "å·²æ‰¾åˆ°",
-    missing: "ç¼ºå¤±",
-    installed: "å·²å®‰è£…",
-    ok: "æ­£å¸¸",
-    running: "è¿è¡Œä¸­",
-    failed: "å¤±è´¥",
-    archived: "å·²å½’æ¡£",
-    accepted: "å·²å—ç†",
-    not_checked: "æœªæ£€æŸ¥",
-    not_implemented: "æœªå®ç°",
-    disabled: "å·²ç¦ç”¨",
-    unknown: "æœªçŸ¥",
+    found: "ÒÑÕÒµ½",
+    missing: "È±Ê§",
+    installed: "ÒÑ°²×°",
+    ok: "Õı³£",
+    running: "ÔËĞĞÖĞ",
+    failed: "Ê§°Ü",
+    archived: "ÒÑ¹éµµ",
+    accepted: "ÒÑÊÜÀí",
+    not_checked: "Î´¼ì²é",
+    not_implemented: "Î´ÊµÏÖ",
+    disabled: "ÒÑ½ûÓÃ",
+    unknown: "Î´Öª",
   };
   return labels[status] ?? status;
 }
@@ -5772,22 +5772,22 @@ function truncateSessionDeletePreview(value: string) {
 function healthItems(overview: OverviewResult | null) {
   return [
     {
-      title: "Codex åº”ç”¨",
+      title: "Codex Ó¦ÓÃ",
       status: overview?.codex_app.status ?? "not_checked",
       ok: overview?.codex_app.status === "found",
-      detail: overview?.codex_app.path || "å°šæœªæ£€æŸ¥ Codex åº”ç”¨è·¯å¾„ã€‚",
+      detail: overview?.codex_app.path || "ÉĞÎ´¼ì²é Codex Ó¦ÓÃÂ·¾¶¡£",
     },
     {
-      title: "é™é»˜å¯åŠ¨å…¥å£",
+      title: "¾²Ä¬Æô¶¯Èë¿Ú",
       status: overview?.silent_shortcut.status ?? "not_checked",
       ok: overview?.silent_shortcut.status === "installed",
-      detail: overview?.silent_shortcut.path || "ç¼ºå°‘ LDCodex é™é»˜å¯åŠ¨å¿«æ·æ–¹å¼æ—¶å¯åœ¨å®‰è£…ç»´æŠ¤é¡µä¿®å¤ã€‚",
+      detail: overview?.silent_shortcut.path || "È±ÉÙ LDCodex ¾²Ä¬Æô¶¯¿ì½İ·½Ê½Ê±¿ÉÔÚ°²×°Î¬»¤Ò³ĞŞ¸´¡£",
     },
     {
-      title: "ç®¡ç†å·¥å…·å…¥å£",
+      title: "¹ÜÀí¹¤¾ßÈë¿Ú",
       status: overview?.management_shortcut.status ?? "not_checked",
       ok: overview?.management_shortcut.status === "installed",
-      detail: overview?.management_shortcut.path || "ç¼ºå°‘ç®¡ç†å·¥å…·å¿«æ·æ–¹å¼æ—¶å¯åœ¨å®‰è£…ç»´æŠ¤é¡µä¿®å¤ã€‚",
+      detail: overview?.management_shortcut.path || "È±ÉÙ¹ÜÀí¹¤¾ß¿ì½İ·½Ê½Ê±¿ÉÔÚ°²×°Î¬»¤Ò³ĞŞ¸´¡£",
     },
   ];
 }
@@ -5815,7 +5815,7 @@ function normalizeSettings(settings: BackendSettings): BackendSettings {
       : [
           {
             id: settings.activeRelayId || "default",
-            name: "é»˜è®¤ä¸­è½¬",
+            name: "Ä¬ÈÏÖĞ×ª",
             model: "",
             baseUrl: settings.relayBaseUrl || defaultSettings.relayBaseUrl,
             upstreamBaseUrl: settings.relayBaseUrl || defaultSettings.relayBaseUrl,
@@ -5948,14 +5948,14 @@ function activeRelayProfile(settings: BackendSettings): RelayProfile {
 }
 
 function relayProtocolLabel(protocol: RelayProtocol): string {
-  return protocol === "chatCompletions" ? "Chat Completions è½¬ Responses" : "Responses API";
+  return protocol === "chatCompletions" ? "Chat Completions ×ª Responses" : "Responses API";
 }
 
 function ccsProviderSummary(result: CcsProvidersResult | null): string {
-  if (!result) return "è¯»å– ~/.cc-switch/cc-switch.db";
-  if (!isSuccessStatus(result.status)) return result.message || "è¯»å– cc-switch ä¾›åº”å•†å¤±è´¥ã€‚";
+  if (!result) return "¶ÁÈ¡ ~/.cc-switch/cc-switch.db";
+  if (!isSuccessStatus(result.status)) return result.message || "¶ÁÈ¡ cc-switch ¹©Ó¦ÉÌÊ§°Ü¡£";
   const count = result.providers.length;
-  return count ? `å‘ç° ${count} ä¸ª Codex ä¾›åº”å•†` : "æœªå‘ç°å¯å¯¼å…¥ä¾›åº”å•†";
+  return count ? `·¢ÏÖ ${count} ¸ö Codex ¹©Ó¦ÉÌ` : "Î´·¢ÏÖ¿Éµ¼Èë¹©Ó¦ÉÌ";
 }
 
 function normalizeRelayMode(mode: RelayMode | undefined): RelayMode {
@@ -5983,9 +5983,9 @@ function normalizeContextSelection(
 }
 
 function relayModeLabel(mode: RelayMode): string {
-  if (mode === "aggregate") return "èšåˆä¾›åº”å•†";
-  if (mode === "pureApi") return "çº¯ API";
-  return "å®˜æ–¹ç™»å½•";
+  if (mode === "aggregate") return "¾ÛºÏ¹©Ó¦ÉÌ";
+  if (mode === "pureApi") return "´¿ API";
+  return "¹Ù·½µÇÂ¼";
 }
 
 function providerImportWireApiLabel(value: string): string {
@@ -5998,65 +5998,65 @@ function providerImportWireApiLabel(value: string): string {
 
 function providerImportRelayModeLabel(value: string): string {
   const normalized = value.trim().toLowerCase();
-  if (normalized === "official") return "å®˜æ–¹ç™»å½•";
-  if (normalized === "mixedapi" || normalized === "mixed-api" || normalized === "mixed_api") return "æ··å…¥ API";
-  if (normalized === "aggregate") return "èšåˆä¾›åº”å•†";
-  return "çº¯ API";
+  if (normalized === "official") return "¹Ù·½µÇÂ¼";
+  if (normalized === "mixedapi" || normalized === "mixed-api" || normalized === "mixed_api") return "»ìÈë API";
+  if (normalized === "aggregate") return "¾ÛºÏ¹©Ó¦ÉÌ";
+  return "´¿ API";
 }
 
 function maskSecret(value: string): string {
   const trimmed = value.trim();
-  if (!trimmed) return "æœªå¡«å†™";
-  if (trimmed.length <= 10) return `${trimmed.slice(0, 2)}â€¦${trimmed.slice(-2)}`;
-  return `${trimmed.slice(0, 6)}â€¦${trimmed.slice(-4)}`;
+  if (!trimmed) return "Î´ÌîĞ´";
+  if (trimmed.length <= 10) return `${trimmed.slice(0, 2)}¡­${trimmed.slice(-2)}`;
+  return `${trimmed.slice(0, 6)}¡­${trimmed.slice(-4)}`;
 }
 
 function relayProfileConfigBrief(profile: RelayProfile): string {
   if (isAggregateRelayProfile(profile)) {
     const aggregate = normalizeAggregateConfig(profile.aggregate, []);
-    return `${aggregateStrategyLabel(aggregate.strategy)} Â· ${aggregate.members.length} ä¸ªæˆå‘˜`;
+    return `${aggregateStrategyLabel(aggregate.strategy)} ¡¤ ${aggregate.members.length} ¸ö³ÉÔ±`;
   }
-  if (profile.relayMode === "official") return profile.officialMixApiKey ? "æ··å…¥ API Key" : "ä¸å†™ API æ–‡ä»¶";
-  return profile.baseUrl || "æœªå¡«å†™ URL";
+  if (profile.relayMode === "official") return profile.officialMixApiKey ? "»ìÈë API Key" : "²»Ğ´ API ÎÄ¼ş";
+  return profile.baseUrl || "Î´ÌîĞ´ URL";
 }
 
 function relayProfileModeHelp(profile: RelayProfile): string {
   if (isAggregateRelayProfile(profile)) {
-    return "èšåˆä¾›åº”å•†åªä¿å­˜æˆå‘˜å’Œç­–ç•¥é…ç½®ï¼Œæˆå‘˜æ¥è‡ªå·²æœ‰ API ä¾›åº”å•†ï¼›åˆ‡ä¸ºå½“å‰åä¼šé€šè¿‡æœ¬åœ°åè®®ä»£ç†è½®è½¬è¯·æ±‚ã€‚";
+    return "¾ÛºÏ¹©Ó¦ÉÌÖ»±£´æ³ÉÔ±ºÍ²ßÂÔÅäÖÃ£¬³ÉÔ±À´×ÔÒÑÓĞ API ¹©Ó¦ÉÌ£»ÇĞÎªµ±Ç°ºó»áÍ¨¹ı±¾µØĞ­Òé´úÀíÂÖ×ªÇëÇó¡£";
   }
   if (profile.relayMode === "official") {
     if (profile.officialMixApiKey) {
-      return "æ­¤ä¾›åº”å•†ä¼šä¿ç•™å®˜æ–¹ç™»å½•æ¨¡å¼ï¼Œå¹¶æŠŠè¯·æ±‚æ··å…¥å½“å‰ API Keyï¼›Codexå¢å¼ºä»ä½¿ç”¨å…¼å®¹æ¨¡å¼ã€‚";
+      return "´Ë¹©Ó¦ÉÌ»á±£Áô¹Ù·½µÇÂ¼Ä£Ê½£¬²¢°ÑÇëÇó»ìÈëµ±Ç° API Key£»CodexÔöÇ¿ÈÔÊ¹ÓÃ¼æÈİÄ£Ê½¡£";
     }
-    return "æ­¤ä¾›åº”å•†ä¼šåˆ‡å›å®˜æ–¹ç™»å½•æ¨¡å¼ï¼Œä½¿ç”¨ ChatGPT å®˜æ–¹è´¦å·ï¼Œä¸å†™å…¥ API Keyã€‚";
+    return "´Ë¹©Ó¦ÉÌ»áÇĞ»Ø¹Ù·½µÇÂ¼Ä£Ê½£¬Ê¹ÓÃ ChatGPT ¹Ù·½ÕËºÅ£¬²»Ğ´Èë API Key¡£";
   }
   if (profile.relayMode === "pureApi") {
-    return "æ­¤ä¾›åº”å•†ä¼šåŒæ—¶å†™å…¥ config.toml å’Œ auth.jsonï¼›API Key ä¹Ÿä¼šæ³¨å…¥åˆ° provider bearer tokenã€‚";
+    return "´Ë¹©Ó¦ÉÌ»áÍ¬Ê±Ğ´Èë config.toml ºÍ auth.json£»API Key Ò²»á×¢Èëµ½ provider bearer token¡£";
   }
-  return "æ­¤ä¾›åº”å•†ä¼šä¿ç•™å®˜æ–¹ç™»å½•æ¨¡å¼ï¼Œå¹¶æŠŠè¯·æ±‚æ··å…¥å½“å‰ API Keyï¼›Codexå¢å¼ºä»ä½¿ç”¨å…¼å®¹æ¨¡å¼ã€‚";
+  return "´Ë¹©Ó¦ÉÌ»á±£Áô¹Ù·½µÇÂ¼Ä£Ê½£¬²¢°ÑÇëÇó»ìÈëµ±Ç° API Key£»CodexÔöÇ¿ÈÔÊ¹ÓÃ¼æÈİÄ£Ê½¡£";
 }
 
 function relayProfileReadinessText(profile: RelayProfile, relay: RelayResult | null): string {
   if (isAggregateRelayProfile(profile)) {
     const aggregate = normalizeAggregateConfig(profile.aggregate, []);
-    return `èšåˆä¾›åº”å•†å·²é…ç½®ä¸º${aggregateStrategyLabel(aggregate.strategy)}ï¼ŒåŒ…å« ${aggregate.members.length} ä¸ªæˆå‘˜ï¼›çœŸå®å¯¹è¯ä¼šèµ°æœ¬åœ°ä»£ç†è½®è½¬ã€‚`;
+    return `¾ÛºÏ¹©Ó¦ÉÌÒÑÅäÖÃÎª${aggregateStrategyLabel(aggregate.strategy)}£¬°üº¬ ${aggregate.members.length} ¸ö³ÉÔ±£»ÕæÊµ¶Ô»°»á×ß±¾µØ´úÀíÂÖ×ª¡£`;
   }
   if (profile.relayMode === "official") {
     if (profile.officialMixApiKey) {
       const hasApiFields = profile.baseUrl.trim() && profile.apiKey.trim();
-      if (!relay?.authenticated && !hasApiFields) return "å½“å‰æœªç™»å½•å®˜æ–¹è´¦å·ï¼Œä¹Ÿæœªé…ç½®æ··å…¥ API çš„ Base URL / Keyã€‚";
-      if (!relay?.authenticated) return "å½“å‰æœªç™»å½•å®˜æ–¹è´¦å·ï¼›å®˜æ–¹ç™»å½•æ··å…¥ API Key éœ€è¦å…ˆç™»å½•å®˜æ–¹è´¦å·ã€‚";
-      if (!hasApiFields) return "å½“å‰è¿˜æ²¡æœ‰å¡«å†™æ··å…¥ API çš„ Base URL / Keyã€‚";
-      return `å®˜æ–¹ç™»å½•å·²å°±ç»ªï¼š${relay.accountLabel || "å·²ç™»å½•"}ï¼Œä¼šæ··å…¥å½“å‰ API Keyã€‚`;
+      if (!relay?.authenticated && !hasApiFields) return "µ±Ç°Î´µÇÂ¼¹Ù·½ÕËºÅ£¬Ò²Î´ÅäÖÃ»ìÈë API µÄ Base URL / Key¡£";
+      if (!relay?.authenticated) return "µ±Ç°Î´µÇÂ¼¹Ù·½ÕËºÅ£»¹Ù·½µÇÂ¼»ìÈë API Key ĞèÒªÏÈµÇÂ¼¹Ù·½ÕËºÅ¡£";
+      if (!hasApiFields) return "µ±Ç°»¹Ã»ÓĞÌîĞ´»ìÈë API µÄ Base URL / Key¡£";
+      return `¹Ù·½µÇÂ¼ÒÑ¾ÍĞ÷£º${relay.accountLabel || "ÒÑµÇÂ¼"}£¬»á»ìÈëµ±Ç° API Key¡£`;
     }
     return relay?.authenticated
-      ? `å®˜æ–¹è´¦å·å·²ç™»å½•ï¼š${relay.accountLabel || relay.authSource || "å·²æ£€æµ‹"}ã€‚`
-      : "å½“å‰æœªç™»å½•å®˜æ–¹è´¦å·ï¼›åˆ‡åˆ°å®˜æ–¹ç™»å½•æ¨¡å¼åä»éœ€è¦å…ˆåœ¨ Codex/ChatGPT ç™»å½•ã€‚";
+      ? `¹Ù·½ÕËºÅÒÑµÇÂ¼£º${relay.accountLabel || relay.authSource || "ÒÑ¼ì²â"}¡£`
+      : "µ±Ç°Î´µÇÂ¼¹Ù·½ÕËºÅ£»ÇĞµ½¹Ù·½µÇÂ¼Ä£Ê½ºóÈÔĞèÒªÏÈÔÚ Codex/ChatGPT µÇÂ¼¡£";
   }
   const hasFiles = profile.configContents.trim() && profile.authContents.trim();
-  if (!hasFiles) return "å½“å‰ä¾›åº”å•†è¿˜æ²¡æœ‰å®Œæ•´ config.toml / API Key å­˜æ¡£ã€‚";
-  if (relay && !relay.configured) return "çº¯ API é…ç½®æœªå®Œæ•´å†™å…¥ï¼šè¯·æ£€æŸ¥æ­¤ä¾›åº”å•†æ˜¯å¦æœ‰ OPENAI_API_KEYï¼Œä¸” config.toml æ˜¯å¦åŒ…å« model_provider / provider / base_urlã€‚";
-  return "çº¯ API å°±ç»ªï¼šä¼šåŒæ—¶å†™å…¥ config.toml å’Œ auth.jsonã€‚";
+  if (!hasFiles) return "µ±Ç°¹©Ó¦ÉÌ»¹Ã»ÓĞÍêÕû config.toml / API Key ´æµµ¡£";
+  if (relay && !relay.configured) return "´¿ API ÅäÖÃÎ´ÍêÕûĞ´Èë£ºÇë¼ì²é´Ë¹©Ó¦ÉÌÊÇ·ñÓĞ OPENAI_API_KEY£¬ÇÒ config.toml ÊÇ·ñ°üº¬ model_provider / provider / base_url¡£";
+  return "´¿ API ¾ÍĞ÷£º»áÍ¬Ê±Ğ´Èë config.toml ºÍ auth.json¡£";
 }
 
 function relayProfileSwitchCommand(profile: RelayProfile): "clear_relay_injection" | "apply_relay_injection" | "apply_pure_api_injection" {
@@ -6067,10 +6067,10 @@ function relayProfileSwitchCommand(profile: RelayProfile): "clear_relay_injectio
   return profile.officialMixApiKey ? "apply_relay_injection" : "clear_relay_injection";
 }
 function relayProfileModeSwitchedText(profile: RelayProfile): string {
-  if (isAggregateRelayProfile(profile)) return "å·²åˆ‡æ¢åˆ°èšåˆä¾›åº”å•†ï¼›çœŸå®å¯¹è¯ä¼šæŒ‰æ‰€é€‰ç­–ç•¥è½®è½¬æˆå‘˜ã€‚";
-  if (profile.relayMode === "pureApi") return "å·²æŒ‰æ­¤ä¾›åº”å•†åˆ‡æ¢åˆ°çº¯ APIï¼›Codexå¢å¼ºå·²è®¾ä¸ºå®Œæ•´å¢å¼ºã€‚";
-  if (profile.officialMixApiKey) return "å·²æŒ‰æ­¤ä¾›åº”å•†ä½¿ç”¨å®˜æ–¹ç™»å½•ï¼Œå¹¶æ··å…¥ API Keyï¼›Codexå¢å¼ºå·²è®¾ä¸ºå…¼å®¹å¢å¼ºã€‚";
-  return "å·²æŒ‰æ­¤ä¾›åº”å•†åˆ‡å›å®˜æ–¹ç™»å½•ï¼›Codexå¢å¼ºå·²è®¾ä¸ºå…¼å®¹å¢å¼ºã€‚";
+  if (isAggregateRelayProfile(profile)) return "ÒÑÇĞ»»µ½¾ÛºÏ¹©Ó¦ÉÌ£»ÕæÊµ¶Ô»°»á°´ËùÑ¡²ßÂÔÂÖ×ª³ÉÔ±¡£";
+  if (profile.relayMode === "pureApi") return "ÒÑ°´´Ë¹©Ó¦ÉÌÇĞ»»µ½´¿ API£»CodexÔöÇ¿ÒÑÉèÎªÍêÕûÔöÇ¿¡£";
+  if (profile.officialMixApiKey) return "ÒÑ°´´Ë¹©Ó¦ÉÌÊ¹ÓÃ¹Ù·½µÇÂ¼£¬²¢»ìÈë API Key£»CodexÔöÇ¿ÒÑÉèÎª¼æÈİÔöÇ¿¡£";
+  return "ÒÑ°´´Ë¹©Ó¦ÉÌÇĞ»Ø¹Ù·½µÇÂ¼£»CodexÔöÇ¿ÒÑÉèÎª¼æÈİÔöÇ¿¡£";
 }
 
 function withGeneratedRelayFiles(profile: RelayProfile): RelayProfile {
@@ -6143,8 +6143,8 @@ function deriveRelayProfileFromFiles(profile: RelayProfile): RelayProfile {
   const upstreamBaseUrl = profile.upstreamBaseUrl || chatUpstreamBaseUrl || (configBaseUrl && !isProxyConfig ? configBaseUrl : profile.baseUrl || "");
   const configApiKey = codexExperimentalBearerTokenFromConfig(configContents);
   const configModel = codexModelFromConfig(configContents);
-  // å¦‚æœç”¨æˆ·è¾“å…¥äº†å¸¦åç¼€çš„æ¨¡å‹åï¼Œä¼˜å…ˆä¿ç•™åœ¨ç•Œé¢çš„ã€Œé…ç½®æ¨¡å‹ã€å­—æ®µä¸­ï¼›
-  // config.toml é‡Œå®é™…å†™çš„æ˜¯å‰¥ç¦»åç¼€çš„ slugï¼ˆç”± applyRelayProfilePatchToFiles å¤„ç†ï¼‰ã€‚
+  // Èç¹ûÓÃ»§ÊäÈëÁË´øºó×ºµÄÄ£ĞÍÃû£¬ÓÅÏÈ±£ÁôÔÚ½çÃæµÄ¡¸ÅäÖÃÄ£ĞÍ¡¹×Ö¶ÎÖĞ£»
+  // config.toml ÀïÊµ¼ÊĞ´µÄÊÇ°şÀëºó×ºµÄ slug£¨ÓÉ applyRelayProfilePatchToFiles ´¦Àí£©¡£
   const model = /\[.+\]$/.test(profile.model.trim()) ? profile.model.trim() : configModel;
   return {
     ...profile,
@@ -6178,8 +6178,8 @@ function applyRelayProfilePatchToFiles(
   }
 
   if ("model" in patch) {
-    // æ¨¡å‹åç¼€ï¼ˆå¦‚ [1M]ï¼‰ä»…ä¾› CodexPlusPlus å†…éƒ¨ä½¿ç”¨ï¼Œå†™å…¥ config.toml å‰éœ€å‰¥ç¦»ï¼Œ
-    // å¦åˆ™ codex ä¼šæŒ‰å¸¦åç¼€çš„å­—ç¬¦ä¸²å»åŒ¹é… catalog slugï¼Œå¯¼è‡´çª—å£å›é€€åˆ°é»˜è®¤å€¼ã€‚
+    // Ä£ĞÍºó×º£¨Èç [1M]£©½ö¹© CodexPlusPlus ÄÚ²¿Ê¹ÓÃ£¬Ğ´Èë config.toml Ç°Ğè°şÀë£¬
+    // ·ñÔò codex »á°´´øºó×ºµÄ×Ö·û´®È¥Æ¥Åä catalog slug£¬µ¼ÖÂ´°¿Ú»ØÍËµ½Ä¬ÈÏÖµ¡£
     const { slug } = parseModelSuffix(patch.model || "");
     next.configContents = setRootTomlStringKey(next.configContents, "model", slug);
   }
@@ -6235,8 +6235,8 @@ function codexModelFromConfig(contents: string): string {
   return "";
 }
 
-/// è§£ææ¨¡å‹åç¼€è¯­æ³•ï¼Œå¦‚ deepseek-v4-flash[1M] -> { slug: "deepseek-v4-flash", window: 1000000 }
-/// éæ³•æˆ–æ²¡æœ‰åç¼€æ—¶è¿”å›åŸä¸²ä½œä¸º slugã€‚
+/// ½âÎöÄ£ĞÍºó×ºÓï·¨£¬Èç deepseek-v4-flash[1M] -> { slug: "deepseek-v4-flash", window: 1000000 }
+/// ·Ç·¨»òÃ»ÓĞºó×ºÊ±·µ»ØÔ­´®×÷Îª slug¡£
 function parseModelSuffix(raw: string): { slug: string; window?: number } {
   const trimmed = raw.trim();
   const match = /^(.*?)\[(\d+(?:[KkMm])?)\]$/.exec(trimmed);
@@ -6454,10 +6454,10 @@ function relayProfileSwitchValidation(profile: RelayProfile): string | null {
   }
   if (profile.relayMode === "official" && !profile.officialMixApiKey) return null;
   if (!profile.configContents.trim()) {
-    return `ä¾›åº”å•†ã€Œ${profile.name || profile.id}ã€ç¼ºå°‘ç‹¬ç«‹ config.tomlï¼Œå·²åœæ­¢åˆ‡æ¢ï¼Œé¿å…ç»§ç»­æ˜¾ç¤ºä¸Šä¸€å¥—é…ç½®æ–‡ä»¶ã€‚è¯·å…ˆåœ¨è¯¥ä¾›åº”å•†è¯¦æƒ…é‡Œä¿å­˜ config.tomlã€‚`;
+    return `¹©Ó¦ÉÌ¡¸${profile.name || profile.id}¡¹È±ÉÙ¶ÀÁ¢ config.toml£¬ÒÑÍ£Ö¹ÇĞ»»£¬±ÜÃâ¼ÌĞøÏÔÊ¾ÉÏÒ»Ì×ÅäÖÃÎÄ¼ş¡£ÇëÏÈÔÚ¸Ã¹©Ó¦ÉÌÏêÇéÀï±£´æ config.toml¡£`;
   }
   if (profile.relayMode !== "official" || !authJsonHasOpenAiApiKey(profile.authContents)) return null;
-  return "å®˜æ–¹æ··åˆ API ä¸åº”åœ¨ auth.json ä¸­ä¿å­˜ OPENAI_API_KEYã€‚è¯·æ¸…ç†æ­¤ä¾›åº”å•†çš„ auth.json åå†åˆ‡æ¢ã€‚";
+  return "¹Ù·½»ìºÏ API ²»Ó¦ÔÚ auth.json ÖĞ±£´æ OPENAI_API_KEY¡£ÇëÇåÀí´Ë¹©Ó¦ÉÌµÄ auth.json ºóÔÙÇĞ»»¡£";
 }
 
 function relayProfileUsesLiveFiles(profile: RelayProfile): boolean {
@@ -6503,7 +6503,7 @@ function normalizeAggregateProfilesFromRelayProfiles(profiles: RelayProfile[]): 
     const aggregate = normalizeAggregateConfig(profile.aggregate, candidates);
     return {
       id: profile.id,
-      name: profile.name || "èšåˆä¾›åº”å•†",
+      name: profile.name || "¾ÛºÏ¹©Ó¦ÉÌ",
       strategy: aggregate.strategy,
       members: aggregate.members.map((member) => ({
         relayId: member.profileId,
@@ -6535,7 +6535,7 @@ function createRelayProfile(settings: BackendSettings): RelayProfile {
   const contextSelection = contextSelectionForAllEntries(settings);
   const next = {
     id,
-    name: `ä¾›åº”å•† ${settings.relayProfiles.length + 1}`,
+    name: `¹©Ó¦ÉÌ ${settings.relayProfiles.length + 1}`,
     model: "",
     baseUrl: defaultSettings.relayBaseUrl,
     upstreamBaseUrl: defaultSettings.relayBaseUrl,
@@ -6565,7 +6565,7 @@ function createAggregateRelayProfile(settings: BackendSettings): RelayProfile {
   return normalizeAggregateRelayProfile(
     {
       id,
-      name: `èšåˆä¾›åº”å•† ${settings.relayProfiles.filter(isAggregateRelayProfile).length + 1}`,
+      name: `¾ÛºÏ¹©Ó¦ÉÌ ${settings.relayProfiles.filter(isAggregateRelayProfile).length + 1}`,
       model: "",
       baseUrl: "",
       upstreamBaseUrl: "",
@@ -6616,7 +6616,7 @@ function duplicateRelayProfile(settings: BackendSettings, id: string): BackendSe
   const next = {
     ...source,
     id: nextId,
-    name: `${source.name || "æœªå‘½åä¾›åº”å•†"} å‰¯æœ¬`,
+    name: `${source.name || "Î´ÃüÃû¹©Ó¦ÉÌ"} ¸±±¾`,
   };
   const normalizedNext = isAggregateRelayProfile(next) ? normalizeAggregateRelayProfile(next, settings) : next;
   const relayProfiles = [...settings.relayProfiles];
@@ -6667,23 +6667,23 @@ function removeRelayProfile(settings: BackendSettings, id: string): BackendSetti
 const aggregateStrategyOptions: Array<{ value: RelayAggregateStrategy; label: string; description: string }> = [
   {
     value: "failover",
-    label: "å¤±è´¥åˆ‡æ¢",
-    description: "æŒ‰æˆå‘˜é¡ºåºè¯·æ±‚ï¼Œå¤±è´¥ååˆ‡åˆ°ä¸‹ä¸€ä¸ªä¾›åº”å•†ã€‚",
+    label: "Ê§°ÜÇĞ»»",
+    description: "°´³ÉÔ±Ë³ĞòÇëÇó£¬Ê§°ÜºóÇĞµ½ÏÂÒ»¸ö¹©Ó¦ÉÌ¡£",
   },
   {
     value: "conversationRoundRobin",
-    label: "æŒ‰å¯¹è¯è½®è½¬",
-    description: "åŒä¸€å¯¹è¯ä¿æŒä¸€ä¸ªæˆå‘˜ï¼Œä¸åŒå¯¹è¯ä¾æ¬¡åˆ†é…ã€‚",
+    label: "°´¶Ô»°ÂÖ×ª",
+    description: "Í¬Ò»¶Ô»°±£³ÖÒ»¸ö³ÉÔ±£¬²»Í¬¶Ô»°ÒÀ´Î·ÖÅä¡£",
   },
   {
     value: "requestRoundRobin",
-    label: "æŒ‰è¯·æ±‚è½®è½¬",
-    description: "æ¯æ¬¡è¯·æ±‚æŒ‰æˆå‘˜é¡ºåºåˆ‡æ¢ï¼Œé€‚åˆå‡åŒ€æ‘Šè¯·æ±‚é‡ã€‚",
+    label: "°´ÇëÇóÂÖ×ª",
+    description: "Ã¿´ÎÇëÇó°´³ÉÔ±Ë³ĞòÇĞ»»£¬ÊÊºÏ¾ùÔÈÌ¯ÇëÇóÁ¿¡£",
   },
   {
     value: "weightedRoundRobin",
-    label: "æƒé‡è½®è½¬",
-    description: "æŒ‰æˆå‘˜æƒé‡åˆ†é…è¯·æ±‚ï¼Œæƒé‡è¶Šé«˜æ‰¿æ‹…è¶Šå¤šã€‚",
+    label: "È¨ÖØÂÖ×ª",
+    description: "°´³ÉÔ±È¨ÖØ·ÖÅäÇëÇó£¬È¨ÖØÔ½¸ß³Ğµ£Ô½¶à¡£",
   },
 ];
 
@@ -6744,19 +6744,19 @@ function clampAggregateWeight(value: number): number {
 }
 
 function aggregateStrategyLabel(strategy: RelayAggregateStrategy): string {
-  return aggregateStrategyOptions.find((option) => option.value === strategy)?.label ?? "å¤±è´¥åˆ‡æ¢";
+  return aggregateStrategyOptions.find((option) => option.value === strategy)?.label ?? "Ê§°ÜÇĞ»»";
 }
 
 function aggregateStrategyHelp(strategy: RelayAggregateStrategy): string {
-  if (strategy === "failover") return "å¤±è´¥åˆ‡æ¢ä¼šä¿ç•™æˆå‘˜é¡ºåºï¼Œä¼˜å…ˆä½¿ç”¨ç¬¬ä¸€ä¸ªå¯ç”¨ä¾›åº”å•†ã€‚";
-  if (strategy === "conversationRoundRobin") return "æŒ‰å¯¹è¯è½®è½¬ä¼šè®©åŒä¸€å¯¹è¯å°½é‡ä¿æŒå›ºå®šæˆå‘˜ï¼Œé™ä½ä¸Šä¸‹æ–‡æ¼‚ç§»ã€‚";
-  if (strategy === "requestRoundRobin") return "æŒ‰è¯·æ±‚è½®è½¬ä¼šé€è¯·æ±‚åˆ‡æ¢æˆå‘˜ï¼Œé€‚åˆä¾›åº”å•†èƒ½åŠ›æ¥è¿‘çš„åœºæ™¯ã€‚";
-  return "æƒé‡è½®è½¬ä¼šè¯»å–æ¯ä¸ªæˆå‘˜çš„æƒé‡å€¼ï¼Œæƒé‡è¶Šé«˜çš„æˆå‘˜è·å¾—æ›´å¤šè¯·æ±‚ã€‚";
+  if (strategy === "failover") return "Ê§°ÜÇĞ»»»á±£Áô³ÉÔ±Ë³Ğò£¬ÓÅÏÈÊ¹ÓÃµÚÒ»¸ö¿ÉÓÃ¹©Ó¦ÉÌ¡£";
+  if (strategy === "conversationRoundRobin") return "°´¶Ô»°ÂÖ×ª»áÈÃÍ¬Ò»¶Ô»°¾¡Á¿±£³Ö¹Ì¶¨³ÉÔ±£¬½µµÍÉÏÏÂÎÄÆ¯ÒÆ¡£";
+  if (strategy === "requestRoundRobin") return "°´ÇëÇóÂÖ×ª»áÖğÇëÇóÇĞ»»³ÉÔ±£¬ÊÊºÏ¹©Ó¦ÉÌÄÜÁ¦½Ó½üµÄ³¡¾°¡£";
+  return "È¨ÖØÂÖ×ª»á¶ÁÈ¡Ã¿¸ö³ÉÔ±µÄÈ¨ÖØÖµ£¬È¨ÖØÔ½¸ßµÄ³ÉÔ±»ñµÃ¸ü¶àÇëÇó¡£";
 }
 
 function aggregateRelayProfileValidation(profile: RelayProfile): string | null {
   const aggregate = normalizeAggregateConfig(profile.aggregate, []);
-  return aggregate.members.length >= 1 ? null : "èšåˆä¾›åº”å•†è‡³å°‘éœ€è¦å‹¾é€‰ 1 ä¸ªå·²å¡«å†™ Base URL / Key çš„ API ä¾›åº”å•†ã€‚";
+  return aggregate.members.length >= 1 ? null : "¾ÛºÏ¹©Ó¦ÉÌÖÁÉÙĞèÒª¹´Ñ¡ 1 ¸öÒÑÌîĞ´ Base URL / Key µÄ API ¹©Ó¦ÉÌ¡£";
 }
 
 function numberOrDefault(value: string, fallback: number) {
@@ -6769,10 +6769,10 @@ function splitLogLines(text: string) {
 }
 
 function zedStrategyLabel(strategy: ZedOpenStrategy) {
-  if (strategy === "reuseWindow") return "å¤ç”¨çª—å£";
-  if (strategy === "newWindow") return "æ–°çª—å£";
-  if (strategy === "default") return "Zed é»˜è®¤è¡Œä¸º";
-  return "åŠ å…¥å½“å‰å·¥ä½œåŒº";
+  if (strategy === "reuseWindow") return "¸´ÓÃ´°¿Ú";
+  if (strategy === "newWindow") return "ĞÂ´°¿Ú";
+  if (strategy === "default") return "Zed Ä¬ÈÏĞĞÎª";
+  return "¼ÓÈëµ±Ç°¹¤×÷Çø";
 }
 
 function zedRemoteHostLabel(project: ZedRemoteProject) {
@@ -6782,12 +6782,12 @@ function zedRemoteHostLabel(project: ZedRemoteProject) {
 }
 
 function zedRemoteSourceLabel(source: string) {
-  if (source === "currentThread") return "å½“å‰ä¼šè¯";
+  if (source === "currentThread") return "µ±Ç°»á»°";
   if (source === "codexRemoteProject") return "Codex remote project";
   if (source === "threadWorkspaceHint") return "Thread workspace hint";
   if (source === "sqliteThreadCwd") return "SQLite cwd";
-  if (source === "recent") return "æœ€è¿‘æ‰“å¼€";
-  return source || "æœªçŸ¥æ¥æº";
+  if (source === "recent") return "×î½ü´ò¿ª";
+  return source || "Î´ÖªÀ´Ô´";
 }
 
 function formatTime(value: number) {
@@ -6800,11 +6800,11 @@ function formatDuration(startedAtMs: number): string {
   const elapsed = Date.now() - startedAtMs;
   if (elapsed < 0) return formatTime(startedAtMs);
   const mins = Math.floor(elapsed / 60000);
-  if (mins < 1) return "åˆšåˆšå¯åŠ¨";
-  if (mins < 60) return `å·²è¿è¡Œ ${mins} åˆ†é’Ÿ`;
+  if (mins < 1) return "¸Õ¸ÕÆô¶¯";
+  if (mins < 60) return `ÒÑÔËĞĞ ${mins} ·ÖÖÓ`;
   const hours = Math.floor(mins / 60);
   const remainMins = mins % 60;
-  return `å·²è¿è¡Œ ${hours} å°æ—¶ ${remainMins} åˆ†é’Ÿ`;
+  return `ÒÑÔËĞĞ ${hours} Ğ¡Ê± ${remainMins} ·ÖÖÓ`;
 }
 
 function stringifyError(error: unknown) {

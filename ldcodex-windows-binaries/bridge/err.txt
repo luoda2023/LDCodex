@@ -1,2 +1,0 @@
-[builtin] No built-in providers configured (check .env API keys)
-[boot] admin panel warning: startAdminServer is not a function
