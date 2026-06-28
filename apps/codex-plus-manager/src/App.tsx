@@ -503,7 +503,6 @@ type StartupResult = CommandResult<{
 
 type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "about" | "settings" | "proxy";
 type RouteItem = { id: Route; label: string; icon: LucideIcon; badge?: string };
-type RouteItem = { id: Route; label: string; icon: LucideIcon; badge?: string };
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
