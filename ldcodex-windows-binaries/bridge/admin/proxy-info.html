@@ -1,0 +1,277 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>代理信息页</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --surface: #ffffff;
+      --text: #1f2937;
+      --text-2: #4b5563;
+      --border: #e5e7eb;
+      --ok: #10b981;
+      --err: #ef4444;
+      --warn: #f59e0b;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 28px 24px 40px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .header h1 {
+      font-size: 20px;
+      margin: 0;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-2);
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #9ca3af;
+    }
+    .dot.ok {
+      background: var(--ok);
+    }
+    .dot.err {
+      background: var(--err);
+    }
+    .dot.warn {
+      background: var(--warn);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: 14px;
+      margin: 0 0 10px;
+      color: var(--text-2);
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 24px;
+    }
+    .item {
+      flex: 1 1 220px;
+    }
+    .item .label {
+      font-size: 12px;
+      color: var(--text-2);
+    }
+    .item .value {
+      font-size: 14px;
+      margin-top: 4px;
+      word-break: break-all;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    button {
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button.primary {
+      background: #111827;
+      color: #fff;
+      border-color: #111827;
+    }
+    .hint {
+      font-size: 13px;
+      color: var(--text-2);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>代理信息页</h1>
+      <div class="status-pill" id="statusPill">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">未检测</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>当前模型配置</h2>
+      <div class="row">
+        <div class="item">
+          <div class="label">API 地址</div>
+          <div class="value mono" id="apiUrl">-</div>
+        </div>
+        <div class="item">
+          <div class="label">模型 ID</div>
+          <div class="value mono" id="modelId">-</div>
+        </div>
+        <div class="item">
+          <div class="label">密钥</div>
+          <div class="value mono" id="apiKey">-</div>
+        </div>
+      </div>
+      <div class="hint" id="modelHint">当前使用模型：未读取到。</div>
+    </div>
+
+    <div class="card">
+      <h2>连接状态</h2>
+      <div class="row">
+        <div class="item">
+          <div class="label">代理状态页</div>
+          <div class="value mono" id="statusUrl">http://127.0.0.1:36001/api/status</div>
+        </div>
+        <div class="item">
+          <div class="label">上次检测</div>
+          <div class="value" id="checkedAt">-</div>
+        </div>
+        <div class="item">
+          <div class="label">HTTP 状态</div>
+          <div class="value" id="httpStatus">-</div>
+        </div>
+        <div class="item">
+          <div class="label">转发检测</div>
+          <div class="value" id="relayCheck">-</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="checkBtn">检测连接</button>
+        <button id="openStatusBtn">打开状态页</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const els = {
+      apiUrl: document.getElementById('apiUrl'),
+      modelId: document.getElementById('modelId'),
+      apiKey: document.getElementById('apiKey'),
+      modelHint: document.getElementById('modelHint'),
+      statusDot: document.getElementById('statusDot'),
+      statusText: document.getElementById('statusText'),
+      checkedAt: document.getElementById('checkedAt'),
+      httpStatus: document.getElementById('httpStatus'),
+      relayCheck: document.getElementById('relayCheck'),
+    };
+
+    function mask(value) {
+      if (!value) return '-';
+      if (value.length <= 8) return '*'.repeat(value.length);
+      return value.slice(0, 4) + '*'.repeat(Math.max(value.length - 8, 1)) + value.slice(-4);
+    }
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/fallback', { cache: 'no-store' });
+        if (!res.ok) throw new Error('config_failed');
+        const data = await res.json();
+        const profile = data?.activeProfile || data?.profile || null;
+        const baseUrl = profile?.baseUrl || data?.baseUrl || '-';
+        const modelId = profile?.modelId || profile?.model || data?.modelId || data?.model || '-';
+        const apiKey = profile?.apiKey || data?.apiKey || '-';
+        els.apiUrl.textContent = baseUrl;
+        els.modelId.textContent = modelId;
+        els.apiKey.textContent = mask(apiKey);
+        const activeLabel = profile?.name || data?.activeProfileName || '当前配置';
+        els.modelHint.textContent = '当前使用模型：' + activeLabel;
+      } catch (e) {
+        els.apiUrl.textContent = '-';
+        els.modelId.textContent = '-';
+        els.apiKey.textContent = '-';
+        els.modelHint.textContent = '当前使用模型：未读取到。';
+      }
+    }
+
+    async function checkStatus() {
+      els.checkedAt.textContent = new Date().toLocaleString();
+      els.httpStatus.textContent = '检测中';
+      els.relayCheck.textContent = '未检测';
+      els.statusDot.className = 'dot warn';
+      els.statusText.textContent = '检测中';
+
+      let httpOk = false;
+      let httpStatus = '-';
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        httpStatus = String(res.status);
+        els.httpStatus.textContent = httpStatus;
+        httpOk = res.ok;
+      } catch (e) {
+        els.httpStatus.textContent = '请求失败';
+      }
+
+      let relayOk = false;
+      try {
+        const res = await fetch('/api/relay-check', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          relayOk = !!data?.ok;
+          els.relayCheck.textContent = relayOk ? '已正常连接' : '未连接';
+        } else {
+          els.relayCheck.textContent = '请求失败：' + res.status;
+        }
+      } catch (e) {
+        els.relayCheck.textContent = '请求失败';
+      }
+
+      if (httpOk && relayOk) {
+        els.statusDot.className = 'dot ok';
+        els.statusText.textContent = '已正常连接';
+      } else if (httpOk) {
+        els.statusDot.className = 'dot warn';
+        els.statusText.textContent = '状态页可用，转发未确认';
+      } else {
+        els.statusDot.className = 'dot err';
+        els.statusText.textContent = '未连接';
+      }
+    }
+
+    document.getElementById('checkBtn').addEventListener('click', checkStatus);
+    document.getElementById('openStatusBtn').addEventListener('click', () => {
+      window.open('/api/status', '_blank');
+    });
+
+    loadConfig();
+    checkStatus();
+  </script>
+</body>
+</html>

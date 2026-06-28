@@ -1,0 +1,178 @@
+
+╔══════════════════════════════════════════╗
+║        LuoDaBridge v3 — Proxy Gateway    ║
+║        Development Mode                  ║
+╚══════════════════════════════════════════╝
+
+[boot] registering providers...
+[custom] registered "shangtang1" → https://token.sensenova.cn/v1
+[custom] registered "shangtang2" → https://token.sensenova.cn/v1
+[custom] registered "shangtang5" → https://token.sensenova.cn/v1
+[custom] registered "ST44" → https://token.sensenova.cn/v1
+[custom] registered "ST40" → https://token.sensenova.cn/v1
+[custom] registered "z.ai2" → https://api.z.ai/api/paas/v4
+[custom] registered "shangtang4" → https://token.sensenova.cn/v1
+[custom] registered "shangtang3" → https://token.sensenova.cn/v1
+[custom] registered "ST41" → https://token.sensenova.cn/v1
+[custom] registered "zhipu1-Edited" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "ST45" → https://token.sensenova.cn/v1
+[custom] registered "shangtang33" → https://token.sensenova.cn/v1
+[custom] registered "智谱2" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱4" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱5" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱7" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "阿里云1" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云2" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云3" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云4" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "移动" → https://zhenze-huhehaote.cmecloud.cn/v1
+[custom] registered "移动2" → https://zhenze-huhehaote.cmecloud.cn/v1
+[custom] registered "google1" → https://generativelanguage.googleapis.com/v1beta/openai
+[custom] registered "阿里云5" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "shangtang6" → https://token.sensenova.cn/v1
+[custom] registered "Cloud1" → https://api.cloudflare.com/client/v4/accounts/e9ac56dfe63fa72143a7cd7b9c539b8f/ai/v1
+[custom] registered "AgnesAI" → https://apihub.agnes-ai.com/v1
+[custom] registered "modelscope" → https://api-inference.modelscope.cn/v1
+[custom] registered "z.ai" → https://api.z.ai/api/paas/v4
+[custom] registered "ST46" → https://token.sensenova.cn/v1
+[custom] registered "ST43" → https://token.sensenova.cn/v1
+[custom] registered "免费1" → https://free.v36.cm
+[custom] registered "ApiFree" → https://api.apifree.ai/agent/v1
+[custom] registered "ApiFree2" → https://apihub.agnes-ai.com/v1
+[boot] providers: 0 built-in, 34 custom
+[boot] initializing fallback...
+[fallback] initialized with 34 providers, enabled=true, codexLock=st44, hermesLock=ST41
+[boot] initializing health checks...
+[health] health check is disabled
+[config-store] SQLite ready: J:\codex-work\LDCodex\bridge\data\config.db
+[config] SQLite config loaded (29 keys)
+[boot] starting servers...
+[admin-db] SQLite ready: J:\codex-work\LDCodex\bridge\data\admin.db
+[middleman] initialized (models_ver=1781518587985, config_ver=1782615217033)
+[middleman] synced 34 models → models.json
+[config-store] config saved to DB (version: 1782615377663)
+[middleman] synced config → config-proxy.json (29 keys)
+[config-store] config saved to DB (version: 1782615377670)
+[middleman] synced config → config-proxy.json (29 keys)
+[config-api] middleman initialized, initial sync done
+[boot] ready — proxy on :37000, config-api on :37001
+[boot] admin panel served separately on :37002
+[boot] SQLite config store ready
+[config-store] config saved to DB (version: 1782615387631)
+[config-store] config saved to DB (version: 1782615397642)
+[config-store] config saved to DB (version: 1782615407651)
+[config-store] config saved to DB (version: 1782615417654)
+[config-store] config saved to DB (version: 1782615427660)
+[config-store] config saved to DB (version: 1782615437668)
+[config-store] config saved to DB (version: 1782615447686)
+[config-store] config saved to DB (version: 1782615457696)
+[config-store] config saved to DB (version: 1782615467701)
+[config-store] config saved to DB (version: 1782615477706)
+[config-store] config saved to DB (version: 1782615487711)
+[config-store] config saved to DB (version: 1782615497724)
+[config-store] config saved to DB (version: 1782615507731)
+[config-store] config saved to DB (version: 1782615517741)
+[config-store] config saved to DB (version: 1782615527744)
+[config-store] config saved to DB (version: 1782615537744)
+[config-store] config saved to DB (version: 1782615547746)
+[config-store] config saved to DB (version: 1782615557752)
+[config-store] config saved to DB (version: 1782615567756)
+[config-store] config saved to DB (version: 1782615577768)
+[config-store] config saved to DB (version: 1782615587779)
+[config-store] config saved to DB (version: 1782615597790)
+[config-store] config saved to DB (version: 1782615607794)
+[config-store] config saved to DB (version: 1782615617797)
+[config-store] config saved to DB (version: 1782615627797)
+[config-store] config saved to DB (version: 1782615637807)
+[config-store] config saved to DB (version: 1782615647810)
+[config-store] config saved to DB (version: 1782615657813)
+[config-store] config saved to DB (version: 1782615667818)
+[config-store] config saved to DB (version: 1782615677826)
+[config-store] config saved to DB (version: 1782615687835)
+[config-store] config saved to DB (version: 1782615697839)
+[config-store] config saved to DB (version: 1782615707850)
+[config-store] config saved to DB (version: 1782615717852)
+[config-store] config saved to DB (version: 1782615727866)
+[config-store] config saved to DB (version: 1782615737869)
+[config-store] config saved to DB (version: 1782615747878)
+[config-store] config saved to DB (version: 1782615757885)
+[config-store] config saved to DB (version: 1782615767894)
+[config-store] config saved to DB (version: 1782615777903)
+[config-store] config saved to DB (version: 1782615787911)
+[config-store] config saved to DB (version: 1782615797918)
+[config-store] config saved to DB (version: 1782615807930)
+[config-store] config saved to DB (version: 1782615817960)
+[config-store] config saved to DB (version: 1782615827947)
+[config-store] config saved to DB (version: 1782615837958)
+[config-store] config saved to DB (version: 1782615847961)
+[config-store] config saved to DB (version: 1782615857969)
+[config-store] config saved to DB (version: 1782615867978)
+[config-store] config saved to DB (version: 1782615877987)
+[config-store] config saved to DB (version: 1782615887993)
+[config-store] config saved to DB (version: 1782615897995)
+[config-store] config saved to DB (version: 1782615908000)
+[config-store] config saved to DB (version: 1782615918003)
+[config-store] config saved to DB (version: 1782615928015)
+[config-store] config saved to DB (version: 1782615938026)
+[config-store] config saved to DB (version: 1782615948035)
+[config-store] config saved to DB (version: 1782615958046)
+[config-store] config saved to DB (version: 1782615968055)
+[config-store] config saved to DB (version: 1782615978070)
+[config-store] config saved to DB (version: 1782615988081)
+[config-store] config saved to DB (version: 1782615998082)
+[config-store] config saved to DB (version: 1782616008083)
+[config-store] config saved to DB (version: 1782616018087)
+[config-store] config saved to DB (version: 1782616028096)
+[config-store] config saved to DB (version: 1782616038107)
+[config-store] config saved to DB (version: 1782616048118)
+[config-store] config saved to DB (version: 1782616058140)
+[config-store] config saved to DB (version: 1782616068145)
+[config-store] config saved to DB (version: 1782616078148)
+[config-store] config saved to DB (version: 1782616088153)
+[config-store] config saved to DB (version: 1782616098164)
+[config-store] config saved to DB (version: 1782616108176)
+[config-store] config saved to DB (version: 1782616118183)
+[config-store] config saved to DB (version: 1782616128193)
+[config-store] config saved to DB (version: 1782616138204)
+[config-store] config saved to DB (version: 1782616148208)
+[config-store] config saved to DB (version: 1782616158212)
+[config-store] config saved to DB (version: 1782616168228)
+[config-store] config saved to DB (version: 1782616178230)
+[config-store] config saved to DB (version: 1782616188230)
+[config-store] config saved to DB (version: 1782616198239)
+[config-store] config saved to DB (version: 1782616208239)
+[config-store] config saved to DB (version: 1782616218244)
+[config-store] config saved to DB (version: 1782616228261)
+[config-store] config saved to DB (version: 1782616238259)
+[config-store] config saved to DB (version: 1782616248271)
+[config-store] config saved to DB (version: 1782616258283)
+[config-store] config saved to DB (version: 1782616268284)
+[config-store] config saved to DB (version: 1782616278284)
+[config-store] config saved to DB (version: 1782616288292)
+[config-store] config saved to DB (version: 1782616298301)
+[config-store] config saved to DB (version: 1782616308305)
+[config-store] config saved to DB (version: 1782616318307)
+[config-store] config saved to DB (version: 1782616328318)
+[config-store] config saved to DB (version: 1782616338327)
+[config-store] config saved to DB (version: 1782616348327)
+[config-store] config saved to DB (version: 1782616358340)
+[config-store] config saved to DB (version: 1782616368344)
+[config-store] config saved to DB (version: 1782616378355)
+[config-store] config saved to DB (version: 1782616388360)
+[config-store] config saved to DB (version: 1782616398359)
+[config-store] config saved to DB (version: 1782616408366)
+[config-store] config saved to DB (version: 1782616418374)
+[config-store] config saved to DB (version: 1782616428375)
+[config-store] config saved to DB (version: 1782616438377)
+[config-store] config saved to DB (version: 1782616448388)
+[config-store] config saved to DB (version: 1782616458396)
+[config-store] config saved to DB (version: 1782616468398)
+[config-store] config saved to DB (version: 1782616478402)
+[config-store] config saved to DB (version: 1782616488410)
+[config-store] config saved to DB (version: 1782616498415)
+[config-store] config saved to DB (version: 1782616508424)
+[config-store] config saved to DB (version: 1782616518427)
+[config-store] config saved to DB (version: 1782616528429)
+[config-store] config saved to DB (version: 1782616538435)
+[config-store] config saved to DB (version: 1782616548447)
+[config-store] config saved to DB (version: 1782616558455)

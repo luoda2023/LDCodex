@@ -1,0 +1,74 @@
+{
+  "single_model_codex": "st44",
+  "single_model_hermes": "ST41",
+  "single_model_neizhi": "",
+  "fallback_enabled": true,
+  "cond_switch_enabled": true,
+  "builtin_reset_minutes": 5,
+  "max_provider_use_minutes": 96,
+  "fallback_sequence": "shangtang1;shangtang2;shangtang5;st44;ST40;z-ai2;shangtang4;shangtang3;ST41;zhipu1-edited;st45;shangtang33;zhipu2;zhipu4;zhipu5;zhipu7;1;2;3;aliyun4;yidong;yidong2;google1;aliyun5;shangtang6;Cloud1;agnesai;modelscope;z-ai;st46;ST43;mianfei1;apifree;apifree2",
+  "codex_fallback_sequence": "shangtang1;shangtang2;shangtang5;st44;ST40;z-ai2;shangtang4;shangtang3;ST41;zhipu1-edited;st45;shangtang33;zhipu2;zhipu4;zhipu5;zhipu7;1;2;3;aliyun4;yidong;yidong2;google1;aliyun5;shangtang6;Cloud1;agnesai;modelscope;z-ai;st46;ST43;mianfei1;apifree;apifree2",
+  "abnormal_models": [
+    "apifree2",
+    "apifree",
+    "mianfei1",
+    "st46",
+    "ST43"
+  ],
+  "disabled_builtins": [
+    "mimo",
+    "deepseek",
+    "openai"
+  ],
+  "_fallbackState": {
+    "codexIdx": 28,
+    "hermesIdx": 16,
+    "lastSwitch": 1782646441309
+  },
+  "neizhi_fallback_sequence": "mimo",
+  "config_source_marker": "J_DRIVE_CONFIG",
+  "hermes_virtual_model_id": "hermesAPI",
+  "_chainPositionMigration": true,
+  "virtual_model_id": "auto",
+  "disable_condition_switch": false,
+  "register_model": {
+    "name": "美团",
+    "base": "https://api.longcat.chat/openai",
+    "key": "ak_2Z05lh9Tk5Jm4Ja4Xu0kb7Jn3N45w",
+    "id": "LongCat-2.0-Preview",
+    "slug": "model-31",
+    "idx": 999
+  },
+  "vision_models": [
+    {
+      "id": "vis_1781251668162_iuf2",
+      "name": "qwen3.7-plus",
+      "base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "key": "sk-2780f8b0ffa948b1bac15c52cc6a0305",
+      "model": "qwen3.7-plus"
+    },
+    {
+      "id": "vis_1781252089457_pc6e",
+      "name": "阿里qwen3.6-plus-2026-04-02",
+      "base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "key": "sk-2780f8b0ffa948b1bac15c52cc6a0305",
+      "model": "qwen3.6-plus-2026-04-02"
+    },
+    {
+      "id": "vis_1781254423156_clwt",
+      "name": "qwen3.6-flash-2026/07/17",
+      "base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "key": "sk-2780f8b0ffa948b1bac15c52cc6a0305",
+      "model": "qwen3.6-flash-2026-04-16"
+    }
+  ],
+  "vision_active": "vis_1781251668162_iuf2",
+  "vision_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "vision_key": "sk-2780f8b0ffa948b1bac15c52cc6a0305",
+  "vision_model": "qwen3.7-plus",
+  "fallback_interval_minutes": 65,
+  "_abnormalModels": [],
+  "_providerHealth": {},
+  "_countdown_start": "1782646441312",
+  "_countdown_interval": "65"
+}

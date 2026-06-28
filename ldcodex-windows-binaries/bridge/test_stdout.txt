@@ -1,0 +1,80 @@
+
+╔══════════════════════════════════════════╗
+║        LuoDaBridge v3 — Proxy Gateway    ║
+║        Development Mode                  ║
+╚══════════════════════════════════════════╝
+
+[boot] registering providers...
+[custom] registered "shangtang1" → https://token.sensenova.cn/v1
+[custom] registered "shangtang2" → https://token.sensenova.cn/v1
+[custom] registered "shangtang5" → https://token.sensenova.cn/v1
+[custom] registered "ST44" → https://token.sensenova.cn/v1
+[custom] registered "ST40" → https://token.sensenova.cn/v1
+[custom] registered "z.ai2" → https://api.z.ai/api/paas/v4
+[custom] registered "shangtang4" → https://token.sensenova.cn/v1
+[custom] registered "shangtang3" → https://token.sensenova.cn/v1
+[custom] registered "ST41" → https://token.sensenova.cn/v1
+[custom] registered "zhipu1-Edited" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "ST45" → https://token.sensenova.cn/v1
+[custom] registered "shangtang33" → https://token.sensenova.cn/v1
+[custom] registered "智谱2" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱4" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱5" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱7" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "阿里云1" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云2" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云3" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云4" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "移动" → https://zhenze-huhehaote.cmecloud.cn/v1
+[custom] registered "移动2" → https://zhenze-huhehaote.cmecloud.cn/v1
+[custom] registered "google1" → https://generativelanguage.googleapis.com/v1beta/openai
+[custom] registered "阿里云5" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "shangtang6" → https://token.sensenova.cn/v1
+[custom] registered "Cloud1" → https://api.cloudflare.com/client/v4/accounts/e9ac56dfe63fa72143a7cd7b9c539b8f/ai/v1
+[custom] registered "AgnesAI" → https://apihub.agnes-ai.com/v1
+[custom] registered "modelscope" → https://api-inference.modelscope.cn/v1
+[custom] registered "z.ai" → https://api.z.ai/api/paas/v4
+[custom] registered "ST46" → https://token.sensenova.cn/v1
+[custom] registered "ST43" → https://token.sensenova.cn/v1
+[custom] registered "免费1" → https://free.v36.cm
+[custom] registered "ApiFree" → https://api.apifree.ai/agent/v1
+[custom] registered "ApiFree2" → https://apihub.agnes-ai.com/v1
+[boot] providers: 0 built-in, 34 custom
+[boot] initializing fallback...
+[fallback] initialized with 34 providers, enabled=true, codexLock=st44, hermesLock=ST41
+[boot] initializing health checks...
+[health] health check is disabled
+[config-store] SQLite ready: J:\codex-work\LDCodex\bridge\data\config.db
+[config] SQLite config loaded (29 keys)
+[boot] token tracking enabled
+[boot] starting servers...
+[admin-db] SQLite ready: J:\codex-work\LDCodex\bridge\data\admin.db
+[middleman] initialized (models_ver=1781518587985, config_ver=1782615217033)
+[middleman] synced 34 models → models.json
+[config-store] config saved to DB (version: 1782616367313)
+[middleman] synced config → config-proxy.json (29 keys)
+[config-store] config saved to DB (version: 1782616367317)
+[middleman] synced config → config-proxy.json (29 keys)
+[config-api] middleman initialized, initial sync done
+[boot] ready — proxy on :36000, config-api on :36001
+[boot] admin panel served separately on :36002
+[boot] SQLite config store ready
+[config-store] config saved to DB (version: 1782616377303)
+[config-store] config saved to DB (version: 1782616387312)
+[config-store] config saved to DB (version: 1782616397320)
+[config-store] config saved to DB (version: 1782616407325)
+[config-store] config saved to DB (version: 1782616417329)
+[config-store] config saved to DB (version: 1782616427329)
+[config-store] config saved to DB (version: 1782616437334)
+[config-store] config saved to DB (version: 1782616447336)
+[config-store] config saved to DB (version: 1782616457341)
+[config-store] config saved to DB (version: 1782616467343)
+[config-store] config saved to DB (version: 1782616477344)
+[config-store] config saved to DB (version: 1782616487346)
+[config-store] config saved to DB (version: 1782616497357)
+[config-store] config saved to DB (version: 1782616507367)
+[config-store] config saved to DB (version: 1782616517371)
+[config-store] config saved to DB (version: 1782616527375)
+[config-store] config saved to DB (version: 1782616537382)
+[config-store] config saved to DB (version: 1782616547380)
+[config-store] config saved to DB (version: 1782616557388)
