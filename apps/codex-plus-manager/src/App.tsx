@@ -502,6 +502,7 @@ type StartupResult = CommandResult<{
 }>;
 
 type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "about" | "settings" | "proxy";
+type RouteItem = { id: Route; label: string; icon: LucideIcon; badge?: string };
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon }> = [
@@ -1495,7 +1496,7 @@ export function App() {
       disableWatcher: () => watcherAction("disable_watcher"),
       toggleTheme: () => setTheme((current) => (current === "dark" ? "light" : "dark")),
     }),
-    [route, launchForm, settingsForm, settings, removeOwnedData, update, logs, diagnostics, theme, relayFiles, localSessions, zedRemoteProjects, selectedProviderSyncTarget, envConflicts, ccsProviders],
+    [route, launchForm, settingsForm, settings, removeOwnedData, update, logs, diagnostics, theme, relayFiles, localSessions, selectedProviderSyncTarget, envConflicts, ccsProviders],
   );
   const hasUpdate = update?.updateAvailable === true;
 

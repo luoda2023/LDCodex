@@ -1,0 +1,606 @@
+﻿diff --git a/bridge/lib/config-api.mjs b/bridge/lib/config-api.mjs
+index 0a04b64..8a62b83 100644
+--- a/bridge/lib/config-api.mjs
++++ b/bridge/lib/config-api.mjs
+@@ -1,14 +1,14 @@
+-/**
++﻿/**
+  * Config API Server
+  *
+  * Provides the configuration management API on a separate HTTP server.
+  * Port: 37001 (development) / 40001 (production)
+  *
+  * Architecture (Middleman Pattern):
+- *   Admin UI → API → admin.db (SQLite)
+- *                       ↓ middleman.syncAll()
++ *   Admin UI 鈫?API 鈫?admin.db (SQLite)
++ *                       鈫?middleman.syncAll()
+  *                 models.json + config-proxy.json
+- *                       ↓ proxy reads
++ *                       鈫?proxy reads
+  *                 Forwarding Proxy (unchanged)
+  */
+ 
+@@ -27,7 +27,7 @@ import { resetVisionCache } from "./protocol/openai-responses.mjs";
+ import { createCustomProvider } from "./provider-custom.mjs";
+ import { initDB, saveConfig, saveJSONBackup, loadProviderTokens } from "./config-store.mjs";
+ 
+-// ── Middleman imports ──
++// 鈹€鈹€ Middleman imports 鈹€鈹€
+ import { initMiddleman, syncAll as middlemanSync } from "./middleman.mjs";
+ import {
+   initAdminDB, dbGetModels, dbGetAllModels, dbGetModel,
+@@ -67,7 +67,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── Redirect to Admin Panel ──
++    // 鈹€鈹€ Redirect to Admin Panel 鈹€鈹€
+     if (pn === "/" || pn === "/config-ui") {
+       const adminPort = process.env.ADMIN_PORT || 37002;
+       res.writeHead(302, { Location: `http://127.0.0.1:${adminPort}/login.html` });
+@@ -75,7 +75,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── API Routes ──
++    // 鈹€鈹€ API Routes 鈹€鈹€
+ 
+     // Status
+     if (req.method === "GET" && pn === "/api/status") {
+@@ -101,7 +101,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // Models list — reads from DB (source of truth)
++    // Models list 鈥?reads from DB (source of truth)
+     if (req.method === "GET" && pn === "/api/models") {
+       try {
+         const dbModels = dbGetAllModels();
+@@ -158,15 +158,15 @@ export function startConfigServer() {
+       req.on("end", () => {
+         try {
+           const data = JSON.parse(body);
+-          // ★ DB级约束：CODEX 和 HERMES 不能指向同一个模型
++          // 鈽?DB绾х害鏉燂細CODEX 鍜?HERMES 涓嶈兘鎸囧悜鍚屼竴涓ā鍨?
+           if (data.single_model_codex && data.single_model_hermes &&
+               data.single_model_codex === data.single_model_hermes) {
+-            sendJson(res, 400, { error: "CODEX 和 HERMES 不能指向同一个模型" });
++            sendJson(res, 400, { error: "CODEX 鍜?HERMES 涓嶈兘鎸囧悜鍚屼竴涓ā鍨? });
+             return;
+           }
+-          // ★ 冲突处理：CODEX 设置时若与 HERMES 冲突，CODEX 自动往后跳
++          // 鈽?鍐茬獊澶勭悊锛欳ODEX 璁剧疆鏃惰嫢涓?HERMES 鍐茬獊锛孋ODEX 鑷姩寰€鍚庤烦
+           if (data.single_model_codex && data.single_model_codex === (CONFIG_PROXY.single_model_hermes || "")) {
+-            // CODEX 跳到 HERMES 后面2位
++            // CODEX 璺冲埌 HERMES 鍚庨潰2浣?
+             const hermesSlug = CONFIG_PROXY.single_model_hermes || "";
+             const seq = getChainString().split(";").filter(Boolean);
+             const hermesIdx = seq.indexOf(hermesSlug);
+@@ -176,12 +176,12 @@ export function startConfigServer() {
+               data.single_model_codex = newCodexSlug;
+               log.info(`[config] CODEX conflicts with HERMES, auto-advancing to "${newCodexSlug}"`);
+             } else {
+-              sendJson(res, 400, { error: "无法找到可用的 CODEX 模型位置" });
++              sendJson(res, 400, { error: "鏃犳硶鎵惧埌鍙敤鐨?CODEX 妯″瀷浣嶇疆" });
+               return;
+             }
+           }
+           if (data.single_model_hermes && data.single_model_hermes === (CONFIG_PROXY.single_model_codex || "")) {
+-            // HERMES 设置时若与 CODEX 冲突，HERMES 自动往后跳
++            // HERMES 璁剧疆鏃惰嫢涓?CODEX 鍐茬獊锛孒ERMES 鑷姩寰€鍚庤烦
+             const codexSlug = CONFIG_PROXY.single_model_codex || "";
+             const seq = getChainString().split(";").filter(Boolean);
+             const codexIdx = seq.indexOf(codexSlug);
+@@ -191,7 +191,7 @@ export function startConfigServer() {
+               data.single_model_hermes = newHermesSlug;
+               log.info(`[config] HERMES conflicts with CODEX, auto-advancing to "${newHermesSlug}"`);
+             } else {
+-              sendJson(res, 400, { error: "无法找到可用的 HERMES 模型位置" });
++              sendJson(res, 400, { error: "鏃犳硶鎵惧埌鍙敤鐨?HERMES 妯″瀷浣嶇疆" });
+               return;
+             }
+           }
+@@ -202,7 +202,7 @@ export function startConfigServer() {
+             setChain(data.fallback_sequence);
+           }
+           updateSettings(data);
+-          // 3. Sync DB → JSON via middleman
++          // 3. Sync DB 鈫?JSON via middleman
+           try { middlemanSync(); } catch (e) { /* middleman may fail */ }
+           sendJson(res, 200, { status: "ok", sequence: getChainString() });
+         } catch (e) {
+@@ -238,7 +238,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── Abnormal model management ──
++    // 鈹€鈹€ Abnormal model management 鈹€鈹€
+     if (pn === "/api/fallback/abnormal") {
+       if (req.method === "GET") {
+         const list = CONFIG_PROXY.abnormal_models || [];
+@@ -257,16 +257,16 @@ export function startConfigServer() {
+             const list = CONFIG_PROXY.abnormal_models || [];
+             let newList;
+             
+-            // ★ 获取当前 fallback_sequence
++            // 鈽?鑾峰彇褰撳墠 fallback_sequence
+             var seq = (CONFIG_PROXY.codex_fallback_sequence || CONFIG_PROXY.fallback_sequence || "").split(";").filter(Boolean);
+             
+             if (abnormal) {
+               newList = list.includes(key) ? list : list.concat([key]);
+-              // ★ 从 fallback_sequence 中移除
++              // 鈽?浠?fallback_sequence 涓Щ闄?
+               seq = seq.filter(function(s) { return s !== key; });
+               log.warn("[config-api] abnormal + remove from chain: " + key);
+               
+-              // ★ 如果异常模型是当前CODEX/HERMES锁定模型，自动清除锁定并前进
++              // 鈽?濡傛灉寮傚父妯″瀷鏄綋鍓岰ODEX/HERMES閿佸畾妯″瀷锛岃嚜鍔ㄦ竻闄ら攣瀹氬苟鍓嶈繘
+               if (CONFIG_PROXY.single_model_codex === key) {
+                 log.warn("[config-api] abnormal model is codex current, clear and advance");
+                 CONFIG_PROXY.single_model_codex = "";
+@@ -279,23 +279,23 @@ export function startConfigServer() {
+               }
+             } else {
+               newList = list.filter(function(m) { return m !== key; });
+-              // ★ 恢复到 fallback_sequence 末尾
++              // 鈽?鎭㈠鍒?fallback_sequence 鏈熬
+               if (!seq.includes(key)) { seq.push(key); }
+-              log.info("[config-api] restore from abnormal → append to chain: " + key);
++              log.info("[config-api] restore from abnormal 鈫?append to chain: " + key);
+             }
+             
+-            // ★ 更新 CONFIG_PROXY + DB + fallback 链
++            // 鈽?鏇存柊 CONFIG_PROXY + DB + fallback 閾?
+             var newSeq = seq.join(";");
+             CONFIG_PROXY.fallback_sequence = newSeq;
+             CONFIG_PROXY.codex_fallback_sequence = newSeq;
+             CONFIG_PROXY.abnormal_models = newList;
+             
+-            // 1. 写 DB（abnormal_models + fallback_sequence）
++            // 1. 鍐?DB锛坅bnormal_models + fallback_sequence锛?
+             dbSetConfigKey("abnormal_models", newList);
+             dbSetConfigKey("fallback_sequence", newSeq);
+             dbSetConfigKey("codex_fallback_sequence", newSeq);
+             
+-            // 2. 更新内存中的 fallback 链
++            // 2. 鏇存柊鍐呭瓨涓殑 fallback 閾?
+             if (typeof setChain === "function") setChain(newSeq);
+             updateSettings({ abnormal_models: newList });
+             
+@@ -310,11 +310,11 @@ export function startConfigServer() {
+       }
+     }
+ 
+-    // ── /api/fallback/timed-switch ──
++    // 鈹€鈹€ /api/fallback/timed-switch 鈹€鈹€
+     if (req.method === "POST" && pn === "/api/fallback/timed-switch") {
+-      // ★ 前端倒计时归零即触发切换（前端控制自动开关，此处不检查锁定）
+-      // 自动切换 ON → 倒计时走 → 归零→ 此处必定切换
+-      // 自动切换 OFF → 前端倒计时冻结 → 永远不会走到这里
++      // 鈽?鍓嶇鍊掕鏃跺綊闆跺嵆瑙﹀彂鍒囨崲锛堝墠绔帶鍒惰嚜鍔ㄥ紑鍏筹紝姝ゅ涓嶆鏌ラ攣瀹氾級
++      // 鑷姩鍒囨崲 ON 鈫?鍊掕鏃惰蛋 鈫?褰掗浂鈫?姝ゅ蹇呭畾鍒囨崲
++      // 鑷姩鍒囨崲 OFF 鈫?鍓嶇鍊掕鏃跺喕缁?鈫?姘歌繙涓嶄細璧板埌杩欓噷
+       let body = "";
+       req.on("data", chunk => body += chunk);
+       req.on("end", () => {
+@@ -323,13 +323,13 @@ export function startConfigServer() {
+           const clientId = data.client || "CODEX";
+           
+           const newProvider = clearSingleAndAdvance(clientId);
+-          // ★ 关键：同步更新DB中的 single_model_codex/hermes
+-          // clearSingleAndAdvance 会清空内存中的 _singleModelCodex/Hermes，
+-          // 但DB里的值还是旧的。必须先更新DB，再middlemanSync才不会覆盖回去
++          // 鈽?鍏抽敭锛氬悓姝ユ洿鏂癉B涓殑 single_model_codex/hermes
++          // clearSingleAndAdvance 浼氭竻绌哄唴瀛樹腑鐨?_singleModelCodex/Hermes锛?
++          // 浣咲B閲岀殑鍊艰繕鏄棫鐨勩€傚繀椤诲厛鏇存柊DB锛屽啀middlemanSync鎵嶄笉浼氳鐩栧洖鍘?
+           dbSetConfigKey("single_model_codex", CONFIG_PROXY.single_model_codex || "");
+           dbSetConfigKey("single_model_hermes", CONFIG_PROXY.single_model_hermes || "");
+           dbSetConfigKey("_fallbackState", CONFIG_PROXY._fallbackState || {});
+-          // Sync DB → JSON via middleman
++          // Sync DB 鈫?JSON via middleman
+           try { middlemanSync(); } catch (e) { /* silent */ }
+           sendJson(res, 200, {
+             status: "ok",
+@@ -349,11 +349,11 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── Provider token rankings ──
++    // 鈹€鈹€ Provider token rankings 鈹€鈹€
+     if (req.method === "GET" && pn === "/api/token-rankings") {
+       try {
+         const tokens = loadProviderTokens();
+-        // ★ 过滤掉纯数字的 provider_name（如阿里云1/2/3 的 slug="1"/"2"/"3" 被错误记录了）
++        // 鈽?杩囨护鎺夌函鏁板瓧鐨?provider_name锛堝闃块噷浜?/2/3 鐨?slug="1"/"2"/"3" 琚敊璇褰曚簡锛?
+         const filtered = {};
+         for (const k of Object.keys(tokens)) {
+           if (/^\d+$/.test(k)) {
+@@ -373,7 +373,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── Token sync (merge remote tokens into local DB) ──
++    // 鈹€鈹€ Token sync (merge remote tokens into local DB) 鈹€鈹€
+     if (req.method === "POST" && pn === "/api/tokens/sync") {
+       let body = "";
+       req.on("data", chunk => body += chunk);
+@@ -381,7 +381,7 @@ export function startConfigServer() {
+         try {
+           const data = JSON.parse(body);
+           const remoteTokens = data.tokens || {}; // { "provider_name": total_tokens }
+-          // ★ 过滤掉纯数字的 provider_name，同步时拒绝写入
++          // 鈽?杩囨护鎺夌函鏁板瓧鐨?provider_name锛屽悓姝ユ椂鎷掔粷鍐欏叆
+           const cleanedRemote = {};
+           for (const k of Object.keys(remoteTokens)) {
+             if (/^\d+$/.test(k)) {
+@@ -391,7 +391,7 @@ export function startConfigServer() {
+             cleanedRemote[k] = remoteTokens[k];
+           }
+           const localTokens = loadProviderTokens();
+-          // ★ 本地也过滤纯数字的 provider_name
++          // 鈽?鏈湴涔熻繃婊ょ函鏁板瓧鐨?provider_name
+           const cleanedLocal = {};
+           for (const k of Object.keys(localTokens)) {
+             if (/^\d+$/.test(k)) continue;
+@@ -400,7 +400,7 @@ export function startConfigServer() {
+           const { saveProviderToken } = await import("./config-store.mjs");
+           const now = Date.now();
+           let merged = 0;
+-          // 合并所有 provider（本地 + 远程），取最大值
++          // 鍚堝苟鎵€鏈?provider锛堟湰鍦?+ 杩滅▼锛夛紝鍙栨渶澶у€?
+           const allProviders = new Set([...Object.keys(cleanedLocal), ...Object.keys(cleanedRemote)]);
+           for (const name of allProviders) {
+             const localVal = cleanedLocal[name] || 0;
+@@ -411,7 +411,7 @@ export function startConfigServer() {
+               merged++;
+             }
+           }
+-          // 同时更新 tokens.json（前端 dashboard 读取）
++          // 鍚屾椂鏇存柊 tokens.json锛堝墠绔?dashboard 璇诲彇锛?
+           try {
+             const tokPath = path.join(PATHS.data, "tokens.json");
+             if (fs.existsSync(tokPath)) {
+@@ -430,7 +430,7 @@ export function startConfigServer() {
+           } catch(e) { /* sync tokens.json silently */ }
+           
+           log.info("[config-api] tokens synced: " + merged + " providers merged");
+-          // ★ 同步更新内存 _providerTokenMap（通过 global 共享）
++          // 鈽?鍚屾鏇存柊鍐呭瓨 _providerTokenMap锛堥€氳繃 global 鍏变韩锛?
+           try {
+             const allTokens = loadProviderTokens();
+             if (global.__providerTokenMap) {
+@@ -451,7 +451,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── Helper: re-register custom providers from models.json ──
++    // 鈹€鈹€ Helper: re-register custom providers from models.json 鈹€鈹€
+     function reloadCustomProviders() {
+       try {
+         getAll().filter(function(p) { return !p.isBuiltin; }).forEach(function(p) {
+@@ -468,14 +468,14 @@ export function startConfigServer() {
+       } catch(e) { /* silent */ }
+     }
+ 
+-    // ── Reload providers (called by middleman after sync) ──
++    // 鈹€鈹€ Reload providers (called by middleman after sync) 鈹€鈹€
+     if (req.method === "GET" && pn === "/api/reload-providers") {
+       reloadCustomProviders();
+       sendJson(res, 200, { status: "ok" });
+       return;
+     }
+ 
+-    // ── Custom providers CRUD (via admin DB + middleman) ──
++    // 鈹€鈹€ Custom providers CRUD (via admin DB + middleman) 鈹€鈹€
+     if (pn === "/api/models" && req.method === "POST") {
+       let body = "";
+       req.on("data", chunk => body += chunk);
+@@ -483,7 +483,7 @@ export function startConfigServer() {
+       req.on("end", () => {
+         try {
+           const data = JSON.parse(body);
+-          // ★ 输入验证：禁止逗号、分号、管道符等特殊字符
++          // 鈽?杈撳叆楠岃瘉锛氱姝㈤€楀彿銆佸垎鍙枫€佺閬撶绛夌壒娈婂瓧绗?
+           const valErr = validateModelInput(data);
+           if (valErr) { sendJson(res, 400, { error: valErr }); return; }
+           // 1. Write to DB
+@@ -498,7 +498,7 @@ export function startConfigServer() {
+             sendJson(res, 400, { error: result.error });
+             return;
+           }
+-          // 2. Sync DB → JSON + reload
++          // 2. Sync DB 鈫?JSON + reload
+           middlemanSync();
+           // 3. Also re-register providers in current process
+           reloadCustomProviders();
+@@ -510,7 +510,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // GET /api/models/by-slug/:slug — get single model by slug (MUST be before PUT)
++    // GET /api/models/by-slug/:slug 鈥?get single model by slug (MUST be before PUT)
+     if (pn.startsWith("/api/models/by-slug/") && req.method === "GET") {
+       const slug = decodeURIComponent(pn.slice("/api/models/by-slug/".length));
+       try {
+@@ -523,7 +523,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // PUT /api/models/by-slug/:slug — update by slug (preferred)
++    // PUT /api/models/by-slug/:slug 鈥?update by slug (preferred)
+     if (pn.startsWith("/api/models/by-slug/") && req.method === "PUT") {
+       const slug = decodeURIComponent(pn.slice("/api/models/by-slug/".length));
+       let body = "";
+@@ -532,13 +532,13 @@ export function startConfigServer() {
+       req.on("end", () => {
+         try {
+           const data = JSON.parse(body);
+-          // ★ 输入验证
++          // 鈽?杈撳叆楠岃瘉
+           const valErr = validateModelInput(data);
+           if (valErr) { sendJson(res, 400, { error: valErr }); return; }
+           // 1. Write to DB
+           dbUpdateModel(slug, data);
+           var newSlug = (data.slug || "").trim();
+-          // 2. 如果 slug 变了，更新 fallback_sequence + single_model 锁定
++          // 2. 濡傛灉 slug 鍙樹簡锛屾洿鏂?fallback_sequence + single_model 閿佸畾
+           if (newSlug && newSlug !== slug) {
+             var seq = (CONFIG_PROXY.codex_fallback_sequence || CONFIG_PROXY.fallback_sequence || "").split(";").filter(Boolean);
+             var seqIdx = seq.indexOf(slug);
+@@ -548,7 +548,7 @@ export function startConfigServer() {
+             CONFIG_PROXY.codex_fallback_sequence = newSeq;
+             dbSetConfigKey("fallback_sequence", newSeq);
+             dbSetConfigKey("codex_fallback_sequence", newSeq);
+-            // 更新 single_model 锁定
++            // 鏇存柊 single_model 閿佸畾
+             if (CONFIG_PROXY.single_model_codex === slug) {
+               CONFIG_PROXY.single_model_codex = newSlug;
+               dbSetConfigKey("single_model_codex", newSlug);
+@@ -557,7 +557,7 @@ export function startConfigServer() {
+               CONFIG_PROXY.single_model_hermes = newSlug;
+               dbSetConfigKey("single_model_hermes", newSlug);
+             }
+-            log.info("[config-api] slug changed: " + slug + " → " + newSlug + ", chain updated");
++            log.info("[config-api] slug changed: " + slug + " 鈫?" + newSlug + ", chain updated");
+           }
+           // 3. Sync + reload
+           middlemanSync();
+@@ -570,7 +570,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // DELETE /api/models/by-slug/:slug — delete by slug (preferred)
++    // DELETE /api/models/by-slug/:slug 鈥?delete by slug (preferred)
+     if (pn.startsWith("/api/models/by-slug/") && req.method === "DELETE") {
+       const slug = decodeURIComponent(pn.slice("/api/models/by-slug/".length));
+       try {
+@@ -595,7 +595,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // GET /api/models/:idx — get single model by index (backward compat)
++    // GET /api/models/:idx 鈥?get single model by index (backward compat)
+     if (pn.startsWith("/api/models/") && req.method === "GET") {
+       const idx = parseInt(pn.slice("/api/models/".length), 10) - 1;
+       if (isNaN(idx) || idx < 0) { sendJson(res, 400, { error: "invalid index" }); return; }
+@@ -609,7 +609,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // PUT /api/models/:idx — backward compat (1-based index)
++    // PUT /api/models/:idx 鈥?backward compat (1-based index)
+     if (pn.startsWith("/api/models/") && req.method === "PUT") {
+       const idx = parseInt(pn.slice("/api/models/".length), 10) - 1;
+       if (isNaN(idx) || idx < 0) { sendJson(res, 400, { error: "invalid index" }); return; }
+@@ -636,7 +636,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // DELETE /api/models/:idx — backward compat (1-based index)
++    // DELETE /api/models/:idx 鈥?backward compat (1-based index)
+     if (pn.startsWith("/api/models/") && req.method === "DELETE") {
+       const idx = parseInt(pn.slice("/api/models/".length), 10) - 1;
+       if (isNaN(idx) || idx < 0) { sendJson(res, 400, { error: "invalid index" }); return; }
+@@ -665,7 +665,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── Reorder models ──
++    // 鈹€鈹€ Reorder models 鈹€鈹€
+     if (pn === "/api/models/reorder" && req.method === "POST") {
+       let body = "";
+       req.on("data", chunk => body += chunk);
+@@ -695,7 +695,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── Get custom providers for vision model import (full keys) ──
++    // 鈹€鈹€ Get custom providers for vision model import (full keys) 鈹€鈹€
+     if (req.method === "GET" && pn === "/api/vision-candidates") {
+       const providers = getAll();
+       sendJson(res, 200, providers.filter(p => !p.isBuiltin).map(function(p) {
+@@ -709,7 +709,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── Get vision models list with raw (unmasked) keys ──
++    // 鈹€鈹€ Get vision models list with raw (unmasked) keys 鈹€鈹€
+     if (req.method === "GET" && pn === "/api/vision-models-raw") {
+       const list = (CONFIG_PROXY.vision_models || []).map(function(m) {
+         return { id: m.id, name: m.name, base: m.base, key: m.key || "", model: m.model, active: m.id === CONFIG_PROXY.vision_active };
+@@ -718,7 +718,7 @@ export function startConfigServer() {
+       return;
+     }
+ 
+-    // ── Vision model config ──
++    // 鈹€鈹€ Vision model config 鈹€鈹€
+     if (pn === "/api/vision-models") {
+       if (req.method === "GET") {
+         const list = (CONFIG_PROXY.vision_models || []).map(function(m) {
+@@ -749,7 +749,7 @@ export function startConfigServer() {
+             if (action === "add") {
+               const newModel = {
+                 id: "vis_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+-                name: data.name || "未命名",
++                name: data.name || "鏈懡鍚?,
+                 base: data.base || "",
+                 key: data.key || "",
+                 model: data.model || "",
+@@ -807,7 +807,7 @@ export function startConfigServer() {
+               }
+               const copy = {
+                 id: "vis_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+-                name: original.name + " (副本)",
++                name: original.name + " (鍓湰)",
+                 base: original.base,
+                 key: original.key,
+                 model: original.model,
+@@ -852,10 +852,10 @@ export function startConfigServer() {
+       }
+     }
+ 
+-    // ── /api/countdown/timeleft (服务端统一管理倒计时) ──
++    // 鈹€鈹€ /api/countdown/timeleft (鏈嶅姟绔粺涓€绠＄悊鍊掕鏃? 鈹€鈹€
+     if (pn === "/api/countdown/timeleft") {
+       if (req.method === "GET") {
+-        // 服务端计算剩余时间
++        // 鏈嶅姟绔绠楀墿浣欐椂闂?
+         const interval = CONFIG_PROXY.fallback_interval_minutes || 96;
+         const startAt = parseInt(CONFIG_PROXY._countdown_start || "0", 10);
+         let remaining = 0;
+@@ -878,14 +878,14 @@ export function startConfigServer() {
+             const now = Date.now();
+             
+             if (action === "reset") {
+-              // 重置倒计时（切换后或修改间隔后）
++              // 閲嶇疆鍊掕鏃讹紙鍒囨崲鍚庢垨淇敼闂撮殧鍚庯級
+               CONFIG_PROXY._countdown_start = now;
+               CONFIG_PROXY._countdown_interval = data.interval_minutes || CONFIG_PROXY.fallback_interval_minutes || 96;
+               dbSetConfigKey("_countdown_start", String(now));
+               dbSetConfigKey("_countdown_interval", String(CONFIG_PROXY._countdown_interval));
+               log.info("[countdown] reset, start_at=" + now);
+             } else if (action === "set_start") {
+-              // 设置开始时间
++              // 璁剧疆寮€濮嬫椂闂?
+               const s = data.start_at || now;
+               CONFIG_PROXY._countdown_start = s;
+               dbSetConfigKey("_countdown_start", String(s));
+@@ -900,7 +900,7 @@ export function startConfigServer() {
+       }
+     }
+ 
+-    // ── /api/codex/config (catch-all config read/write) ──
++    // 鈹€鈹€ /api/codex/config (catch-all config read/write) 鈹€鈹€
+     if (pn === "/api/codex/config") {
+       if (req.method === "GET") {
+         const status = getFullStatus();
+@@ -916,20 +916,20 @@ export function startConfigServer() {
+         req.on("end", () => {
+           try {
+             const data = JSON.parse(body);
+-            // ★ DB级约束：CODEX 和 HERMES 不能指向同一个模型
++            // 鈽?DB绾х害鏉燂細CODEX 鍜?HERMES 涓嶈兘鎸囧悜鍚屼竴涓ā鍨?
+             if (data.single_model_codex !== undefined && data.single_model_hermes !== undefined &&
+                 data.single_model_codex && data.single_model_hermes &&
+                 data.single_model_codex === data.single_model_hermes) {
+-              sendJson(res, 400, { error: "CODEX 和 HERMES 不能指向同一个模型" });
++              sendJson(res, 400, { error: "CODEX 鍜?HERMES 涓嶈兘鎸囧悜鍚屼竴涓ā鍨? });
+               return;
+             }
+-            // 检查与当前已存值的冲突
++            // 妫€鏌ヤ笌褰撳墠宸插瓨鍊肩殑鍐茬獊
+             if (data.single_model_codex !== undefined && data.single_model_codex === (CONFIG_PROXY.single_model_hermes || "")) {
+-              sendJson(res, 400, { error: "CODEX 不能设置为与当前 HERMES 相同的模型" });
++              sendJson(res, 400, { error: "CODEX 涓嶈兘璁剧疆涓轰笌褰撳墠 HERMES 鐩稿悓鐨勬ā鍨? });
+               return;
+             }
+             if (data.single_model_hermes !== undefined && data.single_model_hermes === (CONFIG_PROXY.single_model_codex || "")) {
+-              sendJson(res, 400, { error: "HERMES 不能设置为与当前 CODEX 相同的模型" });
++              sendJson(res, 400, { error: "HERMES 涓嶈兘璁剧疆涓轰笌褰撳墠 CODEX 鐩稿悓鐨勬ā鍨? });
+               return;
+             }
+             // 1. Write to DB
+@@ -940,7 +940,7 @@ export function startConfigServer() {
+               ? data.single_model_codex : CONFIG_PROXY.single_model_codex;
+             CONFIG_PROXY.single_model_hermes = data.single_model_hermes !== undefined
+               ? data.single_model_hermes : CONFIG_PROXY.single_model_hermes;
+-            // 3. Sync DB → JSON + reload proxy
++            // 3. Sync DB 鈫?JSON + reload proxy
+             try { middlemanSync(); } catch (e) { /* silent */ }
+             log.info(`[config-api] POST /api/codex/config:`, Object.keys(data).join(", "));
+             sendJson(res, 200, { status: "ok" });
+@@ -998,7 +998,7 @@ export function startConfigServer() {
+     // Restart
+     // Proxy info page
+     if (req.method === "GET" && pn === "/proxy-info.html") {
+-      const filePath = path.join(PATHS.root, "..", "admin", "proxy-info.html");
++      const filePath = path.join(PATHS.root, "admin", "proxy-info.html");
+       serveFile(res, filePath, "text/html; charset=utf-8");
+       return;
+     }
+@@ -1024,7 +1024,7 @@ export function startConfigServer() {
+   server.listen(port, () => {
+     log.info(`[config-api] running on http://localhost:${port}`);
+ 
+-    // ─── 服务端倒计时守护：不依赖前端页面，自动触发切换 ───
++    // 鈹€鈹€鈹€ 鏈嶅姟绔€掕鏃跺畧鎶わ細涓嶄緷璧栧墠绔〉闈紝鑷姩瑙﹀彂鍒囨崲 鈹€鈹€鈹€
+     setInterval(function() {
+       if (!CONFIG_PROXY._countdown_start) return;
+       const interval = CONFIG_PROXY.fallback_interval_minutes || 96;
+@@ -1035,7 +1035,7 @@ export function startConfigServer() {
+       if (remaining <= 0) {
+         log.info(`[countdown] expired (interval=${interval}min), auto-switching`);
+         try {
+-          // ★ 自动切换时，CODEX 和 HERMES 同时切换
++          // 鈽?鑷姩鍒囨崲鏃讹紝CODEX 鍜?HERMES 鍚屾椂鍒囨崲
+           const codexSwitched = clearSingleAndAdvance("CODEX", true);
+           const hermesSwitched = clearSingleAndAdvance("HERMES", true);
+           if (codexSwitched) log.info(`[countdown] CODEX switched to "${codexSwitched.name}"`);
+@@ -1055,7 +1055,7 @@ export function startConfigServer() {
+   return server;
+ }
+ 
+-// ─── Persist builtin provider overrides ──
++// 鈹€鈹€鈹€ Persist builtin provider overrides 鈹€鈹€
+ const _overrideFile = path.join(PATHS.data, "builtin-overrides.json");
+ function loadBuiltinOverrides() {
+   try {
+@@ -1080,7 +1080,7 @@ function persistBuiltinOverrides(name, props) {
+ 
+ export { loadBuiltinOverrides, persistBuiltinOverrides };
+ 
+-// ── Helpers ──
++// 鈹€鈹€ Helpers 鈹€鈹€
+ 
+ function sendJson(res, status, data) {
+   const body = JSON.stringify(data);
+@@ -1092,18 +1092,18 @@ function sendJson(res, status, data) {
+ }
+ 
+ /**
+- * 输入验证：禁止逗号、分号、管道符、中文符号等特殊字符
+- * 这些字符可能破坏 fallback_sequence 格式或数据库查询
++ * 杈撳叆楠岃瘉锛氱姝㈤€楀彿銆佸垎鍙枫€佺閬撶銆佷腑鏂囩鍙风瓑鐗规畩瀛楃
++ * 杩欎簺瀛楃鍙兘鐮村潖 fallback_sequence 鏍煎紡鎴栨暟鎹簱鏌ヨ
+  */
+ function validateModelInput(data) {
+-  const forbidden = /[,;|、，；｜\n\r\t"']/;
+-  if (!data.name || !data.name.trim()) return "模型名称不能为空";
+-  if (forbidden.test(data.name)) return "模型名称不能包含逗号、分号、管道符等特殊字符";
+-  if (!data.base || !data.base.trim()) return "API 地址不能为空";
+-  if (!data.key || !data.key.trim()) return "API 密钥不能为空";
+-  if (!data.id || !data.id.trim()) return "模型 ID 不能为空";
+-  if (forbidden.test(data.id)) return "模型 ID 不能包含逗号、分号、管道符等特殊字符";
+-  return null; // 验证通过
++  const forbidden = /[,;|銆侊紝锛涳綔\n\r\t"']/;
++  if (!data.name || !data.name.trim()) return "妯″瀷鍚嶇О涓嶈兘涓虹┖";
++  if (forbidden.test(data.name)) return "妯″瀷鍚嶇О涓嶈兘鍖呭惈閫楀彿銆佸垎鍙枫€佺閬撶绛夌壒娈婂瓧绗?;
++  if (!data.base || !data.base.trim()) return "API 鍦板潃涓嶈兘涓虹┖";
++  if (!data.key || !data.key.trim()) return "API 瀵嗛挜涓嶈兘涓虹┖";
++  if (!data.id || !data.id.trim()) return "妯″瀷 ID 涓嶈兘涓虹┖";
++  if (forbidden.test(data.id)) return "妯″瀷 ID 涓嶈兘鍖呭惈閫楀彿銆佸垎鍙枫€佺閬撶绛夌壒娈婂瓧绗?;
++  return null; // 楠岃瘉閫氳繃
+ }
+ 
+ function serveFile(res, filePath, contentType) {

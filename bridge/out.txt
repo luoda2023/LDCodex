@@ -1,0 +1,129 @@
+
+╔══════════════════════════════════════════╗
+║        LuoDaBridge v3 — Proxy Gateway    ║
+║        Development Mode                  ║
+╚══════════════════════════════════════════╝
+
+[boot] registering providers...
+[custom] registered "shangtang1" → https://token.sensenova.cn/v1
+[custom] registered "shangtang2" → https://token.sensenova.cn/v1
+[custom] registered "shangtang5" → https://token.sensenova.cn/v1
+[custom] registered "ST44" → https://token.sensenova.cn/v1
+[custom] registered "ST40" → https://token.sensenova.cn/v1
+[custom] registered "z.ai2" → https://api.z.ai/api/paas/v4
+[custom] registered "shangtang4" → https://token.sensenova.cn/v1
+[custom] registered "shangtang3" → https://token.sensenova.cn/v1
+[custom] registered "ST41" → https://token.sensenova.cn/v1
+[custom] registered "zhipu1-Edited" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "ST45" → https://token.sensenova.cn/v1
+[custom] registered "shangtang33" → https://token.sensenova.cn/v1
+[custom] registered "智谱2" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱4" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱5" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "智谱7" → https://open.bigmodel.cn/api/paas/v4
+[custom] registered "阿里云1" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云2" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云3" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "阿里云4" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "移动" → https://zhenze-huhehaote.cmecloud.cn/v1
+[custom] registered "移动2" → https://zhenze-huhehaote.cmecloud.cn/v1
+[custom] registered "google1" → https://generativelanguage.googleapis.com/v1beta/openai
+[custom] registered "阿里云5" → https://dashscope.aliyuncs.com/compatible-mode/v1
+[custom] registered "shangtang6" → https://token.sensenova.cn/v1
+[custom] registered "Cloud1" → https://api.cloudflare.com/client/v4/accounts/e9ac56dfe63fa72143a7cd7b9c539b8f/ai/v1
+[custom] registered "AgnesAI" → https://apihub.agnes-ai.com/v1
+[custom] registered "modelscope" → https://api-inference.modelscope.cn/v1
+[custom] registered "z.ai" → https://api.z.ai/api/paas/v4
+[custom] registered "ST46" → https://token.sensenova.cn/v1
+[custom] registered "ST43" → https://token.sensenova.cn/v1
+[custom] registered "免费1" → https://free.v36.cm
+[custom] registered "ApiFree" → https://api.apifree.ai/agent/v1
+[custom] registered "ApiFree2" → https://apihub.agnes-ai.com/v1
+[boot] providers: 0 built-in, 34 custom
+[boot] initializing fallback...
+[fallback] initialized with 34 providers, enabled=true, codexLock=st44, hermesLock=ST41
+[boot] initializing health checks...
+[health] health check is disabled
+[config-store] SQLite ready: J:\codex-work\LDCodex\bridge\data\config.db
+[config] SQLite config loaded (29 keys)
+[boot] starting servers...
+[admin-db] SQLite ready: J:\codex-work\LDCodex\bridge\data\admin.db
+[middleman] initialized (models_ver=1781518587985, config_ver=1782615217033)
+[middleman] synced 34 models → models.json
+[config-store] config saved to DB (version: 1782615965207)
+[middleman] synced config → config-proxy.json (29 keys)
+[config-store] config saved to DB (version: 1782615965210)
+[middleman] synced config → config-proxy.json (29 keys)
+[config-api] middleman initialized, initial sync done
+[boot] ready — proxy on :36000, config-api on :36001
+[boot] admin panel served separately on :36002
+[boot] SQLite config store ready
+[proxy] running on http://localhost:36000
+[proxy] providers: 34 registered
+[proxy] models: 34 in catalog
+[config-api] running on http://localhost:36001
+[access] GET /api/reload
+[access] GET /api/reload
+[config-store] config saved to DB (version: 1782615975198)
+[config-store] config saved to DB (version: 1782615985197)
+[config-store] config saved to DB (version: 1782615995204)
+[config-store] config saved to DB (version: 1782616005208)
+[config-store] config saved to DB (version: 1782616015217)
+[config-store] config saved to DB (version: 1782616025222)
+[config-store] config saved to DB (version: 1782616035226)
+[config-store] config saved to DB (version: 1782616045234)
+[config-store] config saved to DB (version: 1782616055239)
+[config-store] config saved to DB (version: 1782616065240)
+[config-store] config saved to DB (version: 1782616075239)
+[config-store] config saved to DB (version: 1782616085240)
+[config-store] config saved to DB (version: 1782616095250)
+[config-store] config saved to DB (version: 1782616105264)
+[config-store] config saved to DB (version: 1782616115272)
+[config-store] config saved to DB (version: 1782616125284)
+[config-store] config saved to DB (version: 1782616135293)
+[config-store] config saved to DB (version: 1782616145294)
+[config-store] config saved to DB (version: 1782616155298)
+[config-store] config saved to DB (version: 1782616165304)
+[config-store] config saved to DB (version: 1782616175306)
+[config-store] config saved to DB (version: 1782616185319)
+[config-store] config saved to DB (version: 1782616195325)
+[config-store] config saved to DB (version: 1782616205335)
+[config-store] config saved to DB (version: 1782616215345)
+[config-store] config saved to DB (version: 1782616225349)
+[config-store] config saved to DB (version: 1782616235357)
+[config-store] config saved to DB (version: 1782616245362)
+[config-store] config saved to DB (version: 1782616255373)
+[config-store] config saved to DB (version: 1782616265382)
+[config-store] config saved to DB (version: 1782616275384)
+[config-store] config saved to DB (version: 1782616285409)
+[config-store] config saved to DB (version: 1782616295399)
+[config-store] config saved to DB (version: 1782616305403)
+[config-store] config saved to DB (version: 1782616315412)
+[config-store] config saved to DB (version: 1782616325421)
+[config-store] config saved to DB (version: 1782616335428)
+[config-store] config saved to DB (version: 1782616345440)
+[access] GET /api/reload
+[access] GET /api/reload
+[config-store] config saved to DB (version: 1782616355449)
+[config-store] config saved to DB (version: 1782616365459)
+[access] GET /api/reload
+[access] GET /api/reload
+[config-store] config saved to DB (version: 1782616375460)
+[config-store] config saved to DB (version: 1782616385460)
+[config-store] config saved to DB (version: 1782616395470)
+[config-store] config saved to DB (version: 1782616405472)
+[config-store] config saved to DB (version: 1782616415475)
+[config-store] config saved to DB (version: 1782616425476)
+[config-store] config saved to DB (version: 1782616435486)
+[config-store] config saved to DB (version: 1782616445498)
+[config-store] config saved to DB (version: 1782616455504)
+[config-store] config saved to DB (version: 1782616465514)
+[config-store] config saved to DB (version: 1782616475527)
+[config-store] config saved to DB (version: 1782616485539)
+[config-store] config saved to DB (version: 1782616495537)
+[config-store] config saved to DB (version: 1782616505542)
+[config-store] config saved to DB (version: 1782616515553)
+[config-store] config saved to DB (version: 1782616525558)
+[config-store] config saved to DB (version: 1782616535570)
+[config-store] config saved to DB (version: 1782616545560)
+[config-store] config saved to DB (version: 1782616555569)

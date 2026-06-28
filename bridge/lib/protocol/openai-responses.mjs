@@ -250,7 +250,7 @@ export async function handleResponses(ctx, req, body) {
           // Handle reasoning content (thinking) from upstream providers
           // Providers like DeepSeek/商汤 send reasoning_content in delta
           const reasoningDelta = (delta.reasoning_content || delta.reasoning || "")
-            .replace(/<\/?think>/gi, '').replace(/<\/?response>/gi, '');
+            .replace(/<\/?think>/gi, '').replace(/<\/?response>/gi, '').trim();
           const textDelta = delta.content || "";
 
           // Handle reasoning content streaming first

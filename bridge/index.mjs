@@ -2,7 +2,7 @@
  * LuoDaBridge v3 — Entry Point
  *
  * Starts all services:
- *   Main proxy server (port 37000)
+ *   Main proxy server (port 36000)
  *   Config API server (port 37001)
  *
  * Usage:
