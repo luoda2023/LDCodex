@@ -790,7 +790,7 @@ export function App() {
     return null;
   };
 
-  const const refreshRelay = async (silent = false) => {
+  const refreshRelay = async (silent = false) => {
     const result = await run(() => call<RelayResult>("relay_status"));
     if (result) {
       setRelay(result);
@@ -887,7 +887,7 @@ export function App() {
     return result;
   };
 
-  const const refreshLiveContextEntries = async (silent = false) => {
+  const refreshLiveContextEntries = async (silent = false) => {
     const result = await run(() => call<LiveContextEntriesResult>("read_live_context_entries"));
     if (result) {
       setLiveContextEntries(result.entries);
