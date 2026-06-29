@@ -1951,7 +1951,6 @@ export function App() {
               actions={actions}
             />
           ) : null}
-          ) : null}
           {route === "maintenance" ? (
             <MaintenanceScreen
               overview={overview}
