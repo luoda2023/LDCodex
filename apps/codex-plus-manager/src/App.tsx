@@ -1280,13 +1280,6 @@ export function App() {
     }
   };
 
-    const result = await run(() => call<AdsResult>("load_ads"));
-    if (result) {
-      setAds(result);
-      if (!silent) showResultNotice("推荐内容", result, { silentSuccess: true });
-    }
-  };
-
   const refreshProviderSyncTargets = async (silent = false) => {
     const result = await run(() => call<ProviderSyncTargetsResult>("load_provider_sync_targets"));
     if (result) {
