@@ -313,13 +313,6 @@ type LocalSessionsResult = CommandResult<{
 }>;
 
 
-  path: string;
-  url: string;
-  source: "currentThread" | "codexRemoteProject" | "threadWorkspaceHint" | "sqliteThreadCwd" | "recent" | string;
-  lastOpenedAtMs: number | null;
-  isCurrent: boolean;
-};
-
 
 
 type CcsProvidersResult = CommandResult<{
@@ -634,7 +627,7 @@ export function App() {
   const [pluginMarketplaceProgress, setPluginMarketplaceProgress] = useState<TaskProgress>({
     active: false,
     percent: 0,
-    message: "��δ���в���г��޸���",
+    message: "��δ���в���г��޸���?,
   });
   const [pluginMarketplacePrompt, setPluginMarketplacePrompt] = useState<PluginMarketplaceStatusResult | null>(null);
   const [providerSyncTargets, setProviderSyncTargets] = useState<ProviderSyncTargetsResult | null>(null);
@@ -660,7 +653,7 @@ export function App() {
   const refreshOverview = async (silent = false) => {
     const result = await run(() => call<OverviewResult>("load_overview"));
     if (result) {
-      // ������⣺���̴�����״̬��Ϊֹͣ/ʧ�� �� ����֪ͨ
+      // ������⣺���̴�����״̬��Ϊͣ�?ʧ�� �� ����֪ͨ
       const prev = prevLaunchStatusRef.current;
       const current = result.latest_launch?.status;
       if (prev && prev === "running" && current && (current === "stopped" || current === "failed" || current === "crashed")) {
@@ -668,7 +661,7 @@ export function App() {
       }
       prevLaunchStatusRef.current = current ?? null;
       setOverview(result);
-      if (!silent) showResultNotice("�����Ѽ��", result, { silentSuccess: true });
+      if (!silent) showResultNotice("�����Ѽ��?, result, { silentSuccess: true });
     }
   };
 
@@ -748,7 +741,7 @@ export function App() {
     const result = await run(() => call<EnvConflictsResult>("check_env_conflicts"));
     if (result) {
       setEnvConflicts(result);
-      if (!silent || !isSuccessStatus(result.status)) showResultNotice("�����������", result, { silentSuccess: true });
+      if (!silent || !isSuccessStatus(result.status)) showResultNotice("�����������?, result, { silentSuccess: true });
     }
     return result;
   };
@@ -848,7 +841,7 @@ export function App() {
 
   const deleteLocalSession = async (session: LocalSession) => {
     const title = session.title || session.id;
-    const confirmed = await confirmSessionDelete("ɾ���Ự", `ɾ���Ự��${title}�����˲�����ɾ���������ݿ��¼�� rollout �ļ������������ݡ�`);
+    const confirmed = await confirmSessionDelete("ɾ���Ự", `ɾ���Ự��${title}�����˲�����ɾ���������ݿ��¼��?rollout �ļ������������ݡ�`);
     if (!confirmed) return;
     const result = await run(() => requestDeleteLocalSession(session));
     if (result) {
@@ -870,7 +863,7 @@ export function App() {
     const extraCount = uniqueSessions.length > 6 ? `\n...�Լ����� ${uniqueSessions.length - 6} ���Ự` : "";
     const confirmed = await confirmSessionDelete(
       "����ɾ���Ự",
-      `ɾ��ѡ�е� ${uniqueSessions.length} ���Ự���˲�����ɾ���������ݿ��¼�� rollout �ļ�����Ϊÿ���Ự�������ݡ�\n\n${preview}${extraCount}`,
+      `ɾ��ѡ�е� ${uniqueSessions.length} ���Ự���˲�����ɾ���������ݿ��¼��?rollout �ļ�����Ϊÿ���Ự�������ݡ�\n\n${preview}${extraCount}`,
     );
     if (!confirmed) return;
 
@@ -927,7 +920,7 @@ export function App() {
     const result = await run(() => call<DiagnosticsResult>("copy_diagnostics"));
     if (result) {
       setDiagnostics(result);
-      if (!silent) showResultNotice("���������", result, { silentSuccess: true });
+      if (!silent) showResultNotice("���������?, result, { silentSuccess: true });
     }
   };
 
@@ -1008,7 +1001,7 @@ export function App() {
     if (result) {
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showNotice("����޸�", result.message, result.status);
+      showNotice("����޸�?, result.message, result.status);
     }
   };
 
@@ -1024,7 +1017,7 @@ export function App() {
           nextPercent < 28
             ? "�������� openai/plugins��"
             : nextPercent < 62
-              ? "�������ز���г����ա�"
+              ? "�������ز���г����ա�?
               : nextPercent < 84
                 ? "���ڽ�ѹ��У�����ļ���"
                 : "����д�� Codex ���á�";
@@ -1039,7 +1032,7 @@ export function App() {
           percent: 100,
           message: result.message,
         });
-        showNotice("����г��޸�", result.message, result.status);
+        showNotice("����г��޸�?, result.message, result.status);
       } else {
         setPluginMarketplaceProgress({
           active: false,
@@ -1061,7 +1054,7 @@ export function App() {
   const installEntrypoints = async () => {
     const result = await run(() => call<InstallResult>("install_entrypoints"));
     if (result) {
-      showNotice("��ڰ�װ", result.message, result.status);
+      showNotice("��ڰ��?, result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1073,7 +1066,7 @@ export function App() {
       }),
     );
     if (result) {
-      showNotice("���ж��", result.message, result.status);
+      showNotice("���ж��?, result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1081,7 +1074,7 @@ export function App() {
   const repairShortcuts = async () => {
     const result = await run(() => call<InstallResult>("repair_shortcuts"));
     if (result) {
-      showNotice("��ݷ�ʽ�޸�", result.message, result.status);
+      showNotice("��ݷ�ʽ�޸�?, result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1099,7 +1092,7 @@ export function App() {
     if (result) {
       setUpdate(result);
       if (!silent || result.updateAvailable) {
-        showNotice("GitHub Release ���", result.message, result.status);
+        showNotice("GitHub Release ���?, result.message, result.status);
       }
     }
   };
@@ -1200,7 +1193,7 @@ export function App() {
         return {
           ...current,
           percent: Math.min(88, current.percent + 8),
-          message: current.percent < 40 ? "���ڼ��Ự provider ��ǡ�" : "����д���޸��뱸�ݡ�",
+          message: current.percent < 40 ? "���ڼ��Ự provider ��ǡ�? : "����д���޸��뱸�ݡ�",
         };
       });
     }, 350);
@@ -1232,7 +1225,7 @@ export function App() {
         setProviderSyncProgress({
           active: false,
           percent: 100,
-          message: "��ʷ�Ự�޸�ʧ�ܣ���鿴������ʾ�����ԡ�",
+          message: "��ʷ�Ự�޸�ʧ�ܣ���鿴������ʾ�����ԡ�?,
           result: null,
         });
       }
@@ -1389,7 +1382,7 @@ export function App() {
 
   const switchRelayProfile = async (next: BackendSettings, previousActiveRelayId = settingsForm.activeRelayId) => {
     if (relaySwitching) {
-      showNotice("ģ���л���", "��һ���л���û����ɣ����Ժ����ԡ�", "failed");
+      showNotice("ģ���л���", "��һ���л���û����ɣ����Ժ����ԡ�?, "failed");
       return;
     }
     let switchSettings = normalizeSettings(next);
@@ -1700,13 +1693,13 @@ export function App() {
       refreshDiagnostics,
       showMessage: async (title: string, message: string, status?: Status) => showNotice(title, message, status),
       copyLogs: () => copyText(logs?.text ?? "", "��־�Ѹ��ơ�"),
-      copyDiagnostics: () => copyText(diagnostics?.report ?? "", "��ϱ����Ѹ��ơ�"),
+      copyDiagnostics: () => copyText(diagnostics?.report ?? "", "��ϱ����Ѹ��ơ�?),
       goLogs: () => navigate("about"),
       checkHealth: async () => {
         await refreshOverview(true);
         await refreshRelay(true);
         await refreshWatcher(true);
-        showNotice("������", "��ˢ�� Codex Ӧ�á���ں� Watcher ״̬��", "ok");
+        showNotice("������", "��ˢ�� Codex Ӧ�á���ں�?Watcher ״̬��", "ok");
       },
       installWatcher: () => watcherAction("install_watcher"),
       uninstallWatcher: () => watcherAction("uninstall_watcher"),
@@ -2143,19 +2136,19 @@ function MobileControlScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="�ֻ����" detail="���Ƴ������Ӱ����������� Key��relay ������ֻ�ܿ������䡢������������ͳ�ơ�" />
+        <CardHead title="�ֻ����? detail="���Ƴ������Ӱ����������� Key��relay ������ֻ�ܿ������䡢������������ͳ�ơ�" />
         <CardContent>
           <div className="relay-file-panel">
             <div className="relay-file-head">
               <div>
-                <strong>{mobileUrl || "δ�����ֻ����"}</strong>
-                <span>{mobileUrl ? "�ֻ��򿪺���Զ����뷿��� Key ���������ӡ�" : "ѡ���������������������ֻ���ڡ�"}</span>
+                <strong>{mobileUrl || "δ�����ֻ����?}</strong>
+                <span>{mobileUrl ? "�ֻ��򿪺���Զ����뷿��� Key ���������ӡ�" : "ѡ���������������������ֻ���ڡ�?}</span>
               </div>
               {mobileUrl ? (
                 <Button
                   onClick={() => {
                     void navigator.clipboard?.writeText(mobileUrl);
-                    void actions.showMessage("�ֻ����", "�Ѹ����ֻ���ڵ�ַ��");
+                    void actions.showMessage("�ֻ����?, "�Ѹ����ֻ���ڵ�ַ��?);
                   }}
                   size="sm"
                   type="button"
@@ -2210,7 +2203,7 @@ function MobileControlScreen({
               </div>
             </>
           ) : (
-            <p className="field-hint">�����ˢ�·�����״̬���鿴 relay ���ء������û��ͷ������������</p>
+            <p className="field-hint">�����ˢ�·�����״̬����?relay ���ء������û��ͷ������������?/p>
           )}
         </CardContent>
       </Panel>
@@ -2262,14 +2255,14 @@ function OverviewScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="�������" detail="����ֻչʾ�ؼ����⣬���������ڶ�Ӧҳ�洦��" />
+        <CardHead title="�������? detail="����ֻչʾ�ؼ����⣬���������ڶ�Ӧҳ�洦��" />
         <CardContent>
           <div className="health-grid">
             <div className={`health-item ${overview?.codex_version ? "ok" : "needs-fix"}`}>
               {overview?.codex_version ? <CheckCircle2 className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
               <div>
                 <strong>Codex �汾</strong>
-                <span>{overview?.codex_version ?? "δ��⵽ Codex Ӧ�ð汾��"}</span>
+                <span>{overview?.codex_version ?? "δ���?Codex Ӧ�ð汾��"}</span>
               </div>
               <Badge status={overview?.codex_version ? "ok" : "not_checked"} />
             </div>
@@ -2287,24 +2280,24 @@ function OverviewScreen({
           <Toolbar>
             <Button onClick={() => void actions.checkHealth()}>
               <RefreshCw className="h-4 w-4" />
-              ���
+              ���?
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>
               <Wrench className="h-4 w-4" />
-              �޸����
+              �޸����?
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairBackend()}>
-              �޸����
+              �޸����?
             </Button>
             <Button disabled={pluginMarketplaceProgress.active} variant="secondary" onClick={() => void actions.repairPluginMarketplace()}>
-              {pluginMarketplaceProgress.active ? "�����޸���" : "�޸�����г�"}
+              {pluginMarketplaceProgress.active ? "�����޸���" : "�޸�����г�?}
             </Button>
           </Toolbar>
-          <TaskProgressBox progress={pluginMarketplaceProgress} title="����г��޸�����" />
+          <TaskProgressBox progress={pluginMarketplaceProgress} title="����г��޸�����? />
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="�������" detail={overview?.logs_path ?? "����״̬�ļ�"} />
+        <CardHead title="�������? detail={overview?.logs_path ?? "����״̬�ļ�"} />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
@@ -2504,8 +2497,8 @@ function EnvConflictNotice({
         <ShieldAlert className="h-4 w-4" />
       </div>
       <div className="env-conflict-body">
-        <strong>��⵽ OPENAI ��������</strong>
-        <p>��Щ�������ܸ��ǵ�ǰ��Ӧ��д��� config.toml / auth.json��CODEX_HOME ���ᱻ������</p>
+        <strong>���?OPENAI ��������</strong>
+        <p>��Щ�������ܸ��ǵ�ǰ��Ӧ��д���?config.toml / auth.json��CODEX_HOME ���ᱻ������</p>
         <div className="env-conflict-tags">
           {conflicts.map((conflict) => (
             <span key={`${conflict.source}-${conflict.name}`}>
@@ -2522,7 +2515,7 @@ function EnvConflictNotice({
         </Button>
         <Button onClick={() => void actions.refreshEnvConflicts(false)} size="sm" variant="secondary">
           <RefreshCw className="h-4 w-4" />
-          ���
+          ���?
         </Button>
       </div>
     </div>
@@ -2562,7 +2555,7 @@ function EnhanceScreen({
             />
             <span>
               <strong>���� Codex��ǿ</strong>
-              <small>�رպ��ͣ��ɾ������������Ŀ�ƶ��������غͲ˵�λ����ǿ��</small>
+              <small>�رպ��ͣ��ɾ������������Ŀ�ƶ��������غͲ˵�λ����ǿ��?/small>
             </span>
           </label>
           <label className="switch-row">
@@ -2573,29 +2566,29 @@ function EnhanceScreen({
             />
             <span>
               <strong>���� Windows Computer Use Guard</strong>
-              <small>Ĭ�Ϲرգ����������� Codex ʱ���Զ������ٷ� Computer Use �������� config.toml��bundled ����� notify ���á�</small>
+              <small>Ĭ�Ϲرգ����������� Codex ʱ���Զ������ٷ� Computer Use �������� config.toml��bundled �����?notify ���á�</small>
             </span>
           </label>
           <ModeSelector launchMode={form.launchMode} actions={actions} />
           {form.launchMode === "relay" ? (
             <div className="hint-line">
               <ShieldCheck className="h-4 w-4" />
-              <span>��ǰΪ������ǿģʽ������г�������������ǿ�ư�װ�������ã�����ҳ�湦���Կ��á�</span>
+              <span>��ǰΪ������ǿģʽ������г�������������ǿ�ư�װ�������ã�����ҳ�湦���Կ��á�?/span>
             </div>
           ) : null}
           <div className="feature-switch-grid">
-            <FeatureToggle title="����г�����" detail="API Key ģʽ����չ����г����󣬾�����ʾ��������б����ٷ�/���ģʽͨ������Ҫ��" checked={form.codexAppPluginMarketplaceUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginMarketplaceUnlock", value)} />
-            <FeatureToggle title="������ǿ�ư�װ" detail="��� App unavailable / Ӧ�ò����õ��µ�ǰ�˰�װ���á�" checked={form.codexAppForcePluginInstall} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppForcePluginInstall", value)} />
-            <FeatureToggle title="����б�ȫ��չʾ" detail="������ҳ���Զ�����չ�������ࡱ������һ����ʾ��������б���" checked={form.codexAppPluginAutoExpand} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPluginAutoExpand", value)} />
+            <FeatureToggle title="����г�����? detail="API Key ģʽ����չ����г����󣬾�����ʾ��������б����ٷ�/���ģʽͨ������Ҫ��? checked={form.codexAppPluginMarketplaceUnlock} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppPluginMarketplaceUnlock", value)} />
+            <FeatureToggle title="������ǿ�ư�װ" detail="���?App unavailable / Ӧ�ò����õ��µ�ǰ�˰�װ���á�" checked={form.codexAppForcePluginInstall} disabled={!masterEnabled || !patchMode} onChange={(value) => setEnhanceFlag("codexAppForcePluginInstall", value)} />
+            <FeatureToggle title="����б�ȫ��չ�? detail="������ҳ���Զ�����չ�������ࡱ������һ����ʾ��������б���? checked={form.codexAppPluginAutoExpand} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPluginAutoExpand", value)} />
             <FeatureToggle title="ģ�Ͱ���������" detail="�ӻ��������� config.toml �� /v1/models ��ȡģ�Ͳ�����ģ���б���" checked={form.codexAppModelWhitelistUnlock} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppModelWhitelistUnlock", value)} />
             <FeatureToggle title="Fast ��ť" detail="��ʾ����ģʽ�л���ť��Fast ��֧�� gpt-5.4 / gpt-5.5������ģ�Ͱ� Standard ���͡�" checked={form.codexAppServiceTierControls} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppServiceTierControls", value)} />
             <FeatureToggle title="�Ựɾ��" detail="�ڻỰ�б���ͣ��ʾɾ����ť����֧�ֳ�����" checked={form.codexAppSessionDelete} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppSessionDelete", value)} />
-            <FeatureToggle title="Markdown ����" detail="�ڻỰ�б���ʾ������ť��������ʱ����� Markdown��" checked={form.codexAppMarkdownExport} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppMarkdownExport", value)} />
+            <FeatureToggle title="Markdown ����" detail="�ڻỰ�б���ʾ������ť��������ʱ�����?Markdown��" checked={form.codexAppMarkdownExport} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppMarkdownExport", value)} />
             <FeatureToggle title="ճ���޸�" detail="�� Word �ȸ��ı�ճ���� Codex composer ʱֻ�������ı������ⱻʶ��ΪͼƬ/�ļ������������� Codex ����Ч��" checked={form.codexAppPasteFix} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppPasteFix", value)} />
             <FeatureToggle title="�Ự��Ŀ�ƶ�" detail="�ѻỰ�ƶ�����ͨ�Ի�������������Ŀ��" checked={form.codexAppProjectMove} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppProjectMove", value)} />
-            <FeatureToggle title="�Ự ID ��ʶ" detail="�ڲ�����Ự����ǰ��ʾ�� ID �� UUIDv7 ����ʱ�䣬���㶨λ��ʷ�Ự��" checked={form.codexAppThreadIdBadge} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadIdBadge", value)} />
-            <FeatureToggle title="�Ի����п���" detail="�����Ի�����������Ƶ��̶������ȣ��ʺϴ����Ķ���" checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
-            <FeatureToggle title="�л��Ի�����λ��" detail="�л� thread ʱ�ָ���һ�����λ�á�" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
+            <FeatureToggle title="�Ự ID ��ʶ" detail="�ڲ�����Ự����ǰ��ʾ��?ID �� UUIDv7 ����ʱ�䣬���㶨λ��ʷ�Ự��" checked={form.codexAppThreadIdBadge} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadIdBadge", value)} />
+            <FeatureToggle title="�Ի����п���" detail="�����Ի�����������Ƶ��̶������ȣ��ʺϴ����Ķ���? checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
+            <FeatureToggle title="�л��Ի�����λ��" detail="�л� thread ʱ�ָ���һ�����λ�á�? checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
             <FeatureToggle title="Zed Remote open" detail="Զ�� SSH �ļ����ÿ�ֱ���� Zed Remote Development �򿪡�" checked={form.codexAppZedRemoteOpen} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppZedRemoteOpen", value)} />
             <FeatureToggle title="Upstream worktree" detail="������ upstream ��֧���� Git worktree��" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
             <FeatureToggle title="ԭ���˵���λ��" detail="�� LDCodex �˵����� Codex ����ԭ���˵�����" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
@@ -2603,12 +2596,12 @@ function EnhanceScreen({
           </div>
           <div className="hint-line">
             <Wrench className="h-4 w-4" />
-            <span>�»���û�б��ز���г�ʱ���ɴ� openai/plugins ��ʼ������ǰ CODEX_HOME��</span>
+            <span>�»���û�б��ز���г�ʱ���ɴ�?openai/plugins ��ʼ������ǰ CODEX_HOME��</span>
             <Button disabled={pluginMarketplaceProgress.active} variant="secondary" onClick={() => void actions.repairPluginMarketplace()}>
-              {pluginMarketplaceProgress.active ? "�����޸���" : "�޸�����г�"}
+              {pluginMarketplaceProgress.active ? "�����޸���" : "�޸�����г�?}
             </Button>
           </div>
-          <TaskProgressBox progress={pluginMarketplaceProgress} title="����г��޸�����" />
+          <TaskProgressBox progress={pluginMarketplaceProgress} title="����г��޸�����? />
           <div className="zed-remote-settings">
             <Field label="Zed Ĭ�ϴ򿪲���">
               <select
@@ -2624,7 +2617,7 @@ function EnhanceScreen({
           </div>
           <div className="hint-line">
             <Info className="h-4 w-4" />
-            <span>���ʹ�ùٷ�ģʽ��ٷ����� API ģʽ��ͨ������Ҫ��������г�������������ǿ�ư�װ��</span>
+            <span>���ʹ�ùٷ�ģʽ��ٷ����� API ģʽ��ͨ������Ҫ��������г�������������ǿ�ư�װ��?/span>
           </div>
           <Toolbar>
             <Button onClick={() => void actions.saveSettings()}>������ǿ����</Button>
@@ -2680,7 +2673,7 @@ function EnhanceScreen({
                 type="checkbox"
               />
               <span>
-                <strong>��¼�����</strong>
+                <strong>��¼�����?/strong>
                 <small>���浽 LDCodex state������д Zed settings��</small>
               </span>
             </label>
@@ -2692,7 +2685,7 @@ function EnhanceScreen({
             </Button>
             <Button variant="secondary" onClick={() => void actions.saveSettingsValue(form, false)}>
               <Save className="h-4 w-4" />
-              �������
+              �������?
             </Button>
           </Toolbar>
         </CardContent>
@@ -2742,7 +2735,7 @@ function EnhanceScreen({
                     <Copy className="h-4 w-4" />
                   </Button>
                   {project.source === "recent" ? (
-                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="�Ƴ������¼" variant="ghost">
+                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="�Ƴ�������? variant="ghost">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   ) : null}
@@ -2800,7 +2793,7 @@ function EnhanceScreen({
               ))}
             </div>
           ) : (
-            <div className="empty">{market?.status === "failed" ? market.message : "���ˢ���г�����Զ�̽ű���"}</div>
+            <div className="empty">{market?.status === "failed" ? market.message : "���ˢ���г�����Զ�̽ű���?}</div>
           )}
         </CardContent>
       </Panel>
@@ -2888,7 +2881,7 @@ function SessionsScreen({
   return (
     <>
       <Panel>
-        <CardHead title="�Ự����" detail="��ȡ Codex ���� SQLite �Ự�⣬��ɾ�����ݿ��¼�Ͷ�Ӧ rollout �ļ�" />
+        <CardHead title="�Ự����" detail="��ȡ Codex ���� SQLite �Ự�⣬��ɾ�����ݿ��¼�Ͷ��?rollout �ļ�" />
         <CardContent>
           <div className="metric-list">
             <Metric label="�Ự����" value={`${items.length} ��`} />
@@ -2941,7 +2934,7 @@ function SessionsScreen({
           </div>
           <div className="hint-line">
             <Info className="h-4 w-4" />
-            <span>ɾ���ᴴ�����ر��ݣ���� Codex App ����ʹ�øûỰ�������ȹرն�Ӧ�Ự�����ٲ�����</span>
+            <span>ɾ���ᴴ�����ر��ݣ����?Codex App ����ʹ�øûỰ�������ȹرն�Ӧ�Ự�����ٲ�����</span>
           </div>
           <label className="switch-row">
             <input
@@ -2951,7 +2944,7 @@ function SessionsScreen({
             />
             <span>
               <strong>����ǰ�Զ��޸���ʷ�Ự</strong>
-              <small>������ͨ�� LDCodex ���� Codex ǰ�Զ�����һ�ξɶԻ��Ĺ�����ǡ�</small>
+              <small>������ͨ�� LDCodex ���� Codex ǰ�Զ�����һ�ξɶԻ��Ĺ�����ǡ�?/small>
             </span>
           </label>
           <Toolbar>
@@ -2960,7 +2953,7 @@ function SessionsScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="���ػỰ" detail={items.length ? "������ʱ�䵹����ʾ" : "���ˢ�»Ự��ȡ�������ݿ�"} />
+        <CardHead title="���ػỰ" detail={items.length ? "������ʱ�䵹����ʾ" : "���ˢ�»Ự��ȡ�������ݿ�?} />
         <CardContent>
           {items.length ? (
             <>
@@ -2971,7 +2964,7 @@ function SessionsScreen({
                     ȫѡ��ǰ�б�
                   </Button>
                   <Button disabled={!selectedCount || bulkDeleting} onClick={clearSelectedSessions} size="sm" variant="outline">
-                    ���ѡ��
+                    ���ѡ��?
                   </Button>
                   <Button disabled={(selectionMode && !selectedCount) || bulkDeleting} onClick={() => void deleteSelectedSessions()} size="sm" variant="outline">
                     {selectionMode ? <Trash2 className="h-4 w-4" /> : null}
@@ -2985,9 +2978,9 @@ function SessionsScreen({
                   return (
                     <div className="session-row" data-selection-mode={selectionMode} data-selected={selected} key={session.id}>
                       {selectionMode ? (
-                        <label className="session-select" title="ѡ��Ự">
+                        <label className="session-select" title="ѡ���?>
                           <input
-                            aria-label={`ѡ��Ự ${session.title || session.id}`}
+                            aria-label={`ѡ���?${session.title || session.id}`}
                             checked={selected}
                             onChange={(event) => toggleSessionSelection(session.id, event.currentTarget.checked)}
                             type="checkbox"
@@ -3082,32 +3075,32 @@ function MaintenanceScreen({
   return (
     <>
       <Panel>
-        <CardHead title="������޸�" detail="�����ڡ�Codex Ӧ�ú� Watcher ״̬" />
+        <CardHead title="������޸�? detail="�����ڡ�Codex Ӧ�ú� Watcher ״̬" />
         <CardContent>
           <div className="status-table">
             <StatusRow title="Codex Ӧ��" status={overview?.codex_app.status} path={overview?.codex_app.path} />
-            <StatusRow title="��Ĭ�������" status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
-            <StatusRow title="��������̨���" status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
+            <StatusRow title="��Ĭ�������? status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
+            <StatusRow title="��������̨���? status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
             <StatusRow title="Watcher �Զ��ӹ�" status={watcher?.enabled ? "ok" : "disabled"} path={watcher?.disabled_flag} />
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.checkHealth()}>���</Button>
-            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>�޸���ݷ�ʽ</Button>
-            <Button variant="secondary" onClick={() => void actions.repairBackend()}>�޸����</Button>
+            <Button onClick={() => void actions.checkHealth()}>���?/Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>�޸���ݷ��?/Button>
+            <Button variant="secondary" onClick={() => void actions.repairBackend()}>�޸����?/Button>
           </Toolbar>
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="��ڹ���" detail="��ݷ�ʽд��ϵͳʵ������λ�ã���ʹ��д������·��" />
+        <CardHead title="��ڹ���? detail="��ݷ�ʽд��ϵͳʵ������λ�ã���ʹ��д������·��? />
         <CardContent>
           <label className="check-row">
             <input checked={removeOwnedData} onChange={(event) => onRemoveOwnedDataChange(event.currentTarget.checked)} type="checkbox" />
             <span>ж��ʱ�Ƴ� LDCodex �й�����</span>
           </label>
           <Toolbar>
-            <Button onClick={() => void actions.installEntrypoints()}>��װ���</Button>
-            <Button variant="secondary" onClick={() => void actions.uninstallEntrypoints()}>ж�����</Button>
-            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>�޸����</Button>
+            <Button onClick={() => void actions.installEntrypoints()}>��װ���?/Button>
+            <Button variant="secondary" onClick={() => void actions.uninstallEntrypoints()}>ж�����?/Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>�޸����?/Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -3123,13 +3116,13 @@ function MaintenanceScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="Codex Ӧ��·��" detail="�ⰲװ�������ֻ��Ҫѡ��һ�Σ�֮��Ĭ�������Զ�����" />
+        <CardHead title="Codex Ӧ��·��" detail="�ⰲװ�������ֻ��Ҫѡ��һ�Σ�֮��Ĭ�������Զ�����? />
         <CardContent>
           <div className="status-table">
             <StatusRow title="����·��" status={savedCodexAppPath ? "ok" : "not_checked"} path={savedCodexAppPath || null} />
             <StatusRow title="��ǰʶ��" status={overview?.codex_app.status} path={overview?.codex_app.path} />
           </div>
-          <Field label="�����Ӧ��·��">
+          <Field label="�����Ӧ��·��?>
             <Input
               value={settings?.settings.codexAppPath ?? ""}
               placeholder="ѡ�� Codex.exe��Codex.app��app Ŀ¼����Ŀ¼"
@@ -3139,7 +3132,7 @@ function MaintenanceScreen({
           <Toolbar>
             <Button onClick={() => void actions.chooseCodexAppPath("folder")}>ѡ��Ӧ��Ŀ¼</Button>
             <Button variant="secondary" onClick={() => void actions.chooseCodexAppPath("file")}>ѡ�� Codex.exe</Button>
-            <Button variant="secondary" onClick={() => void actions.clearCodexAppPath()}>�������·��</Button>
+            <Button variant="secondary" onClick={() => void actions.clearCodexAppPath()}>�������·��?/Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -3199,7 +3192,7 @@ function AboutScreen({
         <CardContent>
           <div className="metric-list">
             <Metric label="LDCodex �汾" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
-            <Metric label="Codex �汾" value={overview?.codex_version ?? "δ��⵽"} />
+            <Metric label="Codex �汾" value={overview?.codex_version ?? "δ���?} />
             <Metric label="��Ŀ��ַ" value="github.com/luoda2023/LDCodex" />
           </div>
           <Toolbar>
@@ -3227,11 +3220,11 @@ function AboutScreen({
         <CardContent>
           <div className="metric-list">
             <Metric label="״̬" value={update?.status ?? "not_checked"} />
-            <Metric label="���°汾" value={update?.latestVersion ?? "δ���"} />
+            <Metric label="���°汾" value={update?.latestVersion ?? "δ���?} />
             <Metric label="��Դ" value={update?.assetName ?? "-"} />
             <Metric label="����" value={`${update?.progress ?? 0}%`} />
           </div>
-          <Textarea className="log-view" readOnly value={update?.releaseSummary || update?.message || "��δ��� GitHub Release�����»����ز�������װ����"} />
+          <Textarea className="log-view" readOnly value={update?.releaseSummary || update?.message || "��δ���?GitHub Release�����»����ز�������װ����"} />
           <Toolbar>
             <Button onClick={() => void actions.checkUpdate()}>������</Button>
             <Button variant="secondary" onClick={() => void actions.performUpdate()}>���ز����а�װ��</Button>
@@ -3282,7 +3275,7 @@ function SettingsScreen({
               onChange={(event) => onFormChange({ ...form, cliWrapperEnabled: event.currentTarget.checked })}
               type="checkbox"
             />
-            <span>���� Codex �����װ��</span>
+            <span>���� Codex �����װ��?/span>
           </label>
           <div className="form-row">
             <Field label="��װ�� Base URL">
@@ -3356,7 +3349,7 @@ function SettingsScreen({
       <Panel>
         <CardHead title="Codex ��������" detail="���� Codex App ʱ׷�ӵ�Ĭ�� CDP �����������򱣳�Ĭ��������Ϊ��" />
         <CardContent>
-          <Field label="�������">
+          <Field label="�������?>
             <Textarea
               className="launch-args-input"
               placeholder="--force_high_performance_gpu"
@@ -3384,7 +3377,7 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
   const lines = splitLogLines(logs?.text ?? "");
   return (
     <Panel>
-      <CardHead title="�����־" detail={logs?.path ?? ""} />
+      <CardHead title="������? detail={logs?.path ?? ""} />
       <CardContent>
         <div className="log-lines">
           {lines.length ? (
@@ -3412,9 +3405,9 @@ function LogsPanel({ logs, actions }: { logs: LogsResult | null; actions: Action
 function DiagnosticsPanel({ diagnostics, actions }: { diagnostics: DiagnosticsResult | null; actions: Actions }) {
   return (
     <Panel>
-      <CardHead title="��ϱ���" detail="�����汾��·�������ú�ƽ̨��Ϣ" />
+      <CardHead title="��ϱ���? detail="�����汾��·�������ú�ƽ̨��Ϣ" />
       <CardContent>
-        <Textarea className="log-view tall" readOnly value={diagnostics?.report ?? "��δ������ϱ��档"} />
+        <Textarea className="log-view tall" readOnly value={diagnostics?.report ?? "��δ������ϱ���?} />
         <Toolbar>
           <Button onClick={() => void actions.refreshDiagnostics()}>��������</Button>
           <Button variant="secondary" onClick={() => void actions.copyDiagnostics()}>
@@ -3555,7 +3548,7 @@ function SortableRelayProfileCard({
               void actions.testRelayProfile(profile);
             }}
             size="icon"
-            title={isAggregateRelayProfile(profile) ? "�ۺϹ�Ӧ�̻�����ʵ�Ի�����ת��Ա������Գ�Ա��Ӧ��" : "���� hi ����"}
+            title={isAggregateRelayProfile(profile) ? "�ۺϹ�Ӧ�̻�����ʵ�Ի�����ת��Ա������Գ�Ա��Ӧ��? : "���� hi ����"}
             variant="ghost"
           >
             <TestTube className="h-4 w-4" />
@@ -3755,7 +3748,7 @@ function ContextScreen({
 }) {
   return (
     <Panel fill>
-      <CardHead title="Codex ��������" detail="�������� Codex �� MCP��Skills��Plugins���л����⹩Ӧ�̶�����ϡ�" />
+      <CardHead title="Codex ��������" detail="�������� Codex �� MCP��Skills��Plugins���л����⹩Ӧ�̶�����ϡ�? />
       <CardContent>
         <RelayContextManager
           form={normalizeSettings(form)}
@@ -3869,7 +3862,7 @@ function RelayProfileEditor({
             placeholder="���� deepseek-v4-pro"
           />
           <p className="field-hint">
-            Ĭ������ Codex ʱʹ�õ�ģ�������������׺�������Ĵ��������·���ģ���б����а�ģ�͵������á�
+            Ĭ������ Codex ʱʹ�õ�ģ�������������׺�������Ĵ��������·���ģ���б����а�ģ�͵������á�?
           </p>
         </Field>
         <Field className="relay-field-goals" label="Codex Ŀ��">
@@ -3951,7 +3944,7 @@ function RelayProfileEditor({
                 type="password"
                 value={profile.apiKey}
                 onChange={(event) => updateDraft({ apiKey: event.currentTarget.value })}
-                placeholder="������ת����� API Key"
+                placeholder="������ת�����?API Key"
               />
             </Field>
             <Field className="relay-field-protocol" label="����Э��">
@@ -4104,7 +4097,7 @@ function AggregateRelayProfileEditor({
       <div className="relay-editor-head">
         <div>
           <strong>{profile.name || "δ�����ۺϹ�Ӧ��"}</strong>
-          <span>{isNew ? "ѡ�����й�Ӧ����Ϊ��Ա�������д�� settings payload" : "�ۺ�����ֻ�������й�Ӧ�̣������� Key �������ļ�"}</span>
+          <span>{isNew ? "ѡ�����й�Ӧ����Ϊ��Ա�������д��?settings payload" : "�ۺ�����ֻ�������й�Ӧ�̣������� Key �������ļ�"}</span>
         </div>
         <UiBadge variant="secondary">�ۺ�</UiBadge>
       </div>
@@ -4254,7 +4247,7 @@ function RelayContextManager({
       <div className="relay-context-head">
         <div>
           <strong>Codex ��������</strong>
-          <span>MCP��Skills��Plugins ��Ϊȫ�����ö����������л����⹩Ӧ�̶���ϲ���</span>
+          <span>MCP��Skills��Plugins ��Ϊȫ�����ö����������л����⹩Ӧ�̶���ϲ���?/span>
         </div>
         <div className="relay-context-head-actions">
           <Button onClick={() => setEditor({ kind: activeKind })} size="sm" variant="secondary">
@@ -4277,7 +4270,7 @@ function RelayContextManager({
         ))}
       </div>
       <div className="relay-context-summary">
-        ��ǰ���� {visibleEntries.length} ��{label}����Щ��Ŀ�����ڹ�Ӧ�̱��棬��д�����й�Ӧ���л���� config.toml��
+        ��ǰ���� {visibleEntries.length} ��{label}����Щ��Ŀ�����ڹ�Ӧ�̱��棬��д�����й�Ӧ���л����?config.toml��
       </div>
       <div className="relay-context-list">
         {visibleEntries.length ? (
@@ -4457,7 +4450,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>config.toml Ԥ��</strong>
-            <span>{isActive ? "��ǰ��Ӧ���л����д���Ԥ���������Ŀ��ر仯��������ӳ" : "�л����˹�Ӧ��ʱ��д���Ԥ���������Ŀ��ر仯��������ӳ"}</span>
+            <span>{isActive ? "��ǰ��Ӧ���л����д���Ԥ���������Ŀ��ر仯��������ӳ" : "�л����˹�Ӧ��ʱ��д���Ԥ���������Ŀ��ر仯���������?}</span>
           </div>
         </div>
         <SyncedTextarea
@@ -4480,7 +4473,7 @@ function RelayFileEditors({
         <div className="relay-file-head">
           <div>
             <strong>ͨ�������ļ�</strong>
-            <span>ֻ������ MCP��Skills��Plugins �Ŀ�ģ�����ã����������ڶ���ҳ�������</span>
+            <span>ֻ������ MCP��Skills��Plugins �Ŀ�ģ�����ã����������ڶ���ҳ�������?/span>
           </div>
           <Button
             onClick={async () => {
@@ -4545,7 +4538,7 @@ function ModeSelector({ launchMode, actions }: { launchMode: LaunchMode; actions
         type="button"
       >
         <strong>������ǿ</strong>
-        <span>�ʺϹٷ���¼��ٷ����� API Key�������Ựɾ������������Ŀ�ƶ����û��ű����رղ���г������ǿ��</span>
+        <span>�ʺϹٷ���¼��ٷ�����?API Key�������Ựɾ������������Ŀ�ƶ����û��ű����رղ���г������ǿ��</span>
       </button>
       <button
         className={`mode-option ${launchMode === "patch" ? "active" : ""}`}
@@ -4553,7 +4546,7 @@ function ModeSelector({ launchMode, actions }: { launchMode: LaunchMode; actions
         type="button"
       >
         <strong>������ǿ</strong>
-        <span>�ʺϴ� API�����ò���г���ǿ�ư�װ���Ựɾ����������Ŀ�ƶ���ȫ��ҳ��������</span>
+        <span>�ʺϴ� API�����ò���г���ǿ�ư�װ���Ựɾ����������Ŀ�ƶ���ȫ��ҳ��������?/span>
       </button>
     </div>
   );
@@ -4736,14 +4729,14 @@ function PluginMarketplacePromptDialog({
       <div className="modal-card plugin-marketplace-modal">
         <div className="modal-head">
           <div>
-            <h2>����г���Ҫ�޸�</h2>
-            <p>��ǰ CODEX_HOME δ���ֿ��õ���������г���API Key ģʽ�¿��ܳ��ֲ����װ�󲻿��á�</p>
+            <h2>����г���Ҫ�޸�?/h2>
+            <p>��ǰ CODEX_HOME δ���ֿ��õ���������г���API Key ģʽ�¿��ܳ��ֲ����װ�󲻿��á�?/p>
           </div>
           <button className="toast-close" onClick={onClose} type="button">��</button>
         </div>
         <div className="metric-list">
           <Metric label="CODEX_HOME" value={status.codexHome} />
-          <Metric label="���ز���г�" value={status.marketplaceRoot ?? "δ����"} />
+          <Metric label="���ز���г�? value={status.marketplaceRoot ?? "δ����"} />
           <Metric label="����״̬" value={status.configRegistered ? "��ע��" : "δע��"} />
         </div>
         <TaskProgressBox progress={progress} title="�޸�����" />
@@ -4802,7 +4795,7 @@ function TaskProgressBox({ progress, title }: { progress: TaskProgress; title: s
   return (
     <div className="provider-sync-progress task-progress" data-active={progress.active}>
       <div className="provider-sync-progress-head">
-        <strong>{progress.active ? title : "�ϴ��޸����"}</strong>
+        <strong>{progress.active ? title : "�ϴ��޸����?}</strong>
         <span>{progress.percent}%</span>
       </div>
       <div
@@ -4957,8 +4950,8 @@ function routeSubtitle(route: Route) {
     enhance: "�Ựɾ������������Ŀ�ƶ��ͽű�����",
     
     maintenance: "��ڰ�װ���޸���Watcher ���ֶ�����",
-    about: "�汾��Ϣ����Ŀ���ӡ�GitHub Release ���¡���־�����",
-    settings: "���⡢�����װ������������",
+    about: "�汾��Ϣ����Ŀ���ӡ�GitHub Release ���¡���־�����?,
+    settings: "���⡢�����װ������������?,
   };
   return subtitles[route];
 }
@@ -4966,7 +4959,7 @@ function routeSubtitle(route: Route) {
 const contextKindOptions: Array<{ kind: ContextKind; label: string; tableName: string }> = [
   { kind: "mcp", label: "MCP", tableName: "mcp_servers" },
   { kind: "skill", label: "Skills", tableName: "skills" },
-  { kind: "plugin", label: "���", tableName: "plugins" },
+  { kind: "plugin", label: "���?, tableName: "plugins" },
 ];
 
 function contextKindLabel(kind: ContextKind) {
@@ -5578,7 +5571,7 @@ function statusLabel(status: string) {
     failed: "ʧ��",
     archived: "�ѹ鵵",
     accepted: "������",
-    not_checked: "δ���",
+    not_checked: "δ���?,
     not_implemented: "δʵ��",
     disabled: "�ѽ���",
     unknown: "δ֪",
@@ -5607,19 +5600,19 @@ function healthItems(overview: OverviewResult | null) {
       title: "Codex Ӧ��",
       status: overview?.codex_app.status ?? "not_checked",
       ok: overview?.codex_app.status === "found",
-      detail: overview?.codex_app.path || "��δ��� Codex Ӧ��·����",
+      detail: overview?.codex_app.path || "��δ���?Codex Ӧ��·����",
     },
     {
-      title: "��Ĭ�������",
+      title: "��Ĭ�������?,
       status: overview?.silent_shortcut.status ?? "not_checked",
       ok: overview?.silent_shortcut.status === "installed",
-      detail: overview?.silent_shortcut.path || "ȱ�� LDCodex ��Ĭ������ݷ�ʽʱ���ڰ�װά��ҳ�޸���",
+      detail: overview?.silent_shortcut.path || "ȱ�� LDCodex ��Ĭ������ݷ�ʽʱ���ڰ�װά��ҳ�޸���?,
     },
     {
-      title: "�����������",
+      title: "�����������?,
       status: overview?.management_shortcut.status ?? "not_checked",
       ok: overview?.management_shortcut.status === "installed",
-      detail: overview?.management_shortcut.path || "ȱ�ٹ������߿�ݷ�ʽʱ���ڰ�װά��ҳ�޸���",
+      detail: overview?.management_shortcut.path || "ȱ�ٹ������߿�ݷ�ʽʱ���ڰ�װά��ҳ�޸���?,
     },
   ];
 }
@@ -5854,18 +5847,18 @@ function relayProfileConfigBrief(profile: RelayProfile): string {
 
 function relayProfileModeHelp(profile: RelayProfile): string {
   if (isAggregateRelayProfile(profile)) {
-    return "�ۺϹ�Ӧ��ֻ�����Ա�Ͳ������ã���Ա�������� API ��Ӧ�̣���Ϊ��ǰ���ͨ������Э�������ת����";
+    return "�ۺϹ�Ӧ��ֻ�����Ա�Ͳ������ã���Ա��������?API ��Ӧ�̣���Ϊ��ǰ���ͨ������Э�������ת����";
   }
   if (profile.relayMode === "official") {
     if (profile.officialMixApiKey) {
-      return "�˹�Ӧ�̻ᱣ���ٷ���¼ģʽ������������뵱ǰ API Key��Codex��ǿ��ʹ�ü���ģʽ��";
+      return "�˹�Ӧ�̻ᱣ���ٷ���¼ģʽ������������뵱�?API Key��Codex��ǿ��ʹ�ü���ģʽ��";
     }
     return "�˹�Ӧ�̻��лعٷ���¼ģʽ��ʹ�� ChatGPT �ٷ��˺ţ���д�� API Key��";
   }
   if (profile.relayMode === "pureApi") {
     return "�˹�Ӧ�̻�ͬʱд�� config.toml �� auth.json��API Key Ҳ��ע�뵽 provider bearer token��";
   }
-  return "�˹�Ӧ�̻ᱣ���ٷ���¼ģʽ������������뵱ǰ API Key��Codex��ǿ��ʹ�ü���ģʽ��";
+  return "�˹�Ӧ�̻ᱣ���ٷ���¼ģʽ������������뵱�?API Key��Codex��ǿ��ʹ�ü���ģʽ��";
 }
 
 function relayProfileReadinessText(profile: RelayProfile, relay: RelayResult | null): string {
@@ -5879,15 +5872,15 @@ function relayProfileReadinessText(profile: RelayProfile, relay: RelayResult | n
       if (!relay?.authenticated && !hasApiFields) return "��ǰδ��¼�ٷ��˺ţ�Ҳδ���û��� API �� Base URL / Key��";
       if (!relay?.authenticated) return "��ǰδ��¼�ٷ��˺ţ��ٷ���¼���� API Key ��Ҫ�ȵ�¼�ٷ��˺š�";
       if (!hasApiFields) return "��ǰ��û����д���� API �� Base URL / Key��";
-      return `�ٷ���¼�Ѿ�����${relay.accountLabel || "�ѵ�¼"}������뵱ǰ API Key��`;
+      return `�ٷ���¼�Ѿ�����${relay.accountLabel || "�ѵ�¼"}������뵱�?API Key��`;
     }
     return relay?.authenticated
-      ? `�ٷ��˺��ѵ�¼��${relay.accountLabel || relay.authSource || "�Ѽ��"}��`
+      ? `�ٷ��˺��ѵ�¼��${relay.accountLabel || relay.authSource || "�Ѽ��?}��`
       : "��ǰδ��¼�ٷ��˺ţ��е��ٷ���¼ģʽ������Ҫ���� Codex/ChatGPT ��¼��";
   }
   const hasFiles = profile.configContents.trim() && profile.authContents.trim();
   if (!hasFiles) return "��ǰ��Ӧ�̻�û������ config.toml / API Key �浵��";
-  if (relay && !relay.configured) return "�� API ����δ����д�룺����˹�Ӧ���Ƿ��� OPENAI_API_KEY���� config.toml �Ƿ���� model_provider / provider / base_url��";
+  if (relay && !relay.configured) return "�� API ����δ����д�룺����˹�Ӧ���Ƿ���?OPENAI_API_KEY���� config.toml �Ƿ����?model_provider / provider / base_url��";
   return "�� API ��������ͬʱд�� config.toml �� auth.json��";
 }
 
@@ -5976,7 +5969,7 @@ function deriveRelayProfileFromFiles(profile: RelayProfile): RelayProfile {
   const configApiKey = codexExperimentalBearerTokenFromConfig(configContents);
   const configModel = codexModelFromConfig(configContents);
   // ����û������˴���׺��ģ���������ȱ����ڽ���ġ�����ģ�͡��ֶ��У�
-  // config.toml ��ʵ��д���ǰ����׺�� slug���� applyRelayProfilePatchToFiles ��������
+  // config.toml ��ʵ��д���ǰ����׺��?slug���� applyRelayProfilePatchToFiles ��������
   const model = /\[.+\]$/.test(profile.model.trim()) ? profile.model.trim() : configModel;
   return {
     ...profile,
@@ -6010,7 +6003,7 @@ function applyRelayProfilePatchToFiles(
   }
 
   if ("model" in patch) {
-    // ģ�ͺ�׺���� [1M]������ CodexPlusPlus �ڲ�ʹ�ã�д�� config.toml ǰ����룬
+    // ģ�ͺ�׺���� [1M]������ CodexPlusPlus �ڲ�ʹ�ã�д�� config.toml ǰ�����?
     // ���� codex �ᰴ����׺���ַ���ȥƥ�� catalog slug�����´��ڻ��˵�Ĭ��ֵ��
     const { slug } = parseModelSuffix(patch.model || "");
     next.configContents = setRootTomlStringKey(next.configContents, "model", slug);
@@ -6286,10 +6279,10 @@ function relayProfileSwitchValidation(profile: RelayProfile): string | null {
   }
   if (profile.relayMode === "official" && !profile.officialMixApiKey) return null;
   if (!profile.configContents.trim()) {
-    return `��Ӧ�̡�${profile.name || profile.id}��ȱ�ٶ��� config.toml����ֹͣ�л������������ʾ��һ�������ļ��������ڸù�Ӧ�������ﱣ�� config.toml��`;
+    return `��Ӧ�̡�${profile.name || profile.id}��ȱ�ٶ��� config.toml����ֹͣ�л������������ʾ��һ�������ļ��������ڸù�Ӧ�������ﱣ��?config.toml��`;
   }
   if (profile.relayMode !== "official" || !authJsonHasOpenAiApiKey(profile.authContents)) return null;
-  return "�ٷ���� API ��Ӧ�� auth.json �б��� OPENAI_API_KEY���������˹�Ӧ�̵� auth.json �����л���";
+  return "�ٷ����?API ��Ӧ�� auth.json �б��� OPENAI_API_KEY���������˹�Ӧ�̵� auth.json �����л���";
 }
 
 function relayProfileUsesLiveFiles(profile: RelayProfile): boolean {
