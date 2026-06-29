@@ -1491,7 +1491,7 @@ pub fn backfill_relay_profile_from_live(
                 }),
             );
             ok(
-                "当前供应商配置已从 live 文件回填。",
+                "当前模型配置已从 live 文件回填。",
                 SettingsBackfillPayload { settings },
             )
         }
@@ -1504,7 +1504,7 @@ pub fn backfill_relay_profile_from_live(
                 }),
             );
             failed(
-                &format!("回填当前供应商配置失败：{error}"),
+                &format!("回填当前模型配置失败：{error}"),
                 SettingsBackfillPayload { settings },
             )
         }
@@ -1778,7 +1778,7 @@ pub fn apply_relay_injection() -> CommandResult<RelayPayload> {
     if !settings.relay_profiles_enabled {
         let status = codex_plus_core::relay_config::relay_status_from_home(&home);
         return failed(
-            "供应商配置总开关已关闭，未写入 config.toml / auth.json。",
+            "模型配置总开关已关闭，未写入 config.toml / auth.json。",
             relay_payload(status, None),
         );
     }
@@ -1883,7 +1883,7 @@ pub fn apply_pure_api_injection() -> CommandResult<RelayPayload> {
     if !settings.relay_profiles_enabled {
         let status = codex_plus_core::relay_config::relay_status_from_home(&home);
         return failed(
-            "供应商配置总开关已关闭，未写入 config.toml / auth.json。",
+            "模型配置总开关已关闭，未写入 config.toml / auth.json。",
             relay_payload(status, None),
         );
     }
@@ -3053,7 +3053,7 @@ pub fn load_ccs_providers() -> CommandResult<CcsProvidersPayload> {
     match codex_plus_core::ccs_import::list_codex_providers_from_db(&db_path) {
         Ok(providers) => ok(
             &format!(
-                "已读取 cc-switch Codex 供应商配置：{} 个。",
+                "已读取 cc-switch Codex 模型配置：{} 个。",
                 providers.len()
             ),
             CcsProvidersPayload {
@@ -3062,7 +3062,7 @@ pub fn load_ccs_providers() -> CommandResult<CcsProvidersPayload> {
             },
         ),
         Err(error) => failed(
-            &format!("读取 cc-switch 供应商配置失败：{error}"),
+            &format!("读取 cc-switch 模型配置失败：{error}"),
             CcsProvidersPayload {
                 db_path: db_path.to_string_lossy().to_string(),
                 providers: Vec::new(),
@@ -3077,7 +3077,7 @@ pub fn import_ccs_providers() -> CommandResult<SettingsPayload> {
         Ok(providers) => providers,
         Err(error) => {
             let payload = settings_payload_value().unwrap_or_else(|(_, payload)| payload);
-            return failed(&format!("读取 cc-switch 供应商配置失败：{error}"), payload);
+            return failed(&format!("读取 cc-switch 模型配置失败：{error}"), payload);
         }
     };
 
@@ -3108,17 +3108,17 @@ pub fn import_ccs_providers() -> CommandResult<SettingsPayload> {
     }
 
     if imported == 0 {
-        return settings_payload("没有新的 cc-switch 供应商配置需要导入。", "设置读取失败");
+        return settings_payload("没有新的 cc-switch 模型配置需要导入。", "设置读取失败");
     }
 
     settings = normalize_settings_before_save(settings);
     match store.save(&settings) {
         Ok(()) => settings_payload(
-            &format!("已从 cc-switch 导入供应商配置：{imported} 个。"),
-            "导入供应商配置后重新读取设置失败",
+            &format!("已从 cc-switch 导入模型配置：{imported} 个。"),
+            "导入模型配置后重新读取设置失败",
         ),
         Err(error) => failed(
-            &format!("保存 cc-switch 供应商配置失败：{error}"),
+            &format!("保存 cc-switch 模型配置失败：{error}"),
             settings_payload_value().unwrap_or_else(|(_, payload)| payload),
         ),
     }
@@ -3174,9 +3174,9 @@ pub fn reset_image_overlay_settings() -> CommandResult<SettingsPayload> {
 pub fn check_env_conflicts() -> CommandResult<EnvConflictsPayload> {
     let conflicts = codex_plus_core::env_conflicts::detect_env_conflicts();
     let message = if conflicts.is_empty() {
-        "未检测到会覆盖 Codex 供应商配置的 OPENAI 环境变量。"
+        "未检测到会覆盖 Codex 模型配置的 OPENAI 环境变量。"
     } else {
-        "检测到可能覆盖 Codex 供应商配置的 OPENAI 环境变量。"
+        "检测到可能覆盖 Codex 模型配置的 OPENAI 环境变量。"
     };
     ok(message, EnvConflictsPayload { conflicts })
 }
