@@ -1076,18 +1076,12 @@ export function App() {
       await refreshLocalSessions(true);
       await refreshProviderSyncTargets(true);
     }
-      await refreshSettings(true);
-      await refreshZedRemoteProjects(true);
-    }
     if (next === "context") {
       await refreshSettings(true);
       await refreshRelayFiles(true);
       await refreshLiveContextEntries(true);
     }
     if (next === "settings") await refreshSettings(true);
-      await refreshSettings(true);
-      await refreshScriptMarket(true);
-    }
     if (next === "about") {
       await refreshOverview(true);
       await refreshLogs(true);
@@ -2432,7 +2426,7 @@ function OverviewScreen({
           <Toolbar>
             <Button onClick={() => void actions.launch()}>
               <Rocket className="h-4 w-4" />
-              启动 Codex++
+              启动代理
             </Button>
             <Button variant="secondary" onClick={() => void actions.goLogs()}>
               打开关于
@@ -3300,7 +3294,7 @@ function MaintenanceScreen({
             </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>启动 Codex++</Button>
+            <Button onClick={() => void actions.launch()}>启动代理</Button>
             <Button variant="secondary" onClick={() => void actions.saveManualCodexAppPath()}>
               保存为默认路径
             </Button>
