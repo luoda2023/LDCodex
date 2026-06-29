@@ -16,6 +16,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   ArrowLeft,
   Bell,
@@ -43,6 +44,9 @@ import {
   Settings,
   ShieldCheck,
   ShieldAlert,
+  Minus,
+  Square,
+  X,
   Sun,
   TestTube,
   Trash2,
@@ -604,8 +608,8 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string
   { id: "mobileControl", label: "手机控制", icon: MessageCircle, badge: "测试版" },
   { id: "sessions", label: "会话管理", icon: MessageCircle },
   { id: "context", label: "工具与插件", icon: Network },
-  { id: "enhance", label: "Codex增强", icon: Hammer },
-  { id: "maintenance", label: "安装维护", icon: Wrench },
+  { id: "enhance", label: "功能加强", icon: Hammer },
+  { id: "proxy", label: "代理服务器", icon: ShieldCheck },
   { id: "about", label: "关于", icon: Info },
   { id: "settings", label: "设置", icon: Settings },
 ];
@@ -686,6 +690,7 @@ const defaultSettings: BackendSettings = {
 
 export function App() {
   const [theme, setTheme] = useState<Theme>(() => loadInitialTheme());
+  const appWindow = getCurrentWindow();
   const [route, setRoute] = useState<Route>(() => loadInitialRoute());
   const [notice, setNotice] = useState<{ title: string; message: string; status?: Status } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -883,7 +888,7 @@ export function App() {
     const result = await run(() => call<PendingProviderImportResult>("load_pending_provider_import"));
     if (result) {
       setPendingProviderImport(result.pending);
-      if (!silent && !isSuccessStatus(result.status)) showResultNotice("Codex++ 导入", result, { silentSuccess: true });
+      if (!silent && !isSuccessStatus(result.status)) showResultNotice("LDCodex 导入", result, { silentSuccess: true });
     }
     return result;
   };
@@ -894,7 +899,7 @@ export function App() {
       setPendingProviderImport(null);
       setSettings(result);
       setSettingsForm(normalizeSettings(result.settings));
-      showResultNotice("Codex++ 导入", result);
+      showResultNotice("LDCodex 导入", result);
       await refreshCcsProviders(true);
     }
   };
@@ -903,7 +908,7 @@ export function App() {
     const result = await run(() => call<PendingProviderImportResult>("dismiss_pending_provider_import"));
     if (result) {
       setPendingProviderImport(null);
-      showResultNotice("Codex++ 导入", result, { silentSuccess: true });
+      showResultNotice("LDCodex 导入", result, { silentSuccess: true });
     }
   };
 
@@ -1104,7 +1109,7 @@ export function App() {
   const restart = async () => {
     const result = await launchCommand("restart_codex_plus");
     if (result) {
-      showNotice("重启 Codex++", result.message, result.status);
+      showNotice("重启 LDCodex", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1475,7 +1480,7 @@ export function App() {
 
   const testRelayProfile = async (profile: RelayProfile) => {
     const result = await run(() => call<RelayProfileTestResult>("test_relay_profile", { profile }));
-    if (result) showNotice("供应商测试", result.message, result.status);
+    if (result) showNotice("模型测试", result.message, result.status);
   };
 
   const fetchRelayProfileModels = async (profile: RelayProfile) => {
@@ -1500,7 +1505,7 @@ export function App() {
 
   const switchRelayProfile = async (next: BackendSettings, previousActiveRelayId = settingsForm.activeRelayId) => {
     if (relaySwitching) {
-      showNotice("供应商切换中", "上一次切换还没有完成，请稍后再试。", "failed");
+      showNotice("模型切换中", "上一次切换还没有完成，请稍后再试。", "failed");
       return;
     }
     let switchSettings = normalizeSettings(next);
@@ -1571,7 +1576,7 @@ export function App() {
           message: result.message,
           activeRelayId: selectedSettings.activeRelayId,
         });
-        showNotice("供应商切换", result.message, result.status);
+        showNotice("模型切换", result.message, result.status);
         return;
       }
       const currentSelected = activeRelayProfile(selectedSettings);
@@ -1580,7 +1585,7 @@ export function App() {
         launchMode: selectedSettings.launchMode,
         status: result.status,
       });
-      showNotice("供应商切换", relayProfileModeSwitchedText(currentSelected), result.status);
+      showNotice("模型切换", relayProfileModeSwitchedText(currentSelected), result.status);
     } finally {
       setRelaySwitching(false);
     }
@@ -1600,7 +1605,7 @@ export function App() {
     if (!result) return next;
     const normalized = normalizeSettings(result.settings);
     if (!isSuccessStatus(result.status)) {
-      showNotice("供应商切换", result.message, result.status);
+      showNotice("模型切换", result.message, result.status);
       return next;
     }
     return normalized;
@@ -1832,12 +1837,20 @@ export function App() {
 
   return (
     <div className={`shell ${theme}`}>
+      <div className="titlebar">
+        <div className="titlebar-title">LDCodex</div>
+        <div className="titlebar-controls">
+          <button className="titlebar-btn" onClick={() => void appWindow.minimize()} title="最小化" type="button"><Minus className="h-3 w-3" /></button>
+          <button className="titlebar-btn" onClick={() => void appWindow.toggleMaximize()} title="最大化" type="button"><Square className="h-3 w-3" /></button>
+          <button className="titlebar-close" onClick={() => void appWindow.close()} title="关闭" type="button"><X className="h-3 w-3" /></button>
+        </div>
+      </div>
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">C++</div>
+          <div className="brand-mark"><img src="/logo.png" alt="LD" style={{width:32,height:32}} /></div>
           <div className="brand-copy">
             <div className="brand-title-row">
-              <div className="brand-title">Codex++</div>
+              <div className="brand-title">LDCodex</div>
               {hasUpdate ? (
                 <button
                   className="update-dot"
@@ -1891,9 +1904,9 @@ export function App() {
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button onClick={() => void actions.restart()} title="重启 Codex++" variant="outline">
+            <Button onClick={() => void actions.restart()} title="重启 LDCodex" variant="outline">
               <Rocket className="h-4 w-4" />
-              重启 Codex++
+              重启 LDCodex
             </Button>
             <Button onClick={() => void actions.refreshCurrent()} size="icon" title="刷新当前页面" variant="outline">
               <RefreshCw className="h-4 w-4" />
@@ -1951,16 +1964,11 @@ export function App() {
               actions={actions}
             />
           ) : null}
-          {route === "maintenance" ? (
-            <MaintenanceScreen
+          {route === "proxy" ? (
+            <ProxyScreen
               overview={overview}
-              watcher={watcher}
-              settings={settings}
-              launchForm={launchForm}
-              onLaunchFormChange={setLaunchForm}
-              removeOwnedData={removeOwnedData}
-              onRemoveOwnedDataChange={setRemoveOwnedData}
               actions={actions}
+              settings={settings}
             />
           ) : null}
           {route === "about" ? <AboutScreen overview={overview} update={update} logs={logs} diagnostics={diagnostics} actions={actions} /> : null}
@@ -2328,59 +2336,18 @@ function MobileControlScreen({
 
 function OverviewScreen({
   overview,
-  pluginMarketplaceProgress,
   actions,
 }: {
   overview: OverviewResult | null;
-  pluginMarketplaceProgress: TaskProgress;
   actions: Actions;
 }) {
   const health = healthItems(overview);
   return (
     <>
-      <Panel className="jojocode-overview">
-        <CardContent>
-          <div className="jojocode-overview-layout">
-            <div className="jojocode-overview-main">
-              <div className="jojocode-overview-mark">
-                <Network className="h-5 w-5" />
-              </div>
-              <div>
-                <span className="eyebrow">官方中转站</span>
-                <h2>JOJO Code</h2>
-                <p>
-                  Codex++ 官方中转站，主打稳定接入和划算价格，支持 GPT-5.5、GPT-5.4、Claude Opus 4.8、Claude Opus 4.7、gpt-image-2 等模型与图像能力。
-                </p>
-              </div>
-            </div>
-            <div className="jojocode-overview-side">
-              <div className="jojocode-model-tags">
-                <span>GPT-5.5</span>
-                <span>GPT-5.4</span>
-                <span>Opus 4.8</span>
-                <span>Opus 4.7</span>
-                <span>gpt-image-2</span>
-              </div>
-              <Button onClick={() => void actions.openExternalUrl("https://jojocode.com/")}>
-                <ExternalLink className="h-4 w-4" />
-                打开 JOJO Code
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Panel>
       <Panel>
         <CardHead title="健康检查" detail="概览只展示关键问题，具体配置在对应页面处理" />
         <CardContent>
           <div className="health-grid">
-            <div className={`health-item ${overview?.codex_version ? "ok" : "needs-fix"}`}>
-              {overview?.codex_version ? <CheckCircle2 className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-              <div>
-                <strong>Codex 版本</strong>
-                <span>{overview?.codex_version ?? "未检测到 Codex 应用版本。"}</span>
-              </div>
-              <Badge status={overview?.codex_version ? "ok" : "not_checked"} />
-            </div>
             {health.map((item) => (
               <div className={`health-item ${item.ok ? "ok" : "needs-fix"}`} key={item.title}>
                 {item.ok ? <CheckCircle2 className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
@@ -2399,31 +2366,81 @@ function OverviewScreen({
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>
               <Wrench className="h-4 w-4" />
-              修复入口
+              修复快捷方式
             </Button>
             <Button variant="secondary" onClick={() => void actions.repairBackend()}>
               修复后端
             </Button>
-            <Button disabled={pluginMarketplaceProgress.active} variant="secondary" onClick={() => void actions.repairPluginMarketplace()}>
-              {pluginMarketplaceProgress.active ? "正在修复…" : "修复插件市场"}
-            </Button>
           </Toolbar>
-          <TaskProgressBox progress={pluginMarketplaceProgress} title="插件市场修复进度" />
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="最近启动" detail={overview?.logs_path ?? "暂无状态文件"} />
+        <CardHead title="代理服务器启动状态" detail="代理服务器运行状态" />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>
+            <Button onClick={() => void actions.launchBridge()}>
               <Rocket className="h-4 w-4" />
               启动代理
             </Button>
-            <Button variant="secondary" onClick={() => void actions.goLogs()}>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/proxy-info.html")}>
+              <ExternalLink className="h-4 w-4" />
+              打开代理信息页
+            </Button>
+            <Button variant="secondary" onClick={() => void navigate("about")}>
+              <Info className="h-4 w-4" />
               打开关于
             </Button>
           </Toolbar>
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+function ProxyScreen({
+  overview,
+  actions,
+  settings,
+}: {
+  overview: OverviewResult | null;
+  actions: Actions;
+  settings: SettingsResult | null;
+}) {
+  const activeProfile = settings?.settings ? (() => {
+    const relays = settings.settings.relayProfiles || [];
+    const activeId = settings.settings.activeRelayId || "";
+    return relays.find((r: {id: string}) => r.id === activeId) || null;
+  })() : null;
+  return (
+    <>
+      <Panel>
+        <CardHead title="代理服务器运行状态" detail="检查代理服务器是否正常运行" />
+        <CardContent>
+          <LatestLaunch status={overview?.latest_launch ?? null} />
+          <Toolbar>
+            <Button onClick={() => void actions.launchBridge()}>
+              <Rocket className="h-4 w-4" />
+              启动代理
+            </Button>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:36001/proxy-info.html")}>
+              <ExternalLink className="h-4 w-4" />
+              打开代理信息页
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="当前使用模型信息" detail="模型配置中设为当前使用的模型" />
+        <CardContent>
+          {activeProfile ? (
+            <div className="metric-list">
+              <Metric label="模型名称" value={activeProfile.model || "-"} />
+              <Metric label="API 地址" value={activeProfile.baseUrl || "-"} />
+            </div>
+          ) : (
+            <p style={{ color: "var(--muted-foreground)" }}>暂无当前使用的模型，请在模型配置中设置。</p>
+          )}
         </CardContent>
       </Panel>
     </>
@@ -2465,8 +2482,8 @@ function RelayScreen({
     setNewProfileDraft(draft);
     if (!normalizeAggregateConfig(draft.aggregate, aggregateMemberCandidates(normalized, draft.id)).members.length) {
       void actions.showMessage(
-        "添加聚合供应商",
-        "已打开聚合供应商详情；请先添加或完善至少 1 个普通 API 供应商的 Base URL / Key，再勾选为成员。",
+        "添加聚合模型",
+        "已打开聚合模型详情；请先添加或完善至少 1 个普通 API 模型的 Base URL / Key，再勾选为成员。",
         "failed",
       );
     }
@@ -2516,7 +2533,7 @@ function RelayScreen({
   return (
     <>
       <Panel>
-        <CardHead title="供应商列表" detail={`${normalized.relayProfiles.length} 个模型配置；可拖动排序，点编辑进入详情`} />
+        <CardHead title="模型列表" detail={`${normalized.relayProfiles.length} 个模型配置；可拖动排序，点编辑进入详情`} />
         <CardContent>
           <EnvConflictNotice envConflicts={envConflicts} actions={actions} />
           <label className="switch-row relay-master-switch">
@@ -2542,14 +2559,14 @@ function RelayScreen({
               }}
             >
               <Plus className="h-4 w-4" />
-              添加供应商
+              添加模型
             </Button>
             <Button
               variant="secondary"
               onClick={createNewAggregateProfile}
             >
               <Plus className="h-4 w-4" />
-              添加聚合供应商
+              添加聚合模型
             </Button>
             <div className="third-party-import">
               <Button
@@ -2613,7 +2630,7 @@ function EnvConflictNotice({
       </div>
       <div className="env-conflict-body">
         <strong>检测到 OPENAI 环境变量</strong>
-        <p>这些变量可能覆盖当前供应商写入的 config.toml / auth.json；CODEX_HOME 不会被清理。</p>
+        <p>这些变量可能覆盖当前模型写入的 config.toml / auth.json；CODEX_HOME 不会被清理。</p>
         <div className="env-conflict-tags">
           {conflicts.map((conflict) => (
             <span key={`${conflict.source}-${conflict.name}`}>
@@ -2707,7 +2724,7 @@ function EnhanceScreen({
             <FeatureToggle title="切换对话保留位置" detail="切换 thread 时恢复上一次浏览位置。" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
             <FeatureToggle title="Zed Remote open" detail="远程 SSH 文件引用可直接用 Zed Remote Development 打开。" checked={form.codexAppZedRemoteOpen} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppZedRemoteOpen", value)} />
             <FeatureToggle title="Upstream worktree" detail="从最新 upstream 分支创建 Git worktree。" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
-            <FeatureToggle title="原生菜单栏位置" detail="把 Codex++ 菜单插入 Codex 顶部原生菜单栏。" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
+            <FeatureToggle title="原生菜单栏位置" detail="把 LDCodex 菜单插入 Codex 顶部原生菜单栏。" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
             <FeatureToggle title="原生菜单汉化" detail="启动时通过本地主进程调试端口汉化 Codex 原生菜单；不修改安装包。需重启 Codex 才生效。" checked={form.codexAppNativeMenuLocalization} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuLocalization", value)} />
           </div>
           <div className="hint-line">
@@ -2795,7 +2812,7 @@ function ZedRemoteScreen({
               />
               <span>
                 <strong>记录最近打开</strong>
-                <small>保存到 Codex++ state，不改写 Zed settings。</small>
+                <small>保存到 LDCodex state，不改写 Zed settings。</small>
               </span>
             </label>
           </div>
@@ -3070,7 +3087,7 @@ function SessionsScreen({
             />
             <span>
               <strong>启动前自动修复历史会话</strong>
-              <small>开启后，通过 Codex++ 启动 Codex 前自动整理一次旧对话的归属标记。</small>
+              <small>开启后，通过 LDCodex 启动 Codex 前自动整理一次旧对话的归属标记。</small>
             </span>
           </label>
           <Toolbar>
