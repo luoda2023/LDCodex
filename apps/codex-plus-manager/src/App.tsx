@@ -568,8 +568,10 @@ function providerSyncTargetLabel(target: ProviderSyncTargetOption): string {
   return [...labels, ...current].join(" / ") || "发现";
 }
 
+function syncMarketInstalledState(current: ScriptMarketResult | null, userScripts: UserScriptInventory): ScriptMarketResult | null {
   if (!current) return current;
   const installed = new Map(
+    (userScripts.scripts ?? [])
       .filter((script) => script.market_id)
       .map((script) => [script.market_id || "", script.version || ""]),
   );
