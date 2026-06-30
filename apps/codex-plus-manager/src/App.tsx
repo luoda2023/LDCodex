@@ -154,10 +154,6 @@ type BackendSettings = {
   codexAppImageOverlayPath: string;
   codexAppImageOverlayOpacity: number;
   codexGoalsEnabled: boolean;
-  mobileControlEnabled: boolean;
-  mobileControlRelayUrl: string;
-  mobileControlRoom: string;
-  mobileControlKey: string;
   launchMode: LaunchMode;
   relayBaseUrl: string;
   relayApiKey: string;
@@ -400,20 +396,6 @@ type CcsProvidersResult = CommandResult<{
   providers: CcsProviderImport[];
 }>;
 
-type ProviderImportRequest = {
-  name: string;
-  baseUrl: string;
-  apiKey: string;
-  wireApi: string;
-  relayMode: string;
-  configContents: string;
-  authContents: string;
-};
-
-type PendingProviderImportResult = CommandResult<{
-  pending: ProviderImportRequest | null;
-}>;
-
 type EnvConflict = {
   name: string;
   source: "process" | "user" | string;
@@ -600,13 +582,12 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "mobileControl" | "sessions" | "context" | "enhance" | "proxy" | "maintenance" | "about" | "settings";
+type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "proxy" | "maintenance" | "about" | "settings";
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string }> = [
   { id: "overview", label: "概览", icon: LayoutDashboard },
   { id: "relay", label: "模型配置", icon: KeyRound },
-  { id: "mobileControl", label: "手机控制", icon: MessageCircle, badge: "测试版" },
   { id: "sessions", label: "会话管理", icon: MessageCircle },
   { id: "context", label: "工具与插件", icon: Network },
   { id: "enhance", label: "Codex增强", icon: Hammer },
@@ -651,10 +632,6 @@ const defaultSettings: BackendSettings = {
   codexAppImageOverlayPath: "",
   codexAppImageOverlayOpacity: 35,
   codexGoalsEnabled: false,
-  mobileControlEnabled: false,
-  mobileControlRelayUrl: "",
-  mobileControlRoom: "",
-  mobileControlKey: "",
   launchMode: "patch",
   relayBaseUrl: "",
   relayApiKey: "",
@@ -713,7 +690,6 @@ export function App() {
   const [relayFiles, setRelayFiles] = useState<RelayFilesResult | null>(null);
   const [envConflicts, setEnvConflicts] = useState<EnvConflictsResult | null>(null);
   const [ccsProviders, setCcsProviders] = useState<CcsProvidersResult | null>(null);
-  const [pendingProviderImport, setPendingProviderImport] = useState<ProviderImportRequest | null>(null);
   const [localSessions, setLocalSessions] = useState<LocalSessionsResult | null>(null);
   const [zedRemoteProjects, setZedRemoteProjects] = useState<ZedRemoteProjectsResult | null>(null);
   const [liveContextEntries, setLiveContextEntries] = useState<CodexContextEntries | null>(null);
@@ -889,34 +865,6 @@ export function App() {
       setSettingsForm(normalizeSettings(result.settings));
       showResultNotice("cc-switch 导入", result);
       await refreshCcsProviders(true);
-    }
-  };
-
-  const refreshPendingProviderImport = async (silent = true) => {
-    const result = await run(() => call<PendingProviderImportResult>("load_pending_provider_import"));
-    if (result) {
-      setPendingProviderImport(result.pending);
-      if (!silent && !isSuccessStatus(result.status)) showResultNotice("LDCodex 导入", result, { silentSuccess: true });
-    }
-    return result;
-  };
-
-  const confirmPendingProviderImport = async () => {
-    const result = await run(() => call<SettingsResult>("confirm_pending_provider_import"));
-    if (result) {
-      setPendingProviderImport(null);
-      setSettings(result);
-      setSettingsForm(normalizeSettings(result.settings));
-      showResultNotice("LDCodex 导入", result);
-      await refreshCcsProviders(true);
-    }
-  };
-
-  const dismissPendingProviderImport = async () => {
-    const result = await run(() => call<PendingProviderImportResult>("dismiss_pending_provider_import"));
-    if (result) {
-      setPendingProviderImport(null);
-      showResultNotice("LDCodex 导入", result, { silentSuccess: true });
     }
   };
 
@@ -1695,17 +1643,10 @@ export function App() {
       await refreshRelay(true);
       await refreshEnvConflicts(true);
       await refreshProviderSyncTargets(true);
-      await refreshPendingProviderImport(true);
       await checkPluginMarketplacePrompt();
     })();
   }, []);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      void refreshPendingProviderImport(true);
-    }, 1200);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -1966,9 +1907,6 @@ export function App() {
               actions={actions}
             />
           ) : null}
-          {route === "mobileControl" ? (
-            <MobileControlScreen form={settingsForm} onFormChange={setSettingsForm} actions={actions} />
-          ) : null}
           {route === "relay" ? (
             <RelayScreen
               settings={settings}
@@ -2067,13 +2005,6 @@ export function App() {
           status={pluginMarketplacePrompt}
           onClose={() => setPluginMarketplacePrompt(null)}
           onRepair={() => void actions.repairPluginMarketplace()}
-        />
-      ) : null}
-      {pendingProviderImport ? (
-        <PendingProviderImportDialog
-          request={pendingProviderImport}
-          onConfirm={() => void confirmPendingProviderImport()}
-          onDismiss={() => void dismissPendingProviderImport()}
         />
       ) : null}
     </div>
@@ -4686,44 +4617,6 @@ function PluginMarketplacePromptDialog({
   );
 }
 
-function PendingProviderImportDialog({
-  request,
-  onConfirm,
-  onDismiss,
-}: {
-  request: ProviderImportRequest;
-  onConfirm: () => void;
-  onDismiss: () => void;
-}) {
-  return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-card provider-import-modal">
-        <div className="modal-head">
-          <div>
-            <h2>导入 LDCodex 模型</h2>
-            <p>检测到来自网页的模型配置导入请求，确认后会写入本机 LDCodex 管理工具。</p>
-          </div>
-          <button className="toast-close" onClick={onDismiss} type="button">×</button>
-        </div>
-        <div className="metric-list">
-          <Metric label="名称" value={request.name || "未命名模型"} />
-          <Metric label="Base URL" value={request.baseUrl || "未填写"} />
-          <Metric label="协议" value={providerImportWireApiLabel(request.wireApi)} />
-          <Metric label="模式" value={providerImportRelayModeLabel(request.relayMode)} />
-          <Metric label="API Key" value={maskSecret(request.apiKey)} />
-        </div>
-        <Toolbar>
-          <Button onClick={onConfirm}>
-            <Download className="h-4 w-4" />
-            确认导入
-          </Button>
-          <Button onClick={onDismiss} variant="secondary">取消</Button>
-        </Toolbar>
-      </div>
-    </div>
-  );
-}
-
 function TaskProgressBox({ progress, title }: { progress: TaskProgress; title: string }) {
   if (!progress.active && progress.percent <= 0) return null;
   return (
@@ -4878,7 +4771,6 @@ function routeSubtitle(route: Route) {
   const subtitles: Record<Route, string> = {
     overview: "检查问题、启动与快速修复",
     relay: "管理 API 模型、协议、Key 与配置文件",
-    mobileControl: "手机控制，WebSocket 远程管理",
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
     enhance: "会话删除、导出、项目移动和脚本能力",
@@ -6612,7 +6504,7 @@ function ProxyScreen({
               <Rocket className="h-4 w-4" />
               启动代理
             </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:40001/proxy-info.html")}>
+            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:40006/proxy-info.html")}>
               <ExternalLink className="h-4 w-4" />
               打开代理信息页
             </Button>
@@ -6629,273 +6521,6 @@ function ProxyScreen({
             </div>
           ) : (
             <p style={{ color: "var(--muted-foreground)" }}>暂无当前使用的模型，请在模型配置中设置。</p>
-          )}
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
-
-// ── LDCodex-specific: MobileControl constants ──
-const LOCAL_MOBILE_RELAY_URL = "ws://127.0.0.1:57323";
-const PUBLIC_MOBILE_RELAY_URL = "ws://154.201.90.76:57323";
-
-const mobileRelayServers = [
-  { id: "local", label: "本机测试", url: LOCAL_MOBILE_RELAY_URL, capacity: 100 },
-  { id: "public-154", label: "公共服务器 1", url: PUBLIC_MOBILE_RELAY_URL, capacity: 100 },
-];
-
-function mobileRelayHttpUrl(wsUrl: string): string {
-  return wsUrl.replace(/^ws/, "http");
-}
-
-function mobileRelayShareUrl(settings: BackendSettings): string {
-  if (!settings.mobileControlEnabled || !settings.mobileControlRelayUrl || !settings.mobileControlRoom || !settings.mobileControlKey) return "";
-  return settings.mobileControlRelayUrl + "?room=" + encodeURIComponent(settings.mobileControlRoom) + "&key=" + encodeURIComponent(settings.mobileControlKey);
-}
-
-function randomToken(length: number): string {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-// ── LDCodex-specific: MobileControlScreen ──
-
-type MobileRelayStatus = {
-  status: string;
-  service: string;
-  version: string;
-  uptimeSeconds: number;
-  rooms: number;
-  activeConnections: number;
-  totalConnections: number;
-  forwardedMessages: number;
-  forwardedBytes: number;
-  roomDetails: Array<{
-    room: string;
-    hostOnline: boolean;
-    clientOnline: boolean;
-    connections: number;
-    forwardedBytes: number;
-  }>;
-};
-
-function MobileControlScreen({
-  form,
-  onFormChange,
-  actions,
-}: {
-  form: BackendSettings;
-  onFormChange: (value: BackendSettings) => void;
-  actions: Actions;
-}) {
-  const [serverStatuses, setServerStatuses] = useState<Record<string, MobileRelayStatus | null>>({});
-  const [statusMessage, setStatusMessage] = useState("尚未刷新");
-  const [loadingStatus, setLoadingStatus] = useState(false);
-  const mobileUrl = mobileRelayShareUrl(form);
-  const selectedServerId =
-    mobileRelayServers.find((server) => server.url === form.mobileControlRelayUrl)?.id || mobileRelayServers[0].id;
-  const selectedServer = mobileRelayServers.find((server) => server.id === selectedServerId) ?? mobileRelayServers[0];
-  const selectedStatus = serverStatuses[selectedServer.id] ?? null;
-  const serverCapacity = selectedServer?.capacity ?? 100;
-  const serverLoad = selectedStatus?.activeConnections ?? 0;
-  const saveMobileSettings = async (next: BackendSettings, silent = true) => {
-    onFormChange(next);
-    await actions.saveSettingsValue(next, silent);
-  };
-  const selectRelayServer = (serverId: string) => {
-    const server = mobileRelayServers.find((item) => item.id === serverId);
-    if (!server) return;
-    onFormChange({ ...form, mobileControlRelayUrl: server.url });
-  };
-  const startAndCopyMobileLink = async () => {
-    const room = form.mobileControlRoom.trim() || randomToken(8);
-    const key = form.mobileControlKey.trim() || randomToken(32);
-    const relayUrl = selectedServer.url;
-    const next = {
-      ...form,
-      mobileControlEnabled: true,
-      mobileControlRelayUrl: relayUrl,
-      mobileControlRoom: room,
-      mobileControlKey: key,
-    };
-    await saveMobileSettings(next, true);
-    const link = mobileRelayShareUrl(next);
-    if (!link) {
-      await actions.showMessage("手机控制", "服务器地址无效，无法生成手机链接。", "failed");
-      return;
-    }
-    await actions.launch();
-    try {
-      await navigator.clipboard?.writeText(link);
-      await actions.showMessage("手机控制", "已启动并复制手机链接。");
-    } catch (error) {
-      await actions.showMessage("手机控制", `已启动，但复制链接失败：${stringifyError(error)}`, "failed");
-    }
-  };
-  const refreshRelayStatus = async () => {
-    setLoadingStatus(true);
-    const entries = await Promise.all(mobileRelayServers.map(async (server) => {
-      const httpUrl = mobileRelayHttpUrl(server.url);
-      try {
-        const response = await fetch(`${httpUrl}/status`, { cache: "no-store" });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return [server.id, (await response.json()) as MobileRelayStatus, ""] as const;
-      } catch (error) {
-        return [server.id, null, `${server.label}: ${error instanceof Error ? error.message : "刷新失败"}`] as const;
-      }
-    }));
-    setServerStatuses(Object.fromEntries(entries.map(([id, data]) => [id, data])));
-    const failed = entries.map(([, , error]) => error).filter(Boolean);
-    setStatusMessage(failed.length ? failed.join("；") : "状态已刷新");
-    setLoadingStatus(false);
-  };
-  useEffect(() => {
-    void refreshRelayStatus();
-  }, []);
-  useEffect(() => {
-    if (!mobileRelayServers.some((server) => server.url === form.mobileControlRelayUrl)) {
-      onFormChange({ ...form, mobileControlRelayUrl: mobileRelayServers[0].url });
-    }
-  }, [form.mobileControlRelayUrl]);
-  return (
-    <>
-      <Panel>
-        <CardHead title="手机控制" detail="选择 relay 服务器后启动，系统会生成随机房间和 Key，并复制手机可直接打开的链接。" />
-        <CardContent>
-          <div className="mobile-server-grid">
-            {mobileRelayServers.map((server) => {
-              const isActive = selectedServerId === server.id;
-              const itemStatus = serverStatuses[server.id] ?? null;
-              const load = itemStatus?.activeConnections ?? 0;
-              return (
-                <button
-                  className={`mobile-server-card ${isActive ? "active" : ""}`}
-                  key={server.id}
-                  onClick={() => selectRelayServer(server.id)}
-                  type="button"
-                >
-                  <span>
-                    <strong>{server.label}</strong>
-                    <small>{server.url}</small>
-                    <small>{itemStatus ? `在线 · ${itemStatus.rooms} 个房间 · ${formatBytes(itemStatus.forwardedBytes)}` : "未连接或未刷新"}</small>
-                  </span>
-                  <em>{load}/{server.capacity}</em>
-                </button>
-              );
-            })}
-          </div>
-          <div className="form-row">
-            <Label className="field">
-              <span>当前服务器</span>
-              <Input readOnly value={selectedServer.url} />
-            </Label>
-            <Label className="field">
-              <span>容量</span>
-              <Input
-                readOnly
-                value={`${serverLoad}/${serverCapacity}`}
-              />
-            </Label>
-          </div>
-          <Toolbar>
-            <Button onClick={() => void startAndCopyMobileLink()} type="button">
-              <Rocket className="h-4 w-4" />
-              启动并复制手机链接
-            </Button>
-            <Button
-              onClick={() => void saveMobileSettings({
-                ...form,
-                mobileControlEnabled: true,
-                mobileControlRoom: randomToken(8),
-                mobileControlKey: randomToken(32),
-              }, false)}
-              type="button"
-              variant="secondary"
-            >
-              <KeyRound className="h-4 w-4" />
-              重新生成 Token
-            </Button>
-            <Button onClick={() => void refreshRelayStatus()} type="button" variant="secondary">
-              <RefreshCw className="h-4 w-4" />
-              {loadingStatus ? "正在刷新" : "刷新服务器状态"}
-            </Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="手机入口" detail="复制出的链接包含随机房间和 Key；relay 服务器只能看到房间、连接数和流量统计。" />
-        <CardContent>
-          <div className="relay-file-panel">
-            <div className="relay-file-head">
-              <div>
-                <strong>{mobileUrl || "未生成手机入口"}</strong>
-                <span>{mobileUrl ? "手机打开后会自动填入房间和 Key 并尝试连接。" : "选择服务器并启动后会生成手机入口。"}</span>
-              </div>
-              {mobileUrl ? (
-                <Button
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(mobileUrl);
-                    void actions.showMessage("手机入口", "已复制手机入口地址。");
-                  }}
-                  size="sm"
-                  type="button"
-                  variant="secondary"
-                >
-                  <Copy className="h-4 w-4" />
-                  复制
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="服务器状态" detail={statusMessage} />
-        <CardContent>
-          {selectedStatus ? (
-            <>
-              <div className="health-grid">
-                <div className="health-item ok">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <div>
-                    <strong>在线连接</strong>
-                    <span>{selectedStatus.activeConnections} 个在线连接，累计 {selectedStatus.totalConnections} 次连接。</span>
-                  </div>
-                  <Badge status="ok" />
-                </div>
-                <div className="health-item ok">
-                  <Network className="h-4 w-4" />
-                  <div>
-                    <strong>房间数量</strong>
-                    <span>{selectedStatus.rooms} 个房间，已转发 {selectedStatus.forwardedMessages} 条消息。</span>
-                  </div>
-                  <Badge status="ok" />
-                </div>
-              </div>
-              <div className="relay-file-grid">
-                {selectedStatus.roomDetails.map((room) => (
-                  <div className="relay-file-panel" key={room.room}>
-                    <div className="relay-file-head">
-                      <div>
-                        <strong>{room.room}</strong>
-                        <span>
-                          host {room.hostOnline ? "在线" : "离线"} / client {room.clientOnline ? "在线" : "离线"}，
-                          {room.connections} 个连接，{formatBytes(room.forwardedBytes)}
-                        </span>
-                      </div>
-                      <Badge status={room.hostOnline && room.clientOnline ? "ok" : "not_checked"} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="field-hint">点击“刷新服务器状态”查看 relay 负载、在线用户和房间连接情况。</p>
           )}
         </CardContent>
       </Panel>

@@ -2,7 +2,7 @@
  * Config API Server
  *
  * Provides the configuration management API on a separate HTTP server.
- * Port: 37001 (development) / 40001 (production)
+ * Port: 40006 (production)
  *
  * Architecture (Middleman Pattern):
  *   Admin UI → API → admin.db (SQLite)
@@ -70,7 +70,7 @@ export function startConfigServer() {
 
     // ── Redirect to Admin Panel ──
     if (pn === "/" || pn === "/config-ui") {
-      const adminPort = process.env.ADMIN_PORT || 37002;
+      const adminPort = process.env.ADMIN_PORT || 40007;
       res.writeHead(302, { Location: `http://127.0.0.1:${adminPort}/login.html` });
       res.end();
       return;

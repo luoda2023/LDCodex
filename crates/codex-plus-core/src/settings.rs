@@ -238,14 +238,6 @@ pub struct BackendSettings {
     pub codex_app_paste_fix: bool,
     #[serde(rename = "codexAppThreadIdBadge", default)]
     pub codex_app_thread_id_badge: bool,
-    #[serde(rename = "mobileControlEnabled", default)]
-    pub mobile_control_enabled: bool,
-    #[serde(rename = "mobileControlRelayUrl", default = "default_mobile_control_relay_url")]
-    pub mobile_control_relay_url: String,
-    #[serde(rename = "mobileControlRoom", default)]
-    pub mobile_control_room: String,
-    #[serde(rename = "mobileControlKey", default)]
-    pub mobile_control_key: String,
     #[serde(rename = "aggregateRelayProfiles", default)]
     pub aggregate_relay_profiles: Vec<AggregateRelayProfile>,
     #[serde(rename = "activeAggregateRelayId", default)]
@@ -338,10 +330,6 @@ impl Default for BackendSettings {
             cli_wrapper_api_key_env: default_api_key_env(),
             codex_app_paste_fix: false,
             codex_app_thread_id_badge: false,
-            mobile_control_enabled: false,
-            mobile_control_relay_url: default_mobile_control_relay_url(),
-            mobile_control_room: String::new(),
-            mobile_control_key: String::new(),
             aggregate_relay_profiles: Vec::new(),
             active_aggregate_relay_id: String::new(),
         }
@@ -477,11 +465,6 @@ fn clamp_image_overlay_opacity(value: u8) -> u8 {
 
 pub fn default_true() -> bool {
     true
-}
-
-
-fn default_mobile_control_relay_url() -> String {
-    "ws://127.0.0.1:57323".to_string()
 }
 
 pub fn default_aggregate_member_weight() -> u32 {

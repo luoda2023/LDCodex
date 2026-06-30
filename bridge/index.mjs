@@ -2,8 +2,8 @@
  * LuoDaBridge v3 — Entry Point
  *
  * Starts all services:
- *   Main proxy server (port 37000)
- *   Config API server (port 37001)
+ *   Main proxy server (port 40005)
+ *   Config API server (port 40006)
  *
  * Usage:
  *   node index.mjs
@@ -41,7 +41,7 @@ import { execSync } from "node:child_process";
  */
 function cleanupPorts() {
   const myPid = process.pid;
-  const ports = [...new Set([PORTS.proxy, PORTS.config, PORTS.admin, 40000, 40001, 40002, 37000, 37001, 37002])];
+  const ports = [...new Set([PORTS.proxy, PORTS.config, PORTS.admin, 40005, 40006, 40007])];
   for (const p of ports) {
     try {
       // 先查谁是端口主人，跳过自己
@@ -110,26 +110,6 @@ initHealthCheck((abnormal) => {
 
 rebuildModelCatalog();
 
-// ── Load admin module FIRST (for token tracking) ──
-let adminServer = null;
-const ADMIN_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "admin");
-try {
-  process.env.ADMIN_PORT = String(PORTS.admin);
-  const adminMod = await import("./admin/server/index.js");
-  const { default: startAdminServer } = adminMod;
-  if (adminMod.pushTokenUsage) {
-    global.__pushTokenUsage = adminMod.pushTokenUsage;
-    log.info("[boot] token tracking enabled");
-  }
-  adminServer = startAdminServer();
-} catch (e) {
-  if (e.code === 'ERR_MODULE_NOT_FOUND') {
-    log.warn(`[boot] admin panel not available (${e.message})`);
-  } else {
-    log.warn(`[boot] admin panel warning: ${e.message}`);
-  }
-}
-
 // ── Initialize SQLite config store ──
 // ── Initialize SQLite config store — 必须先于 startProxyServer，确保全局函数就绪
 var _storePromise = import("./lib/config-store.mjs").then(function(store) {
@@ -163,11 +143,6 @@ const configServer = startConfigServer();
 function shutdown(signal) {
   log.info(`[boot] received ${signal}, shutting down...`);
 
-  if (adminServer) {
-    adminServer.close();
-    adminServer = null;
-  }
-
   proxyServer.close(() => {
     log.info("[boot] proxy server closed");
     configServer.close(() => {
@@ -196,4 +171,3 @@ process.on("unhandledRejection", (err) => {
 });
 
 log.info(`[boot] ready — proxy on :${PORTS.proxy}, config-api on :${PORTS.config}`);
-log.info(`[boot] admin panel served separately on :${PORTS.admin}`);

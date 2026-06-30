@@ -308,17 +308,36 @@ fn standalone_codex_version(app_dir: &Path) -> Option<String> {
             }
         }
     }
-    // Windows:  Codex.exe  ( PowerShell)
+    // Windows:  Codex.exe / codex.exe  ( PowerShell)
     #[cfg(windows)]
     {
         let exe_candidates = [
             app_dir.join("Codex.exe"),
-            app_dir.join("Codex.exe"),
+            app_dir.join("codex.exe"),
         ];
         for exe in &exe_candidates {
             if exe.exists() {
                 if let Some(ver) = file_version_via_powershell(exe) {
                     return Some(ver);
+                }
+            }
+        }
+        // 也尝试在子目录中查找 codex.exe（如 bin/<hash>/codex.exe）
+        if let Ok(entries) = std::fs::read_dir(app_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let nested_exes = [
+                        path.join("codex.exe"),
+                        path.join("Codex.exe"),
+                    ];
+                    for exe in &nested_exes {
+                        if exe.exists() {
+                            if let Some(ver) = file_version_via_powershell(exe) {
+                                return Some(ver);
+                            }
+                        }
+                    }
                 }
             }
         }

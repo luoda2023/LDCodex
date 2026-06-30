@@ -52,9 +52,9 @@ export const PATHS = {
 
 // ── Ports (development defaults) ──
 export const PORTS = {
-  proxy: parseInt(process.env.PROXY_PORT || "37000", 10),
-  config: parseInt(process.env.CONFIG_PORT || "37001", 10),
-  admin: parseInt(process.env.ADMIN_PORT || "37002", 10),
+  proxy: parseInt(process.env.PROXY_PORT || "40005", 10),
+  config: parseInt(process.env.CONFIG_PORT || "40006", 10),
+  admin: parseInt(process.env.ADMIN_PORT || "40007", 10),
 };
 
 // ── Proxy auth ──

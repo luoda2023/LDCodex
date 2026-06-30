@@ -391,7 +391,7 @@ pub fn launch_bridge() -> CommandResult<Value> {
             );
             CommandResult {
                 status: "accepted".to_string(),
-                message: "代理服务器启动任务已开始，可打开 http://127.0.0.1:40002/ 查看状态。".to_string(),
+                message: "代理服务器启动任务已开始，可打开 http://127.0.0.1:40007/ 查看状态。".to_string(),
                 payload: json!({}),
             }
         }
