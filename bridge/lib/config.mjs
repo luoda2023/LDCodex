@@ -90,25 +90,8 @@ export const AUTH = (() => {
   return { authKey, keyTable, mode, enabled, validLocks };
 })();
 
-// ── Upstream provider settings ──
+// ── Upstream timeout (LDCodex 只使用 models.json 中配置的模型) ──
 export const UPSTREAM = {
-  deepseek: {
-    base: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1",
-    key: process.env.DEEPSEEK_API_KEY || "",
-    models: parseCsv(process.env.DEEPSEEK_MODELS || "deepseek-v4-pro,deepseek-v4-flash"),
-  },
-  mimo: {
-    base: process.env.MIMO_BASE_URL || "https://token-plan-cn.xiaomimimo.com/v1",
-    key: process.env.MIMO_API_KEY || "",
-    models: parseCsv(process.env.MIMO_MODELS || "mimo-v2.5-pro"),
-  },
-  openai: {
-    base: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
-    key: process.env.OPENAI_API_KEY || "",
-    models: parseCsv(process.env.OPENAI_MODELS || ""),
-    modelPrefixes: parseCsv(process.env.OPENAI_MODEL_PREFIXES || "gpt-,o1,o3,o4,codex-,chatgpt-"),
-  },
-  defaultProvider: (process.env.DEFAULT_PROVIDER || "").trim().toLowerCase(),
   upstreamTimeout: parseInt(process.env.UPSTREAM_TIMEOUT_MS || "60000", 10),
   codexMaxTokens: parseInt(process.env.CODEX_MAX_TOKENS || "8192", 10),
 };

@@ -379,27 +379,72 @@ pub fn launch_bridge() -> CommandResult<Value> {
     };
     let node = if cfg!(windows) { "node.exe" } else { "node" };
     let work_dir = script_path.parent().unwrap().parent().unwrap().to_path_buf();
-    match std::process::Command::new(node)
-        .arg(&script_path)
-        .current_dir(&work_dir)
-        .spawn()
-    {
-        Ok(child) => {
+    match launch_bridge_process(&node, &script_path, &work_dir) {
+        Ok(pid) => {
             let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
                 "manager.bridge_launched",
-                json!({"pid": child.id(), "script": script_path.to_string_lossy().to_string()}),
+                json!({"pid": pid, "script": script_path.to_string_lossy().to_string()}),
             );
+            let started_at_ms = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            let _ = StatusStore::default().save_latest(&LaunchStatus {
+                status: "accepted".to_string(),
+                message: "代理服务器已在新终端窗口中启动".to_string(),
+                started_at_ms,
+                debug_port: None,
+                helper_port: None,
+                codex_app: Some(script_path.to_string_lossy().to_string()),
+            });
             CommandResult {
                 status: "accepted".to_string(),
                 message: "代理服务器启动任务已开始，可打开 http://127.0.0.1:40007/ 查看状态。".to_string(),
-                payload: json!({}),
+                payload: json!({"pid": pid}),
             }
         }
-        Err(error) => failed(
-            &format!("启动代理服务器失败：{error}"),
-            json!({}),
-        ),
+        Err(error) => {
+            let _ = StatusStore::default().save_latest(&LaunchStatus {
+                status: "failed".to_string(),
+                message: format!("启动代理服务器失败：{error}"),
+                started_at_ms: SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0),
+                debug_port: None,
+                helper_port: None,
+                codex_app: None,
+            });
+            failed(
+                &format!("启动代理服务器失败：{error}"),
+                json!({}),
+            )
+        }
     }
+}
+
+#[cfg(windows)]
+fn launch_bridge_process(node: &str, script_path: &PathBuf, _work_dir: &PathBuf) -> anyhow::Result<u32> {
+    use std::os::windows::process::CommandExt;
+    // 弹出终端窗口运行 node bridge/index.mjs
+    let script = script_path.to_string_lossy();
+    let _cmdline = format!("/c start \"LDCodex Bridge\" cmd.exe /k \"{} {}\"", node, script);
+    let _ = std::process::Command::new("cmd.exe")
+        .creation_flags(0x08000000 | 0x00000010)
+        .args(["/c", "start", "LDCodex Bridge", "cmd.exe", "/k", &format!("{} {}", node, script)])
+        .spawn()?;
+    // start 会先启动一个 cmd，实际 node 进程的 pid 无法直接获取
+    // 返回 0 表示成功（前端仅用于展示）
+    Ok(0)
+}
+
+#[cfg(not(windows))]
+fn launch_bridge_process(node: &str, script_path: &PathBuf, work_dir: &PathBuf) -> anyhow::Result<u32> {
+    let child = std::process::Command::new(node)
+        .arg(script_path)
+        .current_dir(work_dir)
+        .spawn()?;
+    Ok(child.id())
 }
 
 #[tauri::command]

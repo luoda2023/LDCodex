@@ -21,9 +21,9 @@
     "openai"
   ],
   "_fallbackState": {
-    "codexIdx": 7,
-    "hermesIdx": 24,
-    "lastSwitch": 1782790845880
+    "codexIdx": 11,
+    "hermesIdx": 28,
+    "lastSwitch": 1782806456299
   },
   "neizhi_fallback_sequence": "mimo",
   "config_source_marker": "J_DRIVE_CONFIG",
@@ -69,6 +69,6 @@
   "fallback_interval_minutes": 65,
   "_abnormalModels": [],
   "_providerHealth": {},
-  "_countdown_start": "1782790845886",
+  "_countdown_start": "1782806456303",
   "_countdown_interval": "65"
 }

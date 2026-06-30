@@ -2142,16 +2142,13 @@ function OverviewScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="最近启动" detail={overview?.logs_path ?? "暂无状态文件"} />
+        <CardHead title="代理服务器启动信息" detail={overview?.logs_path ?? "暂无状态文件"} />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>
+            <Button onClick={() => void actions.launchBridge()}>
               <Rocket className="h-4 w-4" />
-              启动 LDCodex
-            </Button>
-            <Button variant="secondary" onClick={() => void actions.goLogs()}>
-              打开关于
+              启动 代理服务器
             </Button>
           </Toolbar>
         </CardContent>
@@ -3027,7 +3024,7 @@ function MaintenanceScreen({
             </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>启动 LDCodex</Button>
+            <Button onClick={() => void actions.launch()}>启动 代理服务器</Button>
             <Button variant="secondary" onClick={() => void actions.saveManualCodexAppPath()}>
               保存为默认路径
             </Button>
@@ -3078,22 +3075,6 @@ function AboutScreen({
               <MessageCircle className="h-4 w-4" />
               Telegram
             </Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="GitHub Release 更新" detail={`当前版本 ${overview?.current_version ?? update?.currentVersion ?? "-"}`} />
-        <CardContent>
-          <div className="metric-list">
-            <Metric label="状态" value={update?.status ?? "not_checked"} />
-            <Metric label="最新版本" value={update?.latestVersion ?? "未检查"} />
-            <Metric label="资源" value={update?.assetName ?? "-"} />
-            <Metric label="进度" value={`${update?.progress ?? 0}%`} />
-          </div>
-          <Textarea className="log-view" readOnly value={update?.releaseSummary || update?.message || "尚未检查 GitHub Release；更新会下载并启动安装包。"} />
-          <Toolbar>
-            <Button onClick={() => void actions.checkUpdate()}>检查更新</Button>
-            <Button variant="secondary" onClick={() => void actions.performUpdate()}>下载并运行安装包</Button>
           </Toolbar>
         </CardContent>
       </Panel>
@@ -4776,7 +4757,7 @@ function routeSubtitle(route: Route) {
     enhance: "会话删除、导出、项目移动和脚本能力",
     proxy: "代理服务器运行状态与模型信息",
     maintenance: "检查修复、入口管理与诊断面板",
-    about: "版本信息、项目链接、GitHub Release 更新、日志与诊断",
+    about: "版本信息、项目链接、日志与诊断",
     settings: "主题、命令包装器和启动参数",
   };
   return subtitles[route];
