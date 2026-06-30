@@ -44,9 +44,19 @@ export function register(provider) {
   // Map models → provider
   const models = provider.models || [];
   for (const model of models) {
-    _modelMap.set(model.toLowerCase(), key);
+    // ★ 如果已有 Anthropic 协议的 provider 注册了此模型，则跳过覆盖
+    //   使得 Anthropic 协议 provider 始终优先匹配，不受注册顺序影响
+    const existingKey = _modelMap.get(model.toLowerCase());
+    const existingProvider = existingKey ? _providers.get(existingKey) : null;
+    if (!existingProvider || existingProvider.protocol !== "anthropic") {
+      _modelMap.set(model.toLowerCase(), key);
+    }
     if (provider.modelId && model.toLowerCase() !== provider.modelId.toLowerCase()) {
-      _modelMap.set(provider.modelId.toLowerCase(), key);
+      const eKey2 = _modelMap.get(provider.modelId.toLowerCase());
+      const eProv2 = eKey2 ? _providers.get(eKey2) : null;
+      if (!eProv2 || eProv2.protocol !== "anthropic") {
+        _modelMap.set(provider.modelId.toLowerCase(), key);
+      }
     }
   }
 

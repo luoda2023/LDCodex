@@ -62,6 +62,19 @@ export function serializeModelWindowRows(rows: ModelWindowRow[]): { modelList: s
   };
 }
 
+export function mergeModelWindowRows(existing: ModelWindowRow[], incoming: ModelWindowRow[]): ModelWindowRow[] {
+  const byModel = new Map<string, ModelWindowRow>();
+  for (const row of existing) {
+    if (row.model) byModel.set(row.model, row);
+  }
+  for (const row of incoming) {
+    if (!byModel.has(row.model)) {
+      byModel.set(row.model, row);
+    }
+  }
+  return Array.from(byModel.values());
+}
+
 export type BuildModelWindowsResult =
   | { ok: true; modelWindows: string }
   | { ok: false; error: string };

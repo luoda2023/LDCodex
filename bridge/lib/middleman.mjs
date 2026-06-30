@@ -54,15 +54,30 @@ export function initMiddleman() {
  */
 export function syncModels() {
   const dbModels = dbGetAllModels();
-  const modelsArray = dbModels.map(m => ({
-    name: m.name,
-    slug: m.slug,
-    base: m.base,
-    key: m.key,
-    id: m.model_id,
-    models: [m.model_id],
-    idx: m.idx,
-  }));
+
+  // ★ 读取现有的 models.json，保留 protocol 等中继Man不会生成的额外字段
+  let oldProtocols = {};
+  try {
+    const old = JSON.parse(fs.readFileSync(PATHS.models, "utf-8"));
+    for (const m of old) {
+      if (m.protocol) oldProtocols[m.slug || m.name] = m.protocol;
+    }
+  } catch (e) { /* first sync, no existing file */ }
+
+  const modelsArray = dbModels.map(m => {
+    const key = m.slug || m.name;
+    const entry = {
+      name: m.name,
+      slug: m.slug,
+      base: m.base,
+      key: m.key,
+      id: m.model_id,
+      models: [m.model_id],
+      idx: m.idx,
+    };
+    if (oldProtocols[key]) entry.protocol = oldProtocols[key];
+    return entry;
+  });
 
   writeJSON(PATHS.models, modelsArray);
   log.info("[middleman] synced " + modelsArray.length + " models → models.json");
@@ -76,28 +91,16 @@ export function syncModels() {
 export function syncConfig() {
   const dbConfig = dbGetConfig();
 
-  // 从所有启用模型获取 slugs
-  const dbModels = dbGetAllModels();
-  const modelSlugs = dbModels.filter(m => m.enabled).map(m => m.slug);
-
-  // 更新 fallback_sequence：保留现有顺序，追加新模型
-  const currentSeq = dbConfig.codex_fallback_sequence || dbConfig.fallback_sequence || "";
-  const seqSlugs = currentSeq ? currentSeq.split(";").filter(Boolean) : [];
-  // 将不在当前 sequence 中的新模型追加到末尾
-  for (const slug of modelSlugs) {
-    if (seqSlugs.indexOf(slug) === -1) {
-      seqSlugs.push(slug);
-    }
-  }
-  // 剔除已删除的模型（不在 modelSlugs 中的）
-  const cleanSeq = seqSlugs.filter(s => modelSlugs.indexOf(s) >= 0);
-  dbConfig.codex_fallback_sequence = cleanSeq.join(";");
-  dbConfig.fallback_sequence = cleanSeq.join(";");
+  // ★ 不再重建 codex/fallback_sequence！保留 DB 中已有的链序列不变
+  // 之前的逻辑会把所有启用模型追加到 sequence 里，破坏了双链分离
 
   // Merge DB config into live CONFIG_PROXY in-place
   // ★ 只更新不删除 — 保留 CONFIG_PROXY 中运行时产生但 DB 尚未同步的键
   // 避免因 syncConfig() 删除运行时键导致状态丢失
+  // ★ 过滤掉运行时只存内存的键，防止旧 DB 值覆盖新设置
+  var _runtimeOnlyKeys = /^_countdown_|^_lastSwitch|^_fallbackState|^_autoRebuiltAt|^_lockExhausted/;
   for (const k of Object.keys(dbConfig)) {
+    if (_runtimeOnlyKeys.test(k)) continue;
     CONFIG_PROXY[k] = dbConfig[k];
   }
 
@@ -107,6 +110,8 @@ export function syncConfig() {
   writeJSON(PATHS.configProxy, CONFIG_PROXY);
   // ★ 同步更新 config.db，确保转发平台实时读取最新配置
   try { saveConfig(CONFIG_PROXY); } catch (e) { log.warn("[middleman] saveConfig failed: " + e.message); }
+  // ★ 更新本地版本号，防止 syncAll() 循环触发
+  _lastConfigVer = getTableVersion("config_kv");
   log.info("[middleman] synced config → config-proxy.json (" + Object.keys(dbConfig).length + " keys)");
 }
 

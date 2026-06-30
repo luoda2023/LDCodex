@@ -173,9 +173,13 @@ export function dbAddModel(data) {
   const nextIdx = (maxRow && maxRow.maxIdx !== null) ? maxRow.maxIdx + 1 : 0;
 
   try {
+    // ★ 合并 extra 中的 expires_at
+    var extraData = {};
+    try { extraData = JSON.parse(data.extra || "{}"); } catch(e) {}
+    if (data.expires_at) extraData.expires_at = data.expires_at;
     db.prepare(
-      "INSERT OR IGNORE INTO models (name, slug, base, key, model_id, idx, enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)"
-    ).run(data.name || "", slug, data.base || "", data.key || "", data.id || "", nextIdx, now, now);
+      "INSERT OR IGNORE INTO models (name, slug, base, key, model_id, idx, enabled, extra, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)"
+    ).run(data.name || "", slug, data.base || "", data.key || "", data.id || "", nextIdx, JSON.stringify(extraData), now, now);
   } catch (e) {
     return { error: e.message };
   }
@@ -194,9 +198,14 @@ export function dbUpdateModel(slug, data) {
   if (data.name && !data.slug) {
     // Keep the old slug unless explicitly changed
   }
+  // ★ 读取现有 extra，合并 expires_at
+  var existing = db.prepare("SELECT extra FROM models WHERE slug=?").get(slug);
+  var extraData = {};
+  try { extraData = JSON.parse(existing?.extra || "{}"); } catch(e) {}
+  if (data.expires_at !== undefined) extraData.expires_at = data.expires_at;
   db.prepare(
-    "UPDATE models SET name=?, slug=?, base=?, key=?, model_id=?, updated_at=? WHERE slug=?"
-  ).run(data.name || "", newSlug, data.base || "", data.key || "", data.id || "", now, slug);
+    "UPDATE models SET name=?, slug=?, base=?, key=?, model_id=?, extra=?, updated_at=? WHERE slug=?"
+  ).run(data.name || "", newSlug, data.base || "", data.key || "", data.id || "", JSON.stringify(extraData), now, slug);
   bumpVersion("models");
   return { ok: true };
 }

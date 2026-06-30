@@ -52,9 +52,9 @@ export const PATHS = {
 
 // ── Ports (development defaults) ──
 export const PORTS = {
-  proxy: parseInt(process.env.PROXY_PORT || "36000", 10),
-  config: parseInt(process.env.CONFIG_PORT || "36001", 10),
-  admin: parseInt(process.env.ADMIN_PORT || "36002", 10),
+  proxy: parseInt(process.env.PROXY_PORT || "37000", 10),
+  config: parseInt(process.env.CONFIG_PORT || "37001", 10),
+  admin: parseInt(process.env.ADMIN_PORT || "37002", 10),
 };
 
 // ── Proxy auth ──
@@ -110,6 +110,7 @@ export const UPSTREAM = {
   },
   defaultProvider: (process.env.DEFAULT_PROVIDER || "").trim().toLowerCase(),
   upstreamTimeout: parseInt(process.env.UPSTREAM_TIMEOUT_MS || "60000", 10),
+  codexMaxTokens: parseInt(process.env.CODEX_MAX_TOKENS || "8192", 10),
 };
 
 function parseCsv(str) {
@@ -198,6 +199,7 @@ export const CONFIG_PROXY = loadJSON(PATHS.configProxy, {});
 _initPromise.then(() => {
   if (sqliteConfig) {
     for (const k of Object.keys(sqliteConfig)) {
+      if (k === '_countdown_start') continue; // ★ 运行时变量
       CONFIG_PROXY[k] = sqliteConfig[k];
     }
     _configVersion = Date.now();
@@ -225,6 +227,9 @@ export async function reloadConfig() {
     // Update CONFIG_PROXY in-place so all live references see the change
     const keys = new Set([...Object.keys(CONFIG_PROXY), ...Object.keys(fresh)]);
     for (const k of keys) {
+      if (k === '_countdown_start') continue; // ★ 运行时变量，不受 DB 影响
+      // ★ 如果运行时标记锁已被 fallback 清除，跳过 DB 中的旧值
+      if ((k === 'single_model_codex' || k === 'single_model_hermes') && CONFIG_PROXY._lockClearedByFallback) continue;
       if (fresh[k] !== undefined) {
         CONFIG_PROXY[k] = fresh[k];
       } else {
@@ -260,3 +265,17 @@ export function slugify(str) {
   }
   return r.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);
 }
+
+// ★ 调试陷阱：拦截 _countdown_start 的所有写入，定位来源
+let _countdown_start_value = CONFIG_PROXY._countdown_start;
+Object.defineProperty(CONFIG_PROXY, '_countdown_start', {
+  get() { return _countdown_start_value; },
+  set(v) {
+    var st = new Error().stack;
+    var caller = (st && st.split ? st.split('\n').slice(2,5).join(' | ') : 'unknown');
+    console.error('[countdown-trap] _countdown_start set to ' + v + ' caller=' + caller);
+    _countdown_start_value = v;
+  },
+  configurable: true,
+  enumerable: true,
+});

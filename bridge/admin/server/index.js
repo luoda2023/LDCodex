@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LuoDaBridge — Admin Panel Server
  *
  * Serves the admin HTML files with server-side auth validation.
@@ -16,9 +16,9 @@ import crypto from "node:crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ADMIN_ROOT = path.resolve(__dirname, "..");
-const PORT = parseInt(process.env.ADMIN_PORT || "36002", 10);
-const CONFIG_PORT = parseInt(process.env.CONFIG_PORT || "36001", 10);
-const PROXY_PORT = parseInt(process.env.PROXY_PORT || "36000", 10);
+const PORT = parseInt(process.env.ADMIN_PORT || "37002", 10);
+const CONFIG_PORT = parseInt(process.env.CONFIG_PORT || "37001", 10);
+const PROXY_PORT = parseInt(process.env.PROXY_PORT || "37000", 10);
 const CONFIG_HOST = "127.0.0.1";
 
 // ─── Session Store (in-memory) ──────────────────────────────
@@ -93,6 +93,10 @@ const server = http.createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  // ★ 禁止浏览器缓存页面，确保每次刷新都拿到最新内容
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     return res.end();
@@ -166,17 +170,17 @@ const server = http.createServer((req, res) => {
     fetch(`http://127.0.0.1:${CONFIG_PORT}/api/fallback/abnormal`)
       .then(r => r.json())
       .then(data => {
-        const list = data.abnormalModels || [];
+        const list = data.list || [];
         if (list.length === 0) {
           res.writeHead(200, { "Content-Type": "application/json" });
           return res.end(JSON.stringify({ ok: true, restored: 0 }));
         }
-        // Restore each abnormal model
+        // Restore each abnormal model via abnormal=false toggle
         Promise.all(list.map(key =>
-          fetch(`http://127.0.0.1:${CONFIG_PORT}/api/fallback/abnormal/restore`, {
+          fetch(`http://127.0.0.1:${CONFIG_PORT}/api/fallback/abnormal`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ key })
+            body: JSON.stringify({ key, abnormal: false })
           })
         )).then(() => {
           res.writeHead(200, { "Content-Type": "application/json" });
@@ -221,7 +225,9 @@ function notifyTokenClients(data) {
 
   // ── Token Log API (proxy to proxy server for raw granular data) ──
   if (pathname === "/api/tokens/log" && req.method === "GET") {
-    http.get(`http://127.0.0.1:${PROXY_PORT}/api/tokens/log`, (res2) => {
+    // 透传 query string 参数（如 ?since=xxx）
+    var qs = req.url.indexOf('?') >= 0 ? req.url.substring(req.url.indexOf('?')) : '';
+    http.get(`http://127.0.0.1:${PROXY_PORT}/api/tokens/log${qs}`, (res2) => {
       let d = "";
       res2.on("data", (c) => d += c);
       res2.on("end", () => {
@@ -531,7 +537,7 @@ function notifyTokenClients(data) {
     if (session) authenticated = true;
 
     // If not authenticated and not requesting login page, redirect to login
-    if (!authenticated && !isLoginPage && !pathname.startsWith("/shared/") && !pathname.startsWith("/favicon")) {
+    if (!authenticated && !isLoginPage && !pathname.startsWith("/shared/") && !pathname.startsWith("/assets/") && !pathname.startsWith("/favicon")) {
       // Serve login.html instead
       serveStatic(res, path.join(ADMIN_ROOT, "login.html"));
       return;
@@ -759,4 +765,3 @@ export { pushTokenUsage };
 export default function startAdminServer() {
   return server;
 }
-

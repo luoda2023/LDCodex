@@ -2,7 +2,7 @@
  * LuoDaBridge v3 — Entry Point
  *
  * Starts all services:
- *   Main proxy server (port 36000)
+ *   Main proxy server (port 37000)
  *   Config API server (port 37001)
  *
  * Usage:
@@ -31,6 +31,34 @@ import { startConfigServer } from "./lib/config-api.mjs";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import net from "node:net";
+import { execSync } from "node:child_process";
+
+/**
+ * ★ 启动前检查目标端口并在被占用时自动清理，彻底杜绝 EADDRINUSE
+ *   使用 fuser -k（Linux）逐端口清理。
+ *   只杀其他进程，不杀自己（避免新进程启动后 fuser -k 自杀）。
+ */
+function cleanupPorts() {
+  const myPid = process.pid;
+  const ports = [...new Set([PORTS.proxy, PORTS.config, PORTS.admin, 40000, 40001, 40002, 37000, 37001, 37002])];
+  for (const p of ports) {
+    try {
+      // 先查谁是端口主人，跳过自己
+      const result = execSync(`fuser ${p}/tcp 2>/dev/null`, { encoding: "utf8", timeout: 3000 });
+      const pidStr = (result || "").trim();
+      if (pidStr) {
+        const pids = pidStr.split(/\s+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n) && n !== myPid);
+        if (pids.length > 0) {
+          execSync(`kill -9 ${pids.join(" ")} 2>/dev/null`, { stdio: "ignore", timeout: 3000 });
+        }
+      }
+    } catch (e) {
+      // fuser 退出码 1 = 端口未被占用，正常；其他错误静默
+    }
+  }
+  try { execSync("sleep 1", { stdio: "ignore", timeout: 2000 }); } catch (e) {}
+}
 
 const BANNER = `
 ╔══════════════════════════════════════════╗
@@ -40,6 +68,9 @@ const BANNER = `
 `;
 
 console.log(BANNER);
+
+// ★ 启动前清理旧进程占用的端口，防止 EADDRINUSE
+cleanupPorts();
 
 // ── Register providers ──
 log.info("[boot] registering providers...");
@@ -67,9 +98,8 @@ try {
   log.warn(`[boot] builtin overrides load skipped: ${e.message}`);
 }
 
-// ── Initialize modules ──
+// ── Initialize modules (fallback AFTER SQLite config is loaded) ──
 log.info("[boot] initializing fallback...");
-initFallback();
 
 log.info("[boot] initializing health checks...");
 initHealthCheck((abnormal) => {
@@ -101,15 +131,30 @@ try {
 }
 
 // ── Initialize SQLite config store ──
-import("./lib/config-store.mjs").then(function(store) {
+// ── Initialize SQLite config store — 必须先于 startProxyServer，确保全局函数就绪
+var _storePromise = import("./lib/config-store.mjs").then(function(store) {
   store.initDB();
+  // 注册 provider token 累计函数（供 server.mjs 全局调用）
+  if (typeof store.accumulateProviderToken === 'function') {
+    global.__accumulateProviderToken = store.accumulateProviderToken;
+    log.info("[boot] __accumulateProviderToken registered");
+  }
+  // ★ SQLite 数据已合并到 CONFIG_PROXY（config.mjs 中的 _initPromise.then）
+  // ★ SQLite 数据已合并到 CONFIG_PROXY（config.mjs 中的 _initPromise.then）
+  //   此时调用 initFallback 确保读取到正确的 single_model_codex 等配置
+  initFallback();
   log.info("[boot] SQLite config store ready");
 }).catch(function(e) {
   log.warn("[boot] SQLite init: " + e.message);
+  // SQLite 失败时降级：用文件配置初始化 fallback
+  initFallback();
 });
 
-// ── Start servers ──
+// ── Start servers — wait for SQLite config store to be ready first
 log.info("[boot] starting servers...");
+
+// await 确保 __accumulateProviderToken 全局函数在 proxy 启动前已就位
+await _storePromise;
 
 const proxyServer = startProxyServer();
 const configServer = startConfigServer();

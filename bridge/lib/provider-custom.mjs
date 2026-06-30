@@ -28,9 +28,14 @@ export function createCustomProvider(entry) {
     models,
     idx: typeof entry.idx === "number" ? entry.idx : 0,
     isBuiltin: false,
+    // Protocol: "openai" (default, sends to /chat/completions), "anthropic" (sends to /v1/messages)
+    protocol: entry.protocol || "openai",
     // Tool format: "tools" (default), "functions" (deprecated), or "none"
     // Controls how tool definitions are sent to this provider
     tool_format: entry.tool_format || "tools",
+    // strip_params: true → 发送前移除不兼容参数（presence_penalty, tool_choice 等）
+    // 部分 API 遇到不认识的参数直接拒收
+    strip_params: entry.strip_params === true,
 
     async handler(ctx, req, body) {
       return proxyFetch(this.base, this.key, ctx, req, body);

@@ -48,13 +48,6 @@ export function initDB() {
     updated_at INTEGER NOT NULL DEFAULT 0
   )`);
 
-  // Create provider_tokens table (按模型统计token使用量)
-  _db.exec(`CREATE TABLE IF NOT EXISTS provider_tokens (
-    provider TEXT PRIMARY KEY,
-    tokens INTEGER NOT NULL DEFAULT 0
-  )`);
-
-  // ★ token_daily — 每日累计数据（替代 tokens.json 的 labels/neizhi/codex/hermes）
   _db.exec(`CREATE TABLE IF NOT EXISTS token_daily (
     date TEXT PRIMARY KEY,
     neizhi INTEGER NOT NULL DEFAULT 0,
@@ -100,6 +93,28 @@ export function loadConfig() {
     }
   } catch (e) {
     log.warn("[config-store] load failed: " + e.message);
+  }
+  return null;
+}
+
+/**
+ * 获取视觉模型配置（从 SQLite 读取）
+ * @returns {{ visionModel: string, visionBase: string, visionKey: string, visionEnabled: boolean } | null}
+ */
+export function getVisionModelConfig() {
+  try {
+    const db = _db || initDB();
+    const row = db.prepare("SELECT data FROM config WHERE id = 1").get();
+    if (row && row.data) {
+      const config = JSON.parse(row.data);
+      const visionModel = config.vision_model || "";
+      const visionBase = config.vision_base || "";
+      const visionKey = config.vision_key || "";
+      const visionEnabled = !!(visionModel && visionBase && visionKey);
+      return { visionModel, visionBase, visionKey, visionEnabled };
+    }
+  } catch (e) {
+    log.warn("[config-store] getVisionModelConfig failed: " + e.message);
   }
   return null;
 }
@@ -212,6 +227,12 @@ function migrateFromJSON() {
 function getAdminDb() {
   if (!_adminDb) {
     _adminDb = new DatabaseSync(ADMIN_DB_PATH);
+    // ★ provider_tokens — 按 provider 累计 token（由 server.mjs 的 recordTokenUsage 写入）
+    _adminDb.exec(`CREATE TABLE IF NOT EXISTS provider_tokens (
+      provider_name TEXT PRIMARY KEY,
+      total_tokens INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL DEFAULT 0
+    )`);
     _adminDb.exec("PRAGMA journal_mode=WAL");
     _adminDb.exec("PRAGMA synchronous=NORMAL");
   }
@@ -298,6 +319,29 @@ export function saveProviderToken(name, tokens) {
 }
 
 /**
+ * Increment a provider's cumulative token count by delta.
+ * Unlike saveProviderToken(), this ADDS to the existing total.
+ */
+export function accumulateProviderToken(name, delta) {
+  try {
+    if (!name || delta <= 0) return false;
+    // ★ 统一转小写，避免 ST44 / st44 大小写重复
+    const key = name.trim().toLowerCase();
+    const db = getAdminDb();
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO provider_tokens (provider_name, total_tokens, updated_at) VALUES (?, ?, ?) " +
+      "ON CONFLICT(provider_name) DO UPDATE SET " +
+      "total_tokens = total_tokens + excluded.total_tokens, updated_at = excluded.updated_at"
+    ).run(key, delta, now);
+    return true;
+  } catch (e) {
+    log.warn("[config-store] accumulateProviderToken failed: " + e.message);
+    return false;
+  }
+}
+
+/**
  * Convenience: get all provider token counts.
  * Returns { "providerName": totalTokens, ... }
  */
@@ -311,9 +355,9 @@ export function getAllProviderTokens() {
  */
 export function getProviderToken(name) {
   try {
-    const db = _db || initDB();
-    const row = db.prepare("SELECT tokens FROM provider_tokens WHERE provider = ?").get(name);
-    return (row && row.tokens) || 0;
+    const db = getAdminDb();
+    const row = db.prepare("SELECT total_tokens FROM provider_tokens WHERE provider_name = ?").get(name);
+    return (row && row.total_tokens) || 0;
   } catch (e) {
     log.warn("[config-store] getProviderToken failed: " + e.message);
     return 0;
