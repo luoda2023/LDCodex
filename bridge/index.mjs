@@ -41,7 +41,7 @@ import { execSync } from "node:child_process";
  */
 function cleanupPorts() {
   const myPid = process.pid;
-  const ports = [...new Set([PORTS.proxy, PORTS.config, PORTS.admin, 40005, 40006, 40007])];
+  const ports = [...new Set([PORTS.proxy, PORTS.config, 40005, 40006])];
   for (const p of ports) {
     try {
       // 先查谁是端口主人，跳过自己

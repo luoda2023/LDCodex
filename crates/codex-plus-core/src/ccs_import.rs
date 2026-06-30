@@ -256,10 +256,10 @@ fn build_config_toml(base_url: &str, api_key: &str, protocol: RelayProtocol) -> 
         RelayProtocol::ChatCompletions => "chat",
     };
     [
-        "model_provider = \"CodexPlusPlus\"".to_string(),
+        "model_provider = \"LDCodex\"".to_string(),
         String::new(),
-        "[model_providers.CodexPlusPlus]".to_string(),
-        "name = \"CodexPlusPlus\"".to_string(),
+        "[model_providers.LDCodex]".to_string(),
+        "name = \"LDCodex\"".to_string(),
         format!("wire_api = \"{wire_api}\""),
         "requires_openai_auth = true".to_string(),
         format!("base_url = \"{}\"", toml_string(base_url)),
