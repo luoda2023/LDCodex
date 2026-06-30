@@ -600,6 +600,9 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
+type Route = "overview" | "relay" | "mobileControl" | "sessions" | "context" | "enhance" | "proxy" | "maintenance" | "about" | "settings";
+type RouteItem = { id: Route; label: string; icon: LucideIcon; badge?: string };
+
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string }> = [
@@ -611,6 +614,7 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string
   { id: "enhance", label: "功能加强", icon: Hammer },
   { id: "proxy", label: "代理服务器", icon: ShieldCheck },
   { id: "about", label: "关于", icon: Info },
+  { id: "maintenance", label: "安装维护", icon: Wrench },
   { id: "settings", label: "设置", icon: Settings },
 ];
 
@@ -1972,6 +1976,12 @@ export function App() {
             />
           ) : null}
           {route === "about" ? <AboutScreen overview={overview} update={update} logs={logs} diagnostics={diagnostics} actions={actions} /> : null}
+          {route === "maintenance" ? (
+            <MaintenanceScreen
+              overview={overview}
+              actions={actions}
+            />
+          ) : null}
           {route === "settings" ? (
             <SettingsScreen settings={settings} theme={theme} form={settingsForm} onFormChange={setSettingsForm} actions={actions} />
           ) : null}
@@ -2761,196 +2771,138 @@ function EnhanceScreen({
   );
 }
 
-function ZedRemoteScreen({
-  projects,
-  form,
-  onFormChange,
+function StatusRow({ title, status = "unknown", path }: { title: string; status?: string; path?: string | null }) {
+  return (
+    <div className="status-row">
+      <span>{title}</span>
+      <Badge status={status} />
+      <code>{path || "未记录路径"}</code>
+    </div>
+  );
+}
+
+
+
+function MaintenanceScreen({
+  overview,
+  watcher,
+  settings,
+  launchForm,
+  onLaunchFormChange,
+  removeOwnedData,
+  onRemoveOwnedDataChange,
   actions,
 }: {
-  projects: ZedRemoteProjectsResult | null;
-  form: BackendSettings;
-  onFormChange: (value: BackendSettings) => void;
+  overview: OverviewResult | null;
+  watcher: WatcherResult | null;
+  settings: SettingsResult | null;
+  launchForm: { appPath: string; debugPort: string; helperPort: string };
+  onLaunchFormChange: (next: { appPath: string; debugPort: string; helperPort: string }) => void;
+  removeOwnedData: boolean;
+  onRemoveOwnedDataChange: (value: boolean) => void;
   actions: Actions;
 }) {
-  const allProjects = projects?.projects ?? [];
-  const currentProjects = allProjects.filter((project) => project.isCurrent);
-  const currentIds = new Set(currentProjects.map((project) => project.id));
-  const recentProjects = allProjects.filter((project) => !currentIds.has(project.id) && (project.source === "recent" || project.lastOpenedAtMs));
-  const recentIds = new Set(recentProjects.map((project) => project.id));
-  const discoveredProjects = allProjects.filter((project) => !currentIds.has(project.id) && !recentIds.has(project.id));
-  const copyUrl = async (project: ZedRemoteProject) => {
-    try {
-      await navigator.clipboard.writeText(project.url);
-      await actions.showMessage("Zed Remote URL", "ssh:// URL 已复制。", "ok");
-    } catch (error) {
-      await actions.showMessage("复制失败", stringifyError(error), "failed");
-    }
-  };
+  const savedCodexAppPath = settings?.settings.codexAppPath ?? "";
   return (
     <>
       <Panel>
+        <CardHead title="检查与修复" detail="检查入口、Codex 应用和 Watcher 状态" />
         <CardContent>
-          <div className="metric-list">
-            <Metric label="Current" value={String(currentProjects.length)} />
-            <Metric label="Recent" value={String(recentProjects.length)} />
-            <Metric label="Discovered" value={String(discoveredProjects.length)} />
+          <div className="status-table">
+            <StatusRow title="Codex 应用" status={overview?.codex_app.status} path={overview?.codex_app.path} />
+            <StatusRow title="静默启动入口" status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
+            <StatusRow title="管理控制台入口" status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
+            <StatusRow title="Watcher 自动接管" status={watcher?.enabled ? "ok" : "disabled"} path={watcher?.disabled_flag} />
           </div>
-          <div className="zed-remote-settings">
-            <Field label="默认打开策略">
-              <select
-                className="select-input"
-              >
-                <option value="addToFocusedWorkspace">加入当前工作区</option>
-                <option value="reuseWindow">复用窗口</option>
-                <option value="newWindow">新窗口</option>
-                <option value="default">Zed 默认行为</option>
-              </select>
-            </Field>
-            <label className="switch-row compact">
-              <input
-                type="checkbox"
+          <Toolbar>
+            <Button onClick={() => void actions.checkHealth()}>检查</Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>修复快捷方式</Button>
+            <Button variant="secondary" onClick={() => void actions.repairBackend()}>修复后端</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="入口管理" detail="快捷方式写入系统实际桌面位置，不使用写死桌面路径" />
+        <CardContent>
+          <label className="check-row">
+            <input checked={removeOwnedData} onChange={(event) => onRemoveOwnedDataChange(event.currentTarget.checked)} type="checkbox" />
+            <span>卸载时移除 LDCodex 托管数据</span>
+          </label>
+          <Toolbar>
+            <Button onClick={() => void actions.installEntrypoints()}>安装入口</Button>
+            <Button variant="secondary" onClick={() => void actions.uninstallEntrypoints()}>卸载入口</Button>
+            <Button variant="secondary" onClick={() => void actions.repairShortcuts()}>修复入口</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="自动接管" detail="Watcher 用于保持 LDCodex 接管状态" />
+        <CardContent>
+          <Toolbar>
+            <Button variant="secondary" onClick={() => void actions.installWatcher()}>安装 watcher</Button>
+            <Button variant="secondary" onClick={() => void actions.uninstallWatcher()}>移除 watcher</Button>
+            <Button variant="secondary" onClick={() => void actions.enableWatcher()}>启用</Button>
+            <Button variant="secondary" onClick={() => void actions.disableWatcher()}>禁用</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="Codex 应用路径" detail="免安装版或解包版只需要选择一次，之后静默启动会自动复用" />
+        <CardContent>
+          <div className="status-table">
+            <StatusRow title="保存路径" status={savedCodexAppPath ? "ok" : "not_checked"} path={savedCodexAppPath || null} />
+            <StatusRow title="当前识别" status={overview?.codex_app.status} path={overview?.codex_app.path} />
+          </div>
+          <Field label="保存的应用路径">
+            <Input
+              value={settings?.settings.codexAppPath ?? ""}
+              placeholder="选择 Codex.exe、Codex.app、app 目录或解包目录"
+              readOnly
+            />
+          </Field>
+          <Toolbar>
+            <Button onClick={() => void actions.chooseCodexAppPath("folder")}>选择应用目录</Button>
+            <Button variant="secondary" onClick={() => void actions.chooseCodexAppPath("file")}>选择 Codex.exe</Button>
+            <Button variant="secondary" onClick={() => void actions.clearCodexAppPath()}>清除保存路径</Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="手动启动" detail="应用路径留空时使用已保存路径；没有保存路径时使用自动探测" />
+        <CardContent>
+          <Field label="应用路径覆盖">
+            <Input
+              value={launchForm.appPath}
+              onChange={(event) => onLaunchFormChange({ ...launchForm, appPath: event.currentTarget.value })}
+              placeholder={savedCodexAppPath || "例如 C:\\Program Files\\WindowsApps\\OpenAI.Codex...\\app"}
+            />
+          </Field>
+          <div className="form-row">
+            <Field label="调试端口">
+              <Input
+                value={launchForm.debugPort}
+                onChange={(event) => onLaunchFormChange({ ...launchForm, debugPort: event.currentTarget.value })}
               />
-              <span>
-                <strong>记录最近打开</strong>
-                <small>保存到 LDCodex state，不改写 Zed settings。</small>
-              </span>
-            </label>
+            </Field>
+            <Field label="辅助端口">
+              <Input
+                value={launchForm.helperPort}
+                onChange={(event) => onLaunchFormChange({ ...launchForm, helperPort: event.currentTarget.value })}
+              />
+            </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.refreshZedRemoteProjects()}>
-              <RefreshCw className="h-4 w-4" />
-              刷新项目
-            </Button>
-            <Button variant="secondary" onClick={() => void actions.saveSettingsValue(form, false)}>
-              <Save className="h-4 w-4" />
-              保存策略
+            <Button onClick={() => void actions.launch()}>启动 LDCodex</Button>
+            <Button variant="secondary" onClick={() => void actions.saveManualCodexAppPath()}>
+              保存为默认路径
             </Button>
           </Toolbar>
-        </CardContent>
-      </Panel>
-      <ZedRemoteProjectSection title="Current" projects={currentProjects} actions={actions} onCopyUrl={copyUrl} />
-      <ZedRemoteProjectSection title="Recent" projects={recentProjects} actions={actions} onCopyUrl={copyUrl} />
-      <ZedRemoteProjectSection title="Discovered from Codex" projects={discoveredProjects} actions={actions} onCopyUrl={copyUrl} />
-    </>
-  );
-}
-
-function ZedRemoteProjectSection({
-  title,
-  projects,
-  actions,
-  onCopyUrl,
-}: {
-  title: string;
-  projects: ZedRemoteProject[];
-  actions: Actions;
-  onCopyUrl: (project: ZedRemoteProject) => Promise<void>;
-}) {
-  return (
-    <Panel>
-      <CardHead title={title} detail={`${projects.length} 个项目`} />
-      <CardContent>
-        {projects.length ? (
-          <div className="zed-remote-project-list">
-            {projects.map((project) => (
-              <div className="zed-remote-project-row" key={project.id}>
-                <div className="zed-remote-project-main">
-                  <div>
-                    <strong>{project.label}</strong>
-                  </div>
-                  <code>{project.path}</code>
-                  <small>
-                    {project.lastOpenedAtMs ? ` · ${formatTime(project.lastOpenedAtMs)}` : ""}
-                  </small>
-                </div>
-                <div className="zed-remote-project-actions">
-                  <Button onClick={() => void actions.openZedRemoteProject(project, "addToFocusedWorkspace")} size="sm">
-                    <ExternalLink className="h-4 w-4" />
-                    加入当前工作区
-                  </Button>
-                  <Button onClick={() => void actions.openZedRemoteProject(project, "reuseWindow")} size="sm" variant="outline">
-                    复用窗口
-                  </Button>
-                  <Button onClick={() => void actions.openZedRemoteProject(project, "newWindow")} size="sm" variant="outline">
-                    新窗口
-                  </Button>
-                  <Button onClick={() => void onCopyUrl(project)} size="icon" title="复制 ssh:// URL" variant="ghost">
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  {project.source === "recent" ? (
-                    <Button onClick={() => void actions.forgetZedRemoteProject(project)} size="icon" title="移除最近记录" variant="ghost">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="empty">暂无项目。</div>
-        )}
-      </CardContent>
-    </Panel>
-  );
-}
-
-function UserScriptsScreen({ settings, market, actions }: { settings: SettingsResult | null; market: ScriptMarketResult | null; actions: Actions }) {
-  const inventory = settings?.user_scripts;
-  const scripts = inventory?.scripts ?? [];
-  const marketScripts = market?.market.scripts ?? [];
-  const installedCount = marketScripts.filter((script) => script.installed).length;
-  return (
-    <>
-      <Panel>
-        <CardHead title="脚本市场" detail={`${marketScripts.length} 个市场脚本，已安装 ${installedCount} 个，本地整体 ${inventory?.enabled === false ? "关闭" : "开启"}`} />
-        <CardContent>
-          <div className="metric-list">
-            <Metric label="市场状态" value={market?.market.message ?? "尚未刷新"} />
-            <Metric label="远程脚本" value={`${marketScripts.length} 个`} />
-            <Metric label="已安装" value={`${installedCount} 个`} />
-            <Metric label="本地整体" value={inventory?.enabled === false ? "关闭" : "开启"} />
-          </div>
-          <Toolbar>
-            <Button onClick={() => void actions.refreshScriptMarket()}>
-              <RefreshCw className="h-4 w-4" />
-              刷新市场
-            </Button>
-            <Button onClick={() => void actions.openExternalUrl(SCRIPT_MARKET_REPOSITORY_URL)} variant="secondary">
-              <ExternalLink className="h-4 w-4" />
-              投稿
-            </Button>
-            <Button onClick={() => void actions.refreshCurrent()} variant="secondary">
-              <RefreshCw className="h-4 w-4" />
-              刷新本地
-            </Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="市场脚本" detail={market?.market.updatedAt ? `清单更新时间：${market.market.updatedAt}` : "从 GitHub 静态清单加载"} />
-        <CardContent>
-          {marketScripts.length ? (
-            <div className="script-market-grid">
-              {marketScripts.map((script) => (
-                <MarketScriptCard key={script.id} script={script} actions={actions} />
-              ))}
-            </div>
-          ) : (
-            <div className="empty">{market?.status === "failed" ? market.message : "点击刷新市场加载远程脚本。"}</div>
-          )}
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="本地脚本" detail="内置、手动和市场安装脚本；可在这里启停或删除用户脚本" />
-        <CardContent>
-          <div className="table">
-            {scripts.length ? scripts.map((script) => <ScriptRow key={script.key} script={script} actions={actions} />) : <div className="empty">未发现用户脚本。</div>}
-          </div>
         </CardContent>
       </Panel>
     </>
   );
 }
+
 
 function SessionsScreen({
   settings,
