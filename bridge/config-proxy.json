@@ -3,12 +3,8 @@
   "cond_switch_enabled": true,
   "builtin_reset_minutes": 5,
   "max_provider_use_minutes": 96,
-  "disabled_builtins": [
-    "mimo",
-    "deepseek",
-    "openai"
-  ],
-  "config_source_marker": "J_DRIVE_CONFIG",
+  "disabled_builtins": [],
+  "config_source_marker": "LDCODEX_CLEAN",
   "hermes_virtual_model_id": "hermesAPI",
   "_chainPositionMigration": true,
   "virtual_model_id": "auto",

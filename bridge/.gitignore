@@ -1,1 +1,9 @@
-﻿node_modules/data/*.dbdata/*.db-shmdata/*.db-wal
+# Runtime databases (SQLite) — auto-created on first run
+data/*.db
+data/*.db-wal
+data/*.db-shm
+# Runtime JSON data files — auto-created from clean state
+data/*.json
+# Temp / log files
+*.log
+*.txt
