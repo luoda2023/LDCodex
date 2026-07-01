@@ -84,6 +84,10 @@ jobs:
           Get-ChildItem -Path $extractPath -Recurse -File | ForEach-Object { Write-Host "  $($_.Length) bytes $($_.Name)" }
           # ★ 复制 bridge 目录
           Copy-Item -Recurse -Force bridge dist/windows/app/bridge/
+          # ★ 安装 bridge 依赖（https-proxy-agent）到目标目录
+          Push-Location dist/windows/app/bridge
+          npm install --production
+          Pop-Location
 
       - name: Build Windows installer
         shell: pwsh
