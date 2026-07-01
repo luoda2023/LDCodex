@@ -759,6 +759,72 @@ impl LaunchHooks for DefaultLaunchHooks {
             } => {}
         }
     }
+
+    // ★ Bridge 独立进程管理（Node.js portable runtime 启动 LuoDaBridge）
+    async fn start_bridge_process(&self) -> anyhow::Result<()> {
+        let bridge_index = bridge_index_path();
+        if !bridge_index.is_file() {
+            anyhow::bail!("Bridge entry not found at {}", bridge_index.display());
+        }
+
+        // Resolve node.exe (system PATH → cached → download)
+        let node_exe = self.resolve_node_exe().await?;
+
+        let mut child = Command::new(&node_exe);
+        child
+            .arg(&bridge_index)
+            .current_dir(bridge_dir())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit());
+        #[cfg(windows)]
+        {
+            child.creation_flags(crate::windows_integration::CREATE_NO_WINDOW);
+        }
+        let spawned = child.spawn().with_context(|| {
+            format!(
+                "failed to spawn bridge process: {} {}",
+                node_exe.display(),
+                bridge_index.display()
+            )
+        })?;
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "launcher.bridge_process_started",
+            serde_json::json!({
+                "node": node_exe.to_string_lossy(),
+                "bridge": bridge_index.to_string_lossy(),
+                "pid": spawned.id(),
+            }),
+        );
+        *self.bridge_process.lock().await = Some(spawned);
+        Ok(())
+    }
+
+    async fn shutdown_bridge_process(&self) {
+        let mut guard = self.bridge_process.lock().await;
+        if let Some(mut child) = guard.take() {
+            let _ = child.kill().await;
+            let _ = child.wait().await;
+        }
+    }
+
+    async fn wait_for_bridge_port(&self, port: u16, timeout: Duration) -> anyhow::Result<()> {
+        use std::net::TcpStream;
+        let start = std::time::Instant::now();
+        loop {
+            if TcpStream::connect_timeout(
+                &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+                Duration::from_millis(200),
+            )
+            .is_ok()
+            {
+                return Ok(());
+            }
+            if start.elapsed() > timeout {
+                anyhow::bail!("bridge port {} not ready after {:?}", port, timeout);
+            }
+            tokio::time::sleep(Duration::from_millis(300)).await;
+        }
+    }
 }
 
 impl DefaultLaunchHooks {
@@ -862,73 +928,6 @@ impl DefaultLaunchHooks {
     }
 }
 
-#[async_trait(?Send)]
-impl LaunchHooks for DefaultLaunchHooks {
-    async fn start_bridge_process(&self) -> anyhow::Result<()> {
-        let bridge_index = bridge_index_path();
-        if !bridge_index.is_file() {
-            anyhow::bail!("Bridge entry not found at {}", bridge_index.display());
-        }
-
-        // Resolve node.exe (system PATH → cached → download)
-        let node_exe = self.resolve_node_exe().await?;
-
-        let mut child = Command::new(&node_exe);
-        child
-            .arg(&bridge_index)
-            .current_dir(bridge_dir())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit());
-        #[cfg(windows)]
-        {
-            child.creation_flags(crate::windows_integration::CREATE_NO_WINDOW);
-        }
-        let spawned = child.spawn().with_context(|| {
-            format!(
-                "failed to spawn bridge process: {} {}",
-                node_exe.display(),
-                bridge_index.display()
-            )
-        })?;
-        let _ = crate::diagnostic_log::append_diagnostic_log(
-            "launcher.bridge_process_started",
-            serde_json::json!({
-                "node": node_exe.to_string_lossy(),
-                "bridge": bridge_index.to_string_lossy(),
-                "pid": spawned.id(),
-            }),
-        );
-        *self.bridge_process.lock().await = Some(spawned);
-        Ok(())
-    }
-
-    async fn shutdown_bridge_process(&self) {
-        let mut guard = self.bridge_process.lock().await;
-        if let Some(mut child) = guard.take() {
-            let _ = child.kill().await;
-            let _ = child.wait().await;
-        }
-    }
-
-    async fn wait_for_bridge_port(&self, port: u16, timeout: Duration) -> anyhow::Result<()> {
-        use std::net::TcpStream;
-        let start = std::time::Instant::now();
-        loop {
-            if TcpStream::connect_timeout(
-                &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
-                Duration::from_millis(200),
-            )
-            .is_ok()
-            {
-                return Ok(());
-            }
-            if start.elapsed() > timeout {
-                anyhow::bail!("bridge port {} not ready after {:?}", port, timeout);
-            }
-            tokio::time::sleep(Duration::from_millis(300)).await;
-        }
-    }
-}
 
 async fn handle_helper_connection(
     mut stream: tokio::net::TcpStream,
