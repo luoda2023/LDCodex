@@ -40,10 +40,20 @@ jobs:
 
       - name: Stage Windows app files
         shell: pwsh
+        env:
+          NODEJS_VERSION: 22.16.0
         run: |
           New-Item -ItemType Directory -Force dist/windows/app | Out-Null
           Copy-Item target/release/ldcodex.exe dist/windows/app/
           Copy-Item target/release/ldcodex-manager.exe dist/windows/app/
+          # ★ 下载 Node.js 便携版
+          $nodeUrl = "https://nodejs.org/dist/v${{ env.NODEJS_VERSION }}/node-v${{ env.NODEJS_VERSION }}-win-x64.zip"
+          Write-Host "Downloading Node.js portable from $nodeUrl"
+          Invoke-WebRequest -Uri $nodeUrl -OutFile nodejs-portable.zip -UseBasicParsing
+          Expand-Archive -Path nodejs-portable.zip -DestinationPath dist/windows/app/node-portable -Force
+          Remove-Item nodejs-portable.zip
+          # ★ 复制 bridge 目录
+          Copy-Item -Recurse -Force bridge dist/windows/app/bridge/
 
       - name: Build Windows installer
         shell: pwsh

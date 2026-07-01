@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::Context;
 use async_trait::async_trait;
@@ -13,6 +13,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
+use crate::paths::{bridge_dir, bridge_env_path, bridge_index_path, node_exe_path};
 use crate::settings::{BackendSettings, SettingsStore, normalize_codex_extra_args};
 use crate::status::{LaunchStatus, StatusStore};
 
@@ -193,6 +194,20 @@ pub trait LaunchHooks: Send + Sync {
     ) -> anyhow::Result<()> {
         Ok(())
     }
+
+    // ★ Bridge 独立进程管理（Node.js portable runtime 启动 LuoDaBridge）
+    async fn start_bridge_process(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    async fn wait_for_bridge_port(
+        &self,
+        _port: u16,
+        _timeout: std::time::Duration,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     async fn start_computer_use_guard_watchdog(
         &self,
         _settings: &BackendSettings,
@@ -212,6 +227,7 @@ pub struct DefaultLaunchHooks {
     bridge_watchdog: Mutex<Option<BridgeWatchdogRuntime>>,
     computer_use_guard_watchdog: Mutex<Option<ComputerUseGuardWatchdogRuntime>>,
     computer_use_guard_artifacts: Mutex<Option<crate::computer_use_guard::GuardArtifacts>>,
+    bridge_process: Mutex<Option<Child>>,
 }
 
 struct HelperRuntime {
@@ -267,6 +283,15 @@ where
         if settings.enhancements_enabled || protocol_proxy_enabled {
             hooks.start_helper(helper_port).await?;
             helper_started = true;
+        }
+
+        // ★ 启动 bridge 进程（Node.js portable runtime + LuoDaBridge）
+        let mut bridge_started = false;
+        if settings.enhancements_enabled {
+            let _ = hooks.start_bridge_process().await;
+            bridge_started = true;
+            let _ = hooks.wait_for_bridge_port(40005, Duration::from_secs(15)).await;
+            let _ = hooks.wait_for_bridge_port(40006, Duration::from_secs(10)).await;
         }
 
         let launch = hooks
@@ -696,6 +721,7 @@ impl LaunchHooks for DefaultLaunchHooks {
             let _ = runtime.shutdown.send(());
             let _ = runtime.task.await;
         }
+        self.shutdown_bridge_process().await;
     }
 
     async fn terminate_codex(&self, launch: &CodexLaunch) {
@@ -729,6 +755,72 @@ impl LaunchHooks for DefaultLaunchHooks {
             CodexLaunch::PackagedActivation {
                 process_id: None, ..
             } => {}
+        }
+    }
+
+    async fn start_bridge_process(&self) -> anyhow::Result<()> {
+        let node_exe = node_exe_path();
+        let bridge_index = bridge_index_path();
+        if !node_exe.is_file() {
+            anyhow::bail!("Node.js portable runtime not found at {}", node_exe.display());
+        }
+        if !bridge_index.is_file() {
+            anyhow::bail!("Bridge entry not found at {}", bridge_index.display());
+        }
+
+        let mut child = Command::new(&node_exe);
+        child
+            .arg(&bridge_index)
+            .current_dir(bridge_dir())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit());
+        #[cfg(windows)]
+        {
+            child.creation_flags(crate::windows_integration::CREATE_NO_WINDOW);
+        }
+        let spawned = child.spawn().with_context(|| {
+            format!(
+                "failed to spawn bridge process: {} {}",
+                node_exe.display(),
+                bridge_index.display()
+            )
+        })?;
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "launcher.bridge_process_started",
+            serde_json::json!({
+                "node": node_exe.to_string_lossy(),
+                "bridge": bridge_index.to_string_lossy(),
+                "pid": spawned.id(),
+            }),
+        );
+        *self.bridge_process.lock().await = Some(spawned);
+        Ok(())
+    }
+
+    async fn shutdown_bridge_process(&self) {
+        let mut guard = self.bridge_process.lock().await;
+        if let Some(mut child) = guard.take() {
+            let _ = child.kill().await;
+            let _ = child.wait().await;
+        }
+    }
+
+    async fn wait_for_bridge_port(&self, port: u16, timeout: Duration) -> anyhow::Result<()> {
+        use std::net::TcpStream;
+        let start = std::time::Instant::now();
+        loop {
+            if TcpStream::connect_timeout(
+                &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+                Duration::from_millis(200),
+            )
+            .is_ok()
+            {
+                return Ok(());
+            }
+            if start.elapsed() > timeout {
+                anyhow::bail!("bridge port {} not ready after {:?}", port, timeout);
+            }
+            tokio::time::sleep(Duration::from_millis(300)).await;
         }
     }
 }

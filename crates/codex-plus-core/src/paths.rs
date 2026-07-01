@@ -6,6 +6,30 @@ const SETTINGS_FILE: &str = "settings.json";
 const LATEST_STATUS_FILE: &str = "latest-status.json";
 const DIAGNOSTIC_LOG_FILE: &str = "codex-plus.log";
 
+// ── Bridge / Node portable runtime paths ──
+pub fn bridge_dir() -> PathBuf {
+    exe_parent_dir().join("bridge")
+}
+
+pub fn node_exe_path() -> PathBuf {
+    exe_parent_dir().join("node-portable").join("node.exe")
+}
+
+pub fn bridge_index_path() -> PathBuf {
+    bridge_dir().join("index.mjs")
+}
+
+pub fn bridge_env_path() -> PathBuf {
+    bridge_dir().join(".env")
+}
+
+fn exe_parent_dir() -> PathBuf {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
 pub fn default_app_state_dir() -> PathBuf {
     if let Some(home_dir) = directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf()) {
         return home_dir.join(APP_STATE_DIR);

@@ -391,6 +391,19 @@ impl LaunchHooks for LauncherHooks {
         self.core.inject(debug_port, helper_port).await
     }
 
+    // ★ 委托 bridge 进程管理到 runtime service
+    async fn start_bridge_process(&self) -> anyhow::Result<()> {
+        self.runtime.start_bridge_process().await
+    }
+
+    async fn wait_for_bridge_port(
+        &self,
+        port: u16,
+        timeout: std::time::Duration,
+    ) -> anyhow::Result<()> {
+        self.runtime.wait_for_bridge_port(port, timeout).await
+    }
+
     async fn start_computer_use_guard_watchdog(
         &self,
         settings: &codex_plus_core::settings::BackendSettings,
@@ -681,6 +694,71 @@ impl BridgeRuntimeService for LauncherRuntimeService {
         Ok(codex_plus_core::upstream_worktree::create_response(
             &payload,
         ))
+    }
+}
+
+// ★ Bridge 进程管理（不通过 trait，直接操作 Node.js portable + bridge index.mjs）
+impl LauncherRuntimeService {
+    pub async fn start_bridge_process(&self) -> anyhow::Result<()> {
+        use std::process::Stdio;
+        let node_exe = codex_plus_core::paths::node_exe_path();
+        let bridge_index = codex_plus_core::paths::bridge_index_path();
+        if !node_exe.is_file() {
+            anyhow::bail!("Node.js portable runtime not found at {}", node_exe.display());
+        }
+        if !bridge_index.is_file() {
+            anyhow::bail!("Bridge entry not found at {}", bridge_index.display());
+        }
+
+        let mut child = std::process::Command::new(&node_exe);
+        child
+            .arg(&bridge_index)
+            .current_dir(codex_plus_core::paths::bridge_dir())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit());
+        #[cfg(windows)]
+        {
+            child.creation_flags(codex_plus_core::windows_integration::CREATE_NO_WINDOW);
+        }
+        let spawned = child.spawn().with_context(|| {
+            format!(
+                "failed to spawn bridge process: {} {}",
+                node_exe.display(),
+                bridge_index.display()
+            )
+        })?;
+        let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+            "launcher.bridge_process_started",
+            serde_json::json!({
+                "node": node_exe.to_string_lossy(),
+                "bridge": bridge_index.to_string_lossy(),
+                "pid": spawned.id(),
+            }),
+        );
+        Ok(())
+    }
+
+    pub async fn wait_for_bridge_port(
+        &self,
+        port: u16,
+        timeout: std::time::Duration,
+    ) -> anyhow::Result<()> {
+        use std::net::TcpStream;
+        let start = std::time::Instant::now();
+        loop {
+            if TcpStream::connect_timeout(
+                &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+                std::time::Duration::from_millis(200),
+            )
+            .is_ok()
+            {
+                return Ok(());
+            }
+            if start.elapsed() > timeout {
+                anyhow::bail!("bridge port {} not ready after {:?}", port, timeout);
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        }
     }
 }
 
