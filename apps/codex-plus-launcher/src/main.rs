@@ -697,18 +697,116 @@ impl BridgeRuntimeService for LauncherRuntimeService {
     }
 }
 
-// ★ Bridge 进程管理（不通过 trait，直接操作 Node.js portable + bridge index.mjs）
+// ★ Bridge 进程管理：自动检测系统 Node.js 或首次运行时下载
 impl LauncherRuntimeService {
+    /// 解析 node.exe 路径：系统 PATH → 缓存目录 → 自动下载
+    async fn resolve_node_exe() -> anyhow::Result<std::path::PathBuf> {
+        use tokio::process::Command;
+
+        // 1. Try system PATH
+        let which = if cfg!(windows) { "where" } else { "which" };
+        if let Ok(out) = Command::new(which).arg("node").output().await {
+            if out.status.success() {
+                let path_str = String::from_utf8_lossy(&out.stdout)
+                    .lines()
+                    .next()
+                    .map(|s| s.trim().to_string())
+                    .unwrap_or_default();
+                if !path_str.is_empty() {
+                    let p = std::path::PathBuf::from(&path_str);
+                    if p.is_file() {
+                        let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+                            "launcher.node_found_on_path",
+                            serde_json::json!({ "path": path_str }),
+                        );
+                        return Ok(p);
+                    }
+                }
+            }
+        }
+
+        // 2. Check app data cache
+        let cached = codex_plus_core::paths::node_exe_path();
+        if cached.is_file() {
+            return Ok(cached);
+        }
+
+        // 3. Download node.exe to app data dir
+        let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+            "launcher.node_download_start",
+            serde_json::json!({}),
+        );
+
+        let dir = codex_plus_core::paths::node_portable_dir();
+        std::fs::create_dir_all(&dir)
+            .with_context(|| format!("failed to create node dir: {}", dir.display()))?;
+
+        let node_url = "https://nodejs.org/dist/v22.16.0/win-x64/node.exe";
+        let download_path = dir.join("node.download.tmp");
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .context("failed to build HTTP client for node download")?;
+
+        let response = client
+            .get(node_url)
+            .send()
+            .await
+            .context("failed to download node.exe — check network connectivity")?
+            .error_for_status()
+            .context("node.exe download returned non-200 status")?;
+
+        let total_size = response.content_length().unwrap_or(0);
+        let mut downloaded: u64 = 0;
+        let mut stream = response.bytes_stream();
+        let mut file = tokio::fs::File::create(&download_path)
+            .await
+            .context("failed to create node download temp file")?;
+
+        use futures_util::TryStreamExt;
+        while let Some(chunk) = stream.try_next().await? {
+            let chunk_len = chunk.len() as u64;
+            downloaded += chunk_len;
+            if total_size > 0 && downloaded % (1024 * 1024) == 0 {
+                let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+                    "launcher.node_download_progress",
+                    serde_json::json!({
+                        "downloaded_mb": downloaded / (1024 * 1024),
+                        "total_mb": total_size / (1024 * 1024),
+                    }),
+                );
+            }
+            file.write_all(&chunk)
+                .await
+                .context("failed to write node.exe chunk")?;
+        }
+        file.flush().await?;
+        drop(file);
+
+        std::fs::rename(&download_path, &cached)
+            .with_context(|| format!("failed to rename node.exe: {} → {}", download_path.display(), cached.display()))?;
+
+        let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+            "launcher.node_download_complete",
+            serde_json::json!({
+                "path": cached.to_string_lossy(),
+                "size_mb": (downloaded as f64) / (1024.0 * 1024.0),
+            }),
+        );
+
+        Ok(cached)
+    }
+
     pub async fn start_bridge_process(&self) -> anyhow::Result<()> {
         use std::process::Stdio;
-        let node_exe = codex_plus_core::paths::node_exe_path();
         let bridge_index = codex_plus_core::paths::bridge_index_path();
-        if !node_exe.is_file() {
-            anyhow::bail!("Node.js portable runtime not found at {}", node_exe.display());
-        }
         if !bridge_index.is_file() {
             anyhow::bail!("Bridge entry not found at {}", bridge_index.display());
         }
+
+        // Resolve node.exe (auto-detect or download)
+        let node_exe = Self::resolve_node_exe().await?;
 
         let mut child = std::process::Command::new(&node_exe);
         child

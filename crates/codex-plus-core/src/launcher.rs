@@ -13,7 +13,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
-use crate::paths::{bridge_dir, bridge_index_path, node_exe_path};
+use crate::paths::{bridge_dir, bridge_index_path, node_exe_path, node_portable_dir};
 use crate::settings::{BackendSettings, SettingsStore, normalize_codex_extra_args};
 use crate::status::{LaunchStatus, StatusStore};
 
@@ -760,15 +760,113 @@ impl LaunchHooks for DefaultLaunchHooks {
         }
     }
 
-    async fn start_bridge_process(&self) -> anyhow::Result<()> {
-        let node_exe = node_exe_path();
-        let bridge_index = bridge_index_path();
-        if !node_exe.is_file() {
-            anyhow::bail!("Node.js portable runtime not found at {}", node_exe.display());
+    /// Find or download Node.js runtime.
+    /// Strategy: 1) system PATH → 2) cached in app data dir → 3) download
+    async fn resolve_node_exe(&self) -> anyhow::Result<PathBuf> {
+        // 1. Try system PATH first (fast path)
+        let which = if cfg!(windows) { "where" } else { "which" };
+        if let Ok(out) = Command::new(which).arg("node").output().await {
+            if out.status.success() {
+                let path_str = String::from_utf8_lossy(&out.stdout)
+                    .lines()
+                    .next()
+                    .map(|s| s.trim().to_string())
+                    .unwrap_or_default();
+                if !path_str.is_empty() {
+                    let p = PathBuf::from(&path_str);
+                    if p.is_file() {
+                        let _ = crate::diagnostic_log::append_diagnostic_log(
+                            "launcher.node_found_on_path",
+                            serde_json::json!({ "path": path_str }),
+                        );
+                        return Ok(p);
+                    }
+                }
+            }
         }
+
+        // 2. Check cached in app data dir
+        let cached = node_exe_path();
+        if cached.is_file() {
+            return Ok(cached);
+        }
+
+        // 3. Download Node.js to app data dir
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "launcher.node_download_start",
+            serde_json::json!({}),
+        );
+
+        let dir = node_portable_dir();
+        std::fs::create_dir_all(&dir)
+            .with_context(|| format!("failed to create node dir: {}", dir.display()))?;
+
+        let node_url = "https://nodejs.org/dist/v22.16.0/win-x64/node.exe";
+        let download_path = dir.join("node.download.tmp");
+
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(120))
+            .build()
+            .context("failed to build HTTP client for node download")?;
+
+        let response = client
+            .get(node_url)
+            .send()
+            .await
+            .context("failed to download node.exe — check network connectivity")?
+            .error_for_status()
+            .context("node.exe download returned non-200 status")?;
+
+        let total_size = response.content_length().unwrap_or(0);
+        let mut downloaded: u64 = 0;
+        let mut stream = response.bytes_stream();
+        let mut file = tokio::fs::File::create(&download_path)
+            .await
+            .context("failed to create node download temp file")?;
+
+        use futures_util::TryStreamExt;
+        while let Some(chunk) = stream.try_next().await? {
+            let chunk_len = chunk.len() as u64;
+            downloaded += chunk_len;
+            if total_size > 0 && downloaded % (1024 * 1024) == 0 {
+                let _ = crate::diagnostic_log::append_diagnostic_log(
+                    "launcher.node_download_progress",
+                    serde_json::json!({
+                        "downloaded_mb": downloaded / (1024 * 1024),
+                        "total_mb": total_size / (1024 * 1024),
+                    }),
+                );
+            }
+            file.write_all(&chunk)
+                .await
+                .context("failed to write node.exe chunk")?;
+        }
+        file.flush().await?;
+        drop(file);
+
+        // Rename temp → final
+        std::fs::rename(&download_path, &cached)
+            .with_context(|| format!("failed to rename node.exe download: {} → {}", download_path.display(), cached.display()))?;
+
+        let _ = crate::diagnostic_log::append_diagnostic_log(
+            "launcher.node_download_complete",
+            serde_json::json!({
+                "path": cached.to_string_lossy(),
+                "size_mb": (downloaded as f64) / (1024.0 * 1024.0),
+            }),
+        );
+
+        Ok(cached)
+    }
+
+    async fn start_bridge_process(&self) -> anyhow::Result<()> {
+        let bridge_index = bridge_index_path();
         if !bridge_index.is_file() {
             anyhow::bail!("Bridge entry not found at {}", bridge_index.display());
         }
+
+        // Resolve node.exe (system PATH → cached → download)
+        let node_exe = self.resolve_node_exe().await?;
 
         let mut child = Command::new(&node_exe);
         child

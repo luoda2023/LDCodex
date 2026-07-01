@@ -40,21 +40,11 @@ jobs:
 
       - name: Stage Windows app files
         shell: pwsh
-        env:
-          NODEJS_VERSION: 22.16.0
         run: |
           New-Item -ItemType Directory -Force dist/windows/app | Out-Null
           Copy-Item target/release/ldcodex.exe dist/windows/app/
           Copy-Item target/release/ldcodex-manager.exe dist/windows/app/
-          # ★ 下载 Node.js 运行时（单文件 exe，约 25MB）
-          #   只下载 node.exe 本身，不下载完整的便携包（含 npm/npx 等无用文件）
-          $nodeDir = "dist/windows/app/node-portable"
-          New-Item -ItemType Directory -Force $nodeDir | Out-Null
-          $nodeUrl = "https://nodejs.org/dist/v${{ env.NODEJS_VERSION }}/win-x64/node.exe"
-          Write-Host "Downloading node.exe from $nodeUrl"
-          Invoke-WebRequest -Uri $nodeUrl -OutFile "$nodeDir\node.exe" -UseBasicParsing
-          $nodeSize = (Get-Item "$nodeDir\node.exe").Length
-          Write-Host "node.exe downloaded: $([math]::Round($nodeSize/1MB, 2)) MB"
+          # ★ Node.js 不打包进安装包！launcher 首次运行时自动检测 / 下载
           # ★ 复制 bridge 目录
           Copy-Item -Recurse -Force bridge dist/windows/app/bridge/
           # ★ 安装 bridge 依赖（https-proxy-agent）到目标目录

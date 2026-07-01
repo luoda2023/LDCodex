@@ -46,15 +46,10 @@ Section "Install"
   CreateShortcut "$SMPROGRAMS\LDCodex\LDCodex 管理工具.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
   CreateShortcut "$SMPROGRAMS\LDCodex\卸载 LDCodex.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\ldcodex.exe"
 
-  # ★ 安装 Node.js 便携运行时（launcher 用它来启动 bridge 进程）
-  SetOutPath "$INSTDIR\node-portable"
-  File /r "${ROOT}\dist\windows\app\node-portable\*"
-  SetOutPath "$INSTDIR"
-
-  # ★ 安装 bridge 代理服务
-  SetOutPath "$INSTDIR\bridge"
-  File /r "${ROOT}\bridge\*"
-  SetOutPath "$INSTDIR"
+	  # ★ 安装 bridge 代理服务
+	  SetOutPath "$INSTDIR\bridge"
+	  File /r "${ROOT}\bridge\*"
+	  SetOutPath "$INSTDIR"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
   WriteRegStr HKCU "Software\LDCodex" "InstallDir" "$INSTDIR"

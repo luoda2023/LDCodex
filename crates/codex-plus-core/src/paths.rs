@@ -6,13 +6,23 @@ const SETTINGS_FILE: &str = "settings.json";
 const LATEST_STATUS_FILE: &str = "latest-status.json";
 const DIAGNOSTIC_LOG_FILE: &str = "codex-plus.log";
 
-// ── Bridge / Node portable runtime paths ──
-pub fn bridge_dir() -> PathBuf {
-    exe_parent_dir().join("bridge")
+// ── Node.js portable runtime ──
+// Node.exe is NOT bundled in the installer.  On first launch,
+// the launcher auto-detects system node or downloads it to app data.
+
+const NODE_DIR_NAME: &str = "node-portable";
+
+pub fn node_portable_dir() -> PathBuf {
+    app_data_dir().join(NODE_DIR_NAME)
 }
 
 pub fn node_exe_path() -> PathBuf {
-    exe_parent_dir().join("node-portable").join("node.exe")
+    node_portable_dir().join("node.exe")
+}
+
+// ── Bridge paths (bundled in installer, read-only) ──
+pub fn bridge_dir() -> PathBuf {
+    exe_parent_dir().join("bridge")
 }
 
 pub fn bridge_index_path() -> PathBuf {
@@ -28,6 +38,29 @@ fn exe_parent_dir() -> PathBuf {
         .ok()
         .and_then(|p| p.parent().map(PathBuf::from))
         .unwrap_or_else(|| PathBuf::from("."))
+}
+
+/// User-writable app data directory (for downloaded node.exe etc.)
+/// Windows: %LOCALAPPDATA%/LDCodex
+/// macOS/Linux: ~/.ldcodex
+pub fn app_data_dir() -> PathBuf {
+    #[cfg(windows)]
+    {
+        if let Ok(p) = std::env::var("LOCALAPPDATA") {
+            let dir = PathBuf::from(p).join("LDCodex");
+            let _ = std::fs::create_dir_all(&dir);
+            return dir;
+        }
+    }
+    if let Some(home_dir) = directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf()) {
+        let dir = home_dir.join(".ldcodex");
+        let _ = std::fs::create_dir_all(&dir);
+        return dir;
+    }
+
+    let dir = PathBuf::from(".ldcodex");
+    let _ = std::fs::create_dir_all(&dir);
+    dir
 }
 
 pub fn default_app_state_dir() -> PathBuf {
