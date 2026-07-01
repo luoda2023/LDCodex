@@ -128,5 +128,21 @@ sign_app "$STAGE/LDCodex 管理工具.app"
 verify_app "$STAGE/LDCodex.app"
 verify_app "$STAGE/LDCodex 管理工具.app"
 
-hdiutil create -volname "LDCodex" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+# 重试 DMG 创建，避免 hdiutil 偶发 Resource busy 失败
+create_dmg() {
+  local max_attempts=3
+  local attempt=1
+  while [ $attempt -le $max_attempts ]; do
+    if hdiutil create -volname "LDCodex" -srcfolder "$STAGE" -ov -format UDZO "$DMG"; then
+      return 0
+    fi
+    echo "hdiutil 创建 DMG 失败 (第 ${attempt}/${max_attempts} 次)，3 秒后重试..."
+    sleep 3
+    attempt=$((attempt + 1))
+  done
+  echo "error: hdiutil 创建 DMG 失败，已重试 ${max_attempts} 次" >&2
+  return 1
+}
+
+create_dmg
 echo "$DMG"
