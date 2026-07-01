@@ -389,9 +389,6 @@ export function startProxyServer() {
             // ★ 始终执行：额度耗尽检测 + 链切换（即使 headers 已发送）
             var _errStrAll = JSON.stringify(result).toLowerCase();
             var _quotaStatus = _hasStatus ? result.status : 0;
-            // ★ 严格区分：429 + "quota_exceeded_error" / "rpm exhausted" 不是额度用完，是限流！
-            //   只有明确表示"配额/额度/余额/token 用完/耗尽"才切换
-            //   限流（rpm/tps/too many requests/rate limit）不切换
             var _errMsg = '';
             var _errType = '';
             try {
@@ -400,10 +397,12 @@ export function startProxyServer() {
               _errType = _e.type || '';
             } catch(e) {}
             var _msgLc = (_errMsg + ' ' + _errType).toLowerCase();
-            // ★ 额度用完→切下一个模型。不限流/健康检查那些不管
+            // ★ 严格判断"额度用完"：只有明确表示配额/余额耗尽才切换
+            //   状态码 402 = Payment Required → 额度用完
+            //   状态码 429 = Rate Limited → 不切换，原地重试
             var _isQuotaExhausted = _quotaStatus === 402 ||
-              /quota|exhausted|insufficient|rpm.*exhaust|token.*exhaust|credit.*exhaust/i.test(_msgLc) ||
-              /无余额|额度.*用完|额度.*耗尽|token.*用完|token.*耗尽|超出限制/i.test(_errMsg);
+              /(?:quota|credit|token).*(?:exhausted|insufficient)|insufficient.*(?:quota|balance|credit)/i.test(_msgLc) ||
+              /余额不足|额度.*用完|额度.*耗尽|配额不足/i.test(_errMsg);
 
             if (_isQuotaExhausted) {
               try {

@@ -1,5 +1,0 @@
-[builtin] No built-in providers configured (check .env API keys)
-[boot] admin panel warning: startAdminServer is not a function
-[boot] uncaught exception: listen EADDRINUSE: address already in use :::37000
-[config-api] port 37001 is already in use, config API unavailable
-[config-api] proxy and admin panel will still work, but config changes won't be saved

@@ -1,6 +1,0 @@
-L252:     // ���� MS Store �汾���?
-L256:     // �� MS Store ��װ: �� package.json ��ȡ
-L284:     // MS Store ��װ: ��Ŀ¼�� OpenAI.Codex_version_xxx ����ȡ
-L300:     // 非MS Store安装: 先尝试从 package.json 获取版本号
-L317:     // Windows回退: 从 Codex.exe 读取文件版本信息 (通过 PowerShell)
-L337:     // 直接使用 Windows API 读取 EXE 文件版本信息

@@ -344,7 +344,7 @@ export function startProxyServer() {
               });
             }
 
-            const isQuota = result.status === 429 || result.status === 402 ||
+            const isQuota = result.status === 402 ||
               (result.data && result.data.error && (
                 result.data.error.code === 'insufficient_balance' ||
                 /(?:quota|credit).*(?:exhausted|insufficient)|insufficient.*balance/i.test(
