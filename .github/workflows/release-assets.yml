@@ -46,42 +46,15 @@ jobs:
           New-Item -ItemType Directory -Force dist/windows/app | Out-Null
           Copy-Item target/release/ldcodex.exe dist/windows/app/
           Copy-Item target/release/ldcodex-manager.exe dist/windows/app/
-          # ★ 下载 Node.js 便携版
-          $nodeUrl = "https://nodejs.org/dist/v${{ env.NODEJS_VERSION }}/node-v${{ env.NODEJS_VERSION }}-win-x64.zip"
-          Write-Host "Downloading Node.js portable from $nodeUrl"
-          $zipPath = "$env:TEMP\nodejs-portable.zip"
-          Invoke-WebRequest -Uri $nodeUrl -OutFile $zipPath -UseBasicParsing
-          $extractPath = "dist/windows/app/node-portable"
-          Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
-          Remove-Item $zipPath
-          # ★ 精简 Node.js 便携版：只保留 node.exe 和 DLL
-          #   bridge 只需要 Node.js 运行时，不需要 npm/npx/文档/头文件
-          $nodeRoot = Get-ChildItem -Path $extractPath -Directory | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $nodeRoot) { $nodeRoot = $extractPath }
-          Write-Host "Node.js extracted to: $nodeRoot"
-          # 列出所有文件以便调试
-          Get-ChildItem -Path $nodeRoot -Recurse -File | ForEach-Object { Write-Host "  $($_.Length) $($_.FullName)" }
-          # ★ 删除不需要的文件和目录
-          $removeDirs = @("node_modules", "include", "lib")
-          foreach ($d in $removeDirs) {
-            $p = Join-Path $nodeRoot $d
-            if (Test-Path $p) { Remove-Item -Recurse -Force $p; Write-Host "Deleted: $p" }
-          }
-          # 删除脚本/文档文件
-          $removeFiles = @("npm", "npm.cmd", "npx", "npx.cmd", "corepack", "corepack.cmd",
-                           "CHANGELOG.md", "LICENSE", "README.md", "node_etw_provider.man")
-          foreach ($f in $removeFiles) {
-            $p = Join-Path $nodeRoot $f
-            if (Test-Path $p) { Remove-Item -Force $p; Write-Host "Deleted: $p" }
-          }
-          # ★ 如果有子目录，将文件上移一层（修复 Expand-Archive 创建二级目录的问题）
-          $subDir = Get-ChildItem -Path $extractPath -Directory | Select-Object -First 1
-          if ($subDir -and $subDir.FullName -ne $extractPath) {
-            Get-ChildItem -Path $subDir.FullName | Move-Item -Destination $extractPath -Force
-            Remove-Item -Recurse -Force $subDir.FullName
-          }
-          Write-Host "Trimmed node-portable files:"
-          Get-ChildItem -Path $extractPath -Recurse -File | ForEach-Object { Write-Host "  $($_.Length) bytes $($_.Name)" }
+          # ★ 下载 Node.js 运行时（单文件 exe，约 25MB）
+          #   只下载 node.exe 本身，不下载完整的便携包（含 npm/npx 等无用文件）
+          $nodeDir = "dist/windows/app/node-portable"
+          New-Item -ItemType Directory -Force $nodeDir | Out-Null
+          $nodeUrl = "https://nodejs.org/dist/v${{ env.NODEJS_VERSION }}/win-x64/node.exe"
+          Write-Host "Downloading node.exe from $nodeUrl"
+          Invoke-WebRequest -Uri $nodeUrl -OutFile "$nodeDir\node.exe" -UseBasicParsing
+          $nodeSize = (Get-Item "$nodeDir\node.exe").Length
+          Write-Host "node.exe downloaded: $([math]::Round($nodeSize/1MB, 2)) MB"
           # ★ 复制 bridge 目录
           Copy-Item -Recurse -Force bridge dist/windows/app/bridge/
           # ★ 安装 bridge 依赖（https-proxy-agent）到目标目录
