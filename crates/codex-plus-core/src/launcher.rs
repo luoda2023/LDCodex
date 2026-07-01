@@ -759,7 +759,9 @@ impl LaunchHooks for DefaultLaunchHooks {
             } => {}
         }
     }
+}
 
+impl DefaultLaunchHooks {
     /// Find or download Node.js runtime.
     /// Strategy: 1) system PATH → 2) cached in app data dir → 3) download
     async fn resolve_node_exe(&self) -> anyhow::Result<PathBuf> {
@@ -858,7 +860,10 @@ impl LaunchHooks for DefaultLaunchHooks {
 
         Ok(cached)
     }
+}
 
+#[async_trait(?Send)]
+impl LaunchHooks for DefaultLaunchHooks {
     async fn start_bridge_process(&self) -> anyhow::Result<()> {
         let bridge_index = bridge_index_path();
         if !bridge_index.is_file() {
