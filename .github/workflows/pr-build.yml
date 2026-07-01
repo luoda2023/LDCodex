@@ -61,9 +61,37 @@ jobs:
           # ★ 下载 Node.js 便携版（launcher 用它来启动 bridge 进程）
           $nodeUrl = "https://nodejs.org/dist/v${{ env.NODEJS_VERSION }}/node-v${{ env.NODEJS_VERSION }}-win-x64.zip"
           Write-Host "Downloading Node.js portable from $nodeUrl"
-          Invoke-WebRequest -Uri $nodeUrl -OutFile nodejs-portable.zip -UseBasicParsing
-          Expand-Archive -Path nodejs-portable.zip -DestinationPath dist/windows/app/node-portable -Force
-          Remove-Item nodejs-portable.zip
+          $zipPath = "$env:TEMP\nodejs-portable.zip"
+          Invoke-WebRequest -Uri $nodeUrl -OutFile $zipPath -UseBasicParsing
+          $extractPath = "dist/windows/app/node-portable"
+          Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+          Remove-Item $zipPath
+          # ★ 精简 Node.js 便携版：只保留 node.exe 和 DLL
+          #   bridge 只需要 Node.js 运行时，不需要 npm/npx/文档/头文件
+          $nodeRoot = Get-ChildItem -Path $extractPath -Directory | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $nodeRoot) { $nodeRoot = $extractPath }
+          Write-Host "Node.js extracted to: $nodeRoot"
+          # 删除不需要的目录
+          $removeDirs = @("node_modules", "include", "lib")
+          foreach ($d in $removeDirs) {
+            $p = Join-Path $nodeRoot $d
+            if (Test-Path $p) { Remove-Item -Recurse -Force $p; Write-Host "Deleted: $p" }
+          }
+          # 删除脚本/文档文件
+          $removeFiles = @("npm", "npm.cmd", "npx", "npx.cmd", "corepack", "corepack.cmd",
+                           "CHANGELOG.md", "LICENSE", "README.md", "node_etw_provider.man")
+          foreach ($f in $removeFiles) {
+            $p = Join-Path $nodeRoot $f
+            if (Test-Path $p) { Remove-Item -Force $p; Write-Host "Deleted: $p" }
+          }
+          # ★ 如果有子目录，将文件上移一层
+          $subDir = Get-ChildItem -Path $extractPath -Directory | Select-Object -First 1
+          if ($subDir -and $subDir.FullName -ne $extractPath) {
+            Get-ChildItem -Path $subDir.FullName | Move-Item -Destination $extractPath -Force
+            Remove-Item -Recurse -Force $subDir.FullName
+          }
+          Write-Host "Trimmed node-portable files:"
+          Get-ChildItem -Path $extractPath -Recurse -File | ForEach-Object { Write-Host "  $($_.Length) bytes $($_.Name)" }
           # ★ 复制 bridge 目录（包含 index.mjs、lib/、package.json 等）
           Copy-Item -Recurse -Force bridge dist/windows/app/bridge/
           Write-Host "Staged files:"
