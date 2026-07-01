@@ -13,7 +13,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
-use crate::paths::{bridge_dir, bridge_env_path, bridge_index_path, node_exe_path};
+use crate::paths::{bridge_dir, bridge_index_path, node_exe_path};
 use crate::settings::{BackendSettings, SettingsStore, normalize_codex_extra_args};
 use crate::status::{LaunchStatus, StatusStore};
 
@@ -208,6 +208,10 @@ pub trait LaunchHooks: Send + Sync {
         Ok(())
     }
 
+    async fn shutdown_bridge_process(&self) {
+        // default no-op, override in DefaultLaunchHooks
+    }
+
     async fn start_computer_use_guard_watchdog(
         &self,
         _settings: &BackendSettings,
@@ -286,10 +290,8 @@ where
         }
 
         // ★ 启动 bridge 进程（Node.js portable runtime + LuoDaBridge）
-        let mut bridge_started = false;
         if settings.enhancements_enabled {
             let _ = hooks.start_bridge_process().await;
-            bridge_started = true;
             let _ = hooks.wait_for_bridge_port(40005, Duration::from_secs(15)).await;
             let _ = hooks.wait_for_bridge_port(40006, Duration::from_secs(10)).await;
         }
