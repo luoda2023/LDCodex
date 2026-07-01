@@ -10,6 +10,7 @@ use codex_plus_core::user_scripts::UserScriptManager;
 use serde_json::{Value, json};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
+use tokio::io::AsyncWriteExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
