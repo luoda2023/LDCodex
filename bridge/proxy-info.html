@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LDCodex 代理服务器信息</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+  .container {
+    max-width: 800px;
+    width: 100%;
+  }
+  .card {
+    background: #1e293b;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 20px;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  .card h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .status-badge.online {
+    background: rgba(34,197,94,0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34,197,94,0.3);
+  }
+  .status-badge.offline {
+    background: rgba(239,68,68,0.15);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.3);
+  }
+  .status-badge.partial {
+    background: rgba(234,179,8,0.15);
+    color: #facc15;
+    border: 1px solid rgba(234,179,8,0.3);
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .info-item {
+    background: #0f172a;
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .info-item.full {
+    grid-column: 1 / -1;
+  }
+  .info-item .label {
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .info-item .value {
+    font-size: 16px;
+    color: #f1f5f9;
+    font-weight: 500;
+    word-break: break-all;
+  }
+  .info-item .value.model-name {
+    color: #60a5fa;
+    font-weight: 600;
+    font-size: 18px;
+  }
+  .chain-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .chain-item {
+    background: #0f172a;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    color: #cbd5e1;
+    border: 1px solid #334155;
+  }
+  .chain-item.active {
+    border-color: #3b82f6;
+    color: #60a5fa;
+    background: rgba(59,130,246,0.1);
+  }
+  .chain-item.hermes-active {
+    border-color: #a855f7;
+    color: #c084fc;
+    background: rgba(168,85,247,0.1);
+  }
+  .error-text {
+    color: #f87171;
+    font-size: 14px;
+  }
+  .warning-text {
+    color: #facc15;
+    font-size: 14px;
+  }
+  .ok-text {
+    color: #4ade80;
+    font-size: 14px;
+  }
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: #475569;
+    font-size: 13px;
+  }
+  .refresh-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #64748b;
+  }
+  .refresh-bar .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .title-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .title-section h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #f1f5f9;
+  }
+  .title-section .subtitle {
+    font-size: 14px;
+    color: #64748b;
+  }
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: #64748b;
+  }
+  .loading .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #334155;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .section-sep {
+    margin: 8px 0 16px;
+    border: 0;
+    border-top: 1px solid #334155;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card" style="text-align:center;padding:24px;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:4px;">
+      <span style="font-size:28px;">🛡️</span>
+      <h1 style="font-size:22px;font-weight:700;">LDCodex 代理服务器</h1>
+    </div>
+    <div style="color:#64748b;font-size:14px;margin-bottom:8px;">服务状态监控 · 实时信息</div>
+    <div class="refresh-bar" style="justify-content:center;">
+      <span class="dot" id="liveDot"></span>
+      <span>实时监控中</span>
+      <span style="color:#475569;">|</span>
+      <span id="lastUpdate">刚刚</span>
+    </div>
+  </div>
+
+  <!-- 代理状态 -->
+  <div class="card" id="statusCard">
+    <h2>🔌 代理状态</h2>
+    <div id="statusContent">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>正在检测代理状态…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模型信息 -->
+  <div class="card" id="modelCard">
+    <h2>🤖 当前模型信息</h2>
+    <div id="modelContent">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>正在加载模型信息…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模型链 -->
+  <div class="card" id="chainCard">
+    <h2>⛓️ 模型链</h2>
+    <div id="chainContent">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>正在加载模型链…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 服务端口 -->
+  <div class="card" id="portCard">
+    <h2>🔗 服务端口</h2>
+    <div id="portContent">
+      <div class="info-grid">
+        <div class="info-item"><div class="label">代理服务</div><div class="value" id="proxyPort">40005</div></div>
+        <div class="info-item"><div class="label">管理 API</div><div class="value" id="configPort">40006</div></div>
+        <div class="info-item full"><div class="label">管理面板</div><div class="value">http://127.0.0.1:40007/login.html</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    LDCodex Proxy Gateway · 数据每 5 秒自动刷新
+  </div>
+</div>
+
+<script>
+// ─── 状态图标 ───
+function statusIcon(status) {
+  if (status === 'online') return '🟢';
+  if (status === 'partial') return '🟡';
+  return '🔴';
+}
+function statusText(status) {
+  if (status === 'online') return '运行正常';
+  if (status === 'partial') return '部分异常';
+  return '未运行';
+}
+function statusBadgeClass(status) {
+  if (status === 'online') return 'status-badge online';
+  if (status === 'partial') return 'status-badge partial';
+  return 'status-badge offline';
+}
+
+// ─── 代理名称显示（截断过长名称）───
+function shortName(name, maxLen) {
+  if (!name) return '-';
+  maxLen = maxLen || 20;
+  return name.length > maxLen ? name.substring(0, maxLen) + '…' : name;
+}
+
+// ─── 获取代理状态 ───
+async function fetchProxyInfo() {
+  try {
+    // 先测 proxy 是否通
+    const proxyCheck = await fetch('http://127.0.0.1:40005/health', { signal: AbortSignal.timeout(3000) });
+    if (!proxyCheck.ok) throw new Error('proxy health check failed');
+  } catch(e) {
+    // proxy 不通
+    document.getElementById('statusContent').innerHTML = `
+      <div style="text-align:center;padding:12px 0;">
+        <span class="status-badge offline">🔴 代理未运行</span>
+        <p style="margin-top:16px;color:#94a3b8;font-size:14px;">
+          代理服务器未启动或端口 40005 不可达。<br>
+          请在管理面板中点击「启动代理」或在终端中运行：<br>
+          <code style="display:inline-block;background:#0f172a;padding:4px 12px;border-radius:6px;margin-top:8px;font-size:13px;">node bridge/index.mjs</code>
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  try {
+    const resp = await fetch('http://127.0.0.1:40006/api/proxy-info', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    renderProxyInfo(data);
+  } catch(e) {
+    document.getElementById('statusContent').innerHTML = `
+      <div style="text-align:center;padding:12px 0;">
+        <span class="status-badge offline">🔴 管理 API 未响应</span>
+        <p style="margin-top:12px;color:#f87171;font-size:14px;">${e.message}</p>
+      </div>
+    `;
+  }
+}
+
+// ─── 渲染数据 ───
+function renderProxyInfo(data) {
+  // 状态
+  const statusDiv = document.getElementById('statusContent');
+  const proxyOk = data.proxy_online;
+  const hasProviders = data.providers_total > 0;
+  const overallStatus = proxyOk ? (hasProviders ? 'online' : 'partial') : 'offline';
+
+  statusDiv.innerHTML = `
+    <div class="title-section">
+      <div>
+        <span class="${statusBadgeClass(overallStatus)}">${statusIcon(overallStatus)} ${statusText(overallStatus)}</span>
+        <span style="margin-left:10px;color:#94a3b8;font-size:14px;">运行时间：${data.uptime_text || '刚刚启动'}</span>
+      </div>
+    </div>
+    <div class="info-grid" style="margin-top:16px;">
+      <div class="info-item">
+        <div class="label">代理端口（40005）</div>
+        <div class="value">${proxyOk ? '✅ 运行正常' : '❌ 未运行'}</div>
+      </div>
+      <div class="info-item">
+        <div class="label">管理端口（40006）</div>
+        <div class="value">✅ 运行正常</div>
+      </div>
+      <div class="info-item">
+        <div class="label">注册提供商数</div>
+        <div class="value">${data.providers_total || 0}</div>
+      </div>
+      <div class="info-item">
+        <div class="label">注册模型数</div>
+        <div class="value">${data.models_total || 0}</div>
+      </div>
+    </div>
+  `;
+
+  // 模型信息
+  const modelDiv = document.getElementById('modelContent');
+  const codexProvider = data.codex_provider;
+  const hermesProvider = data.hermes_provider;
+
+  // 查找最新的 Chat Completions 模型（优先显示）
+  var chatModels = (data.chat_completions_models || []);
+  var latestChatModel = chatModels.length > 0 ? chatModels[chatModels.length - 1] : null;
+
+  modelDiv.innerHTML = `
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="label">CODEX 当前模型</div>
+        <div class="value model-name">${codexProvider ? shortName(codexProvider.name, 25) + ' (' + (codexProvider.model || '-') + ')' : '未设置'}</div>
+        ${data.single_model_codex ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">锁定：${data.single_model_codex}</div>` : ''}
+      </div>
+      <div class="info-item">
+        <div class="label">HERMES 当前模型</div>
+        <div class="value model-name">${hermesProvider ? shortName(hermesProvider.name, 25) + ' (' + (hermesProvider.model || '-') + ')' : '未设置'}</div>
+        ${data.single_model_hermes ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">锁定：${data.single_model_hermes}</div>` : ''}
+      </div>
+    </div>
+    ${latestChatModel ? `
+    <hr class="section-sep">
+    <div class="info-item full" style="background:#0f172a;border-radius:10px;padding:14px 16px;margin-top:8px;">
+      <div class="label">最新 Chat Completions 模型</div>
+      <div class="value model-name" style="font-size:18px;">${shortName(latestChatModel.name, 30)}</div>
+      <div style="margin-top:6px;display:flex;gap:16px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:#94a3b8;">📡 ${latestChatModel.base || '-'}</span>
+        <span style="font-size:13px;color:#94a3b8;">🆔 ${latestChatModel.model_id || '-'}</span>
+      </div>
+    </div>` : `
+    <hr class="section-sep">
+    <div style="color:#64748b;font-size:14px;margin-top:8px;">暂未配置 Chat Completions 模型</div>`}
+  `;
+
+  // 模型链
+  const chainDiv = document.getElementById('chainContent');
+  var codexChain = data.codex_chain || [];
+  var hermesChain = data.hermes_chain || [];
+  var codexActiveSlug = data.codex_cur_slug;
+  var hermesActiveSlug = data.hermes_cur_slug;
+
+  chainDiv.innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:8px;">CODEX 模型链</div>
+      <div class="chain-list">
+        ${codexChain.length > 0 ? codexChain.map(function(p) {
+          var isActive = p.slug === codexActiveSlug || p.name === codexActiveSlug;
+          return '<span class="chain-item ' + (isActive ? 'active' : '') + '">' + shortName(p.name, 18) + (isActive ? ' 👈' : '') + '</span>';
+        }).join('') : '<span style="color:#64748b;font-size:13px;">暂无模型链配置</span>'}
+      </div>
+    </div>
+    <div>
+      <div style="font-size:14px;font-weight:600;color:#c084fc;margin-bottom:8px;">HERMES 模型链</div>
+      <div class="chain-list">
+        ${hermesChain.length > 0 ? hermesChain.map(function(p) {
+          var isActive = p.slug === hermesActiveSlug || p.name === hermesActiveSlug;
+          return '<span class="chain-item ' + (isActive ? 'hermes-active' : '') + '">' + shortName(p.name, 18) + (isActive ? ' 👈' : '') + '</span>';
+        }).join('') : '<span style="color:#64748b;font-size:13px;">暂无模型链配置</span>'}
+      </div>
+    </div>
+    ${(data.abnormal_models || []).length > 0 ? `
+    <hr class="section-sep">
+    <div>
+      <div style="font-size:13px;color:#f87171;margin-bottom:6px;">⚠️ 异常模型（已自动跳过）</div>
+      <div class="chain-list">
+        ${(data.abnormal_models || []).map(function(m) { return '<span class="chain-item" style="border-color:#ef4444;color:#f87171;">' + m + '</span>'; }).join('')}
+      </div>
+    </div>` : ''}
+  `;
+
+  // 更新时间
+  var now = new Date();
+  document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+// ─── 自动刷新 ───
+fetchProxyInfo();
+setInterval(fetchProxyInfo, 5000);
+</script>
+</body>
+</html>

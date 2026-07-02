@@ -60,12 +60,19 @@ function cleanupPorts() {
   try { execSync("sleep 1", { stdio: "ignore", timeout: 2000 }); } catch (e) {}
 }
 
+const PADDING = " ".repeat(8);
+
 const BANNER = `
-╔══════════════════════════════════════════╗
-║        LuoDaBridge v3 — Proxy Gateway    ║
-║        Development Mode                  ║
-╚══════════════════════════════════════════╝
-`;
+${PADDING}╔══════════════════════════════════════════════════════════╗
+${PADDING}║                                                        ║
+${PADDING}║            🛡️  LDCodex 代理服务器 v3  🛡️              ║
+${PADDING}║         ═══════════════════════════════════            ║
+${PADDING}║     LuoDaBridge — Proxy Gateway & API Converter        ║
+${PADDING}║                                                        ║
+${PADDING}║   📡 代理端口 :40005  |  🔧 管理端口 :40006            ║
+${PADDING}║                                                        ║
+${PADDING}╚══════════════════════════════════════════════════════════╝
+`.trim();
 
 console.log(BANNER);
 
@@ -170,4 +177,99 @@ process.on("unhandledRejection", (err) => {
   log.error("[boot] unhandled rejection:", err.message || err);
 });
 
-log.info(`[boot] ready — proxy on :${PORTS.proxy}, config-api on :${PORTS.config}`);
+// ── 启动完成：显示大字成功提示 ──
+const _bootOk = `
+${PADDING}╔══════════════════════════════════════════════════════════╗
+${PADDING}║                                                          ║
+${PADDING}║        ✅  LDCodex 代理服务器启动成功！ ✅                ║
+${PADDING}║                                                          ║
+${PADDING}║   📡 代理服务   →  http://127.0.0.1:${PORTS.proxy}        ║
+${PADDING}║   🔧 管理界面   →  http://127.0.0.1:${PORTS.config}       ║
+${PADDING}║   📊 信息页面   →  http://127.0.0.1:${PORTS.config}/proxy-info.html  ║
+${PADDING}║                                                          ║
+${PADDING}║   按 Ctrl+C 停止服务                                      ║
+${PADDING}║                                                          ║
+${PADDING}╚══════════════════════════════════════════════════════════╝
+`;
+console.log("\n" + _bootOk + "\n");
+
+// ★ 3秒后检查服务器是否在运行，如果没启动成功给出指引
+setTimeout(function() {
+  var _proxyRunning = false;
+  var _configRunning = false;
+  // 标记检查是否已完成
+  var _checksDone = 0;
+  function _checkComplete() {
+    _checksDone++;
+    if (_checksDone >= 2) {
+      // 两个端口都检查完毕，1秒后输出结果
+      setTimeout(function() {
+        if (!_proxyRunning || !_configRunning) {
+          console.error(`
+╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║        ❌  代理服务器启动失败！                            ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝
+
+可能的原因及解决方法：
+
+1️⃣  端口被占用（EADDRINUSE）
+    → 请关闭其他使用 40005/40006 端口的程序，然后重试。
+    → 或在终端执行：fuser -k 40005/tcp 40006/tcp
+
+2️⃣  缺少依赖（npm 包未安装）
+    → 请在 bridge 目录下执行：npm install
+    → 或执行：cd bridge && npm install
+
+3️⃣  Node.js 版本过低
+    → 需要 Node.js 18.0.0 或更高版本
+    → 当前版本：${process.version}
+    → 下载地址：https://nodejs.org/
+
+4️⃣  系统代理/防火墙阻止
+    → 请检查是否开启了系统代理（Clash/V2Ray），尝试关闭后重试。
+
+5️⃣  SQLite 数据库错误
+    → 删除 bridge/data/ 目录下的 admin.db 文件后重试
+    → 或执行：rm -f bridge/data/admin.db*
+
+如果问题持续，请在管理面板中查看日志获取详细信息。
+`);
+        }
+      }, 1000);
+    }
+  }
+
+  // 检查 proxy 端口 :40005
+  try {
+    var _checkProxy = net.createConnection(PORTS.proxy, "127.0.0.1");
+    _checkProxy.on("connect", function() {
+      _proxyRunning = true;
+      _checkProxy.end();
+      _checkComplete();
+    });
+    _checkProxy.on("error", function() { _checkComplete(); });
+    _checkProxy.setTimeout(2000, function() { _checkProxy.destroy(); _checkComplete(); });
+  } catch(e) { _checkComplete(); }
+
+  // 检查 config 端口 :40006
+  try {
+    var _checkConfig = net.createConnection(PORTS.config, "127.0.0.1");
+    _checkConfig.on("connect", function() {
+      _configRunning = true;
+      _checkConfig.end();
+      _checkComplete();
+    });
+    _checkConfig.on("error", function() { _checkComplete(); });
+    _checkConfig.setTimeout(2000, function() { _checkConfig.destroy(); _checkComplete(); });
+  } catch(e) { _checkComplete(); }
+
+  // 安全兜底：4秒后如果还没完成检查，强制输出检查结果
+  setTimeout(function() {
+    if (_checksDone < 2) {
+      if (!_proxyRunning) console.error("[boot] ⚠️ 代理端口 :" + PORTS.proxy + " 未能及时响应，请检查启动日志。");
+      if (!_configRunning) console.error("[boot] ⚠️ 管理端口 :" + PORTS.config + " 未能及时响应，请检查启动日志。");
+    }
+  }, 4000);
+}, 3000);

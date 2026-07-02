@@ -5964,52 +5964,75 @@ function loadInitialRoute(): Route {
 
 // ── LDCodex-specific screens (from original HEAD) ──
 
-function ProxyScreen({
-  overview,
-  actions,
-  settings,
-}: {
-  overview: OverviewResult | null;
-  actions: Actions;
-  settings: SettingsResult | null;
-}) {
-  const activeProfile = settings?.settings ? (() => {
-    const relays = settings.settings.relayProfiles || [];
-    const activeId = settings.settings.activeRelayId || "";
-    return relays.find((r: {id: string}) => r.id === activeId) || null;
-  })() : null;
-  return (
-    <>
-      <Panel>
-        <CardHead title="代理服务器运行状态" detail="检查代理服务器是否正常运行" />
-        <CardContent>
-          <LatestLaunch status={overview?.latest_launch ?? null} />
-          <Toolbar>
-            <Button onClick={() => void actions.launchBridge()}>
-              <Rocket className="h-4 w-4" />
-              启动代理
-            </Button>
-            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:40006/proxy-info.html")}>
-              <ExternalLink className="h-4 w-4" />
-              打开代理信息页
-            </Button>
-          </Toolbar>
-        </CardContent>
-      </Panel>
-      <Panel>
-        <CardHead title="当前使用模型信息" detail="模型配置中设为当前使用的模型" />
-        <CardContent>
-          {activeProfile ? (
-            <div className="metric-list">
-              <Metric label="模型名称" value={activeProfile.model || "-"} />
-              <Metric label="API 地址" value={activeProfile.baseUrl || "-"} />
-            </div>
-          ) : (
-            <p style={{ color: "var(--muted-foreground)" }}>暂无当前使用的模型，请在模型配置中设置。</p>
-          )}
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
+	function ProxyScreen({
+	  overview,
+	  actions,
+	  settings,
+	}: {
+	  overview: OverviewResult | null;
+	  actions: Actions;
+	  settings: SettingsResult | null;
+	}) {
+	  const activeProfile = settings?.settings ? (() => {
+	    const relays = settings.settings.relayProfiles || [];
+	    const activeId = settings.settings.activeRelayId || "";
+	    return relays.find((r: {id: string}) => r.id === activeId) || null;
+	  })() : null;
+
+	  // 获取最新的 Chat Completions 模型（按协议筛选，取最后一个）
+	  const latestChatProfile = settings?.settings ? (() => {
+	    const relays = settings.settings.relayProfiles || [];
+	    const chatProfiles = relays.filter((r: {protocol?: string}) => r.protocol === "chatCompletions");
+	    return chatProfiles.length > 0 ? chatProfiles[chatProfiles.length - 1] : null;
+	  })() : null;
+
+	  return (
+	    <>
+	      <Panel>
+	        <CardHead title="代理服务器运行状态" detail="检查代理服务器是否正常运行" />
+	        <CardContent>
+	          <LatestLaunch status={overview?.latest_launch ?? null} />
+	          <Toolbar>
+	            <Button onClick={() => void actions.launchBridge()}>
+	              <Rocket className="h-4 w-4" />
+	              启动代理
+	            </Button>
+	            <Button variant="secondary" onClick={() => void actions.openExternalUrl("http://127.0.0.1:40006/proxy-info.html")}>
+	              <ExternalLink className="h-4 w-4" />
+	              打开代理信息页
+	            </Button>
+	          </Toolbar>
+	        </CardContent>
+	      </Panel>
+	      <Panel>
+	        <CardHead title="🔵 当前使用模型" detail="当前设为使用的模型" />
+	        <CardContent>
+	          {activeProfile ? (
+	            <div className="metric-list">
+	              <Metric label="模型名称" value={activeProfile.model || "-"} />
+	              <Metric label="协议类型" value={activeProfile.protocol === "chatCompletions" ? "Chat Completions" : "Responses API"} />
+	              <Metric label="API 地址" value={activeProfile.baseUrl || "-"} />
+	            </div>
+	          ) : (
+	            <p style={{ color: "var(--muted-foreground)" }}>暂无当前使用的模型，请在模型配置中设置。</p>
+	          )}
+	        </CardContent>
+	      </Panel>
+	      <Panel>
+	        <CardHead title="🟢 最新 Chat Completions 模型" detail="模型配置中最新添加的 Chat Completions 模型（即使未设为当前使用）" />
+	        <CardContent>
+	          {latestChatProfile ? (
+	            <div className="metric-list">
+	              <Metric label="模型名称" value={latestChatProfile.model || "-"} />
+	              <Metric label="协议类型" value="Chat Completions → 自动转换为 Responses API" />
+	              <Metric label="API 地址" value={latestChatProfile.baseUrl || "-"} />
+	            </div>
+	          ) : (
+	            <p style={{ color: "var(--muted-foreground)" }}>暂未添加 Chat Completions 模型。在「模型配置」中添加协议为 Chat Completions 的模型后，此处将自动显示。</p>
+	          )}
+	        </CardContent>
+	      </Panel>
+	    </>
+	  );
+	}
 

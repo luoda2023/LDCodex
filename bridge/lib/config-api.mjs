@@ -1185,9 +1185,87 @@ export function startConfigServer() {
       return;
     }
 
-    // 404
-    sendJson(res, 404, { error: "not found" });
-  });
+	    // ── /api/proxy-info (用于 proxy-info.html 和外部查询) ──
+	    if (pn === "/api/proxy-info") {
+	      // 使用异步 IIFE 检测 proxy 是否在线
+	      (async function() {
+	        var proxyOnline = false;
+	        try {
+	          const checkRes = await fetch("http://127.0.0.1:" + PORTS.proxy + "/health", { signal: AbortSignal.timeout(2000) });
+	          proxyOnline = checkRes.ok;
+	        } catch(e) { proxyOnline = false; }
+
+	        const fullStatus = getFullStatus();
+	        const allProviders = getAll();
+
+	        // 获取自定义（Chat Completions）模型列表
+	        const customProviders = allProviders.filter(function(p) { return !p.isBuiltin; });
+	        const chatModels = customProviders.map(function(p) {
+	          return {
+	            name: p.name,
+	            slug: p.slug,
+	            base: p.base,
+	            key: p.key ? p.key.slice(0, 8) + "…" : "",
+	            model_id: p.modelId,
+	            models: p.models,
+	          };
+	        });
+
+	        // 获取当前 CODEX/HERMES 提供商详情
+	        var codexProvider = null;
+	        var hermesProvider = null;
+	        try {
+	          const codexP = getCurrentProvider("CODEX");
+	          const hermesP = getCurrentProvider("HERMES");
+	          if (codexP) { codexProvider = { name: codexP.name, slug: codexP.slug, model: codexP.modelId, base: codexP.base, isBuiltin: codexP.isBuiltin }; }
+	          if (hermesP) { hermesProvider = { name: hermesP.name, slug: hermesP.slug, model: hermesP.modelId, base: hermesP.base, isBuiltin: hermesP.isBuiltin }; }
+	        } catch(e) {}
+
+	        const uptimeSec = Math.floor(process.uptime());
+	        var uptimeText = "";
+	        if (uptimeSec < 60) uptimeText = uptimeSec + "秒";
+	        else if (uptimeSec < 3600) uptimeText = Math.floor(uptimeSec / 60) + "分" + (uptimeSec % 60) + "秒";
+	        else uptimeText = Math.floor(uptimeSec / 3600) + "小时" + Math.floor((uptimeSec % 3600) / 60) + "分";
+
+	        sendJson(res, 200, {
+	          proxy_online: proxyOnline,
+	          uptime: uptimeSec,
+	          uptime_text: uptimeText,
+	          providers_total: allProviders.length,
+	          models_total: allProviders.reduce(function(sum, p) { return sum + (p.models ? p.models.length : 0); }, 0),
+	          codex_provider: codexProvider,
+	          hermes_provider: hermesProvider,
+	          codex_chain: (fullStatus.fallback_chain || []),
+	          hermes_chain: (fullStatus.hermes_chain || []),
+	          codex_cur_slug: fullStatus.codex_cur_slug || null,
+	          hermes_cur_slug: fullStatus.hermes_cur_slug || null,
+	          single_model_codex: CONFIG_PROXY.single_model_codex || "",
+	          single_model_hermes: CONFIG_PROXY.single_model_hermes || "",
+	          abnormal_models: getAbnormalList() || CONFIG_PROXY.abnormal_models || [],
+	          chat_completions_models: chatModels,
+	        });
+	      })();
+	      return;
+	    }
+
+	    // ── /proxy-info.html (静态代理信息页) ──
+	    if (req.method === "GET" && pn === "/proxy-info.html") {
+	      // 优先从 bridge/ 根目录读取（Git跟踪），其次从 data/ 读取
+	      const htmlPath1 = path.join(PATHS.root, "proxy-info.html");
+	      const htmlPath2 = path.join(PATHS.data, "proxy-info.html");
+	      if (fs.existsSync(htmlPath1)) {
+	        serveFile(res, htmlPath1, "text/html; charset=utf-8");
+	      } else if (fs.existsSync(htmlPath2)) {
+	        serveFile(res, htmlPath2, "text/html; charset=utf-8");
+	      } else {
+	        sendJson(res, 404, { error: "proxy-info.html not found" });
+	      }
+	      return;
+	    }
+
+	    // 404
+	    sendJson(res, 404, { error: "not found" });
+	  });
 
   server.on("error", function(e) {
     if (e.code === "EADDRINUSE") {
