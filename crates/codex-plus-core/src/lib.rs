@@ -49,3 +49,4 @@ pub mod codex_home;
 pub mod env_conflicts;
 pub mod plugin_marketplace;
 pub mod relay_rotation;
+pub mod zcode_sqlite;

@@ -2544,53 +2544,40 @@ fn default_debug_port() -> u16 {
 
 #[tauri::command]
 pub fn launch_zcode() -> CommandResult<Value> {
-    // 常见 ZCode 安装路径列表，按优先级从高到低
-    let candidates = [
-        // 1. 本地程序目录
-        PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\ZCode\ZCode.exe"),
-        // 2. 通过 PATH 查找
-    ];
+    let exe_path = codex_plus_core::zcode_sqlite::zcode_exe_path();
 
-    let exe_path = candidates.iter().find(|p| p.exists()).cloned().or_else(|| {
-        // 3. which/where 回退
-        which_zcode()
-    });
-
-    match exe_path {
-        Some(path) => {
-            match std::process::Command::new(&path).spawn() {
-                Ok(child) => {
-                    let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
-                        "manager.zcode_launched",
-                        json!({"pid": child.id(), "path": path.to_string_lossy().to_string()}),
-                    );
-                    ok(
-                        &format!("LDZcode 已启动（PID: {}）", child.id()),
-                        json!({"pid": child.id(), "path": path.to_string_lossy().to_string()}),
-                    )
-                }
-                Err(e) => {
-                    failed(
-                        &format!("启动 LDZcode 失败：{e}"),
-                        json!({"path": path.to_string_lossy().to_string()}),
-                    )
-                }
+    if exe_path.exists() {
+        match std::process::Command::new(&exe_path).spawn() {
+            Ok(child) => {
+                let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+                    "manager.zcode_launched",
+                    json!({"pid": child.id(), "path": exe_path.to_string_lossy().to_string()}),
+                );
+                ok(
+                    &format!("LDZcode 已启动（PID: {}）", child.id()),
+                    json!({"pid": child.id(), "path": exe_path.to_string_lossy().to_string()}),
+                )
+            }
+            Err(e) => {
+                failed(
+                    &format!("启动 LDZcode 失败：{e}"),
+                    json!({"path": exe_path.to_string_lossy().to_string()}),
+                )
             }
         }
-        None => {
-            failed(
-                "未找到 ZCode 安装路径，请确认已安装 ZCode。",
-                json!({"hint": "ZCode 默认安装在 %LOCALAPPDATA%\\Programs\\ZCode\\ZCode.exe"}),
-            )
-        }
+    } else {
+        failed(
+            "未找到 ZCode 安装路径，请确认已安装 ZCode。",
+            json!({"hint": "ZCode 默认安装在 %LOCALAPPDATA%\\Programs\\ZCode\\ZCode.exe"}),
+        )
     }
 }
 
-/// 通过系统 PATH 查找 ZCode 可执行文件
-fn which_zcode() -> Option<PathBuf> {
+/// 通过系统 PATH 查找可执行文件
+fn which_exe(name: &str) -> Option<PathBuf> {
     let which = if cfg!(windows) { "where" } else { "which" };
     std::process::Command::new(which)
-        .arg("ZCode")
+        .arg(name)
         .output()
         .ok()
         .and_then(|output| {
@@ -2610,6 +2597,112 @@ fn which_zcode() -> Option<PathBuf> {
                 None
             }
         })
+}
+
+// ========== ZCode 相关命令 ==========
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ZCodeSessionsPayload {
+    pub db_path: String,
+    pub sessions: Vec<codex_plus_core::zcode_sqlite::ZCodeSession>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ZCodeInstallStatusPayload {
+    pub installed: bool,
+    pub exe_path: String,
+    pub version: Option<String>,
+    pub arch_path: String,
+    pub plugin_injected: bool,
+    pub db_path: String,
+    pub session_count: usize,
+}
+
+#[tauri::command]
+pub fn list_zcode_sessions() -> CommandResult<ZCodeSessionsPayload> {
+    let db_path = codex_plus_core::zcode_sqlite::zcode_session_db_path();
+    let sessions = match codex_plus_core::zcode_sqlite::list_zcode_sessions(&db_path) {
+        Ok(items) => items,
+        Err(e) => {
+            return failed(
+                &format!("读取 ZCode 会话失败：{e}"),
+                ZCodeSessionsPayload {
+                    db_path: db_path.to_string_lossy().to_string(),
+                    sessions: Vec::new(),
+                },
+            );
+        }
+    };
+    ok(
+        &format!("读取到 {} 个 ZCode 会话", sessions.len()),
+        ZCodeSessionsPayload {
+            db_path: db_path.to_string_lossy().to_string(),
+            sessions,
+        },
+    )
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteZCodeSessionRequest {
+    pub task_id: String,
+    pub workspace_key: String,
+}
+
+#[tauri::command]
+pub fn delete_zcode_session(request: DeleteZCodeSessionRequest) -> CommandResult<Value> {
+    let db_path = codex_plus_core::zcode_sqlite::zcode_session_db_path();
+    match codex_plus_core::zcode_sqlite::delete_zcode_session(&db_path, &request.task_id, &request.workspace_key) {
+        Ok(()) => {
+            let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+                "manager.zcode_session_deleted",
+                json!({"task_id": request.task_id}),
+            );
+            ok(
+                &format!("已删除 ZCode 会话：{}", request.task_id),
+                json!({"taskId": request.task_id}),
+            )
+        }
+        Err(e) => failed(
+            &format!("删除 ZCode 会话失败：{e}"),
+            json!({"taskId": request.task_id}),
+        ),
+    }
+}
+
+#[tauri::command]
+pub fn zcode_install_status() -> CommandResult<ZCodeInstallStatusPayload> {
+    let exe = codex_plus_core::zcode_sqlite::zcode_exe_path();
+    let asar = codex_plus_core::zcode_sqlite::zcode_asar_path();
+    let db = codex_plus_core::zcode_sqlite::zcode_session_db_path();
+    let installed = exe.exists();
+    let version = if installed {
+        codex_plus_core::zcode_sqlite::zcode_version()
+    } else {
+        None
+    };
+    let plugin_injected = codex_plus_core::zcode_sqlite::zcode_plugin_injected();
+    let session_count = if db.exists() {
+        codex_plus_core::zcode_sqlite::list_zcode_sessions(&db)
+            .map(|s| s.len())
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    ok(
+        if installed { "ZCode 已安装" } else { "ZCode 未安装" },
+        ZCodeInstallStatusPayload {
+            installed,
+            exe_path: exe.to_string_lossy().to_string(),
+            version,
+            arch_path: asar.to_string_lossy().to_string(),
+            plugin_injected,
+            db_path: db.to_string_lossy().to_string(),
+            session_count,
+        },
+    )
 }
 
 fn default_helper_port() -> u16 {

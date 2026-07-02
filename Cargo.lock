@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "codex-plus-core"
-version = "3.0.3"
+version = "10.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -427,7 +427,7 @@ dependencies = [
 
 [[package]]
 name = "codex-plus-data"
-version = "3.0.3"
+version = "10.0.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -1900,7 +1900,7 @@ dependencies = [
 
 [[package]]
 name = "ldcodex-launcher"
-version = "3.0.3"
+version = "10.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1916,7 +1916,7 @@ dependencies = [
 
 [[package]]
 name = "ldcodex-manager"
-version = "3.0.3"
+version = "10.0.1"
 dependencies = [
  "anyhow",
  "async-trait",

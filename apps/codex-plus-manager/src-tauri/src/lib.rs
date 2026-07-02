@@ -133,7 +133,10 @@ pub fn run() {
             commands::reset_image_overlay_settings,
             commands::check_env_conflicts,
             commands::remove_env_conflicts,
-            commands::launch_zcode
+            commands::launch_zcode,
+            commands::list_zcode_sessions,
+            commands::delete_zcode_session,
+            commands::zcode_install_status
         ])
         .run(tauri::generate_context!());
     if let Err(error) = run_result {
