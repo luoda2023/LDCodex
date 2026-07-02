@@ -485,7 +485,7 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "proxy" | "maintenance" | "about" | "settings";
+type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "zcode" | "proxy" | "maintenance" | "about" | "settings";
 type Theme = "dark" | "light";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string }> = [
@@ -494,6 +494,7 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string
   { id: "sessions", label: "会话管理", icon: MessageCircle },
   { id: "context", label: "工具与插件", icon: Network },
   { id: "enhance", label: "Codex增强", icon: Hammer },
+  { id: "zcode", label: "ZCode增强", icon: FileCode2 },
   { id: "proxy", label: "代理服务器", icon: ShieldCheck },
   { id: "maintenance", label: "安装维护", icon: Wrench },
   { id: "settings", label: "设置", icon: Settings },
@@ -885,6 +886,15 @@ export function App() {
     if (result) {
       showNotice("重启 LDCodex", result.message, result.status);
       await refreshOverview(true);
+    }
+  };
+
+  const launchZCode = async () => {
+    const result = await run(() =>
+      call<CommandResult<Record<string, unknown>>>("launch_zcode"),
+    );
+    if (result) {
+      showNotice("启动 LDZcode", result.message, result.status);
     }
   };
 
@@ -1636,7 +1646,7 @@ export function App() {
   return (
     <div className={`shell ${theme}`}>
       <div className="titlebar">
-        <div className="titlebar-title">LDCodex</div>
+        <div className="titlebar-title">LD AI工具</div>
         <div className="titlebar-controls">
           <button className="titlebar-btn" onClick={() => void appWindow.minimize()} title="最小化" type="button"><Minus className="h-3 w-3" /></button>
           <button className="titlebar-btn" onClick={() => void appWindow.toggleMaximize()} title="最大化" type="button"><Square className="h-3 w-3" /></button>
@@ -1645,10 +1655,10 @@ export function App() {
       </div>
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark"><img src="/logo.png" alt="LD" style={{width:32,height:32}} /></div>
+          <div className="brand-mark"><img src="/LDAI.png" alt="LD" style={{width:32,height:32}} /></div>
           <div className="brand-copy">
             <div className="brand-title-row">
-              <div className="brand-title">LDCodex</div>
+              <div className="brand-title">LD AI工具</div>
               {hasUpdate ? (
                 <button
                   className="update-dot"
@@ -1663,7 +1673,7 @@ export function App() {
                 </button>
               ) : null}
             </div>
-            <div className="brand-subtitle">管理控制台</div>
+            <div className="brand-subtitle">集成管理平台</div>
           </div>
         </div>
         <nav className="nav">
@@ -1702,10 +1712,24 @@ export function App() {
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button onClick={() => void actions.restart()} title="重启 LDCodex" variant="outline">
-              <Rocket className="h-4 w-4" />
-              重启 LDCodex
-            </Button>
+            {route === "enhance" ? (
+              <>
+                <Button onClick={() => void actions.launch()} title="启动 LDCodex" variant="outline">
+                  <Rocket className="h-4 w-4" />
+                  启动 LDCodex
+                </Button>
+                <Button onClick={() => void actions.restart()} title="重启 LDCodex" variant="outline">
+                  <RefreshCw className="h-4 w-4" />
+                  重启
+                </Button>
+              </>
+            ) : null}
+            {route === "zcode" ? (
+              <Button onClick={() => void launchZCode()} title="启动 LDZcode" variant="outline">
+                <Rocket className="h-4 w-4" />
+                启动 LDZcode
+              </Button>
+            ) : null}
             <Button onClick={() => void actions.refreshCurrent()} size="icon" title="刷新当前页面" variant="outline">
               <RefreshCw className="h-4 w-4" />
             </Button>
@@ -1758,6 +1782,9 @@ export function App() {
               onFormChange={setSettingsForm}
               actions={actions}
             />
+          ) : null}
+          {route === "zcode" ? (
+            <ZCodeScreen actions={actions} />
           ) : null}
           {route === "proxy" ? (
             <ProxyScreen
@@ -1950,12 +1977,6 @@ function OverviewScreen({
         <CardHead title="代理服务器启动信息" detail={overview?.logs_path ?? "暂无状态文件"} />
         <CardContent>
           <LatestLaunch status={overview?.latest_launch ?? null} />
-          <Toolbar>
-            <Button onClick={() => void actions.launchBridge()}>
-              <Rocket className="h-4 w-4" />
-              启动 代理服务器
-            </Button>
-          </Toolbar>
         </CardContent>
       </Panel>
     </>
@@ -2254,6 +2275,70 @@ function EnhanceScreen({
           <Toolbar>
             <Button onClick={() => void actions.saveSettings()}>保存增强设置</Button>
           </Toolbar>
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+function ZCodeScreen({ actions }: { actions: Actions }) {
+  const ZLaunch = async () => {
+    try {
+      const result = await invoke<CommandResult<Record<string, unknown>>>("launch_zcode");
+      const title = "启动 LDZcode";
+      const message = result?.message ?? "未知返回";
+      const status = result?.status ?? "ok";
+      await actions.showMessage(title, message, status);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await actions.showMessage("启动 LDZcode", message, "failed");
+    }
+  };
+
+  return (
+    <>
+      <Panel>
+        <CardHead title="ZCode增强" detail="ZCode 启动、配置、注入脚本与增强管理" />
+        <CardContent>
+          <div className="hint-line">
+            <FileCode2 className="h-4 w-4" />
+            <span>ZCode 是面向 AI 编程的新一代编辑器。通过本工具可以一键启动 LDZcode 并管理其注入增强脚本。</span>
+          </div>
+          <div className="feature-switch-grid" style={{ marginTop: 16 }}>
+            <div className="feature-item">
+              <div>
+                <strong>注入脚本管理</strong>
+                <span>通过自定义 JS 脚本注入 ZCode 界面，实现菜单汉化、功能增强等能力。</span>
+              </div>
+              <Badge status="ok" />
+            </div>
+            <div className="feature-item">
+              <div>
+                <strong>并行激活</strong>
+                <span>支持 ZCode 和 Codex 同时使用，互不冲突。</span>
+              </div>
+              <Badge status="ok" />
+            </div>
+          </div>
+          <Toolbar>
+            <Button onClick={() => void ZLaunch()}>
+              <Rocket className="h-4 w-4" />
+              启动 LDZcode
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+      <Panel>
+        <CardHead title="注入脚本" detail="ZCode 自定义增强脚本，存放于 LDZcode/ 目录" />
+        <CardContent>
+          <div className="status-table">
+            <StatusRow title="自定义脚本" status="ok" path="LDZcode/zcode-customize.js" />
+            <StatusRow title="注入工具" status="ok" path="LDZcode/inject-zcode.ps1" />
+          </div>
+          <div className="hint-line">
+            <Info className="h-4 w-4" />
+            <span>ZCode 升级后需要重新运行注入脚本。详见 LDZcode/README-LDZcode.md。</span>
+          </div>
         </CardContent>
       </Panel>
     </>
@@ -2615,7 +2700,6 @@ function MaintenanceScreen({
             </Field>
           </div>
           <Toolbar>
-            <Button onClick={() => void actions.launch()}>启动 代理服务器</Button>
             <Button variant="secondary" onClick={() => void actions.saveManualCodexAppPath()}>
               保存为默认路径
             </Button>
@@ -4280,7 +4364,8 @@ function routeSubtitle(route: Route) {
     relay: "管理 API 模型、协议、Key 与配置文件",
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
-    enhance: "会话删除、导出、项目移动和脚本能力",
+    enhance: "会话删除、导出和项目移动等增强能力",
+    zcode: "ZCode 启动与增强管理",
     proxy: "代理服务器运行状态与模型信息",
     maintenance: "检查修复、入口管理与诊断面板",
     about: "版本信息、项目链接、日志与诊断",

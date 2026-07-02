@@ -46,7 +46,7 @@ pub fn run() {
                 .build()?;
             tauri::tray::TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("LDCodex 管理工具")
+                .tooltip("LD AI工具")
                 .menu(&tray_menu)
                 .on_menu_event(move |app_handle, event| {
                     match event.id().as_ref() {
@@ -132,7 +132,8 @@ pub fn run() {
             commands::plugin_marketplace_status,
             commands::reset_image_overlay_settings,
             commands::check_env_conflicts,
-            commands::remove_env_conflicts
+            commands::remove_env_conflicts,
+            commands::launch_zcode
         ])
         .run(tauri::generate_context!());
     if let Err(error) = run_result {

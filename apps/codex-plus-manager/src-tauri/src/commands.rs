@@ -2542,6 +2542,76 @@ fn default_debug_port() -> u16 {
     9229
 }
 
+#[tauri::command]
+pub fn launch_zcode() -> CommandResult<Value> {
+    // 常见 ZCode 安装路径列表，按优先级从高到低
+    let candidates = [
+        // 1. 本地程序目录
+        PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\ZCode\ZCode.exe"),
+        // 2. 通过 PATH 查找
+    ];
+
+    let exe_path = candidates.iter().find(|p| p.exists()).cloned().or_else(|| {
+        // 3. which/where 回退
+        which_zcode()
+    });
+
+    match exe_path {
+        Some(path) => {
+            match std::process::Command::new(&path).spawn() {
+                Ok(child) => {
+                    let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+                        "manager.zcode_launched",
+                        json!({"pid": child.id(), "path": path.to_string_lossy().to_string()}),
+                    );
+                    ok(
+                        &format!("LDZcode 已启动（PID: {}）", child.id()),
+                        json!({"pid": child.id(), "path": path.to_string_lossy().to_string()}),
+                    )
+                }
+                Err(e) => {
+                    failed(
+                        &format!("启动 LDZcode 失败：{e}"),
+                        json!({"path": path.to_string_lossy().to_string()}),
+                    )
+                }
+            }
+        }
+        None => {
+            failed(
+                "未找到 ZCode 安装路径，请确认已安装 ZCode。",
+                json!({"hint": "ZCode 默认安装在 %LOCALAPPDATA%\\Programs\\ZCode\\ZCode.exe"}),
+            )
+        }
+    }
+}
+
+/// 通过系统 PATH 查找 ZCode 可执行文件
+fn which_zcode() -> Option<PathBuf> {
+    let which = if cfg!(windows) { "where" } else { "which" };
+    std::process::Command::new(which)
+        .arg("ZCode")
+        .output()
+        .ok()
+        .and_then(|output| {
+            if output.status.success() {
+                let line = String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .next()?
+                    .trim()
+                    .to_string();
+                if !line.is_empty() {
+                    let path = PathBuf::from(line);
+                    if path.exists() { Some(path) } else { None }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+}
+
 fn default_helper_port() -> u16 {
     57321
 }
