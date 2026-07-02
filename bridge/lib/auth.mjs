@@ -1,55 +1,49 @@
 /**
- * Auth Module — Request Authentication Gate
+ * Auth Module — 请求认证
  *
- * Validates inbound API keys against the proxy key table.
- * Sets req.lockedProvider to restrict routing if the key is provider-locked.
+ * 验证 Bearer token，所有有效 key 统一权限。
  */
 
 import { log } from "./logger.mjs";
 import { AUTH } from "./config.mjs";
 
 /**
- * Open routes that bypass auth.
+ * 开放路由（无需认证）
  */
 const OPEN_ROUTES = new Set([
   "/health",
   "/v1/models",
   "/models",
-  "/api/status",
-  "/api/dynmetrics",
+  "/api/proxy-info",
 ]);
 
 /**
- * Check if a URL is an open route (no auth required).
+ * 检查是否开放路由
  */
 export function isOpenRoute(url, method) {
   if (method !== "GET") return false;
-  // Strip query params
   const path = url.split("?")[0].split("#")[0];
   return OPEN_ROUTES.has(path);
 }
 
 /**
- * Authenticate a request.
- *
- * On success, returns { authorized: true, lockedProvider: "*" | "deepseek" | ... }
- * On failure, returns { authorized: false, status: 401, body: { error: ... } }
+ * 认证请求
  */
 export function authenticate(req) {
   const header = req.headers["authorization"] || "";
   const presented = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
 
-  // No auth key configured = all requests pass
+  // 未启用认证 → 放行
   if (!AUTH.enabled) {
-    return { authorized: true, lockedProvider: "*", key: null };
+    return { authorized: true, key: null };
   }
 
-  // Open routes pass (but without provider lock)
+  // 开放路由放行
   if (isOpenRoute(req.url, req.method)) {
-    return { authorized: true, lockedProvider: "*", key: null };
+    return { authorized: true, key: null };
   }
 
-  // No token presented
+  // 无 token
   if (!presented) {
     return {
       authorized: false,
@@ -64,9 +58,8 @@ export function authenticate(req) {
     };
   }
 
-  // Look up key
+  // 查 key 表
   const lock = AUTH.keyTable.get(presented);
-
   if (!lock && AUTH.mode === "strict") {
     return {
       authorized: false,
@@ -81,7 +74,5 @@ export function authenticate(req) {
     };
   }
 
-  // optional mode: unknown keys get wildcard
-  const lockedProvider = lock || "*";
-  return { authorized: true, lockedProvider, key: presented };
+  return { authorized: true, key: presented };
 }

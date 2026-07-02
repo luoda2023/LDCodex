@@ -1,8 +1,7 @@
 /**
- * Custom Providers
+ * Custom Providers — 精简版
  *
- * Loads providers from models.json and registers them in the registry.
- * Each custom provider supports OpenAI-compatible Chat Completions API.
+ * 从 models.json 加载 provider，只支持 OpenAI 兼容 Chat Completions。
  */
 
 import { log } from "./logger.mjs";
@@ -11,7 +10,7 @@ import { MODELS, slugify } from "./config.mjs";
 import { proxyFetch } from "./protocol/openai-chat.mjs";
 
 /**
- * Create a custom provider descriptor from a models.json entry.
+ * 创建 provider 描述对象
  */
 export function createCustomProvider(entry) {
   const name = entry.name || entry.slug || "unknown";
@@ -27,36 +26,14 @@ export function createCustomProvider(entry) {
     modelId,
     models,
     idx: typeof entry.idx === "number" ? entry.idx : 0,
-    isBuiltin: false,
-    // Protocol: "openai" (default, sends to /chat/completions), "anthropic" (sends to /v1/messages)
-    protocol: entry.protocol || "openai",
-    // Tool format: "tools" (default), "functions" (deprecated), or "none"
-    // Controls how tool definitions are sent to this provider
-    tool_format: entry.tool_format || "tools",
-    // strip_params: true → 发送前移除不兼容参数（presence_penalty, tool_choice 等）
-    // 部分 API 遇到不认识的参数直接拒收
-    strip_params: entry.strip_params === true,
-
-    async handler(ctx, req, body) {
+    handler(ctx, req, body) {
       return proxyFetch(this.base, this.key, ctx, req, body);
-    },
-
-    async healthCheck() {
-      try {
-        const res = await fetch(`${this.base}/models`, {
-          headers: { Authorization: `Bearer ${this.key}` },
-          signal: AbortSignal.timeout(5000),
-        });
-        return res.ok;
-      } catch {
-        return false;
-      }
     },
   };
 }
 
 /**
- * Register all custom providers from models.json.
+ * 注册所有自定义 provider
  */
 export function registerCustom() {
   const registered = [];

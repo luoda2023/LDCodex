@@ -1,13 +1,3 @@
 {
-  "fallback_enabled": true,
-  "cond_switch_enabled": true,
-  "builtin_reset_minutes": 5,
-  "max_provider_use_minutes": 96,
-  "disabled_builtins": [],
-  "config_source_marker": "LDCODEX_CLEAN",
-  "hermes_virtual_model_id": "hermesAPI",
-  "_chainPositionMigration": true,
-  "virtual_model_id": "auto",
-  "disable_condition_switch": false,
-  "fallback_interval_minutes": 65
+  "single_model": ""
 }
