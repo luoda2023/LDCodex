@@ -1,0 +1,1 @@
+﻿{  "name": "luodabridge",  "version": "1.0.0",  "description": "LuoDaBridge — Codex CLI 路由中转代理",  "type": "module",  "main": "index.mjs",  "scripts": {    "start": "node index.mjs"  },  "dependencies": {    "https-proxy-agent": "^9.1.0"  },  "engines": {    "node": ">=18.0.0"  },  "keywords": [    "proxy",    "codex",    "openai",    "deepseek",    "llama"  ],  "license": "MIT"}

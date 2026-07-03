@@ -1,0 +1,23 @@
+{
+  "version": "v10.0.1",
+  "url": "https://github.com/luoda2023/LDCodex/releases/tag/v10.0.1",
+  "body": "## v10.0.1 更新内容\n\n### ✨ 新功能\n- 🎭 **ZCode 分身管理**：创建和管理多个 ZCode 独立实例（分身）\n- 🔄 每个分身拥有独立的数据目录，可同时运行多个 ZCode 实例\n\n### 🏷️ 品牌升级\n- 品牌统一为 **LD AI工具**（LDCodex → LDAI）\n- 所有界面文案、标题栏、菜单项更新\n\n### 🔧 其他改进\n- 端口统一为 40000/40001/40002\n- Bridge 代理优化\n- 管理工具全面升级",
+  "assets": [
+    {
+      "name": "LDAI-10.0.1-windows-x64-setup.exe",
+      "url": "https://github.com/luoda2023/LDCodex/releases/download/v10.0.1/LDAI-10.0.1-windows-x64-setup.exe"
+    },
+    {
+      "name": "LDAI-10.0.1-macos-x64.dmg",
+      "url": "https://github.com/luoda2023/LDCodex/releases/download/v10.0.1/LDAI-10.0.1-macos-x64.dmg"
+    },
+    {
+      "name": "LDAI-10.0.1-macos-arm64.dmg",
+      "url": "https://github.com/luoda2023/LDCodex/releases/download/v10.0.1/LDAI-10.0.1-macos-arm64.dmg"
+    },
+    {
+      "name": "LDAI-10.0.1-windows-x64-portable.zip",
+      "url": "https://github.com/luoda2023/LDCodex/releases/download/v10.0.1/LDAI-10.0.1-windows-x64-portable.zip"
+    }
+  ]
+}
