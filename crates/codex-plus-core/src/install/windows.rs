@@ -6,9 +6,9 @@ use super::{
     install_root_or_default, option_or_current_exe,
 };
 
-const UNINSTALL_SUBKEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex";
+const UNINSTALL_SUBKEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\LDAI";
 const LEGACY_UNINSTALL_SUBKEY: &str =
-    r"Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex";
+    r"Software\Microsoft\Windows\CurrentVersion\Uninstall\LDAI";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WindowsEntrypointPlan {
@@ -36,15 +36,15 @@ pub fn build_windows_entrypoint_plan(options: &InstallOptions) -> WindowsEntrypo
     let icon_path = default_icon_path();
     WindowsEntrypointPlan {
         silent_shortcut: install_root
-            .join("LDCodex.lnk")
+            .join("LD AI工具.lnk")
             .to_string_lossy()
             .to_string(),
         manager_shortcut: install_root
-            .join("LDAI管理工具.lnk")
+            .join("LD AI工具 管理工具.lnk")
             .to_string_lossy()
             .to_string(),
         zcode_shortcut: install_root
-            .join("LDZcode.lnk")
+            .join("LD AI工具 ZCode启动器.lnk")
             .to_string_lossy()
             .to_string(),
         install_root: install_root.to_string_lossy().to_string(),
@@ -55,8 +55,8 @@ pub fn build_windows_entrypoint_plan(options: &InstallOptions) -> WindowsEntrypo
         silent_icon_path: launcher_path.to_string_lossy().to_string(),
         manager_icon_path: manager_path.to_string_lossy().to_string(),
         zcode_icon_path: zcode_path.to_string_lossy().to_string(),
-        uninstall_key: "LDCodex".to_string(),
-        legacy_uninstall_key: "LDCodex".to_string(),
+        uninstall_key: "LDAI".to_string(),
+        legacy_uninstall_key: "LDAI".to_string(),
         remove_owned_data: options.remove_owned_data,
     }
 }
@@ -69,19 +69,19 @@ pub fn install_shortcuts(options: &InstallOptions) -> anyhow::Result<()> {
     create_entrypoint_shortcut(
         PathBuf::from(&plan.silent_shortcut),
         PathBuf::from(&plan.launcher_path),
-        "Launch LDCodex silently",
+        "启动 LD AI工具",
         PathBuf::from(&plan.silent_icon_path),
     )?;
     create_entrypoint_shortcut(
         PathBuf::from(&plan.manager_shortcut),
         PathBuf::from(&plan.manager_path),
-        "Open LDAI management tool",
+        "打开 LD AI工具 管理工具",
         PathBuf::from(&plan.manager_icon_path),
     )?;
     create_entrypoint_shortcut(
         PathBuf::from(&plan.zcode_shortcut),
         PathBuf::from(&plan.zcode_path),
-        "Launch LDZcode",
+        "启动 LD AI工具 ZCode",
         PathBuf::from(&plan.zcode_icon_path),
     )?;
     write_uninstall_registration(&plan)?;
@@ -138,7 +138,7 @@ fn write_uninstall_registration(plan: &WindowsEntrypointPlan) -> anyhow::Result<
         .to_string_lossy()
         .to_string();
     for (name, value) in [
-        ("DisplayName", "LDCodex".to_string()),
+        ("DisplayName", "LD AI工具".to_string()),
         ("DisplayVersion", crate::version::VERSION.to_string()),
         ("Publisher", "LUODA".to_string()),
         ("DisplayIcon", plan.manager_icon_path.clone()),

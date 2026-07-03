@@ -61,7 +61,7 @@ jobs:
             $makensis = "makensis"
           }
           Push-Location scripts/installer/windows
-          & $makensis "/INPUTCHARSET" "UTF8" "/DVERSION=$version" LDCodex.nsi
+          & $makensis "/INPUTCHARSET" "UTF8" "/DVERSION=$version" LDAI.nsi
           Pop-Location
 
       - name: Upload Windows installer
@@ -119,7 +119,7 @@ jobs:
       - name: Verify macOS bundle structure
         run: |
           set -euo pipefail
-          for app in "dist/macos/stage/LDCodex.app" "dist/macos/stage/LDCodex 管理工具.app"; do
+          for app in "dist/macos/stage/LD AI工具.app" "dist/macos/stage/LD AI工具 管理工具.app" "dist/macos/stage/LD AI工具 ZCode启动器.app"; do
             test -f "$app/Contents/Info.plist"
             test -f "$app/Contents/PkgInfo"
             test -x "$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"

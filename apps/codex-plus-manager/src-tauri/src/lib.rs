@@ -24,7 +24,7 @@ pub fn run() {
                 "index.html"
             };
             tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App(url.into()))
-                .title("LDCodex 管理工具").decorations(false).inner_size(1180.0, 820.0)
+                .title("LD AI工具 管理工具").decorations(false).inner_size(1180.0, 820.0)
                 .min_inner_size(960.0, 720.0)
                 .center()
                 .visible(true)
@@ -139,7 +139,10 @@ pub fn run() {
             commands::zcode_install_status,
             commands::toggle_zcode_parallel,
             commands::scan_zcode_plugins,
-            commands::inject_zcode_plugin
+            commands::inject_zcode_plugin,
+            commands::list_zcode_profiles,
+            commands::create_zcode_profile,
+            commands::delete_zcode_profile
         ])
         .run(tauri::generate_context!());
     if let Err(error) = run_result {

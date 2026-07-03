@@ -144,3 +144,150 @@ pub fn zcode_plugin_injected() -> bool {
     // 更精确的检测：检查是否可解压并查看 index.html
     false
 }
+
+// ====== ZCode 分身管理 ======
+
+/// ZCode 分身配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ZCodeProfile {
+    pub id: String,
+    pub name: String,
+    pub data_dir: String,
+    pub created_at_ms: i64,
+    pub last_launched_ms: Option<i64>,
+}
+
+/// 默认分身 ID
+pub const ZCODE_DEFAULT_PROFILE_ID: &str = "default";
+
+/// 分身配置文件路径 (%APPDATA%/LD AI工具/zcode-profiles.json)
+pub fn zcode_profiles_path() -> PathBuf {
+    let roaming = std::env::var_os("APPDATA")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    roaming.join("LD AI工具").join("zcode-profiles.json")
+}
+
+/// 获取用户主目录
+fn user_home_dir() -> PathBuf {
+    std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+/// 获取某个分身的数据目录（绝对路径）
+pub fn zcode_profile_data_dir(profile_id: &str) -> PathBuf {
+    if profile_id == ZCODE_DEFAULT_PROFILE_ID {
+        zcode_home_dir()
+    } else {
+        user_home_dir().join(format!(".zcode-profile-{}", profile_id))
+    }
+}
+
+fn create_default_profile() -> ZCodeProfile {
+    ZCodeProfile {
+        id: ZCODE_DEFAULT_PROFILE_ID.to_string(),
+        name: "默认".to_string(),
+        data_dir: ".zcode".to_string(),
+        created_at_ms: 0,
+        last_launched_ms: None,
+    }
+}
+
+/// 列出所有分身
+pub fn list_zcode_profiles() -> Vec<ZCodeProfile> {
+    let path = zcode_profiles_path();
+    if !path.exists() {
+        let default = create_default_profile();
+        let _ = save_zcode_profiles(&[default.clone()]);
+        return vec![default];
+    }
+    match std::fs::read_to_string(&path) {
+        Ok(content) => {
+            serde_json::from_str(&content).unwrap_or_else(|_| vec![create_default_profile()])
+        }
+        Err(_) => vec![create_default_profile()],
+    }
+}
+
+/// 保存分身列表
+pub fn save_zcode_profiles(profiles: &[ZCodeProfile]) -> std::io::Result<()> {
+    let path = zcode_profiles_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let content = serde_json::to_string_pretty(profiles)?;
+    std::fs::write(&path, content)
+}
+
+/// 生成唯一 ID
+fn generate_profile_id() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    format!("profile-{}", ts)
+}
+
+/// 创建新分身
+pub fn create_zcode_profile(name: &str) -> anyhow::Result<ZCodeProfile> {
+    if name.trim().is_empty() {
+        anyhow::bail!("分身名称不能为空");
+    }
+    let mut profiles = list_zcode_profiles();
+    if profiles.iter().any(|p| p.name == name.trim()) {
+        anyhow::bail!("分身名称已存在: {}", name);
+    }
+    let id = generate_profile_id();
+    let data_dir = format!(".zcode-profile-{}", &id);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    let profile = ZCodeProfile {
+        id,
+        name: name.trim().to_string(),
+        data_dir,
+        created_at_ms: now,
+        last_launched_ms: None,
+    };
+    profiles.push(profile.clone());
+    save_zcode_profiles(&profiles)?;
+    Ok(profile)
+}
+
+/// 删除分身（只删除配置记录，不删除数据目录）
+pub fn delete_zcode_profile(id: &str) -> anyhow::Result<()> {
+    if id == ZCODE_DEFAULT_PROFILE_ID {
+        anyhow::bail!("不能删除默认分身");
+    }
+    let before = list_zcode_profiles();
+    let len_before = before.len();
+    let profiles: Vec<ZCodeProfile> = before.into_iter().filter(|p| p.id != id).collect();
+    if profiles.len() == len_before {
+        anyhow::bail!("未找到分身: {}", id);
+    }
+    save_zcode_profiles(&profiles)?;
+    Ok(())
+}
+
+/// 更新分身最后启动时间
+pub fn touch_zcode_profile(id: &str) -> anyhow::Result<()> {
+    let mut profiles = list_zcode_profiles();
+    if let Some(profile) = profiles.iter_mut().find(|p| p.id == id) {
+        profile.last_launched_ms = Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0),
+        );
+        save_zcode_profiles(&profiles)?;
+        Ok(())
+    } else {
+        anyhow::bail!("未找到分身: {}", id);
+    }
+}

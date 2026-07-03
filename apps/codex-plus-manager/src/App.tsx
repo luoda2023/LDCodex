@@ -52,6 +52,7 @@ import {
   Sun,
   TestTube,
   Trash2,
+  Users,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -512,7 +513,7 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "zcode-sessions" | "zcode-plugins" | "zcode-enhance" | "proxy" | "maintenance" | "about" | "settings";
+type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "zcode-sessions" | "zcode-plugins" | "zcode-enhance" | "zcode-profiles" | "proxy" | "maintenance" | "about" | "settings";
 type Theme = "dark" | "light";
 
 /** 所有路由（用于标题查找、路由匹配） */
@@ -525,6 +526,7 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string
   { id: "zcode-sessions", label: "会话管理", icon: MessageCircle },
   { id: "zcode-plugins", label: "工具与插件", icon: Puzzle },
   { id: "zcode-enhance", label: "增强设置", icon: Hammer },
+  { id: "zcode-profiles", label: "分身管理", icon: Users },
   { id: "proxy", label: "代理服务器", icon: ShieldCheck },
   { id: "maintenance", label: "安装维护", icon: Wrench },
   { id: "settings", label: "设置", icon: Settings },
@@ -558,6 +560,7 @@ const navGroups: Array<{
       { id: "zcode-sessions", label: "会话管理", icon: MessageCircle },
       { id: "zcode-plugins", label: "工具与插件", icon: Puzzle },
       { id: "zcode-enhance", label: "增强设置", icon: Hammer },
+      { id: "zcode-profiles", label: "分身管理", icon: Users },
     ],
   },
   {
@@ -953,7 +956,7 @@ export function App() {
   const restart = async () => {
     const result = await launchCommand("restart_codex_plus");
     if (result) {
-      showNotice("重启 LDCodex", result.message, result.status);
+      showNotice("重启 LD AI工具", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -963,7 +966,7 @@ export function App() {
       call<CommandResult<Record<string, unknown>>>("launch_zcode"),
     );
     if (result) {
-      showNotice("启动 LDZcode", result.message, result.status);
+      showNotice("启动 ZCode启动器", result.message, result.status);
     }
   };
 
@@ -1788,20 +1791,20 @@ export function App() {
             </Button>
             {route === "enhance" ? (
               <>
-                <Button onClick={() => void actions.launch()} title="启动 LDCodex" variant="outline">
+                <Button onClick={() => void actions.launch()} title="启动 LD AI工具" variant="outline">
                   <Rocket className="h-4 w-4" />
-                  启动 LDCodex
+                  启动 LD AI工具
                 </Button>
-                <Button onClick={() => void actions.restart()} title="重启 LDCodex" variant="outline">
+                <Button onClick={() => void actions.restart()} title="重启 LD AI工具" variant="outline">
                   <RefreshCw className="h-4 w-4" />
                   重启
                 </Button>
               </>
             ) : null}
             {route === "zcode-sessions" || route === "zcode-plugins" || route === "zcode-enhance" ? (
-              <Button onClick={() => void launchZCode()} title="启动 LDZcode" variant="outline">
+              <Button onClick={() => void launchZCode()} title="启动 ZCode启动器" variant="outline">
                 <Rocket className="h-4 w-4" />
-                启动 LDZcode
+                启动 ZCode启动器
               </Button>
             ) : null}
             <Button onClick={() => void actions.refreshCurrent()} size="icon" title="刷新当前页面" variant="outline">
@@ -1865,6 +1868,9 @@ export function App() {
           ) : null}
           {route === "zcode-enhance" ? (
             <ZCodeEnhanceScreen actions={actions} />
+          ) : null}
+          {route === "zcode-profiles" ? (
+            <ZCodeProfilesScreen actions={actions} />
           ) : null}
           {route === "proxy" ? (
             <ProxyScreen
@@ -2355,7 +2361,7 @@ function EnhanceScreen({
             <FeatureToggle title="对话居中宽度" detail="把主对话和输入框限制到固定最大宽度，适合大屏阅读。" checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
             <FeatureToggle title="切换对话保留位置" detail="切换 thread 时恢复上一次浏览位置。" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
             <FeatureToggle title="Upstream worktree" detail="从最新 upstream 分支创建 Git worktree。" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
-            <FeatureToggle title="原生菜单栏位置" detail="把 LDCodex 菜单插入 Codex 顶部原生菜单栏。" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
+            <FeatureToggle title="原生菜单栏位置" detail="把 LD AI工具 菜单插入 Codex 顶部原生菜单栏。" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
             <FeatureToggle title="原生菜单汉化" detail="启动时通过本地主进程调试端口汉化 Codex 原生菜单；不修改安装包。需重启 Codex 才生效。" checked={form.codexAppNativeMenuLocalization} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuLocalization", value)} />
           </div>
           <div className="hint-line">
@@ -2514,9 +2520,9 @@ function ZCodePluginsScreen({ actions }: { actions: Actions }) {
     setLoading(true);
     try {
       const defaultScripts = [
-        { name: "zcode-customize.js", desc: "布局调整与功能增强", file: "LDZcode/zcode-customize.js" },
-        { name: "inject-zcode.bat", desc: "Windows 注入工具（批处理）", file: "LDZcode/inject-zcode.bat" },
-        { name: "toggle-parallel.js", desc: "并行对话切换脚本", file: "LDZcode/toggle-parallel.js" },
+        { name: "zcode-customize.js", desc: "布局调整与功能增强", file: "LD AI工具 ZCode启动器/zcode-customize.js" },
+        { name: "inject-zcode.bat", desc: "Windows 注入工具（批处理）", file: "LD AI工具 ZCode启动器/inject-zcode.bat" },
+        { name: "toggle-parallel.js", desc: "并行对话切换脚本", file: "LD AI工具 ZCode启动器/toggle-parallel.js" },
       ];
       try {
         const result = await invoke<CommandResult<{ scripts: Array<{ name: string; exists: boolean }> }>>("scan_zcode_plugins");
@@ -2544,7 +2550,7 @@ function ZCodePluginsScreen({ actions }: { actions: Actions }) {
         <CardContent>
           <div className="hint-line">
             <Puzzle className="h-4 w-4" style={{ flexShrink: 0 }} />
-            <span>ZCode 自定义增强脚本管理，存放于 <b>LDZcode/</b> 目录下。ZCode 升级后需重新注入。</span>
+            <span>ZCode 自定义增强脚本管理，存放于 <b>LD AI工具 ZCode启动器/</b> 目录下。ZCode 升级后需重新注入。</span>
           </div>
           {loading ? (
             <div className="loading-text">扫描中…</div>
@@ -2625,7 +2631,7 @@ function ZCodeEnhanceScreen({ actions }: { actions: Actions }) {
             </div>
             <div className="feature-item">
               <div>
-                <strong>LDZcode 布局增强</strong>
+                <strong>ZCode 布局增强</strong>
                 <span>注入 zcode-customize.js 实现消息宽度、输入框尺寸、字体大小自定义。</span>
               </div>
               {injectStatus.loading ? <span className="loading-text">检测中…</span> : (
@@ -2645,6 +2651,195 @@ function ZCodeEnhanceScreen({ actions }: { actions: Actions }) {
               启动 ZCode
             </Button>
           </Toolbar>
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+/// ZCode 分身信息
+interface ZCodeProfileItem {
+  id: string;
+  name: string;
+  dataDir: string;
+  createdAtMs: number;
+  lastLaunchedMs: number | null;
+}
+
+function ZCodeProfilesScreen({ actions }: { actions: Actions }) {
+  const [profiles, setProfiles] = useState<ZCodeProfileItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState("");
+  const [showNew, setShowNew] = useState(false);
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const result = await invoke<CommandResult<ZCodeProfileItem[]>>("list_zcode_profiles");
+      setProfiles(result ?? []);
+    } catch (e) {
+      console.warn("获取分身列表失败", e);
+      setProfiles([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void refresh(); }, []);
+
+  const createProfile = async () => {
+    if (!newName.trim()) return;
+    try {
+      await invoke("create_zcode_profile", { name: newName.trim() });
+      setNewName("");
+      setShowNew(false);
+      await refresh();
+    } catch (e) {
+      console.error("创建分身失败", e);
+      alert("创建分身失败：" + String(e));
+    }
+  };
+
+  const deleteProfile = async (id: string, name: string) => {
+    if (id === "default") return;
+    if (!confirm(`确定删除分身「${name}」？\n（数据目录不会被删除）`)) return;
+    try {
+      await invoke("delete_zcode_profile", { profileId: id });
+      await refresh();
+    } catch (e) {
+      console.error("删除分身失败", e);
+      alert("删除分身失败：" + String(e));
+    }
+  };
+
+  const launchProfile = async (profileId: string) => {
+    try {
+      const result = await invoke<CommandResult<unknown>>("launch_zcode", { profileId });
+      console.log("启动结果", result);
+    } catch (e) {
+      console.error("启动分身失败", e);
+      alert("启动分身失败：" + String(e));
+    }
+  };
+
+  const formatTime = (ms: number | null | undefined) => {
+    if (!ms || ms === 0) return "—";
+    try {
+      const d = new Date(ms);
+      return d.toLocaleString("zh-CN");
+    } catch {
+      return String(ms);
+    }
+  };
+
+  return (
+    <>
+      <Panel>
+        <CardHead title="ZCode 分身管理" detail="创建和管理多个 ZCode 独立实例（分身）" />
+        <CardContent>
+          <div className="hint-line">
+            <Info className="h-4 w-4" />
+            <span>
+              每个分身拥有独立的数据目录（通过{" "}
+              <code>ZCODE_DESKTOP_USER_DATA_DIR</code> 隔离），可同时运行多个 ZCode 实例。
+            </span>
+          </div>
+
+          <Toolbar>
+            <Button onClick={() => setShowNew(true)} variant="default">
+              <Plus className="h-4 w-4" /> 新建分身
+            </Button>
+            <Button onClick={() => void refresh()} variant="outline">
+              <RefreshCw className="h-4 w-4" /> 刷新
+            </Button>
+          </Toolbar>
+
+          {showNew ? (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, marginBottom: 8 }}>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="输入分身名称…"
+                style={{ flex: 1 }}
+                onKeyDown={(e) => { if (e.key === "Enter") void createProfile(); }}
+                autoFocus
+              />
+              <Button onClick={() => void createProfile()} variant="default">确认</Button>
+              <Button onClick={() => { setShowNew(false); setNewName(""); }} variant="outline">取消</Button>
+            </div>
+          ) : null}
+
+          {loading ? (
+            <div className="loading-text" style={{ marginTop: 12 }}>加载中…</div>
+          ) : profiles.length === 0 ? (
+            <div className="empty-text" style={{ marginTop: 12 }}>暂无分身，点击"新建分身"创建</div>
+          ) : (
+            <div style={{ marginTop: 8 }}>
+              {profiles.map((p, idx) => (
+                <div
+                  key={p.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "10px 0",
+                    borderBottom: "1px solid hsl(var(--border) / 0.3)",
+                  }}
+                >
+                  {/* 分身序号图标 */}
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      background: p.id === "default"
+                        ? "hsl(var(--primary) / 0.15)"
+                        : "hsl(var(--accent))",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 700,
+                      fontSize: 16,
+                      color: p.id === "default"
+                        ? "hsl(var(--primary))"
+                        : "hsl(var(--foreground))",
+                      flexShrink: 0,
+                      border: "1px solid hsl(var(--border) / 0.4)",
+                    }}
+                  >
+                    {idx + 1}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                      {p.name}
+                      {p.id === "default" ? (
+                        <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", background: "hsl(var(--accent))", padding: "0 6px", borderRadius: 4 }}>默认</span>
+                      ) : null}
+                    </div>
+                    <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))", display: "flex", gap: 12, flexWrap: "wrap", marginTop: 2 }}>
+                      <span>数据目录: {p.dataDir}</span>
+                      <span>创建于: {formatTime(p.createdAtMs)}</span>
+                      {p.lastLaunchedMs ? <span>最后启动: {formatTime(p.lastLaunchedMs)}</span> : null}
+                    </div>
+                    <div style={{ fontSize: 10, color: "hsl(var(--muted-foreground) / 0.5)" }}>
+                      ID: {p.id}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Button onClick={() => void launchProfile(p.id)} variant="default" size="sm">
+                      <Rocket className="h-3 w-3" /> 启动
+                    </Button>
+                    {p.id !== "default" ? (
+                      <Button onClick={() => void deleteProfile(p.id, p.name)} variant="outline" size="sm">
+                        <Trash2 className="h-3 w-3" /> 删除
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Panel>
     </>
@@ -2789,7 +2984,7 @@ function SessionsScreen({
             />
             <span>
               <strong>启动前自动修复历史会话</strong>
-              <small>开启后，通过 LDCodex 启动 Codex 前自动整理一次旧对话的归属标记。</small>
+              <small>开启后，通过 LD AI工具 启动 Codex 前自动整理一次旧对话的归属标记。</small>
             </span>
           </label>
           <Toolbar>
@@ -2940,7 +3135,7 @@ function MaintenanceScreen({
         <CardContent>
           <label className="check-row">
             <input checked={removeOwnedData} onChange={(event) => onRemoveOwnedDataChange(event.currentTarget.checked)} type="checkbox" />
-            <span>卸载时移除 LDCodex 托管数据</span>
+            <span>卸载时移除 LD AI工具 托管数据</span>
           </label>
           <Toolbar>
             <Button onClick={() => void actions.installEntrypoints()}>安装入口</Button>
@@ -2950,7 +3145,7 @@ function MaintenanceScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="自动接管" detail="Watcher 用于保持 LDCodex 接管状态" />
+        <CardHead title="自动接管" detail="Watcher 用于保持 LD AI工具 接管状态" />
         <CardContent>
           <Toolbar>
             <Button variant="secondary" onClick={() => void actions.installWatcher()}>安装 watcher</Button>
@@ -3873,7 +4068,7 @@ function RelayProfileEditor({
       {showApiFields && profile.protocol === "chatCompletions" ? (
         <div className="hint-line relay-protocol-hint">
           <MessageCircle className="h-4 w-4" />
-          <span>此上游会通过本地 127.0.0.1:57321 转成 Responses API，需要从 LDCodex 启动 Codex。</span>
+          <span>此上游会通过本地 127.0.0.1:57321 转成 Responses API，需要从 LD AI工具 启动 Codex。</span>
         </div>
       ) : null}
       <div className="hint-line relay-protocol-hint">
@@ -4519,7 +4714,7 @@ function CloseConfirmDialog({
         <div className="modal-head">
           <div>
             <h2>关闭确认</h2>
-            <p className="modal-message">要退出 LDCodex 管理工具，还是最小化到系统托盘？</p>
+            <p className="modal-message">要退出 LD AI工具 管理工具，还是最小化到系统托盘？</p>
           </div>
           <button className="toast-close" onClick={onCancel} type="button">×</button>
         </div>
@@ -4713,6 +4908,7 @@ function routeSubtitle(route: Route) {
     "zcode-sessions": "查看和管理 ZCode 对话任务",
     "zcode-plugins": "ZCode 插件脚本管理与注入",
     "zcode-enhance": "ZCode 增强功能与并行对话模式",
+    "zcode-profiles": "ZCode 分身管理：创建、启动、删除独立实例",
     proxy: "代理服务器运行状态与模型信息",
     maintenance: "安装检查、修复与诊断",
     about: "版本信息、项目链接、日志与诊断",
@@ -5371,7 +5567,7 @@ function healthItems(overview: OverviewResult | null) {
       title: "静默启动入口",
       status: overview?.silent_shortcut.status ?? "not_checked",
       ok: overview?.silent_shortcut.status === "installed",
-      detail: overview?.silent_shortcut.path || "缺少 LDCodex 静默启动快捷方式时可在安装维护页修复。",
+      detail: overview?.silent_shortcut.path || "缺少 LD AI工具 静默启动快捷方式时可在安装维护页修复。",
     },
     {
       title: "管理工具入口",
@@ -6394,7 +6590,7 @@ function loadInitialRoute(): Route {
   return "overview";
 }
 
-// ── LDCodex-specific screens (from original HEAD) ──
+// ── LD AI工具-specific screens (from original HEAD) ──
 
 	function ProxyScreen({
 	  overview,

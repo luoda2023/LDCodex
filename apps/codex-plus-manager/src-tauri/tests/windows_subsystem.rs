@@ -63,7 +63,7 @@ fn windows_binaries_request_administrator_privileges() {
         .and_then(std::path::Path::parent)
         .and_then(std::path::Path::parent)
         .unwrap()
-        .join("scripts/installer/windows/LDCodex.nsi");
+        .join("scripts/installer/windows/LDAI.nsi");
     let windows_installer =
         std::fs::read_to_string(&windows_installer).expect("read windows installer");
 
@@ -99,12 +99,12 @@ fn macos_packager_hides_silent_launcher_but_not_manager() {
     assert!(script.contains("<key>LSUIElement</key>"));
     assert!(script.contains("ARCH=\"${2:-$(uname -m)}\""));
     assert!(script.contains("BINARY_DIR=\"${BINARY_DIR:-$ROOT/target/release}\""));
-    assert!(script.contains("LDCodex-${VERSION}-macos-${ARCH}.dmg"));
+    assert!(script.contains("LDAI-${VERSION}-macos-${ARCH}.dmg"));
     assert!(script.contains(
-        "create_app \"LDCodex\" \"LDCodex\" \"$BINARY_DIR/ldcodex\" \"com.luoda.ldcodex\" \"true\""
+        "create_app \"LD AI工具\" \"LDAI\" \"$BINARY_DIR/ldcodex\" \"com.luoda.ldai\" \"true\""
     ));
     assert!(script.contains(
-        "create_app \"LDAI管理工具\" \"LDAIManager\" \"$BINARY_DIR/ldai-manager\" \"com.luoda.ldai.manager\" \"false\""
+        "create_app \"LD AI工具 管理工具\" \"LDAIManager\" \"$BINARY_DIR/ldcodex-manager\" \"com.luoda.ldai.manager\" \"false\""
     ));
 }
 

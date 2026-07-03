@@ -56,6 +56,7 @@ jobs:
           New-Item -ItemType Directory -Force dist/windows/app | Out-Null
           Copy-Item target/release/ldcodex.exe dist/windows/app/
           Copy-Item target/release/ldcodex-manager.exe dist/windows/app/
+          Copy-Item target/release/ldzcode.exe dist/windows/app/
           # ★ Node.js 不打包进安装包！launcher 首次运行时自动检测/下载
           # ★ 复制 bridge 目录
           Copy-Item -Recurse -Force bridge dist/windows/app/bridge/
@@ -79,20 +80,20 @@ jobs:
             $makensis = "makensis"
           }
           Push-Location scripts/installer/windows
-          & $makensis "/INPUTCHARSET" "UTF8" "/DVERSION=$version" LDCodex.nsi
+          & $makensis "/INPUTCHARSET" "UTF8" "/DVERSION=$version" LDAI.nsi
           Pop-Location
 
       - name: Upload Windows binaries
         uses: actions/upload-artifact@v4
         with:
-          name: ldcodex-windows-binaries
+          name: ldai-windows-binaries
           path: dist/windows/app/*
           if-no-files-found: error
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: ldcodex-windows-installer
+          name: ldai-windows-installer
           path: dist/windows/*.exe
           if-no-files-found: error
 
@@ -151,7 +152,7 @@ jobs:
       - name: Verify macOS bundle structure
         run: |
           set -euo pipefail
-          for app in "dist/macos/stage/LDCodex.app" "dist/macos/stage/LDCodex 管理工具.app"; do
+          for app in "dist/macos/stage/LD AI工具.app" "dist/macos/stage/LD AI工具 管理工具.app" "dist/macos/stage/LD AI工具 ZCode启动器.app"; do
             test -f "$app/Contents/Info.plist"
             test -f "$app/Contents/PkgInfo"
             test -x "$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
@@ -163,7 +164,7 @@ jobs:
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
         with:
-          name: ldcodex-macos-${{ matrix.arch }}-dmg
+          name: ldai-macos-${{ matrix.arch }}-dmg
           path: dist/macos/*.dmg
           if-no-files-found: error
 

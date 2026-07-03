@@ -428,10 +428,10 @@ fn launch_bridge_process(node: &str, script_path: &PathBuf, _work_dir: &PathBuf)
     use std::os::windows::process::CommandExt;
     // 弹出终端窗口运行 node bridge/index.mjs
     let script = script_path.to_string_lossy();
-    let _cmdline = format!("/c start \"LDCodex Bridge\" cmd.exe /k \"{} {}\"", node, script);
+    let _cmdline = format!("/c start \"LD AI工具 Bridge\" cmd.exe /k \"{} {}\"", node, script);
     let _ = std::process::Command::new("cmd.exe")
         .creation_flags(0x08000000 | 0x00000010)
-        .args(["/c", "start", "LDCodex Bridge", "cmd.exe", "/k", &format!("{} {}", node, script)])
+        .args(["/c", "start", "LD AI工具 Bridge", "cmd.exe", "/k", &format!("{} {}", node, script)])
         .spawn()?;
     // start 会先启动一个 cmd，实际 node 进程的 pid 无法直接获取
     // 返回 0 表示成功（前端仅用于展示）
@@ -2589,24 +2589,50 @@ fn find_zcode_exe() -> Option<PathBuf> {
 }
 
 #[tauri::command]
-pub fn launch_zcode() -> CommandResult<Value> {
+pub fn launch_zcode(profile_id: Option<String>) -> CommandResult<Value> {
     let exe_path = find_zcode_exe();
 
     if let Some(ref exe) = exe_path {
-        match std::process::Command::new(exe).spawn() {
+        let mut cmd = std::process::Command::new(exe);
+
+        // 如果指定了分身，设置环境变量以使用独立的数据目录
+        if let Some(ref pid) = profile_id {
+            if pid != codex_plus_core::zcode_sqlite::ZCODE_DEFAULT_PROFILE_ID {
+                let data_dir = codex_plus_core::zcode_sqlite::zcode_profile_data_dir(pid);
+                cmd.env("ZCODE_DESKTOP_USER_DATA_DIR", data_dir.to_string_lossy().to_string());
+                // 记录分身启动时间
+                let _ = codex_plus_core::zcode_sqlite::touch_zcode_profile(pid);
+            }
+        }
+
+        match cmd.spawn() {
             Ok(child) => {
+                let profile_label = profile_id
+                    .as_ref()
+                    .and_then(|pid| {
+                        if pid != codex_plus_core::zcode_sqlite::ZCODE_DEFAULT_PROFILE_ID {
+                            codex_plus_core::zcode_sqlite::list_zcode_profiles()
+                                .into_iter()
+                                .find(|p| &p.id == pid)
+                                .map(|p| p.name)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| "默认".to_string());
+
                 let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
                     "manager.zcode_launched",
-                    json!({"pid": child.id(), "path": exe.to_string_lossy().to_string()}),
+                    json!({"pid": child.id(), "path": exe.to_string_lossy().to_string(), "profileId": profile_id}),
                 );
                 ok(
-                    &format!("LDZcode 已启动（PID: {}）", child.id()),
-                    json!({"pid": child.id(), "path": exe.to_string_lossy().to_string()}),
+                    &format!("分身「{}」已启动（PID: {}）", profile_label, child.id()),
+                    json!({"pid": child.id(), "path": exe.to_string_lossy().to_string(), "profileId": profile_id}),
                 )
             }
             Err(e) => {
                 failed(
-                    &format!("启动 LDZcode 失败：{e}"),
+                    &format!("启动 ZCode启动器 失败：{e}"),
                     json!({"path": exe.to_string_lossy().to_string()}),
                 )
             }
@@ -2806,20 +2832,20 @@ pub fn toggle_zcode_parallel(request: ToggleZCodeParallelRequest) -> CommandResu
 pub fn scan_zcode_plugins() -> CommandResult<Value> {
     let ldzcode_dir = codex_plus_core::zcode_sqlite::zcode_home_dir()
         .parent()
-        .map(|p| p.join("LDZcode"))
+        .map(|p| p.join("LD AI工具 ZCode启动器"))
         .unwrap_or_else(|| {
             std::env::current_exe()
                 .ok()
                 .and_then(|p| p.parent().map(|p| p.to_path_buf()))
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join("LDZcode")
+                .join("LD AI工具 ZCode启动器")
         });
 
     let known_scripts = [
         "zcode-customize.js",
         "inject-zcode.bat",
         "toggle-parallel.js",
-        "README-LDZcode.md",
+        "README-LD AI工具 ZCode启动器.md",
     ];
 
     let scripts: Vec<serde_json::Value> = known_scripts
@@ -2842,13 +2868,13 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
     let zcode_install = codex_plus_core::zcode_sqlite::zcode_install_dir();
     let ldzcode_dir = codex_plus_core::zcode_sqlite::zcode_home_dir()
         .parent()
-        .map(|p| p.join("LDZcode"))
+        .map(|p| p.join("LD AI工具 ZCode启动器"))
         .unwrap_or_else(|| {
             std::env::current_exe()
                 .ok()
                 .and_then(|p| p.parent().map(|p| p.to_path_buf()))
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join("LDZcode")
+                .join("LD AI工具 ZCode启动器")
         });
 
     // 目标：复制 zcode-customize.js 到 ZCode 安装目录的 resources 下
@@ -2857,7 +2883,7 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
 
     if !source.exists() {
         return failed(
-            "未找到 zcode-customize.js，请确认 LDZcode 目录存在",
+            "未找到 zcode-customize.js，请确认 LD AI工具 ZCode启动器 目录存在",
             json!({"source": source.to_string_lossy().to_string()}),
         );
     }
@@ -2891,6 +2917,66 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
         Err(e) => failed(
             &format!("插件注入失败：{e}"),
             json!({"source": source.to_string_lossy().to_string(), "target": target.to_string_lossy().to_string()}),
+        ),
+    }
+}
+
+// ========== ZCode 分身管理命令 ==========
+
+/// 分身信息（返回给前端）
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ZCodeProfileItem {
+    pub id: String,
+    pub name: String,
+    pub data_dir: String,
+    pub created_at_ms: i64,
+    pub last_launched_ms: Option<i64>,
+}
+
+impl From<codex_plus_core::zcode_sqlite::ZCodeProfile> for ZCodeProfileItem {
+    fn from(p: codex_plus_core::zcode_sqlite::ZCodeProfile) -> Self {
+        ZCodeProfileItem {
+            id: p.id,
+            name: p.name,
+            data_dir: p.data_dir,
+            created_at_ms: p.created_at_ms,
+            last_launched_ms: p.last_launched_ms,
+        }
+    }
+}
+
+/// 列出所有 ZCode 分身
+#[tauri::command]
+pub fn list_zcode_profiles() -> CommandResult<Vec<ZCodeProfileItem>> {
+    let profiles = codex_plus_core::zcode_sqlite::list_zcode_profiles();
+    let items: Vec<ZCodeProfileItem> = profiles.into_iter().map(Into::into).collect();
+    ok(&format!("共 {} 个分身", items.len()), items)
+}
+
+/// 创建新分身
+#[tauri::command]
+pub fn create_zcode_profile(name: String) -> CommandResult<Value> {
+    match codex_plus_core::zcode_sqlite::create_zcode_profile(&name) {
+        Ok(profile) => {
+            let item: ZCodeProfileItem = profile.into();
+            ok(&format!("分身「{}」创建成功", item.name), json!(item))
+        }
+        Err(e) => failed(&format!("创建分身失败：{e}"), json!({"name": name})),
+    }
+}
+
+/// 删除分身
+#[tauri::command]
+pub fn delete_zcode_profile(profile_id: String) -> CommandResult<Value> {
+    match codex_plus_core::zcode_sqlite::delete_zcode_profile(&profile_id) {
+        Ok(()) => ok(
+            &format!("分身已删除（ID: {}）", profile_id),
+            json!({"profileId": profile_id}),
+        ),
+        Err(e) => failed(
+            &format!("删除分身失败：{e}"),
+            json!({"profileId": profile_id}),
         ),
     }
 }

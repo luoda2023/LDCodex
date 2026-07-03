@@ -17,11 +17,11 @@ pub enum ZedRemoteError {
     StateRead(#[source] std::io::Error),
     #[error("Cannot parse Codex remote connection state")]
     StateParse(#[source] serde_json::Error),
-    #[error("Cannot read LDCodex Zed remote project registry")]
+    #[error("Cannot read LD AI工具 Zed remote project registry")]
     RegistryRead(#[source] std::io::Error),
-    #[error("Cannot parse LDCodex Zed remote project registry")]
+    #[error("Cannot parse LD AI工具 Zed remote project registry")]
     RegistryParse(#[source] serde_json::Error),
-    #[error("Cannot write LDCodex Zed remote project registry")]
+    #[error("Cannot write LD AI工具 Zed remote project registry")]
     RegistryWrite(#[source] std::io::Error),
     #[error("Failed to launch Zed: {0}")]
     Launch(std::io::Error),

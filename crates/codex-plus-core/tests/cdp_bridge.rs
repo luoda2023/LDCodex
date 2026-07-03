@@ -223,7 +223,7 @@ fn injection_script_keeps_bundled_marketplace_name_for_default_filter() {
     assert!(
         !script.contains("if (name === \"openai-bundled\") return \"codex-plus-openai-bundled\"")
     );
-    assert!(script.contains("if (name === \"openai-bundled\" || name === \"codex-plus-openai-bundled\") return \"OpenAI插件1(LDCodex)\""));
+    assert!(script.contains("if (name === \"openai-bundled\" || name === \"codex-plus-openai-bundled\") return \"OpenAI插件1(LD AI工具)\""));
 }
 
 #[test]
@@ -272,9 +272,9 @@ fn injection_script_expands_api_key_plugin_marketplace_requests() {
     assert!(script.contains(
         "if (name === \"openai-primary-runtime\") return \"codex-plus-openai-primary-runtime\""
     ));
-    assert!(script.contains("OpenAI插件1(LDCodex)"));
-    assert!(script.contains("OpenAI插件2(LDCodex)"));
-    assert!(script.contains("OpenAI插件3(LDCodex)"));
+    assert!(script.contains("OpenAI插件1(LD AI工具)"));
+    assert!(script.contains("OpenAI插件2(LD AI工具)"));
+    assert!(script.contains("OpenAI插件3(LD AI工具)"));
     assert!(script.contains("method === \"install-plugin\""));
     assert!(script.contains("plugin_marketplace_response_expanded"));
     assert!(script.contains("plugin_build_flavor_filter_bypassed"));
