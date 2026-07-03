@@ -5,31 +5,40 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 use super::{
-    InstallOptions, MANAGER_BINARY, MANAGER_NAME, MacosAppBundle, SILENT_BINARY, SILENT_NAME,
+    InstallOptions, MacosAppBundle, MANAGER_BINARY, MANAGER_NAME, SILENT_BINARY, SILENT_NAME,
+    ZCODE_BINARY, ZCODE_NAME,
     install_root_or_default, option_or_current_exe,
 };
 
 pub fn build_app_bundle(options: &InstallOptions, manager: bool) -> MacosAppBundle {
+    let (display_name, executable_name, binary, identifier_suffix) = if manager {
+        (MANAGER_NAME, "LDAIManager", MANAGER_BINARY, ".manager")
+    } else {
+        (SILENT_NAME, "LDCodex", SILENT_BINARY, "")
+    };
+    build_app_bundle_inner(options, display_name, executable_name, binary, identifier_suffix)
+}
+
+pub fn build_zcode_app_bundle(options: &InstallOptions) -> MacosAppBundle {
+    build_app_bundle_inner(options, ZCODE_NAME, "LDZcode", ZCODE_BINARY, ".zcode")
+}
+
+fn build_app_bundle_inner(
+    options: &InstallOptions,
+    display_name: &str,
+    executable_name: &str,
+    binary: &str,
+    identifier_suffix: &str,
+) -> MacosAppBundle {
     let install_root = install_root_or_default(options);
-    let display_name = if manager { MANAGER_NAME } else { SILENT_NAME };
-    let executable_name = if manager {
-        "LDCodexManager"
+    let path_option = if binary == MANAGER_BINARY {
+        &options.manager_path
+    } else if binary == ZCODE_BINARY {
+        &options.launcher_path // zcode 用 launcher_path 替代
     } else {
-        "LDCodex"
+        &options.launcher_path
     };
-    let binary = if manager {
-        MANAGER_BINARY
-    } else {
-        SILENT_BINARY
-    };
-    let target = option_or_current_exe(
-        if manager {
-            &options.manager_path
-        } else {
-            &options.launcher_path
-        },
-        binary,
-    );
+    let target = option_or_current_exe(path_option, binary);
     let (target, binary_source, binary_target_name) =
         if is_bundle_executable_target(&target, executable_name) {
             let sidecar = target
@@ -40,7 +49,6 @@ pub fn build_app_bundle(options: &InstallOptions, manager: bool) -> MacosAppBund
         } else {
             (target, None, None)
         };
-    let identifier_suffix = if manager { ".manager" } else { "" };
     MacosAppBundle {
         app_path: install_root.join(format!("{display_name}.app")),
         info_plist: info_plist(display_name, executable_name, identifier_suffix),
@@ -69,13 +77,14 @@ fn is_bundle_executable_target(target: &Path, executable_name: &str) -> bool {
 pub fn install_app_bundles(options: &InstallOptions) -> anyhow::Result<()> {
     write_bundle(&build_app_bundle(options, false))?;
     write_bundle(&build_app_bundle(options, true))?;
+    write_bundle(&build_zcode_app_bundle(options))?;
     Ok(())
 }
 
 #[cfg(target_os = "macos")]
 pub fn uninstall_app_bundles(options: &InstallOptions) -> anyhow::Result<()> {
     let install_root = install_root_or_default(options);
-    for name in [SILENT_NAME, MANAGER_NAME] {
+    for name in [SILENT_NAME, MANAGER_NAME, ZCODE_NAME] {
         let app = install_root.join(format!("{name}.app"));
         if app.exists() {
             fs::remove_dir_all(app)?;

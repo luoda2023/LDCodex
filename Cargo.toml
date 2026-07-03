@@ -4,6 +4,7 @@ members = [
   "crates/codex-plus-core",
   "crates/codex-plus-data",
   "apps/codex-plus-launcher",
+  "apps/ldzcode-launcher",
   "apps/codex-plus-manager/src-tauri",
 ]
 [workspace.package]

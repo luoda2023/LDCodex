@@ -6,9 +6,12 @@ pub mod macos;
 pub mod windows;
 
 pub const SILENT_NAME: &str = "LDCodex";
-pub const MANAGER_NAME: &str = "LDCodex 管理工具";
+pub const MANAGER_NAME: &str = "LDAI管理工具";
+pub const ZCODE_NAME: &str = "LDZcode";
+
 pub const SILENT_BINARY: &str = "ldcodex";
-pub const MANAGER_BINARY: &str = "ldcodex-manager";
+pub const MANAGER_BINARY: &str = "ldai-manager";
+pub const ZCODE_BINARY: &str = "ldzcode";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -33,6 +36,7 @@ pub struct ShortcutState {
 pub struct EntryPointState {
     pub silent_shortcut: ShortcutState,
     pub management_shortcut: ShortcutState,
+    pub zcode_shortcut: ShortcutState,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -41,6 +45,7 @@ pub struct InstallActionResult {
     pub message: String,
     pub silent_shortcut: ShortcutState,
     pub management_shortcut: ShortcutState,
+    pub zcode_shortcut: ShortcutState,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,19 +76,20 @@ impl ShortcutState {
     }
 }
 
-pub fn shortcut_names() -> (&'static str, &'static str) {
-    ("LDCodex.lnk", "LDCodex 管理工具.lnk")
+pub fn shortcut_names() -> (&'static str, &'static str, &'static str) {
+    ("LDCodex.lnk", "LDAI管理工具.lnk", "LDZcode.lnk")
 }
 
-pub fn app_bundle_names() -> (&'static str, &'static str) {
-    ("LDCodex.app", "LDCodex 管理工具.app")
+pub fn app_bundle_names() -> (&'static str, &'static str, &'static str) {
+    ("LDCodex.app", "LDAI管理工具.app", "LDZcode.app")
 }
 
 pub fn inspect_entrypoints() -> EntryPointState {
     let root = default_install_root();
     EntryPointState {
-        silent_shortcut: ShortcutState::from_candidates(entrypoint_candidates(&root, false)),
-        management_shortcut: ShortcutState::from_candidates(entrypoint_candidates(&root, true)),
+        silent_shortcut: ShortcutState::from_candidates(entrypoint_candidates(&root, SILENT_NAME)),
+        management_shortcut: ShortcutState::from_candidates(entrypoint_candidates(&root, MANAGER_NAME)),
+        zcode_shortcut: ShortcutState::from_candidates(entrypoint_candidates(&root, ZCODE_NAME)),
     }
 }
 
@@ -111,6 +117,10 @@ pub fn build_windows_entrypoint_plan(options: &InstallOptions) -> windows::Windo
 
 pub fn build_macos_app_bundle(options: &InstallOptions, manager: bool) -> MacosAppBundle {
     macos::build_app_bundle(options, manager)
+}
+
+pub fn build_macos_zcode_app_bundle(options: &InstallOptions) -> MacosAppBundle {
+    macos::build_zcode_app_bundle(options)
 }
 
 pub fn remove_owned_data() -> std::io::Result<()> {
@@ -194,21 +204,22 @@ fn action_result(result: anyhow::Result<()>, success_message: &str) -> InstallAc
             message: success_message.to_string(),
             silent_shortcut: state.silent_shortcut,
             management_shortcut: state.management_shortcut,
+            zcode_shortcut: state.zcode_shortcut,
         },
         Err(error) => InstallActionResult {
             status: "failed".to_string(),
             message: error.to_string(),
             silent_shortcut: state.silent_shortcut,
             management_shortcut: state.management_shortcut,
+            zcode_shortcut: state.zcode_shortcut,
         },
     }
 }
 
-fn entrypoint_candidates(root: &Option<PathBuf>, manager: bool) -> Vec<PathBuf> {
+fn entrypoint_candidates(root: &Option<PathBuf>, name: &str) -> Vec<PathBuf> {
     let Some(root) = root else {
         return Vec::new();
     };
-    let name = if manager { MANAGER_NAME } else { SILENT_NAME };
     if cfg!(windows) {
         vec![root.join(format!("{name}.lnk"))]
     } else if cfg!(target_os = "macos") {

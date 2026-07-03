@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use super::{
     InstallOptions, MANAGER_BINARY, MANAGER_NAME, SILENT_BINARY, SILENT_NAME,
+    ZCODE_BINARY, ZCODE_NAME,
     install_root_or_default, option_or_current_exe,
 };
 
@@ -14,11 +15,14 @@ pub struct WindowsEntrypointPlan {
     pub install_root: String,
     pub silent_shortcut: String,
     pub manager_shortcut: String,
+    pub zcode_shortcut: String,
     pub launcher_path: String,
     pub manager_path: String,
+    pub zcode_path: String,
     pub icon_path: String,
     pub silent_icon_path: String,
     pub manager_icon_path: String,
+    pub zcode_icon_path: String,
     pub uninstall_key: String,
     pub legacy_uninstall_key: String,
     pub remove_owned_data: bool,
@@ -28,6 +32,7 @@ pub fn build_windows_entrypoint_plan(options: &InstallOptions) -> WindowsEntrypo
     let install_root = install_root_or_default(options);
     let launcher_path = option_or_current_exe(&options.launcher_path, SILENT_BINARY);
     let manager_path = option_or_current_exe(&options.manager_path, MANAGER_BINARY);
+    let zcode_path = option_or_current_exe(&options.launcher_path, ZCODE_BINARY);
     let icon_path = default_icon_path();
     WindowsEntrypointPlan {
         silent_shortcut: install_root
@@ -35,15 +40,21 @@ pub fn build_windows_entrypoint_plan(options: &InstallOptions) -> WindowsEntrypo
             .to_string_lossy()
             .to_string(),
         manager_shortcut: install_root
-            .join("LDCodex 管理工具.lnk")
+            .join("LDAI管理工具.lnk")
+            .to_string_lossy()
+            .to_string(),
+        zcode_shortcut: install_root
+            .join("LDZcode.lnk")
             .to_string_lossy()
             .to_string(),
         install_root: install_root.to_string_lossy().to_string(),
         launcher_path: launcher_path.to_string_lossy().to_string(),
         manager_path: manager_path.to_string_lossy().to_string(),
+        zcode_path: zcode_path.to_string_lossy().to_string(),
         icon_path: icon_path.to_string_lossy().to_string(),
         silent_icon_path: launcher_path.to_string_lossy().to_string(),
         manager_icon_path: manager_path.to_string_lossy().to_string(),
+        zcode_icon_path: zcode_path.to_string_lossy().to_string(),
         uninstall_key: "LDCodex".to_string(),
         legacy_uninstall_key: "LDCodex".to_string(),
         remove_owned_data: options.remove_owned_data,
@@ -64,8 +75,14 @@ pub fn install_shortcuts(options: &InstallOptions) -> anyhow::Result<()> {
     create_entrypoint_shortcut(
         PathBuf::from(&plan.manager_shortcut),
         PathBuf::from(&plan.manager_path),
-        "Open LDCodex management tool",
+        "Open LDAI management tool",
         PathBuf::from(&plan.manager_icon_path),
+    )?;
+    create_entrypoint_shortcut(
+        PathBuf::from(&plan.zcode_shortcut),
+        PathBuf::from(&plan.zcode_path),
+        "Launch LDZcode",
+        PathBuf::from(&plan.zcode_icon_path),
     )?;
     write_uninstall_registration(&plan)?;
     Ok(())
@@ -76,6 +93,7 @@ pub fn uninstall_shortcuts(options: &InstallOptions) -> anyhow::Result<()> {
     let plan = build_windows_entrypoint_plan(options);
     let _ = std::fs::remove_file(&plan.silent_shortcut);
     let _ = std::fs::remove_file(&plan.manager_shortcut);
+    let _ = std::fs::remove_file(&plan.zcode_shortcut);
     let _ = crate::windows_integration::delete_current_user_key(LEGACY_UNINSTALL_SUBKEY);
     let _ = crate::windows_integration::delete_current_user_key(UNINSTALL_SUBKEY);
     Ok(())
@@ -142,6 +160,6 @@ fn default_icon_path() -> PathBuf {
 }
 
 #[allow(dead_code)]
-fn _entrypoint_names() -> (&'static str, &'static str) {
-    (SILENT_NAME, MANAGER_NAME)
+fn _entrypoint_names() -> (&'static str, &'static str, &'static str) {
+    (SILENT_NAME, MANAGER_NAME, ZCODE_NAME)
 }

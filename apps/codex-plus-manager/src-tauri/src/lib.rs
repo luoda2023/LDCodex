@@ -136,7 +136,10 @@ pub fn run() {
             commands::launch_zcode,
             commands::list_zcode_sessions,
             commands::delete_zcode_session,
-            commands::zcode_install_status
+            commands::zcode_install_status,
+            commands::toggle_zcode_parallel,
+            commands::scan_zcode_plugins,
+            commands::inject_zcode_plugin
         ])
         .run(tauri::generate_context!());
     if let Err(error) = run_result {

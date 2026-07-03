@@ -2480,6 +2480,7 @@ fn install_background_failure(action: &str, error: impl std::fmt::Display) -> In
         message: format!("{action}后台任务失败：{error}"),
         silent_shortcut: state.silent_shortcut,
         management_shortcut: state.management_shortcut,
+        zcode_shortcut: state.zcode_shortcut,
     }
 }
 
@@ -2543,32 +2544,77 @@ fn default_debug_port() -> u16 {
 }
 
 #[tauri::command]
-pub fn launch_zcode() -> CommandResult<Value> {
-    let exe_path = codex_plus_core::zcode_sqlite::zcode_exe_path();
+/// 自动搜索 ZCode 可执行文件路径
+fn find_zcode_exe() -> Option<PathBuf> {
+    // 1. 标准安装目录
+    let std_path = codex_plus_core::zcode_sqlite::zcode_exe_path();
+    if std_path.exists() {
+        return Some(std_path);
+    }
 
-    if exe_path.exists() {
-        match std::process::Command::new(&exe_path).spawn() {
+    // 2. %LOCALAPPDATA%\Programs\ZCode\ZCode.exe
+    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+        let p = PathBuf::from(&local_app_data)
+            .join("Programs")
+            .join("ZCode")
+            .join("ZCode.exe");
+        if p.exists() {
+            return Some(p);
+        }
+    }
+
+    // 3. %USERPROFILE%\AppData\Local\Programs\ZCode\ZCode.exe
+    if let Ok(user_profile) = std::env::var("USERPROFILE") {
+        let p = PathBuf::from(&user_profile)
+            .join("AppData")
+            .join("Local")
+            .join("Programs")
+            .join("ZCode")
+            .join("ZCode.exe");
+        if p.exists() {
+            return Some(p);
+        }
+    }
+
+    // 4. 环境变量 ZCODE_PATH
+    if let Ok(path) = std::env::var("ZCODE_PATH") {
+        let p = PathBuf::from(&path);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+
+    // 5. PATH 查找
+    which_exe("ZCode.exe")
+}
+
+#[tauri::command]
+pub fn launch_zcode() -> CommandResult<Value> {
+    let exe_path = find_zcode_exe();
+
+    if let Some(ref exe) = exe_path {
+        match std::process::Command::new(exe).spawn() {
             Ok(child) => {
                 let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
                     "manager.zcode_launched",
-                    json!({"pid": child.id(), "path": exe_path.to_string_lossy().to_string()}),
+                    json!({"pid": child.id(), "path": exe.to_string_lossy().to_string()}),
                 );
                 ok(
                     &format!("LDZcode 已启动（PID: {}）", child.id()),
-                    json!({"pid": child.id(), "path": exe_path.to_string_lossy().to_string()}),
+                    json!({"pid": child.id(), "path": exe.to_string_lossy().to_string()}),
                 )
             }
             Err(e) => {
                 failed(
                     &format!("启动 LDZcode 失败：{e}"),
-                    json!({"path": exe_path.to_string_lossy().to_string()}),
+                    json!({"path": exe.to_string_lossy().to_string()}),
                 )
             }
         }
     } else {
         failed(
-            "未找到 ZCode 安装路径，请确认已安装 ZCode。",
-            json!({"hint": "ZCode 默认安装在 %LOCALAPPDATA%\\Programs\\ZCode\\ZCode.exe"}),
+            "未找到 ZCode 安装路径。已自动搜索：标准安装目录、%LOCALAPPDATA%、%USERPROFILE%、环境变量 ZCODE_PATH、系统 PATH。",
+            json!({"hint": "请确认已安装 ZCode，或设置 ZCODE_PATH 环境变量指向 ZCode.exe"}),
         )
     }
 }
@@ -2705,6 +2751,150 @@ pub fn zcode_install_status() -> CommandResult<ZCodeInstallStatusPayload> {
     )
 }
 
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToggleZCodeParallelRequest {
+    pub enabled: bool,
+}
+
+/// 切换 ZCode 并行对话模式（写入 setting.json）
+#[tauri::command]
+pub fn toggle_zcode_parallel(request: ToggleZCodeParallelRequest) -> CommandResult<Value> {
+    let setting_dir = codex_plus_core::zcode_sqlite::zcode_home_dir();
+    let setting_path = setting_dir.join("settings.json");
+
+    // 读取或创建 settings.json
+    let mut settings: serde_json::Value = if setting_path.exists() {
+        std::fs::read_to_string(&setting_path)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    // 写入 parallelMode 字段
+    if let serde_json::Value::Object(ref mut map) = settings {
+        map.insert(
+            "parallelMode".to_string(),
+            serde_json::Value::Bool(request.enabled),
+        );
+    }
+
+    // 写回文件
+    match std::fs::write(
+        &setting_path,
+        serde_json::to_string_pretty(&settings).unwrap_or_default(),
+    ) {
+        Ok(()) => {
+            let msg = if request.enabled {
+                "ZCode 并行对话模式已启用"
+            } else {
+                "ZCode 并行对话模式已禁用"
+            };
+            ok(msg, json!({"parallelMode": request.enabled, "path": setting_path.to_string_lossy().to_string()}))
+        }
+        Err(e) => failed(
+            &format!("写入设置失败：{e}"),
+            json!({"parallelMode": false}),
+        ),
+    }
+}
+
+/// 扫描 LDZcode 目录下的插件脚本
+#[tauri::command]
+pub fn scan_zcode_plugins() -> CommandResult<Value> {
+    let ldzcode_dir = codex_plus_core::zcode_sqlite::zcode_home_dir()
+        .parent()
+        .map(|p| p.join("LDZcode"))
+        .unwrap_or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join("LDZcode")
+        });
+
+    let known_scripts = [
+        "zcode-customize.js",
+        "inject-zcode.bat",
+        "toggle-parallel.js",
+        "README-LDZcode.md",
+    ];
+
+    let scripts: Vec<serde_json::Value> = known_scripts
+        .iter()
+        .map(|name| {
+            let exists = ldzcode_dir.join(name).exists();
+            json!({"name": name, "exists": exists})
+        })
+        .collect();
+
+    ok(
+        &format!("扫描到 {} 个脚本", scripts.len()),
+        json!({"scripts": scripts, "dir": ldzcode_dir.to_string_lossy().to_string()}),
+    )
+}
+
+/// 注入 ZCode 插件（复制脚本到 ZCode 安装目录）
+#[tauri::command]
+pub fn inject_zcode_plugin() -> CommandResult<Value> {
+    let zcode_install = codex_plus_core::zcode_sqlite::zcode_install_dir();
+    let ldzcode_dir = codex_plus_core::zcode_sqlite::zcode_home_dir()
+        .parent()
+        .map(|p| p.join("LDZcode"))
+        .unwrap_or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join("LDZcode")
+        });
+
+    // 目标：复制 zcode-customize.js 到 ZCode 安装目录的 resources 下
+    let source = ldzcode_dir.join("zcode-customize.js");
+    let target_resources = zcode_install.join("resources");
+
+    if !source.exists() {
+        return failed(
+            "未找到 zcode-customize.js，请确认 LDZcode 目录存在",
+            json!({"source": source.to_string_lossy().to_string()}),
+        );
+    }
+
+    if !zcode_install.exists() {
+        return failed(
+            &format!("ZCode 安装目录不存在：{}", zcode_install.to_string_lossy()),
+            json!({"installDir": zcode_install.to_string_lossy().to_string()}),
+        );
+    }
+
+    // 创建 resources 目录（如果不存在）
+    let _ = std::fs::create_dir_all(&target_resources);
+
+    let target = target_resources.join("zcode-customize.js");
+    match std::fs::copy(&source, &target) {
+        Ok(_) => {
+            // 也保存一份 asar.bak 标记（用于检测注入状态）
+            let asar_path = zcode_install.join("resources").join("app.asar");
+            let bak_path = PathBuf::from(format!("{}.bak", asar_path.to_string_lossy()));
+            if asar_path.exists() && !bak_path.exists() {
+                // 创建标记文件
+                let _ = std::fs::write(&bak_path, b"injected");
+            }
+
+            ok(
+                "插件注入成功！请重启 ZCode 后生效。",
+                json!({"source": source.to_string_lossy().to_string(), "target": target.to_string_lossy().to_string()}),
+            )
+        }
+        Err(e) => failed(
+            &format!("插件注入失败：{e}"),
+            json!({"source": source.to_string_lossy().to_string(), "target": target.to_string_lossy().to_string()}),
+        ),
+    }
+}
+
 fn default_helper_port() -> u16 {
     57321
 }
@@ -2751,7 +2941,7 @@ mod tests {
     #[test]
     fn startup_options_honors_show_update_argument() {
         assert!(should_show_update(
-            ["ldcodex-manager.exe", "--show-update"],
+            ["ldai-manager.exe", "--show-update"],
             None
         ));
     }

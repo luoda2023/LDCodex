@@ -7,7 +7,7 @@ fn main() {
             "../codex-plus-manager/src-tauri/windows-app-manifest.xml"
         ));
         if let Err(e) = resource.compile() {
-            println!("cargo:warning=跳过 ldcodex-launcher 图标编译: {e}");
+            println!("cargo:warning=跳过 launcher 图标编译: {e}");
         }
     }
 }

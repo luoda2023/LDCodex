@@ -104,7 +104,7 @@ fn macos_packager_hides_silent_launcher_but_not_manager() {
         "create_app \"LDCodex\" \"LDCodex\" \"$BINARY_DIR/ldcodex\" \"com.luoda.ldcodex\" \"true\""
     ));
     assert!(script.contains(
-        "create_app \"LDCodex 管理工具\" \"LDCodexManager\" \"$BINARY_DIR/ldcodex-manager\" \"com.luoda.ldcodex.manager\" \"false\""
+        "create_app \"LDAI管理工具\" \"LDAIManager\" \"$BINARY_DIR/ldai-manager\" \"com.luoda.ldai.manager\" \"false\""
     ));
 }
 

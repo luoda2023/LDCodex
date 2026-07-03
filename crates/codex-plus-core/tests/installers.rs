@@ -1,29 +1,27 @@
 use codex_plus_core::install::{
-    InstallOptions, SILENT_BINARY, app_bundle_names, build_macos_app_bundle,
-    build_windows_entrypoint_plan, companion_binary_path_from_exe, default_install_root_strategy,
-    shortcut_names,
+    InstallOptions, SILENT_BINARY, build_macos_app_bundle,
+    build_macos_zcode_app_bundle, build_windows_entrypoint_plan,
+    companion_binary_path_from_exe, default_install_root_strategy,
 };
 
 #[test]
-fn windows_entrypoint_plan_contains_silent_and_manager_entrypoints() {
+fn windows_entrypoint_plan_contains_silent_and_manager_and_zcode_entrypoints() {
     let options = InstallOptions {
         install_root: Some("C:/Users/A/Desktop".into()),
         launcher_path: Some("C:/Tools/ldcodex.exe".into()),
-        manager_path: Some("C:/Tools/ldcodex-manager.exe".into()),
+        manager_path: Some("C:/Tools/ldai-manager.exe".into()),
         remove_owned_data: false,
     };
 
     let plan = build_windows_entrypoint_plan(&options);
 
     assert!(plan.silent_shortcut.ends_with("LDCodex.lnk"));
-    assert!(plan.manager_shortcut.ends_with("LDCodex 管理工具.lnk"));
+    assert!(plan.manager_shortcut.ends_with("LDAI管理工具.lnk"));
+    assert!(plan.zcode_shortcut.ends_with("LDZcode.lnk"));
     assert_eq!(plan.launcher_path, "C:/Tools/ldcodex.exe");
-    assert_eq!(plan.manager_path, "C:/Tools/ldcodex-manager.exe");
+    assert_eq!(plan.manager_path, "C:/Tools/ldai-manager.exe");
     assert_eq!(plan.silent_icon_path, "C:/Tools/ldcodex.exe");
-    assert_eq!(
-        plan.manager_icon_path,
-        "C:/Tools/ldcodex-manager.exe"
-    );
+    assert_eq!(plan.manager_icon_path, "C:/Tools/ldai-manager.exe");
     assert_eq!(plan.uninstall_key, "LDCodex");
     assert_eq!(plan.legacy_uninstall_key, "LDCodex");
 }
@@ -40,44 +38,38 @@ fn windows_entrypoint_plan_can_request_owned_data_removal_without_shell_script()
     let plan = build_windows_entrypoint_plan(&options);
 
     assert!(plan.silent_shortcut.ends_with("LDCodex.lnk"));
-    assert!(plan.manager_shortcut.ends_with("LDCodex 管理工具.lnk"));
+    assert!(plan.manager_shortcut.ends_with("LDAI管理工具.lnk"));
     assert!(plan.remove_owned_data);
 }
 
 #[test]
-fn macos_bundle_metadata_contains_silent_and_manager_apps() {
+fn macos_bundle_metadata_contains_silent_manager_and_zcode_apps() {
     let options = InstallOptions {
         install_root: Some("/Applications".into()),
         launcher_path: Some("/opt/LDCodex/ldcodex".into()),
-        manager_path: Some("/opt/LDCodex/ldcodex-manager".into()),
+        manager_path: Some("/opt/LDCodex/ldai-manager".into()),
         remove_owned_data: false,
     };
 
     let silent = build_macos_app_bundle(&options, false);
     let manager = build_macos_app_bundle(&options, true);
+    let zcode = build_macos_zcode_app_bundle(&options);
 
     assert!(silent.app_path.ends_with("LDCodex.app"));
-    assert!(manager.app_path.ends_with("LDCodex 管理工具.app"));
+    assert!(manager.app_path.ends_with("LDAI管理工具.app"));
+    assert!(zcode.app_path.ends_with("LDZcode.app"));
     assert!(silent.info_plist.contains("<string>LDCodex</string>"));
-    assert!(
-        manager
-            .info_plist
-            .contains("<string>LDCodex 管理工具</string>")
-    );
+    assert!(manager.info_plist.contains("<string>LDAI管理工具</string>"));
+    assert!(zcode.info_plist.contains("<string>LDZcode</string>"));
     assert!(silent.launch_script.contains("ldcodex"));
-    assert!(manager.launch_script.contains("ldcodex-manager"));
-}
-
-#[test]
-fn installer_exports_expected_two_entrypoint_names() {
-    assert_eq!(shortcut_names(), ("LDCodex.lnk", "LDCodex 管理工具.lnk"));
-    assert_eq!(app_bundle_names(), ("LDCodex.app", "LDCodex 管理工具.app"));
+    assert!(manager.launch_script.contains("ldai-manager"));
+    assert!(zcode.launch_script.contains("ldzcode"));
 }
 
 #[test]
 fn companion_binary_path_resolves_macos_silent_app_next_to_manager_app() {
     let manager_exe = std::path::Path::new(
-        "/Applications/LDCodex 管理工具.app/Contents/MacOS/LDCodexManager",
+        "/Applications/LDAI管理工具.app/Contents/MacOS/LDAIManager",
     );
 
     let companion = companion_binary_path_from_exe(manager_exe, SILENT_BINARY);
@@ -89,7 +81,7 @@ fn companion_binary_path_resolves_macos_silent_app_next_to_manager_app() {
     assert_ne!(
         companion,
         std::path::PathBuf::from(
-            "/Applications/LDCodex 管理工具.app/Contents/MacOS/ldcodex"
+            "/Applications/LDAI管理工具.app/Contents/MacOS/ldcodex"
         )
     );
 }
@@ -100,7 +92,7 @@ fn macos_bundle_does_not_wrap_the_bundle_executable_in_itself() {
         install_root: Some("/Applications".into()),
         launcher_path: Some("/Applications/LDCodex.app/Contents/MacOS/LDCodex".into()),
         manager_path: Some(
-            "/Applications/LDCodex 管理工具.app/Contents/MacOS/LDCodexManager".into(),
+            "/Applications/LDAI管理工具.app/Contents/MacOS/LDAIManager".into(),
         ),
         remove_owned_data: false,
     };
@@ -109,9 +101,9 @@ fn macos_bundle_does_not_wrap_the_bundle_executable_in_itself() {
     let manager = build_macos_app_bundle(&options, true);
 
     assert!(!silent.launch_script.contains("LDCodex\""));
-    assert!(!manager.launch_script.contains("LDCodexManager\""));
+    assert!(!manager.launch_script.contains("LDAIManager\""));
     assert!(silent.launch_script.contains("ldcodex"));
-    assert!(manager.launch_script.contains("ldcodex-manager"));
+    assert!(manager.launch_script.contains("ldai-manager"));
 }
 
 #[test]

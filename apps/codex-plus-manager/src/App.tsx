@@ -42,6 +42,7 @@ import {
   Power,
   PowerOff,
   Plus,
+  Puzzle,
   RefreshCw,
   Rocket,
   Save,
@@ -511,7 +512,7 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "zcode" | "proxy" | "maintenance" | "about" | "settings";
+type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "zcode-sessions" | "zcode-plugins" | "zcode-enhance" | "proxy" | "maintenance" | "about" | "settings";
 type Theme = "dark" | "light";
 
 /** 所有路由（用于标题查找、路由匹配） */
@@ -520,21 +521,23 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string
   { id: "relay", label: "模型配置", icon: KeyRound },
   { id: "sessions", label: "会话管理", icon: MessageCircle },
   { id: "context", label: "工具与插件", icon: Network },
-  { id: "enhance", label: "增强功能", icon: Hammer },
-  { id: "zcode", label: "管理控制台", icon: FileCode2 },
+  { id: "enhance", label: "增强设置", icon: Hammer },
+  { id: "zcode-sessions", label: "会话管理", icon: MessageCircle },
+  { id: "zcode-plugins", label: "工具与插件", icon: Puzzle },
+  { id: "zcode-enhance", label: "增强设置", icon: Hammer },
   { id: "proxy", label: "代理服务器", icon: ShieldCheck },
   { id: "maintenance", label: "安装维护", icon: Wrench },
   { id: "settings", label: "设置", icon: Settings },
   { id: "about", label: "关于", icon: Info },
 ];
 
-/** 导航分组结构（含组标签） */
+/** 导航分组结构（按定死布局） */
 const navGroups: Array<{
   label: string;
   items: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string }>;
 }> = [
   {
-    label: "公用",
+    label: "通用功能",
     items: [
       { id: "overview", label: "概览", icon: LayoutDashboard },
       { id: "relay", label: "模型配置", icon: KeyRound },
@@ -542,23 +545,25 @@ const navGroups: Array<{
     ],
   },
   {
-    label: "Codex",
+    label: "Codex 工具",
     items: [
       { id: "sessions", label: "会话管理", icon: MessageCircle },
       { id: "context", label: "工具与插件", icon: Network },
-      { id: "enhance", label: "增强功能", icon: Hammer },
+      { id: "enhance", label: "增强设置", icon: Hammer },
+    ],
+  },
+  {
+    label: "ZCode 工具",
+    items: [
+      { id: "zcode-sessions", label: "会话管理", icon: MessageCircle },
+      { id: "zcode-plugins", label: "工具与插件", icon: Puzzle },
+      { id: "zcode-enhance", label: "增强设置", icon: Hammer },
+    ],
+  },
+  {
+    label: "系统管理",
+    items: [
       { id: "maintenance", label: "安装维护", icon: Wrench },
-    ],
-  },
-  {
-    label: "ZCode",
-    items: [
-      { id: "zcode", label: "管理控制台", icon: FileCode2 },
-    ],
-  },
-  {
-    label: "系统",
-    items: [
       { id: "settings", label: "设置", icon: Settings },
       { id: "about", label: "关于", icon: Info },
     ],
@@ -1793,7 +1798,7 @@ export function App() {
                 </Button>
               </>
             ) : null}
-            {route === "zcode" ? (
+            {route === "zcode-sessions" || route === "zcode-plugins" || route === "zcode-enhance" ? (
               <Button onClick={() => void launchZCode()} title="启动 LDZcode" variant="outline">
                 <Rocket className="h-4 w-4" />
                 启动 LDZcode
@@ -1852,8 +1857,14 @@ export function App() {
               actions={actions}
             />
           ) : null}
-          {route === "zcode" ? (
-            <ZCodeScreen actions={actions} />
+          {route === "zcode-sessions" ? (
+            <ZCodeSessionsScreen actions={actions} />
+          ) : null}
+          {route === "zcode-plugins" ? (
+            <ZCodePluginsScreen actions={actions} />
+          ) : null}
+          {route === "zcode-enhance" ? (
+            <ZCodeEnhanceScreen actions={actions} />
           ) : null}
           {route === "proxy" ? (
             <ProxyScreen
@@ -2365,138 +2376,7 @@ function EnhanceScreen({
   );
 }
 
-function ZCodeScreen({ actions }: { actions: Actions }) {
-  type ZTab = "sessions" | "plugins" | "enhance" | "maintenance";
-  const [tab, setTab] = useState<ZTab>("maintenance");
-
-  const TabButton = ({ id, label }: { id: ZTab; label: string }) => (
-    <button
-      className={`tab-btn ${tab === id ? "active" : ""}`}
-      onClick={() => setTab(id)}
-      type="button"
-    >
-      {label}
-    </button>
-  );
-
-  return (
-    <>
-      <Panel>
-        <CardHead title="ZCode 管理控制台" detail="会话管理、注入脚本、增强功能与安装维护" />
-        <CardContent>
-          <div className="zcode-tabs" style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid hsl(var(--border))", paddingBottom: 8 }}>
-            <TabButton id="maintenance" label="安装维护" />
-            <TabButton id="plugins" label="插件脚本" />
-            <TabButton id="sessions" label="会话管理" />
-            <TabButton id="enhance" label="增强设置" />
-          </div>
-          {tab === "maintenance" ? <ZCodeMaintenanceTab /> : null}
-          {tab === "plugins" ? <ZCodePluginsTab /> : null}
-          {tab === "sessions" ? <ZCodeSessionsTab actions={actions} /> : null}
-          {tab === "enhance" ? <ZCodeEnhanceTab /> : null}
-        </CardContent>
-      </Panel>
-    </>
-  );
-}
-
-function ZCodeMaintenanceTab() {
-  const [status, setStatus] = useState<ZCodeInstallStatusResult | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = async () => {
-    setLoading(true);
-    try {
-      const result = await invoke<ZCodeInstallStatusResult>("zcode_install_status");
-      setStatus(result);
-    } catch (e) {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { void refresh(); }, []);
-
-  const launchZCode = async () => {
-    try {
-      const result = await invoke<CommandResult<Record<string, unknown>>>("launch_zcode");
-      alert(result?.message ?? "已启动");
-    } catch (e) {
-      alert("启动失败");
-    }
-  };
-
-  if (loading) return <div className="loading-text">检测中…</div>;
-  if (!status) return <div className="error-text">无法读取 ZCode 状态</div>;
-
-  return (
-    <>
-      <div className="hint-line">
-        <FileCode2 className="h-4 w-4" />
-        <span>ZCode 编辑器安装状态与路径检测。双击 <b>inject-zcode.bat</b> 可手动注入插件。</span>
-      </div>
-      <div className="metric-list">
-        <Metric label="安装状态" value={status.installed ? "✅ 已安装" : "❌ 未安装"} />
-        <Metric label="安装路径" value={status.exePath} />
-        <Metric label="ZCode 版本" value={status.version ?? "未知"} />
-        <Metric label="插件注入" value={status.pluginInjected ? "✅ 已注入" : "❌ 未注入"} />
-        <Metric label="对话数据库" value={status.dbPath} />
-        <Metric label="会话数量" value={`${status.sessionCount} 个`} />
-      </div>
-      <Toolbar>
-        <Button onClick={() => void launchZCode()}>
-          <Rocket className="h-4 w-4" />
-          启动 ZCode
-        </Button>
-        <Button onClick={() => void refresh()} variant="outline">
-          <RefreshCw className="h-4 w-4" />
-          刷新状态
-        </Button>
-      </Toolbar>
-      <div className="status-table" style={{ marginTop: 12 }}>
-        <StatusRow title="ZCode 可执行文件" status={status.installed ? "ok" : "failed"} path={status.exePath} />
-        <StatusRow title="app.asar" status={status.pluginInjected ? "ok" : "info"} path={status.archPath} />
-        <StatusRow title="对话数据库" status="ok" path={status.dbPath} />
-      </div>
-    </>
-  );
-}
-
-function ZCodePluginsTab() {
-  const pluginDir = "LDZcode/";
-  const scripts = [
-    { name: "zcode-customize.js", desc: "布局调整与功能增强", file: "LDZcode/zcode-customize.js" },
-    { name: "inject-zcode.bat", desc: "Windows 注入工具（批处理）", file: "LDZcode/inject-zcode.bat" },
-    { name: "toggle-parallel.js", desc: "并行对话切换脚本", file: "LDZcode/toggle-parallel.js" },
-  ];
-
-  return (
-    <>
-      <div className="hint-line">
-        <FileCode2 className="h-4 w-4" />
-        <span>ZCode 自定义增强脚本管理，存放于 <b>LDZcode/</b> 目录。ZCode 升级后需重新注入。</span>
-      </div>
-      <div className="status-table">
-        {scripts.map((s) => (
-          <StatusRow key={s.name} title={`${s.name} — ${s.desc}`} status="ok" path={s.file} />
-        ))}
-      </div>
-      <div className="hint-line" style={{ marginTop: 12 }}>
-        <Info className="h-4 w-4" />
-        <span>手动注入：右键 <b>inject-zcode.bat</b> → 以管理员身份运行。详见 LDZcode/README-LDZcode.md。</span>
-      </div>
-      <Toolbar>
-        <Button variant="outline" onClick={() => invoke("launch_zcode")}>
-          <Rocket className="h-4 w-4" />
-          启动 ZCode
-        </Button>
-      </Toolbar>
-    </>
-  );
-}
-
-function ZCodeSessionsTab({ actions }: { actions: Actions }) {
+function ZCodeSessionsScreen({ actions }: { actions: Actions }) {
   const [sessions, setSessions] = useState<ZCodeSessionItem[]>([]);
   const [dbPath, setDbPath] = useState("");
   const [loading, setLoading] = useState(true);
@@ -2529,7 +2409,7 @@ function ZCodeSessionsTab({ actions }: { actions: Actions }) {
   const deleteSelected = async () => {
     if (!selMode) { setSelMode(true); return; }
     if (!selectedItems.length) { setSelMode(false); return; }
-    const confirmed = confirm(`删除 ${selectedItems.length} 个 ZCode 会话？`);
+    const confirmed = confirm(`确定删除 ${selectedItems.length} 个 ZCode 对话？`);
     if (!confirmed) return;
     for (const s of selectedItems) {
       try {
@@ -2539,6 +2419,20 @@ function ZCodeSessionsTab({ actions }: { actions: Actions }) {
     await refresh();
     setSelectedIds(new Set());
     setSelMode(false);
+  };
+
+  // 并行对话模式开关（会话页面内嵌增强）
+  const [parallelMode, setParallelMode] = useState(() => localStorage.getItem("zcode_parallel_mode") === "true");
+
+  const toggleParallelReal = async () => {
+    const newMode = !parallelMode;
+    setParallelMode(newMode);
+    localStorage.setItem("zcode_parallel_mode", newMode ? "true" : "false");
+    try {
+      await invoke("toggle_zcode_parallel", { enabled: newMode });
+    } catch (e) {
+      console.warn("toggle_zcode_parallel 不可用，仅前端标记", e);
+    }
   };
 
   const Row = ({ session }: { session: ZCodeSessionItem }) => {
@@ -2571,81 +2465,188 @@ function ZCodeSessionsTab({ actions }: { actions: Actions }) {
 
   return (
     <>
-      <div className="hint-line">
-        <Info className="h-4 w-4" />
-        <span>ZCode 对话任务列表，数据来源：{dbPath}</span>
-      </div>
-      <div className="metric-list">
-        <Metric label="总计" value={`${sessions.length} 个`} />
-        <Metric label="未归档" value={`${activeItems.length} 个`} />
-        <Metric label="已归档" value={`${archivedItems.length} 个`} />
-      </div>
-      <Toolbar>
-        <Button onClick={() => void refresh()}>
-          <RefreshCw className="h-4 w-4" />
-          刷新
-        </Button>
-        <Button onClick={() => void deleteSelected()} variant={selMode ? "default" : "outline"}>
-            <Trash2 className="h-4 w-4" />
-          {selMode ? `删除选中 (${selectedItems.length})` : "选择删除"}
-        </Button>
-        {selMode ? (
-          <Button onClick={() => { setSelMode(false); setSelectedIds(new Set()); }} variant="outline">
-            取消选择
-          </Button>
-        ) : null}
-      </Toolbar>
-      <div className="session-list" style={{ marginTop: 8, maxHeight: 400, overflowY: "auto" }}>
-        {sessions.length === 0 ? (
-          <div className="empty-text">暂无 ZCode 对话</div>
-        ) : (
-          sessions.map((s) => <Row key={s.id} session={s} />)
-        )}
-      </div>
+      <Panel>
+        <CardHead title="ZCode 会话管理" detail="查看和管理 ZCode 本地对话任务" />
+        <CardContent>
+          <div className="hint-line">
+            <Info className="h-4 w-4" />
+            <span>ZCode 对话任务列表，数据来源：{dbPath}</span>
+          </div>
+          <div className="metric-list">
+            <Metric label="总计" value={`${sessions.length} 个`} />
+            <Metric label="未归档" value={`${activeItems.length} 个`} />
+            <Metric label="已归档" value={`${archivedItems.length} 个`} />
+          </div>
+          <Toolbar>
+            <Button onClick={() => void refresh()} variant="outline">
+              <RefreshCw className="h-4 w-4" /> 刷新
+            </Button>
+            <Button onClick={() => void deleteSelected()} variant="default">
+              <Trash2 className="h-4 w-4" /> {selMode ? `删除 ${selectedItems.length} 个` : "批量删除"}
+            </Button>
+          </Toolbar>
+          <div className="feature-item" style={{ marginTop: 8, padding: "6px 12px", background: "hsl(var(--accent))", borderRadius: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="checkbox" checked={parallelMode} onChange={() => void toggleParallelReal()} id="parallel-toggle-zcode" />
+              <label htmlFor="parallel-toggle-zcode" style={{ cursor: "pointer", fontSize: 13 }}>
+                <strong>并行对话模式</strong> — 开启后同时处理多个对话请求
+              </label>
+            </div>
+          </div>
+          <div className="session-list" style={{ marginTop: 8, maxHeight: 400, overflowY: "auto" }}>
+            {sessions.length === 0 ? (
+              <div className="empty-text">暂无 ZCode 对话</div>
+            ) : (
+              sessions.map((s) => <Row key={s.id} session={s} />)
+            )}
+          </div>
+        </CardContent>
+      </Panel>
     </>
   );
 }
 
-function ZCodeEnhanceTab() {
-  const [parallelMode, setParallelMode] = useState(false);
+function ZCodePluginsScreen({ actions }: { actions: Actions }) {
+  const [scripts, setScripts] = useState<Array<{ name: string; desc: string; exists: boolean; file: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  const scanDir = async () => {
+    setLoading(true);
+    try {
+      const defaultScripts = [
+        { name: "zcode-customize.js", desc: "布局调整与功能增强", file: "LDZcode/zcode-customize.js" },
+        { name: "inject-zcode.bat", desc: "Windows 注入工具（批处理）", file: "LDZcode/inject-zcode.bat" },
+        { name: "toggle-parallel.js", desc: "并行对话切换脚本", file: "LDZcode/toggle-parallel.js" },
+      ];
+      try {
+        const result = await invoke<CommandResult<{ scripts: Array<{ name: string; exists: boolean }> }>>("scan_zcode_plugins");
+        if (result.scripts && Array.isArray(result.scripts)) {
+          const merged = defaultScripts.map((d) => {
+            const found = result.scripts.find((s) => s.name === d.name);
+            return { ...d, exists: found?.exists ?? false };
+          });
+          setScripts(merged);
+        } else {
+          setScripts(defaultScripts.map((d) => ({ ...d, exists: true })));
+        }
+      } catch (_e) {
+        setScripts(defaultScripts.map((d) => ({ ...d, exists: true })));
+      }
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { void scanDir(); }, []);
+
+  return (
+    <>
+      <Panel>
+        <CardHead title="ZCode 工具与插件" detail="脚本管理与 ZCode 插件注入状态" />
+        <CardContent>
+          <div className="hint-line">
+            <Puzzle className="h-4 w-4" style={{ flexShrink: 0 }} />
+            <span>ZCode 自定义增强脚本管理，存放于 <b>LDZcode/</b> 目录下。ZCode 升级后需重新注入。</span>
+          </div>
+          {loading ? (
+            <div className="loading-text">扫描中…</div>
+          ) : (
+            <div className="status-table">
+              {scripts.map((s) => (
+                <StatusRow key={s.name} title={`${s.name} — ${s.desc}`} status={s.exists ? "ok" : "info"} path={s.file} />
+              ))}
+            </div>
+          )}
+          <div className="hint-line" style={{ marginTop: 12 }}>
+            <Info className="h-4 w-4" />
+            <span>手动注入：右键 <b>inject-zcode.bat</b> → 以管理员身份运行。</span>
+          </div>
+          <Toolbar>
+            <Button variant="outline" onClick={() => invoke("launch_zcode")}>
+              <Rocket className="h-4 w-4" /> 启动 ZCode
+            </Button>
+            <Button variant="outline" onClick={() => void scanDir()}>
+              <RefreshCw className="h-4 w-4" /> 重新扫描
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
+function ZCodeEnhanceScreen({ actions }: { actions: Actions }) {
+  const [parallelMode, setParallelMode] = useState(() => localStorage.getItem("zcode_parallel_mode") === "true");
+  const [injectStatus, setInjectStatus] = useState<{ injected: boolean; loading: boolean }>({ injected: false, loading: true });
+
+  useEffect(() => {
+    invoke<ZCodeInstallStatusResult>("zcode_install_status").then((result) => {
+      setInjectStatus({ injected: result.pluginInjected, loading: false });
+    });
+  }, []);
 
   const toggleParallel = async () => {
-    const mode = parallelMode ? "queue" : "parallel";
+    const newMode = !parallelMode;
+    setParallelMode(newMode);
+    localStorage.setItem("zcode_parallel_mode", newMode ? "true" : "false");
     try {
-      // 此功能依赖 toggle-parallel.js，这里只做开关显示
-      setParallelMode(!parallelMode);
-    } catch (e) { /* ignore */ }
+      await invoke("toggle_zcode_parallel", { enabled: newMode });
+    } catch (e) {
+      console.warn("toggle_zcode_parallel 未实现", e);
+    }
+  };
+
+  const reInjectPlugin = async () => {
+    try {
+      await invoke("inject_zcode_plugin");
+      setInjectStatus({ injected: true, loading: false });
+    } catch (e) {
+      console.error("注入失败", e);
+    }
   };
 
   return (
     <>
-      <div className="hint-line">
-        <Hammer className="h-4 w-4" />
-        <span>ZCode 增强功能开关。修改 zcode-customize.js 后需重新注入。</span>
-      </div>
-      <div className="feature-switch-grid">
-        <div className="feature-item">
-          <div>
-            <strong>并行对话模式</strong>
-            <span>开启后 ZCode 支持同时进行多个对话，不排队等待。</span>
+      <Panel>
+        <CardHead title="ZCode 增强设置" detail="并行对话模式、布局增强与插件注入" />
+        <CardContent>
+          <div className="hint-line">
+            <Hammer className="h-4 w-4" />
+            <span>ZCode 增强功能开关。修改脚本后需重新注入。</span>
           </div>
-          <label className="switch">
-            <input type="checkbox" checked={parallelMode} onChange={() => void toggleParallel()} />
-            <span className="slider" />
-          </label>
-        </div>
-        <div className="feature-item">
-          <div>
-            <strong>LDZcode 布局增强</strong>
-            <span>注入 zcode-customize.js 实现消息宽度、输入框尺寸、字体大小的自定义。</span>
+          <div className="feature-switch-grid">
+            <div className="feature-item">
+              <div>
+                <strong>并行对话模式</strong>
+                <span>开启后 ZCode 支持同时进行多个对话，不排队等待。</span>
+              </div>
+              <label className="switch">
+                <input type="checkbox" checked={parallelMode} onChange={() => void toggleParallel()} />
+                <span className="slider" />
+              </label>
+            </div>
+            <div className="feature-item">
+              <div>
+                <strong>LDZcode 布局增强</strong>
+                <span>注入 zcode-customize.js 实现消息宽度、输入框尺寸、字体大小自定义。</span>
+              </div>
+              {injectStatus.loading ? <span className="loading-text">检测中…</span> : (
+                <Badge status={injectStatus.injected ? "ok" : "info"} />
+              )}
+            </div>
           </div>
-          <Badge status="ok" />
-        </div>
-      </div>
-      <div className="hint-line" style={{ marginTop: 12 }}>
-        <Info className="h-4 w-4" />
-        <span>并行模式需通过 toggle-parallel.js 写入 setting.json，重启 ZCode 后生效。</span>
-      </div>
+          <div className="hint-line" style={{ marginTop: 12 }}>
+            <Info className="h-4 w-4" />
+            <span>并行模式通过 toggle-parallel.js 写入 setting.json，重启 ZCode 后生效。布局增强需注入 zcode-customize.js。</span>
+          </div>
+          <Toolbar>
+            <Button onClick={() => void reInjectPlugin()}>
+              <Rocket className="h-4 w-4" /> 重新注入插件
+            </Button>
+            <Button variant="outline" onClick={() => invoke("launch_zcode")}>
+              启动 ZCode
+            </Button>
+          </Toolbar>
+        </CardContent>
+      </Panel>
     </>
   );
 }
@@ -4709,9 +4710,11 @@ function routeSubtitle(route: Route) {
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
     enhance: "Codex 增强功能：启动、重启、插件与设置",
-    zcode: "ZCode 增强控制台：会话、插件、维护与设置",
+    "zcode-sessions": "查看和管理 ZCode 对话任务",
+    "zcode-plugins": "ZCode 插件脚本管理与注入",
+    "zcode-enhance": "ZCode 增强功能与并行对话模式",
     proxy: "代理服务器运行状态与模型信息",
-    maintenance: "Codex 安装检查、修复与诊断",
+    maintenance: "安装检查、修复与诊断",
     about: "版本信息、项目链接、日志与诊断",
     settings: "主题、双工具配置与启动参数",
   };

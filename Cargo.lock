@@ -1933,6 +1933,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ldzcode-launcher"
+version = "10.0.1"
+dependencies = [
+ "anyhow",
+ "tokio",
+ "winresource",
+]
+
+[[package]]
 name = "leb128fmt"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
