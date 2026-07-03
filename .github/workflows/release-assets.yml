@@ -44,6 +44,7 @@ jobs:
           New-Item -ItemType Directory -Force dist/windows/app | Out-Null
           Copy-Item target/release/ldcodex.exe dist/windows/app/
           Copy-Item target/release/ldcodex-manager.exe dist/windows/app/
+          Copy-Item target/release/ldzcode.exe dist/windows/app/
           # ★ Node.js 不打包进安装包！launcher 首次运行时自动检测 / 下载
           # ★ 复制 bridge 目录
           Copy-Item -Recurse -Force bridge dist/windows/app/bridge/
@@ -119,7 +120,7 @@ jobs:
       - name: Verify macOS bundle structure
         run: |
           set -euo pipefail
-          for app in "dist/macos/stage/LD AI工具.app" "dist/macos/stage/LD AI工具 管理工具.app" "dist/macos/stage/LD AI工具 ZCode启动器.app"; do
+          for app in "dist/macos/stage/LDCodex.app" "dist/macos/stage/LDAI管理工具.app" "dist/macos/stage/LDZcode.app"; do
             test -f "$app/Contents/Info.plist"
             test -f "$app/Contents/PkgInfo"
             test -x "$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"

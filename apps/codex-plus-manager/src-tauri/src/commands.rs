@@ -428,10 +428,10 @@ fn launch_bridge_process(node: &str, script_path: &PathBuf, _work_dir: &PathBuf)
     use std::os::windows::process::CommandExt;
     // 弹出终端窗口运行 node bridge/index.mjs
     let script = script_path.to_string_lossy();
-    let _cmdline = format!("/c start \"LD AI工具 Bridge\" cmd.exe /k \"{} {}\"", node, script);
+    let _cmdline = format!("/c start \"LDCodex Bridge\" cmd.exe /k \"{} {}\"", node, script);
     let _ = std::process::Command::new("cmd.exe")
         .creation_flags(0x08000000 | 0x00000010)
-        .args(["/c", "start", "LD AI工具 Bridge", "cmd.exe", "/k", &format!("{} {}", node, script)])
+        .args(["/c", "start", "LDCodex Bridge", "cmd.exe", "/k", &format!("{} {}", node, script)])
         .spawn()?;
     // start 会先启动一个 cmd，实际 node 进程的 pid 无法直接获取
     // 返回 0 表示成功（前端仅用于展示）
@@ -2832,20 +2832,20 @@ pub fn toggle_zcode_parallel(request: ToggleZCodeParallelRequest) -> CommandResu
 pub fn scan_zcode_plugins() -> CommandResult<Value> {
     let ldzcode_dir = codex_plus_core::zcode_sqlite::zcode_home_dir()
         .parent()
-        .map(|p| p.join("LD AI工具 ZCode启动器"))
+        .map(|p| p.join("LDZcode"))
         .unwrap_or_else(|| {
             std::env::current_exe()
                 .ok()
                 .and_then(|p| p.parent().map(|p| p.to_path_buf()))
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join("LD AI工具 ZCode启动器")
+                .join("LDZcode")
         });
 
     let known_scripts = [
         "zcode-customize.js",
         "inject-zcode.bat",
         "toggle-parallel.js",
-        "README-LD AI工具 ZCode启动器.md",
+        "README-LDZcode.md",
     ];
 
     let scripts: Vec<serde_json::Value> = known_scripts
@@ -2868,13 +2868,13 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
     let zcode_install = codex_plus_core::zcode_sqlite::zcode_install_dir();
     let ldzcode_dir = codex_plus_core::zcode_sqlite::zcode_home_dir()
         .parent()
-        .map(|p| p.join("LD AI工具 ZCode启动器"))
+        .map(|p| p.join("LDZcode"))
         .unwrap_or_else(|| {
             std::env::current_exe()
                 .ok()
                 .and_then(|p| p.parent().map(|p| p.to_path_buf()))
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join("LD AI工具 ZCode启动器")
+                .join("LDZcode")
         });
 
     // 目标：复制 zcode-customize.js 到 ZCode 安装目录的 resources 下
@@ -2883,7 +2883,7 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
 
     if !source.exists() {
         return failed(
-            "未找到 zcode-customize.js，请确认 LD AI工具 ZCode启动器 目录存在",
+            "未找到 zcode-customize.js，请确认 LDZcode 目录存在",
             json!({"source": source.to_string_lossy().to_string()}),
         );
     }

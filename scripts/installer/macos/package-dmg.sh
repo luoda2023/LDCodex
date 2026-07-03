@@ -7,16 +7,16 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 DIST="$ROOT/dist/macos"
 STAGE="$DIST/stage"
 BINARY_DIR="${BINARY_DIR:-$ROOT/target/release}"
-DMG="$DIST/LDAI-${VERSION}-macos-${ARCH}.dmg"
+DMG="$DIST/LDCodex-${VERSION}-macos-${ARCH}.dmg"
 ICON_SOURCE="$ROOT/apps/codex-plus-manager/src-tauri/icons/icon.png"
-ICON_NAME="ldai.icns"
+ICON_NAME="ldcodex.icns"
 ICON_ICNS="$DIST/$ICON_NAME"
 
 rm -rf "$DIST"
 mkdir -p "$STAGE"
 
 prepare_icon() {
-  local iconset="$DIST/ldai.iconset"
+  local iconset="$DIST/ldcodex.iconset"
   rm -rf "$iconset"
   mkdir -p "$iconset"
 
@@ -118,25 +118,25 @@ verify_app() {
 }
 
 prepare_icon
-create_app "LD AI工具" "LDAI" "$BINARY_DIR/ldcodex" "com.luoda.ldai" "true"
-create_app "LD AI工具 管理工具" "LDAIManager" "$BINARY_DIR/ldcodex-manager" "com.luoda.ldai.manager" "false"
-create_app "LD AI工具 ZCode启动器" "LDZcode" "$BINARY_DIR/ldzcode" "com.luoda.ldai.zcode" "false"
+create_app "LDCodex" "LDCodex" "$BINARY_DIR/ldcodex" "com.luoda.ldcodex" "true"
+create_app "LDAI管理工具" "LDAIManager" "$BINARY_DIR/ldcodex-manager" "com.luoda.ldcodex.manager" "false"
+create_app "LDZcode" "LDZcode" "$BINARY_DIR/ldzcode" "com.luoda.ldcodex.zcode" "false"
 ln -s /Applications "$STAGE/Applications"
 
-sign_app "$STAGE/LD AI工具.app"
-sign_app "$STAGE/LD AI工具 管理工具.app"
-sign_app "$STAGE/LD AI工具 ZCode启动器.app"
+sign_app "$STAGE/LDCodex.app"
+sign_app "$STAGE/LDAI管理工具.app"
+sign_app "$STAGE/LDZcode.app"
 
-verify_app "$STAGE/LD AI工具.app"
-verify_app "$STAGE/LD AI工具 管理工具.app"
-verify_app "$STAGE/LD AI工具 ZCode启动器.app"
+verify_app "$STAGE/LDCodex.app"
+verify_app "$STAGE/LDAI管理工具.app"
+verify_app "$STAGE/LDZcode.app"
 
 # 重试 DMG 创建，避免 hdiutil 偶发 Resource busy 失败
 create_dmg() {
   local max_attempts=3
   local attempt=1
   while [ $attempt -le $max_attempts ]; do
-    if hdiutil create -volname "LD AI工具" -srcfolder "$STAGE" -ov -format UDZO "$DMG"; then
+    if hdiutil create -volname "LDCodex" -srcfolder "$STAGE" -ov -format UDZO "$DMG"; then
       return 0
     fi
     echo "hdiutil 创建 DMG 失败 (第 ${attempt}/${max_attempts} 次)，3 秒后重试..."

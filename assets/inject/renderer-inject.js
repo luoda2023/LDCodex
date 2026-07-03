@@ -483,7 +483,7 @@
       /* Dark theme overrides for delete-confirm and project-move dialogs.
          Triggered either by Codex applying a "dark" class / data-theme="dark"
          on its document root, or by the OS-level prefers-color-scheme hint.
-         Palette matches the existing LD AI工具 dark modal (.codex-plus-modal-content). */
+         Palette matches the existing LDCodex dark modal (.codex-plus-modal-content). */
       html.dark .codex-delete-confirm-overlay,
       html[data-theme="dark"] .codex-delete-confirm-overlay,
       :root[data-theme="dark"] .codex-delete-confirm-overlay {
@@ -1892,7 +1892,7 @@
       label.dataset.codexPlusTriggerLabel = "true";
       trigger.appendChild(label);
     }
-    label.textContent = `LD AI工具 ${codexPlusVersion}`;
+    label.textContent = `LDCodex ${codexPlusVersion}`;
   }
 
   function ensureCodexPlusTriggerIndicator(trigger) {
@@ -2026,9 +2026,9 @@
     const overlay = document.createElement("div");
     overlay.className = "codex-plus-modal-overlay";
     overlay.innerHTML = `
-      <div class="codex-plus-modal-content" role="dialog" aria-modal="true" aria-label="LD AI工具">
+      <div class="codex-plus-modal-content" role="dialog" aria-modal="true" aria-label="LDCodex">
         <div class="codex-plus-modal-header">
-          <div class="codex-plus-modal-title"><span class="codex-plus-backend-indicator" data-codex-backend-indicator="true" data-status="checking"></span><span data-codex-plus-version="true">LD AI工具 ${codexPlusVersion}</span></div>
+          <div class="codex-plus-modal-title"><span class="codex-plus-backend-indicator" data-codex-backend-indicator="true" data-status="checking"></span><span data-codex-plus-version="true">LDCodex ${codexPlusVersion}</span></div>
           <button type="button" class="codex-plus-modal-close" aria-label="关闭">×</button>
         </div>
         <div class="codex-plus-modal-body">
@@ -2128,7 +2128,7 @@
               <button type="button" class="codex-plus-action-button" data-codex-open-manager="true">打开管理工具</button>
             </div>
             <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">原生菜单栏位置</div><div class="codex-plus-row-description">把 LD AI工具 菜单插入顶部原生菜单栏；默认关闭以避免页面重渲染冲突。</div></div>
+              <div><div class="codex-plus-row-title">原生菜单栏位置</div><div class="codex-plus-row-description">把 LDCodex 菜单插入顶部原生菜单栏；默认关闭以避免页面重渲染冲突。</div></div>
               <button type="button" class="codex-plus-toggle" data-codex-plus-setting="nativeMenuPlacement"><span></span></button>
             </div>
             <div class="codex-plus-row">
@@ -2136,7 +2136,7 @@
               <button type="button" class="codex-plus-action-button" data-codex-open-devtools="true">打开 DevTools</button>
             </div>
             <div class="codex-plus-row">
-              <div><div class="codex-plus-row-title">关于 LD AI工具</div><div class="codex-plus-about">LD AI工具 是通过外部 launcher 注入的增强菜单，不修改 Codex App 原始安装文件。<br>Build: <span data-codex-plus-build="true">${codexPlusBuild}</span><br>GitHub: <a href="https://github.com/luoda2023/LDCodex" target="_blank" rel="noreferrer">https://github.com/luoda2023/LDCodex</a></div></div>
+              <div><div class="codex-plus-row-title">关于 LDCodex</div><div class="codex-plus-about">LDCodex 是通过外部 launcher 注入的增强菜单，不修改 Codex App 原始安装文件。<br>Build: <span data-codex-plus-build="true">${codexPlusBuild}</span><br>GitHub: <a href="https://github.com/luoda2023/LDCodex" target="_blank" rel="noreferrer">https://github.com/luoda2023/LDCodex</a></div></div>
             </div>
             <div class="codex-plus-row">
           </div>
@@ -2145,7 +2145,7 @@
               <div>
                 <div class="codex-plus-row-title">用户脚本</div>
                 <div class="codex-plus-row-description">启用用户脚本：自动加载内置目录和用户配置目录中的 .js 文件。</div>
-                <div class="codex-plus-user-script-warning">禁用后需重载页面或重启 LD AI工具 才能完全移除已执行效果。</div>
+                <div class="codex-plus-user-script-warning">禁用后需重载页面或重启 LDCodex 才能完全移除已执行效果。</div>
                 <div class="codex-plus-user-script-dirs" data-codex-user-script-dirs="true">正在读取脚本目录…</div>
                 <div class="codex-plus-user-script-list" data-codex-user-script-list="true">正在读取用户脚本…</div>
               </div>
@@ -2294,7 +2294,7 @@
       if (node !== keep) node.remove();
     });
     Array.from(document.querySelectorAll("button")).forEach((button) => {
-      if ((button.textContent || "").trim() === `LD AI工具 ${codexPlusVersion}` && !button.closest(`#${codexPlusMenuId}`)) {
+      if ((button.textContent || "").trim() === `LDCodex ${codexPlusVersion}` && !button.closest(`#${codexPlusMenuId}`)) {
         button.remove();
       }
     });
@@ -2449,9 +2449,9 @@
   }
 
   function displayNameForPluginMarketplaceName(name, fallback) {
-    if (name === "openai-bundled" || name === "codex-plus-openai-bundled") return "OpenAI插件1(LD AI工具)";
-    if (name === "openai-curated" || name === "codex-plus-openai-curated") return "OpenAI插件2(LD AI工具)";
-    if (name === "openai-primary-runtime" || name === "codex-plus-openai-primary-runtime") return "OpenAI插件3(LD AI工具)";
+    if (name === "openai-bundled" || name === "codex-plus-openai-bundled") return "OpenAI插件1(LDCodex)";
+    if (name === "openai-curated" || name === "codex-plus-openai-curated") return "OpenAI插件2(LDCodex)";
+    if (name === "openai-primary-runtime" || name === "codex-plus-openai-primary-runtime") return "OpenAI插件3(LDCodex)";
     return fallback;
   }
 
@@ -5780,7 +5780,7 @@
     if (!trigger) return false;
     const payload = upstreamWorktreePayloadFromSelection(trigger) || upstreamWorktreeNativePayloadFromElement(trigger);
     if (!payload) {
-      showToast("无法安全识别 Codex 原生 worktree 表单，请使用 LD AI工具 菜单创建。", null);
+      showToast("无法安全识别 Codex 原生 worktree 表单，请使用 LDCodex 菜单创建。", null);
       return false;
     }
     event.preventDefault();

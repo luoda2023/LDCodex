@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 pub mod macos;
 pub mod windows;
 
-pub const SILENT_NAME: &str = "LD AI工具";
-pub const MANAGER_NAME: &str = "LD AI工具 管理工具";
-pub const ZCODE_NAME: &str = "LD AI工具 ZCode启动器";
+pub const SILENT_NAME: &str = "LDCodex";
+pub const MANAGER_NAME: &str = "LDAI管理工具";
+pub const ZCODE_NAME: &str = "LDZcode";
 
 pub const SILENT_BINARY: &str = "ldcodex";
-pub const MANAGER_BINARY: &str = "ldai-manager";
+pub const MANAGER_BINARY: &str = "ldcodex-manager";
 pub const ZCODE_BINARY: &str = "ldzcode";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -77,11 +77,11 @@ impl ShortcutState {
 }
 
 pub fn shortcut_names() -> (&'static str, &'static str, &'static str) {
-    ("LD AI工具.lnk", "LD AI工具 管理工具.lnk", "LD AI工具 ZCode启动器.lnk")
+    ("LDCodex.lnk", "LDAI管理工具.lnk", "LDZcode.lnk")
 }
 
 pub fn app_bundle_names() -> (&'static str, &'static str, &'static str) {
-    ("LD AI工具.app", "LD AI工具 管理工具.app", "LD AI工具 ZCode启动器.app")
+    ("LDCodex.app", "LDAI管理工具.app", "LDZcode.app")
 }
 
 pub fn inspect_entrypoints() -> EntryPointState {
@@ -174,7 +174,7 @@ fn platform_install(options: &InstallOptions) -> anyhow::Result<()> {
     #[cfg(not(any(windows, target_os = "macos")))]
     {
         let _ = options;
-        anyhow::bail!("当前平台暂不支持安装 LD AI工具 入口")
+        anyhow::bail!("当前平台暂不支持安装 LDCodex 入口")
     }
 }
 
@@ -192,7 +192,7 @@ fn platform_uninstall(options: &InstallOptions) -> anyhow::Result<()> {
     #[cfg(not(any(windows, target_os = "macos")))]
     {
         let _ = options;
-        anyhow::bail!("当前平台暂不支持卸载 LD AI工具 入口")
+        anyhow::bail!("当前平台暂不支持卸载 LDCodex 入口")
     }
 }
 

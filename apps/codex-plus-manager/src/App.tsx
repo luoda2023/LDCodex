@@ -956,7 +956,7 @@ export function App() {
   const restart = async () => {
     const result = await launchCommand("restart_codex_plus");
     if (result) {
-      showNotice("重启 LD AI工具", result.message, result.status);
+      showNotice("重启 LDCodex", result.message, result.status);
       await refreshOverview(true);
     }
   };
@@ -1718,7 +1718,7 @@ export function App() {
   return (
     <div className={`shell ${theme}`}>
       <div className="titlebar">
-        <div className="titlebar-title">LD AI工具</div>
+        <div className="titlebar-title">LDAI管理工具</div>
         <div className="titlebar-controls">
           <button className="titlebar-btn" onClick={() => void appWindow.minimize()} title="最小化" type="button"><Minus className="h-3 w-3" /></button>
           <button className="titlebar-btn" onClick={() => void appWindow.toggleMaximize()} title="最大化" type="button"><Square className="h-3 w-3" /></button>
@@ -1730,7 +1730,7 @@ export function App() {
           <div className="brand-mark"><img src="/LDAI.png" alt="LD" style={{width:32,height:32}} /></div>
           <div className="brand-copy">
             <div className="brand-title-row">
-              <div className="brand-title">LD AI工具</div>
+              <div className="brand-title">LDAI管理工具</div>
               {hasUpdate ? (
                 <button
                   className="update-dot"
@@ -1745,7 +1745,7 @@ export function App() {
                 </button>
               ) : null}
             </div>
-            <div className="brand-subtitle">集成管理平台</div>
+            <div className="brand-subtitle">管理控制台</div>
           </div>
         </div>
         <nav className="nav">
@@ -1791,11 +1791,11 @@ export function App() {
             </Button>
             {route === "enhance" ? (
               <>
-                <Button onClick={() => void actions.launch()} title="启动 LD AI工具" variant="outline">
+                <Button onClick={() => void actions.launch()} title="启动 LDCodex" variant="outline">
                   <Rocket className="h-4 w-4" />
-                  启动 LD AI工具
+                  启动 LDCodex
                 </Button>
-                <Button onClick={() => void actions.restart()} title="重启 LD AI工具" variant="outline">
+                <Button onClick={() => void actions.restart()} title="重启 LDCodex" variant="outline">
                   <RefreshCw className="h-4 w-4" />
                   重启
                 </Button>
@@ -2361,7 +2361,7 @@ function EnhanceScreen({
             <FeatureToggle title="对话居中宽度" detail="把主对话和输入框限制到固定最大宽度，适合大屏阅读。" checked={form.codexAppConversationView} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppConversationView", value)} />
             <FeatureToggle title="切换对话保留位置" detail="切换 thread 时恢复上一次浏览位置。" checked={form.codexAppThreadScrollRestore} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppThreadScrollRestore", value)} />
             <FeatureToggle title="Upstream worktree" detail="从最新 upstream 分支创建 Git worktree。" checked={form.codexAppUpstreamWorktreeCreate} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppUpstreamWorktreeCreate", value)} />
-            <FeatureToggle title="原生菜单栏位置" detail="把 LD AI工具 菜单插入 Codex 顶部原生菜单栏。" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
+            <FeatureToggle title="原生菜单栏位置" detail="把 LDAI管理工具 菜单插入 Codex 顶部原生菜单栏。" checked={form.codexAppNativeMenuPlacement} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuPlacement", value)} />
             <FeatureToggle title="原生菜单汉化" detail="启动时通过本地主进程调试端口汉化 Codex 原生菜单；不修改安装包。需重启 Codex 才生效。" checked={form.codexAppNativeMenuLocalization} disabled={!masterEnabled} onChange={(value) => setEnhanceFlag("codexAppNativeMenuLocalization", value)} />
           </div>
           <div className="hint-line">
@@ -2520,9 +2520,9 @@ function ZCodePluginsScreen({ actions }: { actions: Actions }) {
     setLoading(true);
     try {
       const defaultScripts = [
-        { name: "zcode-customize.js", desc: "布局调整与功能增强", file: "LD AI工具 ZCode启动器/zcode-customize.js" },
-        { name: "inject-zcode.bat", desc: "Windows 注入工具（批处理）", file: "LD AI工具 ZCode启动器/inject-zcode.bat" },
-        { name: "toggle-parallel.js", desc: "并行对话切换脚本", file: "LD AI工具 ZCode启动器/toggle-parallel.js" },
+        { name: "zcode-customize.js", desc: "布局调整与功能增强", file: "LDZcode/zcode-customize.js" },
+        { name: "inject-zcode.bat", desc: "Windows 注入工具（批处理）", file: "LDZcode/inject-zcode.bat" },
+        { name: "toggle-parallel.js", desc: "并行对话切换脚本", file: "LDZcode/toggle-parallel.js" },
       ];
       try {
         const result = await invoke<CommandResult<{ scripts: Array<{ name: string; exists: boolean }> }>>("scan_zcode_plugins");
@@ -2550,7 +2550,7 @@ function ZCodePluginsScreen({ actions }: { actions: Actions }) {
         <CardContent>
           <div className="hint-line">
             <Puzzle className="h-4 w-4" style={{ flexShrink: 0 }} />
-            <span>ZCode 自定义增强脚本管理，存放于 <b>LD AI工具 ZCode启动器/</b> 目录下。ZCode 升级后需重新注入。</span>
+            <span>ZCode 自定义增强脚本管理，存放于 <b>LDZcode/</b> 目录下。ZCode 升级后需重新注入。</span>
           </div>
           {loading ? (
             <div className="loading-text">扫描中…</div>
@@ -2984,7 +2984,7 @@ function SessionsScreen({
             />
             <span>
               <strong>启动前自动修复历史会话</strong>
-              <small>开启后，通过 LD AI工具 启动 Codex 前自动整理一次旧对话的归属标记。</small>
+              <small>开启后，通过 LDCodex 启动 Codex 前自动整理一次旧对话的归属标记。</small>
             </span>
           </label>
           <Toolbar>
@@ -3135,7 +3135,7 @@ function MaintenanceScreen({
         <CardContent>
           <label className="check-row">
             <input checked={removeOwnedData} onChange={(event) => onRemoveOwnedDataChange(event.currentTarget.checked)} type="checkbox" />
-            <span>卸载时移除 LD AI工具 托管数据</span>
+            <span>卸载时移除 LDAI管理工具 托管数据</span>
           </label>
           <Toolbar>
             <Button onClick={() => void actions.installEntrypoints()}>安装入口</Button>
@@ -3145,7 +3145,7 @@ function MaintenanceScreen({
         </CardContent>
       </Panel>
       <Panel>
-        <CardHead title="自动接管" detail="Watcher 用于保持 LD AI工具 接管状态" />
+        <CardHead title="自动接管" detail="Watcher 用于保持 LDAI管理工具 接管状态" />
         <CardContent>
           <Toolbar>
             <Button variant="secondary" onClick={() => void actions.installWatcher()}>安装 watcher</Button>
@@ -3234,10 +3234,10 @@ function AboutScreen({
   return (
     <>
       <Panel>
-        <CardHead title="关于 LD AI工具" detail="本地 Codex & ZCode 双工具增强、管理平台" />
+        <CardHead title="关于 LDAI管理工具" detail="本地 Codex & ZCode 双工具增强、管理平台" />
         <CardContent>
           <div className="metric-list">
-            <Metric label="LD AI工具 版本" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
+            <Metric label="LDAI管理工具 版本" value={overview?.current_version ?? update?.currentVersion ?? "-"} />
             <Metric label="Codex 版本" value={overview?.codex_version ?? "未检测到"} />
             <Metric label="ZCode 版本" value={zcodeVer ?? "未检测到"} />
             <Metric label="项目地址" value="github.com/luoda2023/LDCodex" />
@@ -4068,7 +4068,7 @@ function RelayProfileEditor({
       {showApiFields && profile.protocol === "chatCompletions" ? (
         <div className="hint-line relay-protocol-hint">
           <MessageCircle className="h-4 w-4" />
-          <span>此上游会通过本地 127.0.0.1:57321 转成 Responses API，需要从 LD AI工具 启动 Codex。</span>
+          <span>此上游会通过本地 127.0.0.1:57321 转成 Responses API，需要从 LDCodex 启动 Codex。</span>
         </div>
       ) : null}
       <div className="hint-line relay-protocol-hint">
@@ -4714,7 +4714,7 @@ function CloseConfirmDialog({
         <div className="modal-head">
           <div>
             <h2>关闭确认</h2>
-            <p className="modal-message">要退出 LD AI工具 管理工具，还是最小化到系统托盘？</p>
+            <p className="modal-message">要退出 LDAI管理工具，还是最小化到系统托盘？</p>
           </div>
           <button className="toast-close" onClick={onCancel} type="button">×</button>
         </div>
@@ -4900,7 +4900,7 @@ function routeTitle(route: Route) {
 
 function routeSubtitle(route: Route) {
   const subtitles: Record<Route, string> = {
-    overview: "LD AI工具 — Codex & ZCode 双工具集成管理",
+    overview: "LDAI管理工具 — Codex & ZCode 双工具集成管理",
     relay: "管理 API 模型、协议、Key 与配置文件",
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
@@ -5567,7 +5567,7 @@ function healthItems(overview: OverviewResult | null) {
       title: "静默启动入口",
       status: overview?.silent_shortcut.status ?? "not_checked",
       ok: overview?.silent_shortcut.status === "installed",
-      detail: overview?.silent_shortcut.path || "缺少 LD AI工具 静默启动快捷方式时可在安装维护页修复。",
+      detail: overview?.silent_shortcut.path || "缺少 LDAI管理工具 静默启动快捷方式时可在安装维护页修复。",
     },
     {
       title: "管理工具入口",
@@ -6590,7 +6590,7 @@ function loadInitialRoute(): Route {
   return "overview";
 }
 
-// ── LD AI工具-specific screens (from original HEAD) ──
+// ── LDAI管理工具-specific screens (from original HEAD) ──
 
 	function ProxyScreen({
 	  overview,

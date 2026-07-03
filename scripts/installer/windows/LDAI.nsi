@@ -6,15 +6,15 @@ Unicode true
 !endif
 !define ROOT "..\..\.."
 
-Name "LD AI工具"
-OutFile "${ROOT}\dist\windows\LDAI-${VERSION}-windows-x64-setup.exe"
-InstallDir "$LOCALAPPDATA\Programs\LDAI"
-InstallDirRegKey HKCU "Software\LDAI" "InstallDir"
+Name "LDCodex"
+OutFile "${ROOT}\dist\windows\LDCodex-${VERSION}-windows-x64-setup.exe"
+InstallDir "$LOCALAPPDATA\Programs\LDCodex"
+InstallDirRegKey HKCU "Software\LDCodex" "InstallDir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 
-!define MUI_ICON "${ROOT}\apps\codex-plus-manager\src-tauri\icons\icon.ico"
-!define MUI_UNICON "${ROOT}\apps\codex-plus-manager\src-tauri\icons\icon.ico"
+!define MUI_ICON "${ROOT}\apps\codex-plus-manager\src-tauri\icons\LDAI.ico"
+!define MUI_UNICON "${ROOT}\apps\codex-plus-manager\src-tauri\icons\LDAI.ico"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -39,21 +39,21 @@ Section "Install"
   File "${ROOT}\dist\windows\app\ldcodex-manager.exe"
   File "${ROOT}\dist\windows\app\ldzcode.exe"
 
-  Delete "$DESKTOP\LD AI工具.lnk"
-  Delete "$DESKTOP\LD AI工具 管理工具.lnk"
-  Delete "$DESKTOP\LD AI工具 ZCode启动器.lnk"
-  Delete "$SMPROGRAMS\LD AI工具\LD AI工具.lnk"
-  Delete "$SMPROGRAMS\LD AI工具\LD AI工具 管理工具.lnk"
-  Delete "$SMPROGRAMS\LD AI工具\LD AI工具 ZCode启动器.lnk"
+  Delete "$DESKTOP\LDCodex.lnk"
+  Delete "$DESKTOP\LDAI管理工具.lnk"
+  Delete "$DESKTOP\LDZcode.lnk"
+  Delete "$SMPROGRAMS\LDCodex\LDCodex.lnk"
+  Delete "$SMPROGRAMS\LDCodex\LDAI管理工具.lnk"
+  Delete "$SMPROGRAMS\LDCodex\LDZcode.lnk"
 
-  CreateShortcut "$DESKTOP\LD AI工具.lnk" "$INSTDIR\ldcodex.exe" "" "$INSTDIR\ldcodex.exe"
-  CreateShortcut "$DESKTOP\LD AI工具 管理工具.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
-  CreateShortcut "$DESKTOP\LD AI工具 ZCode启动器.lnk" "$INSTDIR\ldzcode.exe" "" "$INSTDIR\ldcodex.exe"
-  CreateDirectory "$SMPROGRAMS\LD AI工具"
-  CreateShortcut "$SMPROGRAMS\LD AI工具\LD AI工具.lnk" "$INSTDIR\ldcodex.exe" "" "$INSTDIR\ldcodex.exe"
-  CreateShortcut "$SMPROGRAMS\LD AI工具\LD AI工具 管理工具.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
-  CreateShortcut "$SMPROGRAMS\LD AI工具\LD AI工具 ZCode启动器.lnk" "$INSTDIR\ldzcode.exe" "" "$INSTDIR\ldcodex.exe"
-  CreateShortcut "$SMPROGRAMS\LD AI工具\卸载 LD AI工具.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\ldcodex.exe"
+  CreateShortcut "$DESKTOP\LDCodex.lnk" "$INSTDIR\ldcodex.exe" "" "$INSTDIR\ldcodex.exe"
+  CreateShortcut "$DESKTOP\LDAI管理工具.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
+  CreateShortcut "$DESKTOP\LDZcode.lnk" "$INSTDIR\ldzcode.exe" "" "$INSTDIR\ldzcode.exe"
+  CreateDirectory "$SMPROGRAMS\LDCodex"
+  CreateShortcut "$SMPROGRAMS\LDCodex\LDCodex.lnk" "$INSTDIR\ldcodex.exe" "" "$INSTDIR\ldcodex.exe"
+  CreateShortcut "$SMPROGRAMS\LDCodex\LDAI管理工具.lnk" "$INSTDIR\ldcodex-manager.exe" "" "$INSTDIR\ldcodex-manager.exe"
+  CreateShortcut "$SMPROGRAMS\LDCodex\LDZcode.lnk" "$INSTDIR\ldzcode.exe" "" "$INSTDIR\ldzcode.exe"
+  CreateShortcut "$SMPROGRAMS\LDCodex\卸载 LDCodex.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\ldcodex.exe"
 
 	  # ★ 安装 bridge 代理服务
 	  SetOutPath "$INSTDIR\bridge"
@@ -61,13 +61,13 @@ Section "Install"
 	  SetOutPath "$INSTDIR"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
-  WriteRegStr HKCU "Software\LDAI" "InstallDir" "$INSTDIR"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDAI" "DisplayName" "LD AI工具"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDAI" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDAI" "Publisher" "luoda"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDAI" "DisplayIcon" "$INSTDIR\ldcodex.exe"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDAI" "InstallLocation" "$INSTDIR"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDAI" "UninstallString" "$INSTDIR\uninstall.exe"
+  WriteRegStr HKCU "Software\LDCodex" "InstallDir" "$INSTDIR"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex" "DisplayName" "LDCodex"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex" "DisplayVersion" "${VERSION}"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex" "Publisher" "luoda"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex" "DisplayIcon" "$INSTDIR\ldcodex.exe"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex" "InstallLocation" "$INSTDIR"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex" "UninstallString" "$INSTDIR\uninstall.exe"
 SectionEnd
 
 Section "Uninstall"
@@ -78,14 +78,14 @@ Section "Uninstall"
   nsExec::ExecToLog 'taskkill /IM ldzcode.exe /F'
   Pop $0
 
-  Delete "$DESKTOP\LD AI工具.lnk"
-  Delete "$DESKTOP\LD AI工具 管理工具.lnk"
-  Delete "$DESKTOP\LD AI工具 ZCode启动器.lnk"
-  Delete "$SMPROGRAMS\LD AI工具\LD AI工具.lnk"
-  Delete "$SMPROGRAMS\LD AI工具\LD AI工具 管理工具.lnk"
-  Delete "$SMPROGRAMS\LD AI工具\LD AI工具 ZCode启动器.lnk"
-  Delete "$SMPROGRAMS\LD AI工具\卸载 LD AI工具.lnk"
-  RMDir "$SMPROGRAMS\LD AI工具"
+  Delete "$DESKTOP\LDCodex.lnk"
+  Delete "$DESKTOP\LDAI管理工具.lnk"
+  Delete "$DESKTOP\LDZcode.lnk"
+  Delete "$SMPROGRAMS\LDCodex\LDCodex.lnk"
+  Delete "$SMPROGRAMS\LDCodex\LDAI管理工具.lnk"
+  Delete "$SMPROGRAMS\LDCodex\LDZcode.lnk"
+  Delete "$SMPROGRAMS\LDCodex\卸载 LDCodex.lnk"
+  RMDir "$SMPROGRAMS\LDCodex"
 
   Delete "$INSTDIR\ldcodex.exe"
   Delete "$INSTDIR\ldcodex-manager.exe"
@@ -94,6 +94,6 @@ Section "Uninstall"
   RMDir /r "$INSTDIR\bridge"
   RMDir "$INSTDIR"
 
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDAI"
-  DeleteRegKey HKCU "Software\LDAI"
+  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex"
+  DeleteRegKey HKCU "Software\LDCodex"
 SectionEnd

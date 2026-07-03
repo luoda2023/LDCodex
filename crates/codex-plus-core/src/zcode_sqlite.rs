@@ -161,7 +161,7 @@ pub struct ZCodeProfile {
 /// 默认分身 ID
 pub const ZCODE_DEFAULT_PROFILE_ID: &str = "default";
 
-/// 分身配置文件路径 (%APPDATA%/LD AI工具/zcode-profiles.json)
+/// 分身配置文件路径 (%APPDATA%/LD AI工具/zcode-profiles.json，为兼容旧版保持路径不变)
 pub fn zcode_profiles_path() -> PathBuf {
     let roaming = std::env::var_os("APPDATA")
         .or_else(|| std::env::var_os("HOME"))

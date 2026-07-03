@@ -24,7 +24,7 @@ pub fn run() {
                 "index.html"
             };
             tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App(url.into()))
-                .title("LD AI工具 管理工具").decorations(false).inner_size(1180.0, 820.0)
+                .title("LDAI管理工具").decorations(false).inner_size(1180.0, 820.0)
                 .min_inner_size(960.0, 720.0)
                 .center()
                 .visible(true)
@@ -46,7 +46,7 @@ pub fn run() {
                 .build()?;
             tauri::tray::TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .tooltip("LD AI工具")
+                .tooltip("LDAI管理工具")
                 .menu(&tray_menu)
                 .on_menu_event(move |app_handle, event| {
                     match event.id().as_ref() {

@@ -248,7 +248,7 @@ class CodexWrapper
 
 fn compile_wrapper(source_path: &Path, wrapper_path: &Path) -> anyhow::Result<()> {
     let csc =
-        find_csc().ok_or_else(|| anyhow::anyhow!("未找到 csc.exe，无法编译 LD AI工具 wrapper"))?;
+        find_csc().ok_or_else(|| anyhow::anyhow!("未找到 csc.exe，无法编译 LDCodex wrapper"))?;
     let output_arg = format!("/out:{}", wrapper_path.display());
     let mut command = Command::new(&csc);
     command
