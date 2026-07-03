@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 DIST="$ROOT/dist/macos"
 STAGE="$DIST/stage"
 BINARY_DIR="${BINARY_DIR:-$ROOT/target/release}"
-DMG="$DIST/LDCodex-${VERSION}-macos-${ARCH}.dmg"
+DMG="$DIST/LDAI-${VERSION}-macos-${ARCH}.dmg"
 ICON_SOURCE="$ROOT/apps/codex-plus-manager/src-tauri/icons/icon.png"
 ICON_NAME="ldcodex.icns"
 ICON_ICNS="$DIST/$ICON_NAME"
@@ -136,7 +136,7 @@ create_dmg() {
   local max_attempts=3
   local attempt=1
   while [ $attempt -le $max_attempts ]; do
-    if hdiutil create -volname "LDCodex" -srcfolder "$STAGE" -ov -format UDZO "$DMG"; then
+    if hdiutil create -volname "LDAI" -srcfolder "$STAGE" -ov -format UDZO "$DMG"; then
       return 0
     fi
     echo "hdiutil 创建 DMG 失败 (第 ${attempt}/${max_attempts} 次)，3 秒后重试..."

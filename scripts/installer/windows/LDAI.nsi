@@ -6,8 +6,8 @@ Unicode true
 !endif
 !define ROOT "..\..\.."
 
-Name "LDCodex"
-OutFile "${ROOT}\dist\windows\LDCodex-${VERSION}-windows-x64-setup.exe"
+Name "LDAI"
+OutFile "${ROOT}\dist\windows\LDAI-${VERSION}-windows-x64-setup.exe"
 InstallDir "$LOCALAPPDATA\Programs\LDCodex"
 InstallDirRegKey HKCU "Software\LDCodex" "InstallDir"
 RequestExecutionLevel admin
