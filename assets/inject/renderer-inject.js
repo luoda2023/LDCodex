@@ -7102,35 +7102,10 @@
     if (el.style.marginRight !== "auto") el.style.marginRight = "auto";
   }
 
-  function conversationViewSessionRectFor(el) {
-    return el?.parentElement?.getBoundingClientRect() || null;
-  }
-
-  function conversationViewHtmlCenter() {
-    const rect = document.documentElement.getBoundingClientRect();
-    return rect.left + rect.width / 2;
-  }
-
-  function conversationViewHasRoomForHtmlCenter(nativeRect, bounds) {
-    if (!nativeRect || !bounds) return false;
-    const targetLeft = conversationViewHtmlCenter() - nativeRect.width / 2;
-    const targetRight = targetLeft + nativeRect.width;
-    return targetLeft >= bounds.left - 0.5 && targetRight <= bounds.right + 0.5;
-  }
-
   function conversationViewAlignElement(el) {
     if (!el?.isConnected) return;
     conversationViewApplyNativeWidth(el);
     conversationViewResetOwnOffset(el);
-    const nativeRect = el.getBoundingClientRect();
-    const bounds = conversationViewSessionRectFor(el);
-    if (!conversationViewHasRoomForHtmlCenter(nativeRect, bounds)) return;
-    const targetLeft = conversationViewHtmlCenter() - nativeRect.width / 2;
-    const delta = targetLeft - nativeRect.left;
-    if (Math.abs(delta) > 0.5) {
-      const nextLeft = `${delta.toFixed(2)}px`;
-      if (el.style.left !== nextLeft) el.style.left = nextLeft;
-    }
   }
 
   function conversationViewObserveIfNeeded(el) {
