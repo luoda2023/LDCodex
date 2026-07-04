@@ -86,9 +86,12 @@ pub fn codex_process_ids<'a>(processes: impl IntoIterator<Item = (u32, &'a str)>
     processes
         .into_iter()
         .filter_map(|(process_id, executable)| {
-            let executable = executable.to_ascii_lowercase();
-            executable
-                .contains("\\windowsapps\\openai.codex_")
+            let executable_lower = executable.to_ascii_lowercase();
+            // MS Store 版：路径包含 \windowsapps\openai.codex_
+            // 独立安装版：可执行文件名为 codex.exe
+            (executable_lower.contains("\\windowsapps\\openai.codex_")
+                || executable_lower.ends_with("\\codex.exe")
+                || executable_lower.ends_with("/codex.exe"))
                 .then_some(process_id)
         })
         .collect()

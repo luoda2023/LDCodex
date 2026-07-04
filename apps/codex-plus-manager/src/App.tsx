@@ -99,6 +99,7 @@ type OverviewResult = CommandResult<{
   codex_version: string | null;
   silent_shortcut: PathState;
   management_shortcut: PathState;
+  zcode_shortcut: PathState;
   latest_launch: LaunchStatus | null;
   current_version: string;
   update_status: string;
@@ -457,6 +458,7 @@ type WatcherResult = CommandResult<{
 type InstallResult = CommandResult<{
   silent_shortcut: { installed: boolean; path: string | null };
   management_shortcut: { installed: boolean; path: string | null };
+  zcode_shortcut: { installed: boolean; path: string | null };
 }>;
 
 type UpdateResult = CommandResult<{
@@ -542,13 +544,13 @@ const navGroups: Array<{
     label: "通用功能",
     items: [
       { id: "overview", label: "概览", icon: LayoutDashboard },
-      { id: "relay", label: "模型配置", icon: KeyRound },
-      { id: "proxy", label: "代理服务器", icon: ShieldCheck },
     ],
   },
   {
     label: "Codex 工具",
     items: [
+      { id: "relay", label: "模型配置", icon: KeyRound },
+      { id: "proxy", label: "代理服务器", icon: ShieldCheck },
       { id: "sessions", label: "会话管理", icon: MessageCircle },
       { id: "context", label: "工具与插件", icon: Network },
       { id: "enhance", label: "增强设置", icon: Hammer },
@@ -3091,6 +3093,7 @@ function MaintenanceScreen({
             <StatusRow title="Codex 应用" status={overview?.codex_app.status} path={overview?.codex_app.path} />
             <StatusRow title="静默启动入口" status={overview?.silent_shortcut.status} path={overview?.silent_shortcut.path} />
             <StatusRow title="管理控制台入口" status={overview?.management_shortcut.status} path={overview?.management_shortcut.path} />
+            <StatusRow title="ZCode 启动入口" status={overview?.zcode_shortcut.status} path={overview?.zcode_shortcut.path} />
             <StatusRow title="Watcher 自动接管" status={watcher?.enabled ? "ok" : "disabled"} path={watcher?.disabled_flag} />
           </div>
           <Toolbar>
@@ -5544,6 +5547,12 @@ function healthItems(overview: OverviewResult | null) {
       status: overview?.management_shortcut.status ?? "not_checked",
       ok: overview?.management_shortcut.status === "installed",
       detail: overview?.management_shortcut.path || "缺少管理工具快捷方式时可在安装维护页修复。",
+    },
+    {
+      title: "ZCode 入口",
+      status: overview?.zcode_shortcut.status ?? "not_checked",
+      ok: overview?.zcode_shortcut.status === "installed",
+      detail: overview?.zcode_shortcut.path || "缺少 ZCode 快捷方式时可在安装维护页修复。",
     },
   ];
 }

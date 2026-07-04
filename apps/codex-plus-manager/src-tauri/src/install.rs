@@ -19,10 +19,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn inspect_entrypoints_reports_two_entrypoints() {
+    fn inspect_entrypoints_reports_three_entrypoints() {
         let state = inspect_entrypoints();
 
         assert!(matches!(state.silent_shortcut.installed, true | false));
         assert!(matches!(state.management_shortcut.installed, true | false));
+        assert!(matches!(state.zcode_shortcut.installed, true | false));
     }
 }

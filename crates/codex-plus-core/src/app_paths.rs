@@ -197,7 +197,7 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
     }
 
     let upper = path.join("Codex.exe");
-    let lower = path.join("Codex.exe");
+    let lower = path.join("codex.exe");
     if upper.exists() || lower.exists() {
         return Some(path.to_path_buf());
     }
@@ -205,7 +205,7 @@ pub fn normalize_codex_app_path(path: &Path) -> Option<PathBuf> {
     let nested_app = path.join("app");
     if nested_app.is_dir() {
         let upper = nested_app.join("Codex.exe");
-        let lower = nested_app.join("Codex.exe");
+        let lower = nested_app.join("codex.exe");
         if upper.exists() || lower.exists() {
             return Some(nested_app);
         }
@@ -226,7 +226,8 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     if upper.exists() {
         upper
     } else {
-        app_dir.join("Codex.exe")
+        let lower = app_dir.join("codex.exe");
+        if lower.exists() { lower } else { upper }
     }
 }
 
