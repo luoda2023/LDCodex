@@ -10,6 +10,7 @@ use codex_plus_core::script_market::{self, MarketScript, ScriptMarketManifest};
 use codex_plus_core::settings::{BackendSettings, RelayProfile, SettingsStore};
 use codex_plus_core::status::{LaunchStatus, StatusStore};
 use codex_plus_core::user_scripts::UserScriptManager;
+use codex_plus_core::windows_integration;
 use codex_plus_core::zed_remote::{ZedOpenStrategy, ZedRemoteProject};
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -3015,6 +3016,27 @@ pub fn create_zcode_profile(name: String) -> CommandResult<Value> {
     match codex_plus_core::zcode_sqlite::create_zcode_profile(&name) {
         Ok(profile) => {
             let item: ZCodeProfileItem = profile.into();
+
+            // 在桌面创建快捷方式 (.bat)
+            #[cfg(windows)]
+            {
+                if let Some(desktop) = windows_integration::desktop_dir() {
+                    let bat_path = desktop.join(format!("LDZcode-{}.bat", item.name));
+                    let data_dir = codex_plus_core::zcode_sqlite::zcode_profile_data_dir(&item.id);
+                    let zcode_path = codex_plus_core::zcode_sqlite::zcode_exe_path();
+                    let bat_content = format!(
+                        "@echo off\r\n\
+                         title LDZcode - {name}\r\n\
+                         set \"ZCODE_DESKTOP_USER_DATA_DIR={}\"\r\n\
+                         start \"\" \"{}\"\r\n\
+                         exit\r\n",
+                        data_dir.to_string_lossy(),
+                        zcode_path.to_string_lossy()
+                    );
+                    let _ = std::fs::write(&bat_path, bat_content);
+                }
+            }
+
             ok(&format!("分身「{}」创建成功", item.name), json!(item))
         }
         Err(e) => failed(&format!("创建分身失败：{e}"), json!({"name": name})),
@@ -3024,11 +3046,28 @@ pub fn create_zcode_profile(name: String) -> CommandResult<Value> {
 /// 删除分身
 #[tauri::command]
 pub fn delete_zcode_profile(profile_id: String) -> CommandResult<Value> {
+    // 先找到分身名称，用于删除桌面快捷方式
+    let profile_name = codex_plus_core::zcode_sqlite::list_zcode_profiles()
+        .into_iter()
+        .find(|p| p.id == profile_id)
+        .map(|p| p.name);
+
     match codex_plus_core::zcode_sqlite::delete_zcode_profile(&profile_id) {
-        Ok(()) => ok(
-            &format!("分身已删除（ID: {}）", profile_id),
-            json!({"profileId": profile_id}),
-        ),
+        Ok(()) => {
+            // 删除桌面快捷方式 (.bat)
+            #[cfg(windows)]
+            if let Some(ref name) = profile_name {
+                if let Some(desktop) = windows_integration::desktop_dir() {
+                    let bat_path = desktop.join(format!("LDZcode-{}.bat", name));
+                    let _ = std::fs::remove_file(&bat_path);
+                }
+            }
+
+            ok(
+                &format!("分身已删除（ID: {}）", profile_id),
+                json!({"profileId": profile_id}),
+            )
+        }
         Err(e) => failed(
             &format!("删除分身失败：{e}"),
             json!({"profileId": profile_id}),
