@@ -215,6 +215,6 @@ jobs:
             --prerelease \
             --latest
 
-          # 上传所有产物
-          gh release upload "$TAG" release-artifacts/* --clobber
+          # 上传所有产物（只传文件，跳过目录）
+          find release-artifacts -type f -print0 | xargs -0 gh release upload "$TAG" --clobber
 
