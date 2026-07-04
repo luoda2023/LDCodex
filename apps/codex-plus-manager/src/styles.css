@@ -2943,6 +2943,12 @@ input[type="checkbox"] {
   margin: 0;
 }
 
+/* ========== 实用工具类 ========== */
+.m-0 { margin: 0; }
+.flex-1 { flex: 1 1 0%; }
+.mt-2 { margin-top: 8px; }
+.mt { margin-top: 8px; }
+
 
 
 
