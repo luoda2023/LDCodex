@@ -198,21 +198,23 @@ jobs:
           VERSION=$(grep '^version = ' Cargo.toml | sed 's/.*"\(.*\)"/\1/' | head -1)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Delete existing release & tag (if any)
+      - name: Create Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete "v${{ steps.version.outputs.version }}" --yes --cleanup-tag 2>/dev/null || true
+          TAG="v${{ steps.version.outputs.version }}"
 
-      - name: Create Release & upload assets
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
-          body: |
-            🚀 自动构建 #${{ github.run_number }}
-            提交: ${{ github.sha }}
-          prerelease: true
-          make_latest: true
-          files: release-artifacts/*
+          # 删除旧 Release 和 tag（如果存在）
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+
+          # 创建新 Release
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes "🚀 自动构建 #${{ github.run_number }}
+            提交: ${{ github.sha }}" \
+            --prerelease \
+            --latest
+
+          # 上传所有产物
+          gh release upload "$TAG" release-artifacts/* --clobber
 
