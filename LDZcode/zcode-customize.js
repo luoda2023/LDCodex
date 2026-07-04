@@ -23,7 +23,8 @@ function apply(){
   var r=document.getElementById('ldz-dyn-w');
   if(r) r.textContent=wMsg+wComp+wEdit;
   var f=document.getElementById('ldz-dyn-fs');
-  if(f) f.textContent='*{font-size:'+C.fs+'px!important}';
+  // 基础字号作用于内容区但不破坏标题/代码的层次继承（去除!important让更具体的选择器优先）
+  if(f) f.textContent='body, .prose, [class*="content"], [class*="message"] {font-size:'+C.fs+'px}';
 }
 function injectCSS(){
   if(document.getElementById('ldzcss'))return;
