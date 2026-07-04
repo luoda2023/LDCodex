@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   windows-artifacts:
@@ -167,4 +167,54 @@ jobs:
           name: ldai-macos-${{ matrix.arch }}-dmg
           path: dist/macos/*.dmg
           if-no-files-found: error
+
+  release:
+    name: Create Release
+    if: github.event_name == 'push' && github.ref_name == 'main'
+    needs: [windows-artifacts, macos-dmg]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ldai-windows-binaries
+          path: release-artifacts/windows/bin
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ldai-windows-installer
+          path: release-artifacts/windows
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ldai-macos-x64-dmg
+          path: release-artifacts/macos
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ldai-macos-arm64-dmg
+          path: release-artifacts/macos
+
+      - name: Extract version from Cargo.toml
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(grep '^version = ' Cargo.toml | sed 's/.*"\(.*\)"/\1/' | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: |
+            🚀 自动构建 #${{ github.run_number }}
+            提交: ${{ github.sha }}
+          prerelease: true
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: true
+          files: |
+            release-artifacts/**/*
 
