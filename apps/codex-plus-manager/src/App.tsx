@@ -2444,22 +2444,22 @@ function ZCodeSessionsScreen({ actions }: { actions: Actions }) {
   const Row = ({ session }: { session: ZCodeSessionItem }) => {
     const checked = selectedIds.has(session.id);
     return (
-      <div className="session-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid hsl(var(--border) / 0.3)" }}>
+      <div className="zcode-session-row">
         {selMode ? (
-          <input type="checkbox" checked={checked} onChange={() => toggle(session.id)} style={{ margin: 0 }} />
+          <input type="checkbox" checked={checked} onChange={() => toggle(session.id)} className="m-0" />
         ) : null}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div className="zcode-session-body">
+          <div className="zcode-session-title">
             {session.title || "(无标题)"}
           </div>
-          <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))", display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="zcode-session-meta">
             <span>提供方: {session.provider || "未知"}</span>
             <span>模式: {session.mode}</span>
             <span>状态: {session.taskStatus}</span>
-            {session.archived ? <span style={{ color: "#f59e0b" }}>已归档</span> : null}
-            {session.pinned ? <span style={{ color: "#3b82f6" }}>已固定</span> : null}
+            {session.archived ? <span className="zcode-archived-badge">已归档</span> : null}
+            {session.pinned ? <span className="zcode-pinned-badge">已固定</span> : null}
           </div>
-          <div style={{ fontSize: 10, color: "hsl(var(--muted-foreground) / 0.6)" }}>
+          <div className="zcode-session-id">
             {session.id}
           </div>
         </div>
@@ -2491,15 +2491,15 @@ function ZCodeSessionsScreen({ actions }: { actions: Actions }) {
               <Trash2 className="h-4 w-4" /> {selMode ? `删除 ${selectedItems.length} 个` : "批量删除"}
             </Button>
           </Toolbar>
-          <div className="feature-item" style={{ marginTop: 8, padding: "6px 12px", background: "hsl(var(--accent))", borderRadius: 6 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="zcode-parallel-box">
+            <div className="zcode-parallel-row">
               <input type="checkbox" checked={parallelMode} onChange={() => void toggleParallelReal()} id="parallel-toggle-zcode" />
-              <label htmlFor="parallel-toggle-zcode" style={{ cursor: "pointer", fontSize: 13 }}>
+              <label htmlFor="parallel-toggle-zcode" className="zcode-parallel-label">
                 <strong>并行对话模式</strong> — 开启后同时处理多个对话请求
               </label>
             </div>
           </div>
-          <div className="session-list" style={{ marginTop: 8, maxHeight: 400, overflowY: "auto" }}>
+          <div className="zcode-session-scroll">
             {sessions.length === 0 ? (
               <div className="empty-text">暂无 ZCode 对话</div>
             ) : (
@@ -2549,7 +2549,7 @@ function ZCodePluginsScreen({ actions }: { actions: Actions }) {
         <CardHead title="ZCode 工具与插件" detail="脚本管理与 ZCode 插件注入状态" />
         <CardContent>
           <div className="hint-line">
-            <Puzzle className="h-4 w-4" style={{ flexShrink: 0 }} />
+            <Puzzle className="h-4 w-4 inline-icon-shrink" />
             <span>ZCode 自定义增强脚本管理，存放于 <b>LDZcode/</b> 目录下。ZCode 升级后需重新注入。</span>
           </div>
           {loading ? (
@@ -2561,7 +2561,7 @@ function ZCodePluginsScreen({ actions }: { actions: Actions }) {
               ))}
             </div>
           )}
-          <div className="hint-line" style={{ marginTop: 12 }}>
+          <div className="hint-line mt">
             <Info className="h-4 w-4" />
             <span>手动注入：右键 <b>inject-zcode.bat</b> → 以管理员身份运行。</span>
           </div>
@@ -2639,7 +2639,7 @@ function ZCodeEnhanceScreen({ actions }: { actions: Actions }) {
               )}
             </div>
           </div>
-          <div className="hint-line" style={{ marginTop: 12 }}>
+          <div className="hint-line mt">
             <Info className="h-4 w-4" />
             <span>并行模式通过 toggle-parallel.js 写入 setting.json，重启 ZCode 后生效。布局增强需注入 zcode-customize.js。</span>
           </div>
@@ -2755,12 +2755,12 @@ function ZCodeProfilesScreen({ actions }: { actions: Actions }) {
           </Toolbar>
 
           {showNew ? (
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, marginBottom: 8 }}>
+            <div className="zcode-new-profile-form">
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="输入分身名称…"
-                style={{ flex: 1 }}
+                className="flex-1"
                 onKeyDown={(e) => { if (e.key === "Enter") void createProfile(); }}
                 autoFocus
               />
@@ -2770,63 +2770,33 @@ function ZCodeProfilesScreen({ actions }: { actions: Actions }) {
           ) : null}
 
           {loading ? (
-            <div className="loading-text" style={{ marginTop: 12 }}>加载中…</div>
+            <div className="loading-text">加载中…</div>
           ) : profiles.length === 0 ? (
-            <div className="empty-text" style={{ marginTop: 12 }}>暂无分身，点击"新建分身"创建</div>
+            <div className="empty-text">暂无分身，点击"新建分身"创建</div>
           ) : (
-            <div style={{ marginTop: 8 }}>
+            <div className="mt-2">
               {profiles.map((p, idx) => (
-                <div
-                  key={p.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "10px 0",
-                    borderBottom: "1px solid hsl(var(--border) / 0.3)",
-                  }}
-                >
-                  {/* 分身序号图标 */}
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      background: p.id === "default"
-                        ? "hsl(var(--primary) / 0.15)"
-                        : "hsl(var(--accent))",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 700,
-                      fontSize: 16,
-                      color: p.id === "default"
-                        ? "hsl(var(--primary))"
-                        : "hsl(var(--foreground))",
-                      flexShrink: 0,
-                      border: "1px solid hsl(var(--border) / 0.4)",
-                    }}
-                  >
+                <div key={p.id} className="zcode-profile-row">
+                  <div className={`zcode-profile-avatar ${p.id === "default" ? "default" : "normal"}`}>
                     {idx + 1}
                   </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                  <div className="zcode-profile-body">
+                    <div className="zcode-profile-name">
                       {p.name}
                       {p.id === "default" ? (
-                        <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", background: "hsl(var(--accent))", padding: "0 6px", borderRadius: 4 }}>默认</span>
+                        <span className="zcode-profile-badge">默认</span>
                       ) : null}
                     </div>
-                    <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))", display: "flex", gap: 12, flexWrap: "wrap", marginTop: 2 }}>
+                    <div className="zcode-profile-details">
                       <span>数据目录: {p.dataDir}</span>
                       <span>创建于: {formatTime(p.createdAtMs)}</span>
                       {p.lastLaunchedMs ? <span>最后启动: {formatTime(p.lastLaunchedMs)}</span> : null}
                     </div>
-                    <div style={{ fontSize: 10, color: "hsl(var(--muted-foreground) / 0.5)" }}>
+                    <div className="zcode-profile-id">
                       ID: {p.id}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div className="zcode-profile-actions">
                     <Button onClick={() => void launchProfile(p.id)} variant="default" size="sm">
                       <Rocket className="h-3 w-3" /> 启动
                     </Button>
@@ -3396,7 +3366,7 @@ function SettingsScreen({
         <CardHead title="ZCode 配置" detail="ZCode 安装检测、路径与版本信息" />
         <CardContent>
           <ZCodeSettingsInfo />
-          <div className="hint-line" style={{ marginTop: 8 }}>
+          <div className="hint-line mt-sm">
             <Info className="h-4 w-4" />
             <span>完整功能请在侧边栏 ZCode → 管理控制台中操作。</span>
           </div>
@@ -6642,7 +6612,7 @@ function loadInitialRoute(): Route {
 	              <Metric label="API 地址" value={activeProfile.baseUrl || "-"} />
 	            </div>
 	          ) : (
-	            <p style={{ color: "var(--muted-foreground)" }}>暂无当前使用的模型，请在模型配置中设置。</p>
+	            <p className="proxy-empty-text">暂无当前使用的模型，请在模型配置中设置。</p>
 	          )}
 	        </CardContent>
 	      </Panel>
@@ -6656,7 +6626,7 @@ function loadInitialRoute(): Route {
 	              <Metric label="API 地址" value={latestChatProfile.baseUrl || "-"} />
 	            </div>
 	          ) : (
-	            <p style={{ color: "var(--muted-foreground)" }}>暂未添加 Chat Completions 模型。在「模型配置」中添加协议为 Chat Completions 的模型后，此处将自动显示。</p>
+	            <p className="proxy-empty-text">暂未添加 Chat Completions 模型。在「模型配置」中添加协议为 Chat Completions 的模型后，此处将自动显示。</p>
 	          )}
 	        </CardContent>
 	      </Panel>

@@ -2781,6 +2781,168 @@ input[type="checkbox"] {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ========== 通用文本状态 ========== */
+.loading-text {
+  padding: 20px 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  text-align: center;
+}
+.empty-text {
+  padding: 20px 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ========== ZCode 会话行（ZCodeSessionsScreen） ========== */
+.zcode-session-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+.zcode-session-body {
+  flex: 1;
+  min-width: 0;
+}
+.zcode-session-title {
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.zcode-session-meta {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.zcode-session-id {
+  font-size: 10px;
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+.zcode-archived-badge {
+  color: #f59e0b;
+}
+.zcode-pinned-badge {
+  color: #3b82f6;
+}
+
+/* ========== ZCode 并行模式切换区 ========== */
+.zcode-parallel-box {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: hsl(var(--accent));
+  border-radius: 6px;
+}
+.zcode-parallel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.zcode-parallel-label {
+  cursor: pointer;
+  font-size: 13px;
+}
+.zcode-session-scroll {
+  margin-top: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* ========== ZCode 分身行（ZCodeProfilesScreen） ========== */
+.zcode-new-profile-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+.zcode-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+.zcode-profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+  border: 1px solid hsl(var(--border) / 0.4);
+}
+.zcode-profile-avatar.default {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+}
+.zcode-profile-avatar.normal {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+.zcode-profile-body {
+  flex: 1;
+  min-width: 0;
+}
+.zcode-profile-name {
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.zcode-profile-badge {
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--accent));
+  padding: 0 6px;
+  border-radius: 4px;
+}
+.zcode-profile-details {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.zcode-profile-id {
+  font-size: 10px;
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+.zcode-profile-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ========== 提示行间距变体 ========== */
+.hint-line.mt {
+  margin-top: 12px;
+}
+.hint-line.mt-sm {
+  margin-top: 8px;
+}
+
+/* ========== X 图标内联图标防压缩 ========== */
+.inline-icon-shrink {
+  flex-shrink: 0;
+}
+
+/* ========== 代理页空状态 ========== */
+.proxy-empty-text {
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+
 
 
 
