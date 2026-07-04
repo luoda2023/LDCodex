@@ -86,7 +86,7 @@ function buildPanel(){
     var sl=r.querySelector('input'),vl=r.querySelector('.rv');
     sl.oninput=function(){
       var v=parseFloat(sl.value);vl.textContent=v+unit;
-      C[id]=v;C.iw=v;save(C);apply(); // iw 与 cw 同步
+      C[id]=v;if(id==='cw')C.iw=v;save(C);apply();
     };b.appendChild(r);
   }
   addSlider('cw','全局宽度','消息区 + 输入框统一宽度',24,120,C.cw,'rem');
@@ -102,7 +102,7 @@ function buildPanel(){
   f.innerHTML='<button class="fb fs" id="ldz-reset">恢复默认</button><button class="fb fp" id="ldz-done">完成</button>';
   f.querySelector('#ldz-reset').onclick=function(){
     C=Object.assign({},DEF);save(C);apply();
-    ['cw','iw','ih','fs'].forEach(function(k){
+    ['cw','ih','fs'].forEach(function(k){
       document.getElementById('ls-'+k).value=C[k];
       document.getElementById('lv-'+k).textContent=C[k]+(k==='fs'?'px':'rem');
     });
