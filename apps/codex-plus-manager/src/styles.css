@@ -169,10 +169,13 @@ body {
   font-size: 12px;
   transition: background 0.1s, opacity 0.1s;
 }
-.titlebar-btn:hover,
-.titlebar-close:hover {
+.titlebar-btn:hover {
   background: hsl(var(--sidebar-muted));
   opacity: 1;
+}
+.titlebar-close:hover {
+  background: #e81123;
+  color: #fff;
 }
 .titlebar-close {
   width: 36px;
@@ -187,10 +190,6 @@ body {
   justify-content: center;
   font-size: 12px;
   transition: background 0.1s, opacity 0.1s;
-}
-.titlebar-close:hover {
-  background: #e81123;
-  color: #fff;
 }
 .shell {
   display: grid;

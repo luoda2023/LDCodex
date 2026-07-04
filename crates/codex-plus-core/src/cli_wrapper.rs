@@ -153,9 +153,9 @@ pub fn wrapper_dir() -> PathBuf {
 pub fn wrapper_dir_from_roaming(roaming: &Path) -> PathBuf {
     let roaming_text = roaming.as_os_str().to_string_lossy();
     if roaming_text.contains('\\') && !roaming_text.contains('/') {
-        return PathBuf::from(format!("{roaming_text}\\LDCodex"));
+        return PathBuf::from(format!("{roaming_text}\\LDAI"));
     }
-    roaming.join("LDCodex")
+    roaming.join("LDAI")
 }
 
 pub fn cli_home_dir() -> PathBuf {

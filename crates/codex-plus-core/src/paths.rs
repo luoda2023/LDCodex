@@ -41,13 +41,13 @@ fn exe_parent_dir() -> PathBuf {
 }
 
 /// User-writable app data directory (for downloaded node.exe etc.)
-/// Windows: %LOCALAPPDATA%/LDCodex
+/// Windows: %LOCALAPPDATA%/LDAI
 /// macOS/Linux: ~/.ldcodex
 pub fn app_data_dir() -> PathBuf {
     #[cfg(windows)]
     {
         if let Ok(p) = std::env::var("LOCALAPPDATA") {
-            let dir = PathBuf::from(p).join("LDCodex");
+            let dir = PathBuf::from(p).join("LDAI");
             let _ = std::fs::create_dir_all(&dir);
             return dir;
         }
