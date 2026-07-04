@@ -178,23 +178,18 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: ldai-windows-binaries
-          path: release-artifacts/windows/bin
-
-      - uses: actions/download-artifact@v4
-        with:
           name: ldai-windows-installer
-          path: release-artifacts/windows
+          path: release-artifacts
 
       - uses: actions/download-artifact@v4
         with:
           name: ldai-macos-x64-dmg
-          path: release-artifacts/macos
+          path: release-artifacts
 
       - uses: actions/download-artifact@v4
         with:
           name: ldai-macos-arm64-dmg
-          path: release-artifacts/macos
+          path: release-artifacts
 
       - name: Extract version from Cargo.toml
         id: version
@@ -203,7 +198,13 @@ jobs:
           VERSION=$(grep '^version = ' Cargo.toml | sed 's/.*"\(.*\)"/\1/' | head -1)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Create or Update Release
+      - name: Delete existing release & tag (if any)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete "v${{ steps.version.outputs.version }}" --yes --cleanup-tag 2>/dev/null || true
+
+      - name: Create Release & upload assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
@@ -212,8 +213,6 @@ jobs:
             🚀 自动构建 #${{ github.run_number }}
             提交: ${{ github.sha }}
           prerelease: true
-          overwrite_files: true
           make_latest: true
-          files: |
-            release-artifacts/**/*
+          files: release-artifacts/*
 
