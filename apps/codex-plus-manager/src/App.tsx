@@ -2621,16 +2621,14 @@ function ZCodeEnhanceScreen({ actions }: { actions: Actions }) {
             <span>ZCode 增强功能开关。修改脚本后需重新注入。</span>
           </div>
           <div className="feature-switch-grid">
-            <div className="feature-item">
-              <div>
+            <label className="feature-toggle">
+              <input type="checkbox" checked={parallelMode} onChange={() => void toggleParallel()} />
+              <span>
                 <strong>并行对话模式</strong>
-                <span>开启后 ZCode 支持同时进行多个对话，不排队等待。</span>
-              </div>
-              <label className="switch">
-                <input type="checkbox" checked={parallelMode} onChange={() => void toggleParallel()} />
-                <span className="slider" />
-              </label>
-            </div>
+                <small>开启后 ZCode 支持同时进行多个对话，不排队等待。</small>
+              </span>
+              <Badge status={parallelMode ? "ok" : "disabled"} />
+            </label>
             <div className="feature-item">
               <div>
                 <strong>ZCode 布局增强</strong>
