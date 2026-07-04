@@ -212,9 +212,8 @@ jobs:
             🚀 自动构建 #${{ github.run_number }}
             提交: ${{ github.sha }}
           prerelease: true
-          allowUpdates: true
-          replacesArtifacts: true
-          makeLatest: true
+          overwrite_files: true
+          make_latest: true
           files: |
             release-artifacts/**/*
 
