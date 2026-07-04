@@ -215,6 +215,8 @@ jobs:
             --prerelease \
             --latest
 
-          # 上传所有产物（只传文件，跳过目录）
-          find release-artifacts -type f -print0 | xargs -0 gh release upload "$TAG" --clobber
+          # 上传产物（只上传安装包/压缩包/DMG，跳过 extracted 目录的桥接文件）
+          for f in release-artifacts/*.zip release-artifacts/*.exe release-artifacts/*.dmg; do
+            [ -f "$f" ] && gh release upload "$TAG" "$f" || true
+          done
 
