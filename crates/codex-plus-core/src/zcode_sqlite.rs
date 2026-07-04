@@ -40,21 +40,94 @@ pub fn zcode_asar_path() -> PathBuf {
     zcode_install_dir().join("resources").join("app.asar")
 }
 
-/// ZCode 版本检测（从 app-update.yml 同级读取版本，或通过 exe 文件版本）
+/// ZCode 版本检测（依次尝试以下方式：）
+/// 1. app-update.yml（electron-updater 版本文件）
+/// 2. latest.yml（electron-updater 最新版本文件）
+/// 3. EXE 文件版本信息（PowerShell）
 pub fn zcode_version() -> Option<String> {
-    // 从安装目录读取版本信息
-    let metafile = zcode_install_dir().join("app-update.yml");
+    let install_dir = zcode_install_dir();
+
+    // 方式1：app-update.yml
+    let metafile = install_dir.join("app-update.yml");
     if metafile.exists() {
         if let Ok(content) = std::fs::read_to_string(&metafile) {
             for line in content.lines() {
                 if let Some(val) = line.strip_prefix("version:") {
-                    return Some(val.trim().to_string());
+                    let v = val.trim().to_string();
+                    if !v.is_empty() {
+                        return Some(v);
+                    }
                 }
             }
         }
     }
-    // 回退：检测 exe 存在即返回 "未知" 让前端显示
+
+    // 方式2：latest.yml（electron-updater 标准文件）
+    let latest = install_dir.join("latest.yml");
+    if latest.exists() {
+        if let Ok(content) = std::fs::read_to_string(&latest) {
+            for line in content.lines() {
+                if let Some(val) = line.strip_prefix("version:") {
+                    let v = val.trim().to_string();
+                    if !v.is_empty() {
+                        return Some(v);
+                    }
+                }
+            }
+        }
+    }
+
+    // 方式3：从 EXE 文件版本信息读取（PowerShell）
+    let exe = zcode_exe_path();
+    if exe.exists() {
+        if let Some(v) = get_exe_version_powershell(&exe) {
+            return Some(v);
+        }
+        // 兜底：EXE 存在但版本读不到
+        return Some("已安装".to_string());
+    }
+
     None
+}
+
+/// 通过 PowerShell 获取 EXE 文件版本
+fn get_exe_version_powershell(exe_path: &std::path::Path) -> Option<String> {
+    let path_str = exe_path.to_string_lossy().replace('\'', "''");
+    let script = format!("(Get-Item '{}').VersionInfo.FileVersion", path_str);
+
+    std::process::Command::new("powershell")
+        .arg("-NoProfile")
+        .arg("-NonInteractive")
+        .arg("-Command")
+        .arg(&script)
+        .output()
+        .ok()
+        .and_then(|output| {
+            if output.status.success() {
+                let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !s.is_empty() {
+                    return Some(s);
+                }
+            }
+            // 回退：尝试 ProductVersion
+            let script2 = format!("(Get-Item '{}').VersionInfo.ProductVersion", path_str);
+            std::process::Command::new("powershell")
+                .arg("-NoProfile")
+                .arg("-NonInteractive")
+                .arg("-Command")
+                .arg(&script2)
+                .output()
+                .ok()
+                .and_then(|o| {
+                    if o.status.success() {
+                        let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                        if !s.is_empty() {
+                            return Some(s);
+                        }
+                    }
+                    None
+                })
+        })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
