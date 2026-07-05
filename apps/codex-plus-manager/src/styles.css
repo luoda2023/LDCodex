@@ -704,8 +704,8 @@ body {
 
 .status-row {
   display: grid;
-  grid-template-columns: 140px 90px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
   align-items: center;
   border-bottom: 1px solid hsl(var(--border));
   padding: 10px 0;
@@ -717,6 +717,7 @@ body {
   color: hsl(var(--muted-foreground));
   font-family: Consolas, "SFMono-Regular", monospace;
   font-size: 12px;
+  text-align: right;
 }
 
 .metric-list {
@@ -2878,15 +2879,25 @@ input[type="checkbox"] {
   margin-bottom: 8px;
 }
 .zcode-profile-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid hsl(var(--border) / 0.3);
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--background));
+  padding: 11px 12px;
+  transition:
+    border-color var(--motion-normal) var(--motion-ease),
+    background-color var(--motion-normal) var(--motion-ease);
+}
+.zcode-profile-row:hover {
+  border-color: hsl(var(--primary) / 0.32);
+  background: hsl(var(--accent) / 0.45);
 }
 .zcode-profile-avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -2905,7 +2916,6 @@ input[type="checkbox"] {
   color: hsl(var(--foreground));
 }
 .zcode-profile-body {
-  flex: 1;
   min-width: 0;
 }
 .zcode-profile-name {

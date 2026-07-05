@@ -2557,9 +2557,15 @@ function ZCodePluginsScreen({ actions }: { actions: Actions }) {
           {loading ? (
             <div className="loading-text">扫描中…</div>
           ) : (
-            <div className="status-table">
+            <div className="feature-list">
               {scripts.map((s) => (
-                <StatusRow key={s.name} title={`${s.name} — ${s.desc}`} status={s.exists ? "ok" : "info"} path={s.file} />
+                <div key={s.name} className="feature-item">
+                  <div>
+                    <strong>{s.name}</strong>
+                    <span>{s.desc}</span>
+                  </div>
+                  <Badge status={s.exists ? "ok" : "info"} />
+                </div>
               ))}
             </div>
           )}
@@ -2675,8 +2681,8 @@ function ZCodeProfilesScreen({ actions }: { actions: Actions }) {
   const refresh = async () => {
     setLoading(true);
     try {
-      const result = await invoke<CommandResult<ZCodeProfileItem[]>>("list_zcode_profiles");
-      setProfiles(result ?? []);
+      const result = await invoke<CommandResult<{ profiles: ZCodeProfileItem[] }>>("list_zcode_profiles");
+      setProfiles(result.profiles ?? []);
     } catch (e) {
       console.warn("获取分身列表失败", e);
       setProfiles([]);

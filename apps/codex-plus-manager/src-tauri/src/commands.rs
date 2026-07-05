@@ -3005,10 +3005,10 @@ impl From<codex_plus_core::zcode_sqlite::ZCodeProfile> for ZCodeProfileItem {
 
 /// 列出所有 ZCode 分身
 #[tauri::command]
-pub fn list_zcode_profiles() -> CommandResult<Vec<ZCodeProfileItem>> {
+pub fn list_zcode_profiles() -> CommandResult<Value> {
     let profiles = codex_plus_core::zcode_sqlite::list_zcode_profiles();
     let items: Vec<ZCodeProfileItem> = profiles.into_iter().map(Into::into).collect();
-    ok(&format!("共 {} 个分身", items.len()), items)
+    ok(&format!("共 {} 个分身", items.len()), json!({"profiles": items}))
 }
 
 /// 创建新分身
