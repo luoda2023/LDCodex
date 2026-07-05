@@ -2913,8 +2913,7 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
     // 步骤1：解包 asar
     let extract_cmd = format!(
         "npx asar e \"{}\" \"{}\"",
-        asar_str.replace('\\', "\\\\"),
-        tmp_str.replace('\\', "\\\\")
+        asar_str, tmp_str
     );
     let extract_ok = std::process::Command::new("cmd.exe")
         .args(["/c", &extract_cmd])
@@ -2923,7 +2922,7 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
         .unwrap_or(false);
     if !extract_ok {
         let _ = std::fs::remove_dir_all(&tmp_dir);
-        return failed("解包 app.asar 失败，请确认 npx 可用", json!({"asar": asar_str}));
+        return failed("解包 app.asar 失败，请确认 npx 和 asar 可用，或手动运行 inject-zcode.bat", json!({"asar": asar_str}));
     }
 
     // 步骤2：复制 zcode-customize.js 到 assets 目录
@@ -2935,13 +2934,13 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
         return failed("复制 zcode-customize.js 失败", json!({}));
     }
 
-    // 步骤3：修改 index.html 注入 <script>
+    // 步骤3：修改 index.html 注入 <script> 标签（放在 </body> 前）
     let index_html = tmp_dir.join("out").join("renderer").join("index.html");
     if index_html.exists() {
         if let Ok(html) = std::fs::read_to_string(&index_html) {
-            let marker = "    <script defer src=\"./assets/zcode-customize.js\"></script>";
-            if !html.contains(marker.trim()) {
-                let new_html = html.replace("</body>", &format!("{marker}\n</body>"));
+            let marker = "<script defer src=\"./assets/zcode-customize.js\"></script>";
+            if !html.contains(marker) {
+                let new_html = html.replace("</body>", &format!("  {marker}\n</body>"));
                 let _ = std::fs::write(&index_html, new_html);
             }
         }
@@ -2950,8 +2949,7 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
     // 步骤4：重新打包 asar
     let pack_cmd = format!(
         "npx asar p \"{}\" \"{}\"",
-        tmp_str.replace('\\', "\\\\"),
-        asar_str.replace('\\', "\\\\")
+        tmp_str, asar_str
     );
     let pack_ok = std::process::Command::new("cmd.exe")
         .args(["/c", &pack_cmd])
@@ -2960,7 +2958,7 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
         .unwrap_or(false);
     if !pack_ok {
         let _ = std::fs::remove_dir_all(&tmp_dir);
-        return failed("打包 app.asar 失败", json!({"asar": asar_str}));
+        return failed("打包 app.asar 失败，请确认 npx 和 asar 可用，或手动运行 inject-zcode.bat", json!({"asar": asar_str}));
     }
 
     // 清理临时目录

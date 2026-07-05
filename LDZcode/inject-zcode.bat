@@ -4,8 +4,30 @@ title LDZcode 插件注入工具
 
 setlocal enabledelayedexpansion
 
-set "PLUGIN_DIR=J:\WorkBuddy-work\LDZcode"
-set "ZCODE_DIR=C:\Users\Administrator\AppData\Local\Programs\ZCode"
+:: ========== 自动检测路径 ==========
+:: 1) 插件目录：和本 bat 同目录 或 ~\.zcode\LDZcode
+set "SELF_DIR=%~dp0"
+set "PLUGIN_DIR=%SELF_DIR:~0,-1%"
+if not exist "%PLUGIN_DIR%\zcode-customize.js" (
+    set "PLUGIN_DIR=%USERPROFILE%\.zcode\LDZcode"
+)
+
+:: 2) ZCode 安装目录：环境变量优先，依次尝试已知路径
+set "ZCODE_DIR=%ZCODE_DIR%"
+if not defined ZCODE_DIR (
+    set "ZCODE_DIR=%LOCALAPPDATA%\Programs\ZCode"
+)
+if not exist "%ZCODE_DIR%\ZCode.exe" (
+    set "ZCODE_DIR=%USERPROFILE%\AppData\Local\Programs\ZCode"
+)
+if not exist "%ZCODE_DIR%\ZCode.exe" (
+    set "ZCODE_DIR=C:\Program Files\ZCode"
+)
+if not exist "%ZCODE_DIR%\ZCode.exe" (
+    echo [错误] 找不到 ZCode.exe！请设置环境变量 ZCODE_DIR 指向安装目录。
+    pause & exit /b 1
+)
+
 set "ASAR=%ZCODE_DIR%\resources\app.asar"
 set "ASAR_BAK=%ZCODE_DIR%\resources\app.asar.bak"
 set "PLUGIN_JS=%PLUGIN_DIR%\zcode-customize.js"
@@ -13,6 +35,9 @@ set "PLUGIN_JS=%PLUGIN_DIR%\zcode-customize.js"
 echo ════════════════════════════════════════
 echo    LDZcode — ZCode 布局调整插件注入
 echo ════════════════════════════════════════
+echo.
+echo  插件目录：%PLUGIN_DIR%
+echo  ZCode目录：%ZCODE_DIR%
 echo.
 
 :: 关闭 ZCode
@@ -46,33 +71,35 @@ if %errorlevel% neq 0 (
     pause & exit /b 1
 )
 
+pushd "%TEMP%"
+if exist _ldzcode_inject rmdir /s /q _ldzcode_inject >nul 2>&1
+mkdir _ldzcode_inject 2>nul
+cd _ldzcode_inject
+
 echo [1/4] 解压 app.asar...
-cd /d "%PLUGIN_DIR%"
-if exist _tmp rmdir /s /q _tmp
-mkdir _tmp 2>nul
-cd _tmp
-npx asar e "%ASAR%" . 2>nul
+npx asar e "%ASAR%" .
 if %errorlevel% neq 0 (
     echo [错误] 解压失败，请检查 app.asar 是否存在
-    cd .. & rmdir /s /q _tmp
+    popd & rmdir /s /q _ldzcode_inject >nul 2>&1
     pause & exit /b 1
 )
 
 echo [2/4] 注入插件脚本...
+if not exist "out\renderer\assets" mkdir "out\renderer\assets"
 copy "%PLUGIN_JS%" "out\renderer\assets\zcode-customize.js" >nul
 if not exist "out\renderer\assets\zcode-customize.js" (
     echo [错误] 复制插件脚本失败
-    cd .. & rmdir /s /q _tmp
+    popd & rmdir /s /q _ldzcode_inject >nul 2>&1
     pause & exit /b 1
 )
 
 echo [3/4] 修改 index.html...
-:: 在 </body> 前插入脚本（最可靠的位置）
-powershell -Command ^
+:: 在 </body> 前插入脚本
+powershell -NoProfile -NonInteractive -Command ^
 "$f='out\renderer\index.html'; ^
  $c=Get-Content $f -Raw; ^
  if($c -notmatch 'zcode-customize'){ ^
-   $c=$c -replace '(</body>)','    <script src=\"./assets/zcode-customize.js\"></script>`r`n$1'; ^
+   $c=$c -replace '(</body>)','  <script defer src=\"./assets/zcode-customize.js\"></script>`r`n$1'; ^
    Set-Content $f $c -Encoding UTF8 -NoNewline; ^
    Write-Host 'OK' ^
  } else { ^
@@ -80,35 +107,24 @@ powershell -Command ^
  }"
 
 echo [4/4] 重新打包 app.asar...
-npx asar p . "%ASAR%" 2>nul
+npx asar p . "%ASAR%"
 if %errorlevel% neq 0 (
     echo [错误] 打包失败
-    cd .. & rmdir /s /q _tmp
+    popd & rmdir /s /q _ldzcode_inject >nul 2>&1
     pause & exit /b 1
 )
 
-cd ..
-rmdir /s /q _tmp
+popd
+rmdir /s /q "%TEMP%\_ldzcode_inject" >nul 2>&1
 
-echo.
-echo [5/5] 设置并行对话模式...
-set "NODE=C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2\node.exe"
-if exist "%NODE%" (
-    "%NODE%" "%PLUGIN_DIR%\toggle-parallel.js" parallel >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo [OK] 并行对话模式已启用
-    ) else (
-        echo [警告] 并行模式设置失败，请稍后手动运行 toggle-parallel.bat
-    )
-) else (
-    echo [跳过] 未找到 Node.js 运行环境
-)
+:: 创建 .bak 标记（用于 UI 检测注入状态）
+if not exist "%ASAR_BAK%" copy "%ASAR%" "%ASAR_BAK%" >nul
 
 echo.
 echo [完成] LDZcode 插件注入成功！
 echo [提示] 请重新启动 ZCode，快捷键 Alt+L 打开设置面板。
-echo [提示] ZCode 升级后，再次双击此 bat 即可恢复。
-echo [备份] app.asar.bak 已保留在 ZCode 目录下
+echo [提示] ZCode 升级后，再次运行此文件即可恢复。
+echo [备份] %ASAR_BAK%
 echo.
 
 pause

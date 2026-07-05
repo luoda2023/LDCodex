@@ -767,25 +767,21 @@ body {
   width: 100%;
   border: 1px solid hsl(var(--border));
   border-radius: 8px;
-  background: hsl(var(--surface-raised));
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
-  padding: 14px 16px;
+  padding: 11px 12px;
   text-align: left;
   transition:
     border-color var(--motion-normal) var(--motion-ease),
-    background var(--motion-normal) var(--motion-ease),
-    box-shadow var(--motion-normal) var(--motion-ease),
-    opacity var(--motion-normal) var(--motion-ease),
-    transform var(--motion-normal) var(--motion-ease);
+    background-color var(--motion-normal) var(--motion-ease);
   user-select: none;
   -webkit-user-drag: none;
 }
 
 .relay-profile-card:hover,
 .relay-profile-card:focus-visible {
-  border-color: hsl(var(--primary) / 0.72);
-  box-shadow: 0 10px 24px hsl(0 0% 0% / 0.28);
-  transform: translateY(-1px);
+  border-color: hsl(var(--primary) / 0.32);
+  background: hsl(var(--accent) / 0.45);
   outline: none;
 }
 

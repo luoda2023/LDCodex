@@ -29,9 +29,47 @@ pub fn zcode_sqlite_sidecar_paths(db_path: &Path) -> [PathBuf; 3] {
     ]
 }
 
-/// ZCode 安装目录
+/// ZCode 安装目录（自动检测）
+/// 检测顺序：
+/// 1. 环境变量 ZCODE_DIR
+/// 2. %LOCALAPPDATA%\Programs\ZCode（标准安装）
+/// 3. %USERPROFILE%\AppData\Local\Programs\ZCode
+/// 4. ProgramFiles + ZCode
 pub fn zcode_install_dir() -> PathBuf {
-    PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\ZCode")
+    // 优先使用环境变量
+    if let Some(dir) = std::env::var_os("ZCODE_DIR") {
+        let p = PathBuf::from(dir);
+        if p.join("ZCode.exe").exists() || p.join("resources").join("app.asar").exists() {
+            return p;
+        }
+    }
+    // 标准安装路径
+    let candidates = [
+        || {
+            std::env::var_os("LOCALAPPDATA")
+                .map(PathBuf::from)
+                .map(|p| p.join("Programs").join("ZCode"))
+        },
+        || {
+            std::env::var_os("USERPROFILE")
+                .map(PathBuf::from)
+                .map(|p| p.join("AppData").join("Local").join("Programs").join("ZCode"))
+        },
+        || Some(PathBuf::from(r"C:\Program Files\ZCode")),
+        || Some(PathBuf::from(r"C:\Program Files (x86)\ZCode")),
+    ];
+    for f in &candidates {
+        if let Some(p) = f() {
+            if p.join("ZCode.exe").exists() {
+                return p;
+            }
+        }
+    }
+    // 兜底：标准路径
+    std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .map(|p| p.join("Programs").join("ZCode"))
+        .unwrap_or_else(|| PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\ZCode"))
 }
 
 /// ZCode 可执行文件路径

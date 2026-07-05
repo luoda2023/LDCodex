@@ -1,71 +1,96 @@
-#!/usr/bin/env powershell
-# 一键注入 LDZcode 插件到 ZCode
-# 用法：右键 PowerShell 管理员运行，执行：
-#   Set-ExecutionPolicy Bypass -Scope Process -Force
-#   & "J:\WorkBuddy-work\free\inject-zcode.ps1"
+# LDZcode — ZCode 布局调整插件注入 (PowerShell)
+# 用法: powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0\inject-zcode.ps1"
 
 $ErrorActionPreference = "Stop"
 
-$SourceFile = "J:\WorkBuddy-work\free\zcode-customize.js"
-$ZCodeDir = "C:\Users\Administrator\AppData\Local\Programs\ZCode\resources\app_extracted\out\renderer"
-$AssetsDir = Join-Path $ZCodeDir "assets"
-$IndexHtml = Join-Path $ZCodeDir "index.html"
-$TargetFile = Join-Path $AssetsDir "zcode-customize.js"
+# 自动检测路径
+$pluginDir = if (Test-Path "$PSScriptRoot\zcode-customize.js") { $PSScriptRoot } else { "$env:USERPROFILE\.zcode\LDZcode" }
 
-function Stop-ZCodeProcess {
-    Get-Process -Name "ZCode" -ErrorAction SilentlyContinue | Stop-Process -Force
-    Start-Sleep -Seconds 2
-}
-
-if (!(Test-Path $SourceFile)) {
-    Write-Host "[LDZcode] 错误：源文件不存在：$SourceFile" -ForegroundColor Red
+$zcodeDir = if ($env:ZCODE_DIR -and (Test-Path "$env:ZCODE_DIR\ZCode.exe")) {
+    $env:ZCODE_DIR
+} elseif (Test-Path "$env:LOCALAPPDATA\Programs\ZCode\ZCode.exe") {
+    "$env:LOCALAPPDATA\Programs\ZCode"
+} elseif (Test-Path "$env:USERPROFILE\AppData\Local\Programs\ZCode\ZCode.exe") {
+    "$env:USERPROFILE\AppData\Local\Programs\ZCode"
+} elseif (Test-Path "C:\Program Files\ZCode\ZCode.exe") {
+    "C:\Program Files\ZCode"
+} else {
+    Write-Host "[错误] 找不到 ZCode.exe！请设置环境变量 ZCODE_DIR。" -ForegroundColor Red
     exit 1
 }
 
-if (!(Test-Path $ZCodeDir)) {
-    Write-Host "[LDZcode] 错误：未找到 ZCode 目录：$ZCodeDir" -ForegroundColor Red
+$asar = "$zcodeDir\resources\app.asar"
+$asarBak = "$zcodeDir\resources\app.asar.bak"
+$pluginJs = "$pluginDir\zcode-customize.js"
+
+Write-Host "插件目录: $pluginDir" -ForegroundColor Cyan
+Write-Host "ZCode目录: $zcodeDir" -ForegroundColor Cyan
+
+if (-not (Test-Path $pluginJs)) {
+    Write-Host "[错误] 找不到插件文件：$pluginJs" -ForegroundColor Red
+    exit 1
+}
+if (-not (Test-Path $asar)) {
+    Write-Host "[错误] 找不到 app.asar：$asar" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "[LDZcode] 正在关闭 ZCode..." -ForegroundColor Cyan
-Stop-ZCodeProcess
-
-if (!(Test-Path $AssetsDir)) {
-    New-Item -ItemType Directory -Path $AssetsDir -Force | Out-Null
+# 关闭 ZCode
+$zcodeProc = Get-Process ZCode -ErrorAction SilentlyContinue
+if ($zcodeProc) {
+    Write-Host "[*] 正在关闭 ZCode..."
+    Stop-Process -Name ZCode -Force
+    Start-Sleep -Seconds 3
 }
 
-Write-Host "[LDZcode] 正在复制插件脚本到 ZCode..." -ForegroundColor Cyan
-Copy-Item -Path $SourceFile -Destination $TargetFile -Force
+# 备份
+if (-not (Test-Path $asarBak)) {
+    Write-Host "[*] 备份原始 app.asar..."
+    Copy-Item $asar $asarBak
+}
 
-if (!(Test-Path $IndexHtml)) {
-    Write-Host "[LDZcode] 错误：未找到 index.html：$IndexHtml" -ForegroundColor Red
+Write-Host "[1/4] 解压 app.asar..."
+$tmpDir = "$env:TEMP\_ldzcode_inject"
+if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
+New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
+Push-Location $tmpDir
+
+npx asar e "$asar" "."
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[错误] 解压失败" -ForegroundColor Red
+    Pop-Location
     exit 1
 }
 
-Write-Host "[LDZcode] 正在修改 index.html 注入插件..." -ForegroundColor Cyan
-$Marker = '<script src="./assets/zcode-customize.js"></script>'
-$Html = Get-Content -Path $IndexHtml -Raw -Encoding UTF8
+Write-Host "[2/4] 注入插件脚本..."
+$assetsDir = "out\renderer\assets"
+if (-not (Test-Path $assetsDir)) { New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null }
+Copy-Item $pluginJs "$assetsDir\zcode-customize.js" -Force
 
-# 如果已经注入过，先移除旧标记，避免重复
-$Html = $Html -replace "\s*<script src=\"\./assets/zcode-customize\.js\"></script>\s*", ""
-
-# 在 </head> 前插入标记
-if ($Html -notcontains $Marker) {
-    $Html = $Html -replace "(</head>)", "$Marker`n    `$1"
+Write-Host "[3/4] 修改 index.html..."
+$htmlPath = "out\renderer\index.html"
+$html = Get-Content $htmlPath -Raw
+if ($html -notmatch 'zcode-customize') {
+    $html = $html -replace '(</body>)', '  <script defer src="./assets/zcode-customize.js"></script>`r`n$1'
+    Set-Content $htmlPath $html -Encoding UTF8 -NoNewline
+    Write-Host "OK"
+} else {
+    Write-Host "已存在，跳过"
 }
 
-Set-Content -Path $IndexHtml -Value $Html -Encoding UTF8 -NoNewline
-
-Write-Host "[LDZcode] 注入完成。请重新启动 ZCode。" -ForegroundColor Green
-Write-Host "[LDZcode] 提示：下次 ZCode 升级后，重新运行此脚本即可。" -ForegroundColor Green
-
-# 可选：启动 ZCode
-$Start = Read-Host "是否现在启动 ZCode？ (y/n)"
-if ($Start -eq 'y' -or $Start -eq 'Y') {
-    $Exe = "C:\Users\Administrator\AppData\Local\Programs\ZCode\ZCode.exe"
-    if (Test-Path $Exe) {
-        Start-Process $Exe
-    } else {
-        Write-Host "[LDZcode] 未找到 ZCode.exe：$Exe" -ForegroundColor Yellow
-    }
+Write-Host "[4/4] 重新打包 app.asar..."
+npx asar p "." "$asar"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[错误] 打包失败" -ForegroundColor Red
+    Pop-Location
+    exit 1
 }
+
+Pop-Location
+Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+
+if (-not (Test-Path $asarBak)) { Copy-Item $asar $asarBak }
+
+Write-Host ""
+Write-Host "[完成] LDZcode 插件注入成功！" -ForegroundColor Green
+Write-Host "[提示] 请重新启动 ZCode，快捷键 Alt+L 打开设置面板。" -ForegroundColor Yellow
