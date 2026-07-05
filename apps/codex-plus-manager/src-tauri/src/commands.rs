@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use codex_plus_core::install::SILENT_BINARY;
+use codex_plus_core::install::{companion_binary_path, SILENT_BINARY, ZCODE_BINARY};
 use codex_plus_core::models::{DeleteResult, SessionRef};
 use codex_plus_core::script_market::{self, MarketScript, ScriptMarketManifest};
 use codex_plus_core::settings::{BackendSettings, RelayProfile, SettingsStore};
@@ -3018,23 +3018,45 @@ pub fn create_zcode_profile(name: String) -> CommandResult<Value> {
         Ok(profile) => {
             let item: ZCodeProfileItem = profile.into();
 
-            // 在桌面创建快捷方式 (.bat)
+            // Windows：创建分身启动器（.bat + .lnk 图标快捷方式）
             #[cfg(windows)]
             {
+                // 1) 在 %APPDATA%\LDAI\profiles\ 下创建 .bat 启动器
+                let profiles_dir = std::env::var_os("APPDATA")
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join("LDAI")
+                    .join("profiles");
+                let _ = std::fs::create_dir_all(&profiles_dir);
+
+                let bat_path = profiles_dir.join(format!("LDZcode-{}.bat", item.name));
+                let data_dir = codex_plus_core::zcode_sqlite::zcode_profile_data_dir(&item.id);
+                let zcode_path = codex_plus_core::zcode_sqlite::zcode_exe_path();
+                let bat_content = format!(
+                    "@echo off\r\n\
+                     title LDZcode - {name}\r\n\
+                     set \"ZCODE_DESKTOP_USER_DATA_DIR={}\"\r\n\
+                     start \"\" \"{}\"\r\n\
+                     exit\r\n",
+                    data_dir.to_string_lossy(),
+                    zcode_path.to_string_lossy()
+                );
+                let _ = std::fs::write(&bat_path, bat_content);
+
+                // 2) 在桌面创建 .lnk 快捷方式，图标用 ldzcode.exe（嵌入了LDZcode.ico）
                 if let Some(desktop) = windows_integration::desktop_dir() {
-                    let bat_path = desktop.join(format!("LDZcode-{}.bat", item.name));
-                    let data_dir = codex_plus_core::zcode_sqlite::zcode_profile_data_dir(&item.id);
-                    let zcode_path = codex_plus_core::zcode_sqlite::zcode_exe_path();
-                    let bat_content = format!(
-                        "@echo off\r\n\
-                         title LDZcode - {name}\r\n\
-                         set \"ZCODE_DESKTOP_USER_DATA_DIR={}\"\r\n\
-                         start \"\" \"{}\"\r\n\
-                         exit\r\n",
-                        data_dir.to_string_lossy(),
-                        zcode_path.to_string_lossy()
-                    );
-                    let _ = std::fs::write(&bat_path, bat_content);
+                    let lnk_path = desktop.join(format!("LDZcode-{}.lnk", item.name));
+                    let icon_path = companion_binary_path(ZCODE_BINARY); // ldzcode.exe
+                    let spec = windows_integration::ShortcutSpec {
+                        path: lnk_path,
+                        target: bat_path,
+                        arguments: String::new(),
+                        working_directory: None,
+                        description: format!("LDZcode 分身 - {}", item.name),
+                        icon: Some(icon_path),
+                        show_minimized: false,
+                    };
+                    let _ = windows_integration::create_shortcut(&spec);
                 }
             }
 
@@ -3048,19 +3070,30 @@ pub fn create_zcode_profile(name: String) -> CommandResult<Value> {
 #[tauri::command]
 pub fn delete_zcode_profile(profile_id: String) -> CommandResult<Value> {
     // 先找到分身名称，用于删除桌面快捷方式
-    let profile_name = codex_plus_core::zcode_sqlite::list_zcode_profiles()
+    let profile = codex_plus_core::zcode_sqlite::list_zcode_profiles()
         .into_iter()
-        .find(|p| p.id == profile_id)
-        .map(|p| p.name);
+        .find(|p| p.id == profile_id);
+    let profile_name = profile.as_ref().map(|p| p.name.clone());
 
     match codex_plus_core::zcode_sqlite::delete_zcode_profile(&profile_id) {
         Ok(()) => {
-            // 删除桌面快捷方式 (.bat)
+            // 清理桌面 .lnk 和 .bat
             #[cfg(windows)]
             if let Some(ref name) = profile_name {
+                // 删除桌面 .lnk（新样式）
                 if let Some(desktop) = windows_integration::desktop_dir() {
+                    let lnk_path = desktop.join(format!("LDZcode-{}.lnk", name));
+                    let _ = std::fs::remove_file(&lnk_path);
+                    // 也清理旧版的 .bat（兼容升级）
                     let bat_path = desktop.join(format!("LDZcode-{}.bat", name));
                     let _ = std::fs::remove_file(&bat_path);
+                }
+                // 删除 appdata 下的 .bat
+                if let Some(appdata) = std::env::var_os("APPDATA") {
+                    let profiles_bat = PathBuf::from(appdata)
+                        .join("LDAI").join("profiles")
+                        .join(format!("LDZcode-{}.bat", name));
+                    let _ = std::fs::remove_file(&profiles_bat);
                 }
             }
 
