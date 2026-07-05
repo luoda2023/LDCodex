@@ -789,8 +789,9 @@ body {
 }
 
 .relay-profile-card.active {
-  border-color: hsl(var(--primary) / 0.5);
-  background: hsl(var(--primary) / 0.12);
+  border-color: hsl(var(--primary) / 0.6);
+  background: hsl(var(--accent));
+  box-shadow: inset 3px 0 0 hsl(var(--primary) / 0.8);
 }
 
 .relay-profile-card.dragging {
@@ -1146,8 +1147,8 @@ body {
 }
 
 .protocol-option.active {
-  border-color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.14);
+  border-color: hsl(var(--primary) / 0.6);
+  background: hsl(var(--accent));
 }
 
 .protocol-option:hover:not(.active) {
@@ -1282,8 +1283,8 @@ body {
 }
 
 .segmented button.active {
-  border-color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.14);
+  border-color: hsl(var(--primary) / 0.6);
+  background: hsl(var(--accent));
 }
 
 .segmented small {
