@@ -48,6 +48,26 @@ if %errorlevel%==0 (
     timeout /t 3 /nobreak >nul
 )
 
+:: 3) 查找 npx（cmd.exe 可能找不到 Node.js PATH）
+set "NPX_CMD="
+for %%p in (
+    "%ProgramFiles%\nodejs\npx.cmd"
+    "%ProgramFiles(x86)%\nodejs\npx.cmd"
+    "%LOCALAPPDATA%\fnm\node-versions\*\installation\npx.cmd"
+    "%APPDATA%\npm\npx.cmd"
+) do if exist %%p set "NPX_CMD=%%p"
+if not defined NPX_CMD (
+    where npx.cmd >nul 2>&1 && set "NPX_CMD=npx.cmd"
+)
+if not defined NPX_CMD (
+    where npx >nul 2>&1 && set "NPX_CMD=npx"
+)
+if not defined NPX_CMD (
+    echo [错误] 未找到 npx，请安装 Node.js https://nodejs.org
+    pause & exit /b 1
+)
+echo  使用 npx: %NPX_CMD%
+
 :: 检查文件
 if not exist "%PLUGIN_JS%" (
     echo [错误] 找不到插件文件：%PLUGIN_JS%
@@ -77,7 +97,7 @@ mkdir _ldzcode_inject 2>nul
 cd _ldzcode_inject
 
 echo [1/4] 解压 app.asar...
-npx asar e "%ASAR%" .
+"%NPX_CMD%" asar e "%ASAR%" .
 if %errorlevel% neq 0 (
     echo [错误] 解压失败，请检查 app.asar 是否存在
     popd & rmdir /s /q _ldzcode_inject >nul 2>&1
@@ -107,7 +127,7 @@ powershell -NoProfile -NonInteractive -Command ^
  }"
 
 echo [4/4] 重新打包 app.asar...
-npx asar p . "%ASAR%"
+"%NPX_CMD%" asar p . "%ASAR%"
 if %errorlevel% neq 0 (
     echo [错误] 打包失败
     popd & rmdir /s /q _ldzcode_inject >nul 2>&1
