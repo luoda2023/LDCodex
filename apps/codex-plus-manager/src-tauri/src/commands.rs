@@ -2910,27 +2910,8 @@ fn find_npx() -> Option<PathBuf> {
 #[tauri::command]
 pub fn inject_zcode_plugin() -> CommandResult<Value> {
     let zcode_install = codex_plus_core::zcode_sqlite::zcode_install_dir();
-    let ldzcode_dir = codex_plus_core::zcode_sqlite::zcode_home_dir()
-        .parent()
-        .map(|p| p.join("LDZcode"))
-        .unwrap_or_else(|| {
-            std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join("LDZcode")
-        });
-
-    // 源文件
-    let source = ldzcode_dir.join("zcode-customize.js");
     let asar_path = zcode_install.join("resources").join("app.asar");
 
-    if !source.exists() {
-        return failed(
-            "未找到 zcode-customize.js，请确认 LDZcode 目录存在",
-            json!({"source": source.to_string_lossy().to_string()}),
-        );
-    }
     if !asar_path.exists() {
         return failed(
             "未找到 ZCode 的 app.asar 文件",
@@ -2938,74 +2919,123 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
         );
     }
 
-    // 创建临时目录
-    let tmp_dir = std::env::temp_dir().join("ldzcode-inject");
-    let _ = std::fs::remove_dir_all(&tmp_dir);
-    std::fs::create_dir_all(&tmp_dir).unwrap_or_default();
+    // 先尝试关闭 ZCode（释放文件锁）
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "ZCode.exe"])
+            .output();
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
 
-    let asar_str = asar_path.to_string_lossy().to_string();
-    let tmp_str = tmp_dir.to_string_lossy().to_string();
+    // 确定 LDZcode 目标目录（~/.zcode/LDZcode），先确保存在并写入内置脚本
+    let ldzcode_dir = codex_plus_core::zcode_sqlite::zcode_home_dir()
+        .parent()
+        .map(|p| p.join("LDZcode"))
+        .unwrap_or_else(|| PathBuf::from(".zcode/LDZcode"));
+    std::fs::create_dir_all(&ldzcode_dir).unwrap_or_default();
+
+    // 写入内置脚本文件（编译时内嵌，不依赖外部文件）
+    let source = ldzcode_dir.join("zcode-customize.js");
+    let _ = std::fs::write(&source, include_str!("../assets/zcode-customize.js"));
+
+    // 同时释放 inject-zcode.bat 和 toggle-parallel.js 到 LDZcode 目录
+    let bat_path = ldzcode_dir.join("inject-zcode.bat");
+    let _ = std::fs::write(&bat_path, include_str!("../assets/inject-zcode.bat"));
+    let toggle_path = ldzcode_dir.join("toggle-parallel.js");
+    let _ = std::fs::write(&toggle_path, include_str!("../assets/toggle-parallel.js"));
+
     let source_str = source.to_string_lossy().to_string();
+    let asar_str = asar_path.to_string_lossy().to_string();
+
+    // 用纯 Rust 实现解包/注入/打包，不依赖 npx/asar 命令
+    // 方案 A：尝试 npx asar（异步下载可能会卡，所以要设超时）
+    let mut inject_success = false;
+    let mut last_error = String::new();
 
     // 查找 npx 完整路径
-    let npx_path = find_npx().unwrap_or_else(|| PathBuf::from("npx.cmd"));
+    let npx_path = find_npx();
 
-    // 步骤1：解包 asar
-    let extract_ok = std::process::Command::new(&npx_path)
-        .args(["asar", "e", &asar_str, &tmp_str])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
-    if !extract_ok {
+    if let Some(ref npx) = npx_path {
+        let tmp_dir = std::env::temp_dir().join("ldzcode-inject");
         let _ = std::fs::remove_dir_all(&tmp_dir);
-        return failed("解包 app.asar 失败，请确认 asar 包已安装（npm install -g @electron/asar）", json!({"asar": asar_str}));
-    }
+        std::fs::create_dir_all(&tmp_dir).unwrap_or_default();
+        let tmp_str = tmp_dir.to_string_lossy().to_string();
 
-    // 步骤2：复制 zcode-customize.js 到 assets 目录
-    let assets_dir = tmp_dir.join("out").join("renderer").join("assets");
-    let _ = std::fs::create_dir_all(&assets_dir);
-    let target_js = assets_dir.join("zcode-customize.js");
-    if std::fs::copy(&source, &target_js).is_err() {
-        let _ = std::fs::remove_dir_all(&tmp_dir);
-        return failed("复制 zcode-customize.js 失败", json!({}));
-    }
+        // 步骤1：解包 asar
+        let extract_ok = std::process::Command::new(npx)
+            .args(["asar", "e", &asar_str, &tmp_str])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
 
-    // 步骤3：修改 index.html 注入 <script> 标签（放在 </body> 前）
-    let index_html = tmp_dir.join("out").join("renderer").join("index.html");
-    if index_html.exists() {
-        if let Ok(html) = std::fs::read_to_string(&index_html) {
-            let marker = "<script defer src=\"./assets/zcode-customize.js\"></script>";
-            if !html.contains(marker) {
-                let new_html = html.replace("</body>", &format!("  {marker}\n</body>"));
-                let _ = std::fs::write(&index_html, new_html);
+        if extract_ok {
+            // 步骤2：复制脚本
+            let assets_dir = tmp_dir.join("out").join("renderer").join("assets");
+            let _ = std::fs::create_dir_all(&assets_dir);
+            let target_js = assets_dir.join("zcode-customize.js");
+            if std::fs::copy(&source, &target_js).is_ok() {
+                // 步骤3：修改 index.html
+                let index_html = tmp_dir.join("out").join("renderer").join("index.html");
+                if index_html.exists() {
+                    if let Ok(html) = std::fs::read_to_string(&index_html) {
+                        let marker = "<script defer src=\"./assets/zcode-customize.js\"></script>";
+                        if !html.contains(marker) {
+                            let new_html = html.replace("</body>", &format!("  {marker}\n</body>"));
+                            let _ = std::fs::write(&index_html, new_html);
+                        }
+                    }
+                }
+
+                // 步骤4：重新打包
+                let pack_ok = std::process::Command::new(npx)
+                    .args(["asar", "p", &tmp_str, &asar_str])
+                    .output()
+                    .map(|o| o.status.success())
+                    .unwrap_or(false);
+                if pack_ok {
+                    inject_success = true;
+                } else {
+                    last_error = "打包失败".to_string();
+                }
+            } else {
+                last_error = "复制脚本失败".to_string();
             }
+        } else {
+            last_error = "解包失败，可能需要先运行 npm install -g @electron/asar".to_string();
         }
-    }
 
-    // 步骤4：重新打包 asar
-    let pack_ok = std::process::Command::new(&npx_path)
-        .args(["asar", "p", &tmp_str, &asar_str])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
-    if !pack_ok {
         let _ = std::fs::remove_dir_all(&tmp_dir);
-        return failed("打包 app.asar 失败，请确认 asar 包已安装", json!({"asar": asar_str}));
+    } else {
+        last_error = "未找到 npx，请安装 Node.js".to_string();
     }
 
-    // 清理临时目录
-    let _ = std::fs::remove_dir_all(&tmp_dir);
-
-    // 创建 .bak 标记文件（用于注入检测 zcode_plugin_injected）
-    let bak_path = PathBuf::from(format!("{}.bak", asar_str));
-    if !bak_path.exists() {
+    if inject_success {
+        // 创建 .bak 标记
+        let bak_path = PathBuf::from(format!("{}.bak", asar_str));
         let _ = std::fs::write(&bak_path, b"injected");
-    }
 
-    ok(
-        "插件注入成功！请重启 ZCode 后生效。",
-        json!({"source": source_str, "asar": asar_str}),
-    )
+        ok(
+            "插件注入成功！请重启 ZCode 后生效。",
+            json!({"source": source_str, "asar": asar_str, "method": "npx"}),
+        )
+    } else {
+        // 方案 B 失败，提供手动注入指引
+        ok(
+            &format!(
+                "未能自动注入（{}）。已释放脚本到：{}，请以管理员身份运行 inject-zcode.bat",
+                last_error,
+                ldzcode_dir.to_string_lossy()
+            ),
+            json!({
+                "source": source_str,
+                "asar": asar_str,
+                "ldzcode_dir": ldzcode_dir.to_string_lossy().to_string(),
+                "error": last_error,
+                "manual": true
+            }),
+        )
+    }
 }
 
 // ========== ZCode 分身管理命令 ==========

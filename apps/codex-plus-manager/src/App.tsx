@@ -2610,10 +2610,15 @@ function ZCodeEnhanceScreen({ actions }: { actions: Actions }) {
 
   const reInjectPlugin = async () => {
     try {
-      await invoke("inject_zcode_plugin");
-      setInjectStatus({ injected: true, loading: false });
+      const result = await invoke<CommandResult<{ manual?: boolean; ldzcode_dir?: string; error?: string }>>("inject_zcode_plugin");
+      if (result.manual) {
+        alert(`自动注入未成功：${result.error || "未知原因"}\n\n请以管理员身份运行：\n${result.ldzcode_dir}\\inject-zcode.bat`);
+      } else {
+        setInjectStatus({ injected: true, loading: false });
+      }
     } catch (e) {
       console.error("注入失败", e);
+      alert("注入失败：" + String(e));
     }
   };
 
