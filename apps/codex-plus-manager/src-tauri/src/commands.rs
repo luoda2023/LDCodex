@@ -3998,13 +3998,15 @@ pub fn create_workbuddy_profile(name: String) -> CommandResult<Value> {
                 // 在桌面创建 .lnk 快捷方式，用 WorkBuddy.exe 的图标
                 if let Some(desktop) = windows_integration::desktop_dir() {
                     let lnk_path = desktop.join(format!("WorkBuddy-{}.lnk", item.name));
+                    let icon_path = codex_plus_core::workbuddy::workbuddy_install_dir()
+                        .map(|d| d.join("WorkBuddy.exe"));
                     let spec = windows_integration::ShortcutSpec {
                         path: lnk_path,
                         target: bat_path,
                         arguments: String::new(),
                         working_directory: None,
                         description: format!("WorkBuddy 分身 - {}", item.name),
-                        icon: None,
+                        icon: icon_path,
                         show_minimized: false,
                     };
                     let _ = windows_integration::create_shortcut(&spec);
