@@ -2871,46 +2871,46 @@ pub fn scan_zcode_plugins() -> CommandResult<Value> {
 
 /// 注入 ZCode 插件（复制脚本到 ZCode 安装目录）
 
-/// 查找 npx.cmd 完整路径（cmd.exe 不继承用户 PATH）
-fn find_npx() -> Option<PathBuf> {
-    // 1. 直接尝试 PATH
-    if let Ok(output) = std::process::Command::new("where").arg("npx.cmd").output() {
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).lines().next()?.trim().to_string();
-            if !path.is_empty() {
-                let p = PathBuf::from(&path);
-                if p.is_file() { return Some(p); }
+/// 查找 node.exe 完整路径（代替旧版 find_npx）
+fn find_node() -> Option<PathBuf> {
+    // 1. 直接 PATH
+    let names: &[&str] = if cfg!(windows) { &["node.exe", "node.cmd"] } else { &["node"] };
+    for name in names {
+        if let Ok(output) = std::process::Command::new("where").arg(name).output() {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).lines().next()?.trim().to_string();
+                if !path.is_empty() {
+                    let p = PathBuf::from(&path);
+                    if p.is_file() { return Some(p); }
+                }
             }
         }
     }
     // 2. 常见安装路径
     let candidates = [
-        r"C:\Program Files\nodejs\npx.cmd",
-        r"C:\Program Files (x86)\nodejs\npx.cmd",
-        r"C:\Program Files\nodejs\npx",
-        r"C:\Program Files (x86)\nodejs\npx",
+        r"C:\Program Files\nodejs\node.exe",
+        r"C:\Program Files (x86)\nodejs\node.exe",
+        r"C:\Program Files\nodejs\node",
+        r"C:\Program Files (x86)\nodejs\node",
     ];
     for c in &candidates {
         let p = PathBuf::from(c);
         if p.is_file() { return Some(p); }
     }
-    // 3. 通过查找 node.exe 推断
-    if let Ok(output) = std::process::Command::new("where").arg("node.exe").output() {
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).lines().next()?.trim().to_string();
-            if !path.is_empty() {
-                let node_dir = Path::new(&path).parent()?;
-                let npx = node_dir.join("npx.cmd");
-                if npx.is_file() { return Some(npx); }
-                let npx = node_dir.join("npx");
-                if npx.is_file() { return Some(npx); }
-            }
-        }
+    // 3. 环境变量 NODE_PATH
+    if let Some(np) = std::env::var_os("NODE_PATH") {
+        let p = PathBuf::from(&np);
+        if p.is_file() { return Some(p); }
+        let p = p.join("node.exe");
+        if p.is_file() { return Some(p); }
     }
     None
 }
 
 /// 注入 ZCode 插件（复制脚本到 ZCode 安装目录）
+///
+/// 使用项目内安装的 @electron/asar 包，不依赖 npx 网络下载。
+/// asar CLI 路径 = <current_exe_dir>/../node_modules/@electron/asar/bin/asar.mjs
 #[tauri::command]
 pub fn inject_zcode_plugin() -> CommandResult<Value> {
     let zcode_install = codex_plus_core::zcode_sqlite::zcode_install_dir();
@@ -2952,34 +2952,58 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
     let source_str = source.to_string_lossy().to_string();
     let asar_str = asar_path.to_string_lossy().to_string();
 
-    // 用纯 Rust 实现解包/注入/打包，不依赖 npx/asar 命令
-    // 方案 A：尝试 npx asar（异步下载可能会卡，所以要设超时）
+    // ---------- 定位 @electron/asar CLI 路径 ----------
+    // 从当前 exe 目录向上找 node_modules（开发时：apps/../node_modules；打包后：资源目录）
+    let asar_cli_path = (|| -> Option<PathBuf> {
+        // 1. 开发环境：相对 exe 路径找 node_modules
+        if let Ok(exe) = std::env::current_exe() {
+            // 向上找 node_modules/@electron/asar/bin/asar.mjs
+            let mut dir = exe.parent()?;
+            for _ in 0..6 {
+                let candidate = dir.join("node_modules")
+                    .join("@electron").join("asar").join("bin").join("asar.mjs");
+                if candidate.is_file() {
+                    return Some(candidate);
+                }
+                // 也检查 asar.js（非ESM）
+                let candidate_js = dir.join("node_modules")
+                    .join("@electron").join("asar").join("bin").join("asar.js");
+                if candidate_js.is_file() {
+                    return Some(candidate_js);
+                }
+                dir = dir.parent()?;
+            }
+        }
+        None
+    })();
+
+    // 查找 node 可执行文件
+    let node_path = find_node();
+
     let mut inject_success = false;
     let mut last_error = String::new();
 
-    // 查找 npx 完整路径
-    let npx_path = find_npx();
-
-    if let Some(ref npx) = npx_path {
+    if let (Some(ref node), Some(ref asar_cli)) = (node_path.as_ref(), asar_cli_path.as_ref()) {
         let tmp_dir = std::env::temp_dir().join("ldzcode-inject");
         let _ = std::fs::remove_dir_all(&tmp_dir);
         std::fs::create_dir_all(&tmp_dir).unwrap_or_default();
         let tmp_str = tmp_dir.to_string_lossy().to_string();
 
         // 步骤1：解包 asar
-        let extract_ok = std::process::Command::new(npx)
-            .args(["asar", "e", &asar_str, &tmp_str])
+        let extract_ok = std::process::Command::new(node)
+            .arg(asar_cli)
+            .args(["e", &asar_str, &tmp_str])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false);
 
         if extract_ok {
-            // 步骤2：复制脚本
+            // 步骤2：复制脚本到解包目录
             let assets_dir = tmp_dir.join("out").join("renderer").join("assets");
             let _ = std::fs::create_dir_all(&assets_dir);
             let target_js = assets_dir.join("zcode-customize.js");
             if std::fs::copy(&source, &target_js).is_ok() {
-                // 步骤3：修改 index.html
+                // 步骤3：修改 index.html 注入 script 标签
                 let index_html = tmp_dir.join("out").join("renderer").join("index.html");
                 if index_html.exists() {
                     if let Ok(html) = std::fs::read_to_string(&index_html) {
@@ -2991,40 +3015,44 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
                     }
                 }
 
-                // 步骤4：重新打包
-                let pack_ok = std::process::Command::new(npx)
-                    .args(["asar", "p", &tmp_str, &asar_str])
+                // 步骤4：重新打包为 asar
+                let pack_ok = std::process::Command::new(node)
+                    .arg(asar_cli)
+                    .args(["p", &tmp_str, &asar_str])
                     .output()
                     .map(|o| o.status.success())
                     .unwrap_or(false);
                 if pack_ok {
                     inject_success = true;
                 } else {
-                    last_error = "打包失败".to_string();
+                    last_error = "打包失败（asar pack）".to_string();
                 }
             } else {
                 last_error = "复制脚本失败".to_string();
             }
         } else {
-            last_error = "解包失败，可能需要先运行 npm install -g @electron/asar".to_string();
+            last_error = "解包失败（asar extract）".to_string();
         }
 
         let _ = std::fs::remove_dir_all(&tmp_dir);
     } else {
-        last_error = "未找到 npx，请安装 Node.js".to_string();
+        if node_path.is_none() {
+            last_error = "未找到 Node.js，请安装 Node.js".to_string();
+        } else {
+            last_error = "未找到 @electron/asar 包".to_string();
+        }
     }
 
+    // ---------- 返回结果 ----------
+    // 清理 .bak 标记（覆盖上次失败状态）
     if inject_success {
-        // 创建 .bak 标记
         let bak_path = PathBuf::from(format!("{}.bak", asar_str));
         let _ = std::fs::write(&bak_path, b"injected");
-
         ok(
             "插件注入成功！请重启 ZCode 后生效。",
-            json!({"source": source_str, "asar": asar_str, "method": "npx"}),
+            json!({"source": source_str, "asar": asar_str, "method": "asar-cli"}),
         )
     } else {
-        // 方案 B 失败，提供手动注入指引
         ok(
             &format!(
                 "未能自动注入（{}）。已释放脚本到：{}，请以管理员身份运行 inject-zcode.bat",
