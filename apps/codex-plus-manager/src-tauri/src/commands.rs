@@ -4023,18 +4023,22 @@ pub fn create_workbuddy_profile(name: String) -> CommandResult<Value> {
                 );
                 let _ = std::fs::write(&bat_path, bat_content);
 
-                // 在桌面创建 .lnk 快捷方式，用 WorkBuddy.exe 的图标
+                // 释放自定义图标文件到 profiles 目录
+                let ico_path = profiles_dir.join("workbuddy-profile.ico");
+                if !ico_path.exists() {
+                    let _ = std::fs::write(&ico_path, include_bytes!("../icons/workbuddy.ico"));
+                }
+
+                // 在桌面创建 .lnk 快捷方式，用 workbuddy.ico 图标
                 if let Some(desktop) = windows_integration::desktop_dir() {
                     let lnk_path = desktop.join(format!("WorkBuddy-{}.lnk", item.name));
-                    let icon_path = codex_plus_core::workbuddy::workbuddy_install_dir()
-                        .map(|d| d.join("WorkBuddy.exe"));
                     let spec = windows_integration::ShortcutSpec {
                         path: lnk_path,
                         target: bat_path,
                         arguments: String::new(),
                         working_directory: None,
                         description: format!("WorkBuddy 分身 - {}", item.name),
-                        icon: icon_path,
+                        icon: Some(ico_path),
                         show_minimized: false,
                     };
                     let _ = windows_integration::create_shortcut(&spec);
