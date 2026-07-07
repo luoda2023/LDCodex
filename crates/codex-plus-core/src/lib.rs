@@ -28,6 +28,7 @@ pub mod version;
 pub mod watcher;
 #[cfg(windows)]
 pub mod windows_integration;
+pub mod workbuddy;
 pub mod zed_remote;
 
 #[cfg(windows)]

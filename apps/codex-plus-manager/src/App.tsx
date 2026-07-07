@@ -53,6 +53,7 @@ import {
   TestTube,
   Trash2,
   Users,
+  Workflow,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -515,7 +516,7 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "zcode-sessions" | "zcode-plugins" | "zcode-enhance" | "zcode-profiles" | "proxy" | "maintenance" | "about" | "settings";
+type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "zcode-sessions" | "zcode-plugins" | "zcode-enhance" | "zcode-profiles" | "workbuddy-profiles" | "proxy" | "maintenance" | "about" | "settings";
 type Theme = "dark" | "light";
 
 /** 所有路由（用于标题查找、路由匹配） */
@@ -529,6 +530,7 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string
   { id: "zcode-plugins", label: "工具与插件", icon: Puzzle },
   { id: "zcode-enhance", label: "增强设置", icon: Hammer },
   { id: "zcode-profiles", label: "分身管理", icon: Users },
+  { id: "workbuddy-profiles", label: "分身管理", icon: Workflow },
   { id: "proxy", label: "代理服务器", icon: ShieldCheck },
   { id: "maintenance", label: "安装维护", icon: Wrench },
   { id: "settings", label: "设置", icon: Settings },
@@ -563,6 +565,12 @@ const navGroups: Array<{
       { id: "zcode-plugins", label: "工具与插件", icon: Puzzle },
       { id: "zcode-enhance", label: "增强设置", icon: Hammer },
       { id: "zcode-profiles", label: "分身管理", icon: Users },
+    ],
+  },
+  {
+    label: "WorkBuddy 工具",
+    items: [
+      { id: "workbuddy-profiles", label: "分身管理", icon: Workflow },
     ],
   },
   {
@@ -1874,6 +1882,9 @@ export function App() {
           {route === "zcode-profiles" ? (
             <ZCodeProfilesScreen actions={actions} />
           ) : null}
+          {route === "workbuddy-profiles" ? (
+            <WorkBuddyProfilesScreen actions={actions} />
+          ) : null}
           {route === "proxy" ? (
             <ProxyScreen
               overview={overview}
@@ -2826,6 +2837,168 @@ function ZCodeProfilesScreen({ actions }: { actions: Actions }) {
     </>
   );
 }
+
+/// WorkBuddy 分身信息
+interface WorkBuddyProfileItem {
+  id: string;
+  name: string;
+  configDir: string;
+  createdAtMs: number;
+  lastLaunchedMs: number | null;
+}
+
+function WorkBuddyProfilesScreen({ actions }: { actions: Actions }) {
+  const [profiles, setProfiles] = useState<WorkBuddyProfileItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState("");
+  const [showNew, setShowNew] = useState(false);
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const result = await invoke<CommandResult<{ profiles: WorkBuddyProfileItem[] }>>("list_workbuddy_profiles");
+      setProfiles(result.profiles ?? []);
+    } catch (e) {
+      console.warn("获取 WB 分身列表失败", e);
+      setProfiles([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void refresh(); }, []);
+
+  const createProfile = async () => {
+    if (!newName.trim()) return;
+    try {
+      await invoke("create_workbuddy_profile", { name: newName.trim() });
+      setNewName("");
+      setShowNew(false);
+      await refresh();
+    } catch (e) {
+      console.error("创建分身失败", e);
+      alert("创建分身失败：" + String(e));
+    }
+  };
+
+  const deleteProfile = async (id: string, name: string) => {
+    if (id === "default") return;
+    if (!confirm(`确定删除 WorkBuddy 分身「${name}」？\n（数据目录不会被删除）`)) return;
+    try {
+      await invoke("delete_workbuddy_profile", { profileId: id });
+      await refresh();
+    } catch (e) {
+      console.error("删除分身失败", e);
+      alert("删除分身失败：" + String(e));
+    }
+  };
+
+  const launchProfile = async (profileId: string) => {
+    try {
+      const result = await invoke<CommandResult<{ status?: string; pid?: number }>>("launch_workbuddy", { profileId });
+      if ((result as any)?.status === "not_installed") {
+        alert("未检测到 WorkBuddy 安装，请先安装 WorkBuddy");
+      }
+    } catch (e) {
+      console.error("启动 WB 分身失败", e);
+      alert("启动 WB 分身失败：" + String(e));
+    }
+  };
+
+  const formatTime = (ms: number | null | undefined) => {
+    if (!ms || ms === 0) return "—";
+    try {
+      const d = new Date(ms);
+      return d.toLocaleString("zh-CN");
+    } catch {
+      return String(ms);
+    }
+  };
+
+  return (
+    <>
+      <Panel>
+        <CardHead title="WorkBuddy 分身管理" detail="创建和管理多个 WorkBuddy 独立实例（分身）" />
+        <CardContent>
+          <div className="hint-line">
+            <Info className="h-4 w-4" />
+            <span>
+              每个分身拥有独立的配置目录（通过{" "}
+              <code>WORKBUDDY_CONFIG_DIR</code> 环境变量隔离），可同时运行多个 WorkBuddy 实例。
+            </span>
+          </div>
+
+          <Toolbar>
+            <Button onClick={() => setShowNew(true)} variant="default">
+              <Plus className="h-4 w-4" /> 新建分身
+            </Button>
+            <Button onClick={() => void refresh()} variant="outline">
+              <RefreshCw className="h-4 w-4" /> 刷新
+            </Button>
+          </Toolbar>
+
+          {showNew ? (
+            <div className="zcode-new-profile-form">
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="输入分身名称…"
+                className="flex-1"
+                onKeyDown={(e) => { if (e.key === "Enter") void createProfile(); }}
+                autoFocus
+              />
+              <Button onClick={() => void createProfile()} variant="default">确认</Button>
+              <Button onClick={() => { setShowNew(false); setNewName(""); }} variant="outline">取消</Button>
+            </div>
+          ) : null}
+
+          {loading ? (
+            <div className="loading-text">加载中…</div>
+          ) : profiles.length === 0 ? (
+            <div className="empty-text">暂无分身，点击"新建分身"创建</div>
+          ) : (
+            <div className="mt-2">
+              {profiles.map((p, idx) => (
+                <div key={p.id} className="zcode-profile-row">
+                  <div className={`zcode-profile-avatar ${p.id === "default" ? "default" : "normal"}`}>
+                    {idx + 1}
+                  </div>
+                  <div className="zcode-profile-body">
+                    <div className="zcode-profile-name">
+                      {p.name}
+                      {p.id === "default" ? (
+                        <span className="zcode-profile-badge">默认</span>
+                      ) : null}
+                    </div>
+                    <div className="zcode-profile-details">
+                      <span>配置目录: {p.configDir}</span>
+                      <span>创建于: {formatTime(p.createdAtMs)}</span>
+                      {p.lastLaunchedMs ? <span>最后启动: {formatTime(p.lastLaunchedMs)}</span> : null}
+                    </div>
+                    <div className="zcode-profile-id">
+                      ID: {p.id}
+                    </div>
+                  </div>
+                  <div className="zcode-profile-actions">
+                    <Button onClick={() => void launchProfile(p.id)} variant="default" size="sm">
+                      <Rocket className="h-3 w-3" /> 启动
+                    </Button>
+                    {p.id !== "default" ? (
+                      <Button onClick={() => void deleteProfile(p.id, p.name)} variant="outline" size="sm">
+                        <Trash2 className="h-3 w-3" /> 删除
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Panel>
+    </>
+  );
+}
+
 
 
 
@@ -4891,6 +5064,7 @@ function routeSubtitle(route: Route) {
     "zcode-plugins": "ZCode 插件脚本管理与注入",
     "zcode-enhance": "ZCode 增强功能与并行对话模式",
     "zcode-profiles": "ZCode 分身管理：创建、启动、删除独立实例",
+    "workbuddy-profiles": "WorkBuddy 分身管理：创建、启动、删除独立实例（通过 WORKBUDDY_CONFIG_DIR 隔离）",
     proxy: "代理服务器运行状态与模型信息",
     maintenance: "安装检查、修复与诊断",
     about: "版本信息、项目链接、日志与诊断",

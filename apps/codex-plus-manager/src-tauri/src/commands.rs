@@ -2876,9 +2876,11 @@ fn find_npx() -> Option<PathBuf> {
     // 1. 直接尝试 PATH
     if let Ok(output) = std::process::Command::new("where").arg("npx.cmd").output() {
         if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).lines().next()?.to_string();
-            let p = PathBuf::from(path.trim());
-            if p.exists() { return Some(p); }
+            let path = String::from_utf8_lossy(&output.stdout).lines().next()?.trim().to_string();
+            if !path.is_empty() {
+                let p = PathBuf::from(&path);
+                if p.is_file() { return Some(p); }
+            }
         }
     }
     // 2. 常见安装路径
@@ -2890,17 +2892,19 @@ fn find_npx() -> Option<PathBuf> {
     ];
     for c in &candidates {
         let p = PathBuf::from(c);
-        if p.exists() { return Some(p); }
+        if p.is_file() { return Some(p); }
     }
     // 3. 通过查找 node.exe 推断
     if let Ok(output) = std::process::Command::new("where").arg("node.exe").output() {
         if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).lines().next()?.to_string();
-            let node_dir = Path::new(path.trim()).parent()?;
-            let npx = node_dir.join("npx.cmd");
-            if npx.exists() { return Some(npx); }
-            let npx = node_dir.join("npx");
-            if npx.exists() { return Some(npx); }
+            let path = String::from_utf8_lossy(&output.stdout).lines().next()?.trim().to_string();
+            if !path.is_empty() {
+                let node_dir = Path::new(&path).parent()?;
+                let npx = node_dir.join("npx.cmd");
+                if npx.is_file() { return Some(npx); }
+                let npx = node_dir.join("npx");
+                if npx.is_file() { return Some(npx); }
+            }
         }
     }
     None
@@ -3926,8 +3930,181 @@ pub struct RemoveEnvConflictsPayload {
     pub backup_path: Option<String>,
     pub remaining: Vec<codex_plus_core::env_conflicts::EnvConflict>,
 }
+// ========== WorkBuddy 分身管理命令 ==========
 
+/// WB 分身信息（返回给前端）
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkBuddyProfileItem {
+    pub id: String,
+    pub name: String,
+    pub config_dir: String,
+    pub created_at_ms: i64,
+    pub last_launched_ms: Option<i64>,
+}
 
+impl From<codex_plus_core::workbuddy::WorkBuddyProfile> for WorkBuddyProfileItem {
+    fn from(p: codex_plus_core::workbuddy::WorkBuddyProfile) -> Self {
+        WorkBuddyProfileItem {
+            id: p.id,
+            name: p.name,
+            config_dir: p.config_dir,
+            created_at_ms: p.created_at_ms,
+            last_launched_ms: p.last_launched_ms,
+        }
+    }
+}
 
+/// 列出所有 WB 分身
+#[tauri::command]
+pub fn list_workbuddy_profiles() -> CommandResult<Value> {
+    let profiles = codex_plus_core::workbuddy::list_workbuddy_profiles();
+    let items: Vec<WorkBuddyProfileItem> = profiles.into_iter().map(Into::into).collect();
+    ok(&format!("共 {} 个 WB 分身", items.len()), json!({"profiles": items}))
+}
+
+/// 创建新 WB 分身
+#[tauri::command]
+pub fn create_workbuddy_profile(name: String) -> CommandResult<Value> {
+    match codex_plus_core::workbuddy::create_workbuddy_profile(&name) {
+        Ok(profile) => {
+            let item: WorkBuddyProfileItem = profile.into();
+
+            // Windows：创建分身启动器（.bat + .lnk 图标快捷方式）
+            #[cfg(windows)]
+            {
+                let profiles_dir = std::env::var_os("APPDATA")
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join("LDAI")
+                    .join("profiles");
+                let _ = std::fs::create_dir_all(&profiles_dir);
+
+                let bat_path = profiles_dir.join(format!("WorkBuddy-{}.bat", item.name));
+                let config_dir = codex_plus_core::workbuddy::workbuddy_profile_config_dir(&item.id);
+                let wb_path = codex_plus_core::workbuddy::workbuddy_exe_path()
+                    .unwrap_or_else(|| PathBuf::from("WorkBuddy.exe"));
+                let bat_content = format!(
+                    "@echo off\r\n\
+                     title WorkBuddy - {name}\r\n\
+                     set \"WORKBUDDY_CONFIG_DIR={}\"\r\n\
+                     start \"\" \"{}\"\r\n\
+                     exit\r\n",
+                    config_dir.to_string_lossy(),
+                    wb_path.to_string_lossy()
+                );
+                let _ = std::fs::write(&bat_path, bat_content);
+
+                // 在桌面创建 .lnk 快捷方式，用 WorkBuddy.exe 的图标
+                if let Some(desktop) = windows_integration::desktop_dir() {
+                    let lnk_path = desktop.join(format!("WorkBuddy-{}.lnk", item.name));
+                    let spec = windows_integration::ShortcutSpec {
+                        path: lnk_path,
+                        target: bat_path,
+                        arguments: String::new(),
+                        working_directory: None,
+                        description: format!("WorkBuddy 分身 - {}", item.name),
+                        icon: None,
+                        show_minimized: false,
+                    };
+                    let _ = windows_integration::create_shortcut(&spec);
+                }
+            }
+
+            ok(&format!("WB 分身「{}」创建成功", item.name), json!(item))
+        }
+        Err(e) => failed(&format!("创建 WB 分身失败：{e}"), json!({"name": name})),
+    }
+}
+
+/// 删除 WB 分身
+#[tauri::command]
+pub fn delete_workbuddy_profile(profile_id: String) -> CommandResult<Value> {
+    let profile = codex_plus_core::workbuddy::list_workbuddy_profiles()
+        .into_iter()
+        .find(|p| p.id == profile_id);
+    let profile_name = profile.as_ref().map(|p| p.name.clone());
+
+    match codex_plus_core::workbuddy::delete_workbuddy_profile(&profile_id) {
+        Ok(()) => {
+            // 清理桌面 .lnk 和 appdata 下的 .bat
+            #[cfg(windows)]
+            if let Some(ref name) = profile_name {
+                if let Some(desktop) = windows_integration::desktop_dir() {
+                    let lnk_path = desktop.join(format!("WorkBuddy-{}.lnk", name));
+                    let _ = std::fs::remove_file(&lnk_path);
+                }
+                if let Some(appdata) = std::env::var_os("APPDATA") {
+                    let profiles_bat = PathBuf::from(appdata)
+                        .join("LDAI").join("profiles")
+                        .join(format!("WorkBuddy-{}.bat", name));
+                    let _ = std::fs::remove_file(&profiles_bat);
+                }
+            }
+
+            ok(
+                &format!("WB 分身已删除（ID: {}）", profile_id),
+                json!({"profileId": profile_id}),
+            )
+        }
+        Err(e) => failed(
+            &format!("删除 WB 分身失败：{e}"),
+            json!({"profileId": profile_id}),
+        ),
+    }
+}
+
+/// 启动 WorkBuddy（可选分身）
+#[tauri::command]
+pub fn launch_workbuddy(profile_id: Option<String>) -> CommandResult<Value> {
+    let exe_path = codex_plus_core::workbuddy::workbuddy_exe_path();
+
+    if let Some(ref exe) = exe_path {
+        let mut cmd = std::process::Command::new(exe);
+
+        if let Some(ref pid) = profile_id {
+            if pid != codex_plus_core::workbuddy::WORKBUDDY_DEFAULT_PROFILE_ID {
+                let config_dir = codex_plus_core::workbuddy::workbuddy_profile_config_dir(pid);
+                cmd.env("WORKBUDDY_CONFIG_DIR", config_dir.to_string_lossy().to_string());
+                let _ = codex_plus_core::workbuddy::touch_workbuddy_profile(pid);
+            }
+        }
+
+        match cmd.spawn() {
+            Ok(child) => {
+                let profile_label = profile_id
+                    .as_ref()
+                    .and_then(|pid| {
+                        if pid != codex_plus_core::workbuddy::WORKBUDDY_DEFAULT_PROFILE_ID {
+                            codex_plus_core::workbuddy::list_workbuddy_profiles()
+                                .into_iter()
+                                .find(|p| &p.id == pid)
+                                .map(|p| p.name)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| "默认".to_string());
+
+                let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+                    "manager.workbuddy_launched",
+                    json!({"pid": child.id(), "path": exe.to_string_lossy().to_string(), "profileId": profile_id}),
+                );
+                ok(
+                    &format!("WB 分身「{}」已启动（PID: {}）", profile_label, child.id()),
+                    json!({"pid": child.id(), "path": exe.to_string_lossy().to_string(), "profileId": profile_id}),
+                )
+            }
+            Err(e) => {
+                failed(
+                    &format!("启动 WorkBuddy 失败：{e}"),
+                    json!({"path": exe.to_string_lossy().to_string()}),
+                )
+            }
+        }
+    } else {
+        ok("未检测到 WorkBuddy 安装", json!({"status": "not_installed"}))
+    }
+}
 
 

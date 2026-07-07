@@ -142,7 +142,11 @@ pub fn run() {
             commands::inject_zcode_plugin,
             commands::list_zcode_profiles,
             commands::create_zcode_profile,
-            commands::delete_zcode_profile
+            commands::delete_zcode_profile,
+            commands::list_workbuddy_profiles,
+            commands::create_workbuddy_profile,
+            commands::delete_workbuddy_profile,
+            commands::launch_workbuddy
         ])
         .run(tauri::generate_context!());
     if let Err(error) = run_result {
