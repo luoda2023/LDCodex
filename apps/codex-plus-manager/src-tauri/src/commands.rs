@@ -2974,6 +2974,7 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
                 dir = dir.parent()?;
             }
         }
+        // 2. 打包后：检查资源目录（Tauri 打包会将 asar 放入 exe 同级的资源目录）
         None
     })();
 
@@ -2990,12 +2991,17 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
         let tmp_str = tmp_dir.to_string_lossy().to_string();
 
         // 步骤1：解包 asar
-        let extract_ok = std::process::Command::new(node)
+        let extract_output = std::process::Command::new(node)
             .arg(asar_cli)
             .args(["e", &asar_str, &tmp_str])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false);
+            .output();
+        let extract_ok = extract_output.as_ref().map(|o| o.status.success()).unwrap_or(false);
+        if !extract_ok {
+            let stderr = extract_output
+                .map(|o| String::from_utf8_lossy(&o.stderr).trim().to_string())
+                .unwrap_or_default();
+            last_error = format!("解包失败（asar extract）: {}", stderr);
+        }
 
         if extract_ok {
             // 步骤2：复制脚本到解包目录
@@ -3016,22 +3022,22 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
                 }
 
                 // 步骤4：重新打包为 asar
-                let pack_ok = std::process::Command::new(node)
+                let pack_output = std::process::Command::new(node)
                     .arg(asar_cli)
                     .args(["p", &tmp_str, &asar_str])
-                    .output()
-                    .map(|o| o.status.success())
-                    .unwrap_or(false);
+                    .output();
+                let pack_ok = pack_output.as_ref().map(|o| o.status.success()).unwrap_or(false);
                 if pack_ok {
                     inject_success = true;
                 } else {
-                    last_error = "打包失败（asar pack）".to_string();
+                    let stderr = pack_output
+                        .map(|o| String::from_utf8_lossy(&o.stderr).trim().to_string())
+                        .unwrap_or_default();
+                    last_error = format!("打包失败（asar pack）: {}", stderr);
                 }
             } else {
                 last_error = "复制脚本失败".to_string();
             }
-        } else {
-            last_error = "解包失败（asar extract）".to_string();
         }
 
         let _ = std::fs::remove_dir_all(&tmp_dir);

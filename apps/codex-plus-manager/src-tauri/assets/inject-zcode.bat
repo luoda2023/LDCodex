@@ -5,29 +5,39 @@ title LDZcode 插件注入工具
 setlocal enabledelayedexpansion
 
 :: ========== 自动检测路径 ==========
-:: 1) 插件目录：和本 bat 同目录 或 ~\.zcode\LDZcode
-set "SELF_DIR=%~dp0"
-set "PLUGIN_DIR=%SELF_DIR:~0,-1%"
+:: 1) 插件目录
+set "PLUGIN_DIR=%~dp0"
+set "PLUGIN_DIR=%PLUGIN_DIR:~0,-1%"
 if not exist "%PLUGIN_DIR%\zcode-customize.js" (
     set "PLUGIN_DIR=%USERPROFILE%\.zcode\LDZcode"
 )
 
-:: 2) ZCode 安装目录：环境变量优先，依次尝试已知路径
-set "ZCODE_DIR=%ZCODE_DIR%"
-if not defined ZCODE_DIR (
-    set "ZCODE_DIR=%LOCALAPPDATA%\Programs\ZCode"
+:: 2) ZCode 安装目录
+:: 注意：用 enabledelayedexpansion 的 !VAR! 语法，避开 %VAR% 在 if 块内的展开陷阱
+set "ZCODE_DIR="
+if defined ZCODE_DIR if exist "!ZCODE_DIR!\ZCode.exe" goto :found_zcode
+if exist "!LOCALAPPDATA!\Programs\ZCode\ZCode.exe" set "ZCODE_DIR=!LOCALAPPDATA!\Programs\ZCode" & goto :found_zcode
+if exist "!USERPROFILE!\AppData\Local\Programs\ZCode\ZCode.exe" set "ZCODE_DIR=!USERPROFILE!\AppData\Local\Programs\ZCode" & goto :found_zcode
+if exist "!ProgramFiles!\ZCode\ZCode.exe" set "ZCODE_DIR=!ProgramFiles!\ZCode" & goto :found_zcode
+if exist "!ProgramFiles(x86)!\ZCode\ZCode.exe" set "ZCODE_DIR=!ProgramFiles(x86)!\ZCode" & goto :found_zcode
+:: 注册表查询
+for /f "skip=2 tokens=2,*" %%A in ('reg query "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" /s /f "ZCode" 2^>nul ^| find "DisplayIcon"') do (
+    if exist "%%~dpBZCode.exe" set "ZCODE_DIR=%%~dpB" & goto :found_zcode
 )
-if not exist "%ZCODE_DIR%\ZCode.exe" (
-    set "ZCODE_DIR=%USERPROFILE%\AppData\Local\Programs\ZCode"
-)
-if not exist "%ZCODE_DIR%\ZCode.exe" (
-    set "ZCODE_DIR=C:\Program Files\ZCode"
-)
-if not exist "%ZCODE_DIR%\ZCode.exe" (
-    echo [错误] 找不到 ZCode.exe！请设置环境变量 ZCODE_DIR 指向安装目录。
-    pause & exit /b 1
-)
+:: where 命令兜底
+for /f "delims=" %%p in ('where ZCode.exe 2^>nul') do set "ZCODE_DIR=%%~dpp" & goto :found_zcode
 
+echo [错误] 找不到 ZCode.exe！请确认 ZCode 已安装。
+echo   检测过的路径：
+echo     !LOCALAPPDATA!\Programs\ZCode
+echo     !USERPROFILE!\AppData\Local\Programs\ZCode
+echo     !ProgramFiles!\ZCode
+echo     !ProgramFiles(x86)!\ZCode
+echo   可设置环境变量 ZCODE_DIR 指向 ZCode 安装目录。
+pause & exit /b 1
+:found_zcode
+
+:: ========== 后续步骤 ==========
 set "ASAR=%ZCODE_DIR%\resources\app.asar"
 set "ASAR_BAK=%ZCODE_DIR%\resources\app.asar.bak"
 set "PLUGIN_JS=%PLUGIN_DIR%\zcode-customize.js"
@@ -48,7 +58,7 @@ if %errorlevel%==0 (
     timeout /t 3 /nobreak >nul
 )
 
-:: 3) 查找 npx（cmd.exe 可能找不到 Node.js PATH）
+:: 3) 查找 npx
 set "NPX_CMD="
 for %%p in (
     "%ProgramFiles%\nodejs\npx.cmd"
@@ -56,17 +66,13 @@ for %%p in (
     "%LOCALAPPDATA%\fnm\node-versions\*\installation\npx.cmd"
     "%APPDATA%\npm\npx.cmd"
 ) do if exist %%p set "NPX_CMD=%%p"
-if not defined NPX_CMD (
-    where npx.cmd >nul 2>&1 && set "NPX_CMD=npx.cmd"
-)
-if not defined NPX_CMD (
-    where npx >nul 2>&1 && set "NPX_CMD=npx"
-)
+if not defined NPX_CMD where npx.cmd >nul 2>&1 && set "NPX_CMD=npx.cmd"
+if not defined NPX_CMD where npx >nul 2>&1 && set "NPX_CMD=npx"
 if not defined NPX_CMD (
     echo [错误] 未找到 npx，请安装 Node.js https://nodejs.org
     pause & exit /b 1
 )
-echo  使用 npx: %NPX_CMD%
+echo  使用 npx: !NPX_CMD!
 
 :: 检查文件
 if not exist "%PLUGIN_JS%" (
@@ -82,13 +88,6 @@ if not exist "%ASAR%" (
 if not exist "%ASAR_BAK%" (
     echo [*] 备份原始 app.asar...
     copy "%ASAR%" "%ASAR_BAK%" >nul
-)
-
-:: 检查 npx 是否可用
-where npx >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [错误] 未找到 npx，请安装 Node.js https://nodejs.org
-    pause & exit /b 1
 )
 
 pushd "%TEMP%"
@@ -114,7 +113,6 @@ if not exist "out\renderer\assets\zcode-customize.js" (
 )
 
 echo [3/4] 修改 index.html...
-:: 在 </body> 前插入脚本
 powershell -NoProfile -NonInteractive -Command ^
 "$f='out\renderer\index.html'; ^
  $c=Get-Content $f -Raw; ^
@@ -137,7 +135,6 @@ if %errorlevel% neq 0 (
 popd
 rmdir /s /q "%TEMP%\_ldzcode_inject" >nul 2>&1
 
-:: 创建 .bak 标记（用于 UI 检测注入状态）
 if not exist "%ASAR_BAK%" copy "%ASAR%" "%ASAR_BAK%" >nul
 
 echo.
@@ -146,5 +143,4 @@ echo [提示] 请重新启动 ZCode，快捷键 Alt+L 打开设置面板。
 echo [提示] ZCode 升级后，再次运行此文件即可恢复。
 echo [备份] %ASAR_BAK%
 echo.
-
 pause
