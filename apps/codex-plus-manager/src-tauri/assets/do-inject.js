@@ -1,58 +1,49 @@
 /**
- * LDZcode 注入脚本（Node.js）
- * 使用 @electron/asar 原生 API 解包/修改/打包 app.asar
- * 比 .bat 调用 asar CLI 更可靠（没有 PowerShell 转义问题）
+ * LDZcode 注入脚本（Node.js CLI 方式）
+ * 调用 @electron/asar 的 CLI（bin/asar.mjs）解包/修改/打包 app.asar
+ * 用 child_process 执行，避开 ESM/CJS 兼容问题
  *
  * 用法: node do-inject.js [asar路径] [插件js路径]
  */
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// 自动查找 @electron/asar 包
-function findAsar() {
-  const searchDirs = [
-    __dirname,
-    path.join(__dirname, '..'),
-    path.join(__dirname, '..', '..'),
-    process.cwd(),
-  ];
+function findAsarCli() {
+  const searchDirs = [__dirname, path.join(__dirname, '..'), path.join(__dirname, '..', '..'), process.cwd()];
   for (const d of searchDirs) {
-    const p = path.join(d, 'node_modules', '@electron', 'asar');
-    if (fs.existsSync(path.join(p, 'package.json'))) return p;
+    const p = path.join(d, 'node_modules', '@electron', 'asar', 'bin', 'asar.mjs');
+    if (fs.existsSync(p)) return { cli: p, dir: path.dirname(path.dirname(path.dirname(p))) };
+    const p2 = path.join(d, 'node_modules', '@electron', 'asar', 'bin', 'asar.js');
+    if (fs.existsSync(p2)) return { cli: p2, dir: path.dirname(path.dirname(path.dirname(p2))) };
   }
   return null;
 }
 
-async function main() {
+function main() {
   const ASAR = process.argv[2] || 'C:/Users/Administrator/AppData/Local/Programs/ZCode/resources/app.asar';
   const SRC = process.argv[3] || path.join(__dirname, 'zcode-customize.js');
   const TMP = path.join(__dirname, '_tmp_inject');
 
   // 检查文件
-  if (!fs.existsSync(ASAR)) {
-    console.error('[错误] 找不到 app.asar:', ASAR);
-    process.exit(1);
-  }
-  if (!fs.existsSync(SRC)) {
-    console.error('[错误] 找不到插件文件:', SRC);
+  if (!fs.existsSync(ASAR)) { console.error('[错误] 找不到 app.asar:', ASAR); process.exit(1); }
+  if (!fs.existsSync(SRC)) { console.error('[错误] 找不到插件文件:', SRC); process.exit(1); }
+
+  const asarInfo = findAsarCli();
+  if (!asarInfo) {
+    console.error('[错误] 未找到 @electron/asar CLI。请在 LDZcode 目录运行: npm install @electron/asar');
     process.exit(1);
   }
 
-  // 加载 @electron/asar
-  const asarPkgDir = findAsar();
-  if (!asarPkgDir) {
-    console.error('[错误] 未找到 @electron/asar 包。');
-    console.error('  请运行: npm install @electron/asar');
-    process.exit(1);
-  }
-  const { extractAll, createPackageWithOptions } = require(path.join(asarPkgDir));
+  const node = process.execPath;
+  const asarCli = asarInfo.cli;
 
   // 清理旧临时目录
   if (fs.existsSync(TMP)) fs.rmSync(TMP, { recursive: true });
 
   // 步骤1：解包
   console.log('[1/4] 解压 app.asar...');
-  await extractAll(ASAR, TMP);
+  execFileSync(node, [asarCli, 'e', ASAR, TMP], { stdio: 'pipe' });
   console.log('      完成');
 
   // 步骤2：注入 script 引用
@@ -80,7 +71,7 @@ async function main() {
 
   // 步骤4：打包回 app.asar
   console.log('[4/4] 打包 app.asar...');
-  await createPackageWithOptions(TMP, ASAR, { integrity: {} });
+  execFileSync(node, [asarCli, 'p', TMP, ASAR], { stdio: 'pipe' });
   console.log('      完成 ✅');
 
   // 清理
@@ -89,8 +80,4 @@ async function main() {
   console.log('  重启 ZCode 后按 Alt+L 打开面板。');
 }
 
-main().catch(err => {
-  console.error('\n❌ 注入失败:', err.message);
-  console.error(err.stack);
-  process.exit(1);
-});
+main();
