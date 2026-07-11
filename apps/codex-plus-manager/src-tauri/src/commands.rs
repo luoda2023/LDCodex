@@ -531,12 +531,11 @@ fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
         .map_err(|error| anyhow::anyhow!("无法启动 {}：{error}", launcher.to_string_lossy()))
 }
 
-/// 查找 Codex/ChatGPT.exe 真实路径
+/// 查找 Codex.exe / ChatGPT.exe 真实路径
 ///
-/// Codex 大升级后变成 Windows MSIX 应用，主程序名是 ChatGPT.exe（不再是 Codex.exe）。
-/// 安装路径示例：
-///   C:\Program Files\WindowsApps\OpenAI.Codex_<version>_x64_<hash>\app\ChatGPT.exe
-///   C:\Program Files\WindowsApps\OpenAI.Codex_<version>_x64_<hash>\app\Codex.exe
+/// 重要：优先选 Codex.exe 而不是 ChatGPT.exe
+/// - Codex.exe 是命令行后端，会读 ~/.codex/config.toml 走中转
+/// - ChatGPT.exe 是 Electron 桌面壳，路由被 OpenAI 改过，不走用户中转
 fn find_codex_exe_path() -> Option<PathBuf> {
     // 1. WindowsApps 通配符扫描（大升级后的标准形态）— 优先级最高
     if let Ok(entries) = fs::read_dir(r"C:\Program Files\WindowsApps") {
@@ -550,14 +549,15 @@ fn find_codex_exe_path() -> Option<PathBuf> {
         // 按名称降序排（取最新版本）
         codex_dirs.sort_by(|a, b| b.0.cmp(&a.0));
         for (_, app_dir) in codex_dirs {
-            // 优先 ChatGPT.exe（大升级后实际可执行）
-            let chatgpt = app_dir.join("ChatGPT.exe");
-            if chatgpt.exists() {
-                return Some(chatgpt);
-            }
+            // 优先 Codex.exe（命令行后端，读中转配置）
             let codex = app_dir.join("Codex.exe");
             if codex.exists() {
                 return Some(codex);
+            }
+            // 兜底 ChatGPT.exe（桌面壳，不走中转）
+            let chatgpt = app_dir.join("ChatGPT.exe");
+            if chatgpt.exists() {
+                return Some(chatgpt);
             }
         }
     }
@@ -570,7 +570,7 @@ fn find_codex_exe_path() -> Option<PathBuf> {
         }
     }
 
-    // 3. 标准路径扫描
+    // 3. 标准路径扫描（旧版本安装方式）
     let candidates: Vec<PathBuf> = vec![
         // 标准 Codex (旧版本安装方式)
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("Codex").join("Codex.exe")),
@@ -579,7 +579,6 @@ fn find_codex_exe_path() -> Option<PathBuf> {
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LDCodex").join("ldcodex.exe")),
         // LDAI 品牌
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LDAI").join("ldcodex.exe")),
-        std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LDAI").join("ChatGPT.exe")),
         // LUODA-Codex 品牌
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LUODA-Codex").join("luoda-codex.exe")),
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LUODA-Codex").join("Codex.exe")),
@@ -590,7 +589,6 @@ fn find_codex_exe_path() -> Option<PathBuf> {
         Some(PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\Codex\Codex.exe")),
         // Program Files
         std::env::var_os("ProgramFiles").map(|s| PathBuf::from(s).join("Codex").join("Codex.exe")),
-        std::env::var_os("ProgramFiles").map(|s| PathBuf::from(s).join("Codex").join("ChatGPT.exe")),
     ].into_iter().flatten().collect();
 
     for p in candidates {
