@@ -1,5 +1,9 @@
 /**
- * LDZcode v3.5
+ * LDZcode v3.6
+ * 修复：
+ *  - 调字号时输入框宽度也变化的 bug（用 *{font-size} 全局选择器副作用）
+ *  - 输入框高度滑块不生效的 bug（min-height 被 !important 被覆盖）
+ *  - 字号作用于消息内容区，不波及侧边栏/输入框/控件
  */
 (function(){
 'use strict';
@@ -9,22 +13,29 @@ function load(){
   try{var s=localStorage.getItem(KEY);return s?Object.assign({},DEF,JSON.parse(s)):Object.assign({},DEF)}
   catch(e){return Object.assign({},DEF)}
 }
-function save(c){try{localStorage.setItem(KEY,JSON.stringify(c))}catch(e){}}
+function save(c){try{localStorage.setItem(KEY,JSON.stringify(c))}catch(e){}
+}
 var C=load(),panel=null,overlay=null,visible=false;
 
 function apply(){
-  // 更新 CSS 规则（<style> 标签不会被 React 重建移除，无闪烁动画）
-  // 消息区宽度：覆盖所有 Tailwind max-* 类
-  var wMsg='.max-w-2xl,.max-w-3xl,.max-w-4xl,.max-w-5xl,.max-w-xl,.max-w-lg,.max-w-md,.max-w-sm{max-width:'+C.cw+'rem!important}';
-  // 输入框容器宽度：100% 填父容器，max-width 限制，并居中
+  // 消息区宽度：限定到 main 容器内的 Tailwind max-* 元素，不波及输入框/侧栏
+  var wMsg='main .max-w-2xl,main .max-w-3xl,main .max-w-4xl,main .max-w-5xl,main .max-w-xl,main .max-w-lg,main .max-w-md,main .max-w-sm{max-width:'+C.cw+'rem!important}';
+  // 输入框容器宽度：与消息区解耦，独立 iw 控制
   var wComp='div[class*="composer"]{width:100%!important;max-width:'+C.iw+'rem!important;margin-left:auto!important;margin-right:auto!important;align-self:center!important}';
-  // 输入框可编辑区：不设宽度（由容器自然约束），只设最小高度
-  var wEdit='[contenteditable="true"]{min-height:'+C.ih+'rem!important}';
+  // 输入框可编辑区：高度独立控制 !important
+  var wEdit='[contenteditable="true"]{min-height:'+C.ih+'rem!important;height:auto!important;width:100%!important;max-width:none!important}';
   var r=document.getElementById('ldz-dyn-w');
   if(r) r.textContent=wMsg+wComp+wEdit;
   var f=document.getElementById('ldz-dyn-fs');
-  // 基础字号作用于内容区但不破坏标题/代码的层次继承（去除!important让更具体的选择器优先）
-  if(f) f.textContent='body, .prose, [class*="content"], [class*="message"] {font-size:'+C.fs+'px}';
+  // 字号只作用于消息内容区的文本节点，不波及侧栏/输入框/控件
+  // 用简单选择器避免 Chromium 嵌套 :not 解析问题
+  if(f) f.textContent=
+    '.prose,.prose p,.prose li,.prose blockquote,.prose pre,.prose code,.prose h1,.prose h2,.prose h3,.prose h4,.prose h5,'+
+    '[class*="markdown"] p,[class*="markdown"] li,[class*="markdown"] blockquote,[class*="markdown"] pre,[class*="markdown"] code,'+
+    '[class*="markdown"] h1,[class*="markdown"] h2,[class*="markdown"] h3,[class*="markdown"] h4,'+
+    'article p,article li,article blockquote,article pre,article code,'+
+    'div[class*="message"] p,div[class*="message"] li,div[class*="message"] blockquote,div[class*="message"] pre,div[class*="message"] code'+
+    '{font-size:'+C.fs+'px!important;line-height:1.6!important}';
 }
 function injectCSS(){
   if(document.getElementById('ldzcss'))return;
@@ -46,14 +57,14 @@ function injectCSS(){
     '#ldz-panel .r:hover{background:rgba(255,255,255,0.03)}'+
     '#ldz-panel .r+.r{border-top:1px solid rgba(255,255,255,0.04)}'+
     '#ldz-panel .rt{flex:1;padding-right:16px}'+
-    '#ldz-panel .rn{font-size:14px;color:#f0f0f0;margin-bottom:3px}'+
-    '#ldz-panel .rd{font-size:12px;color:#888}'+
+    '#ldz-panel .rn{font-size:14px!important;color:#f0f0f0;margin-bottom:3px}'+
+    '#ldz-panel .rd{font-size:12px!important;color:#888}'+
     '#ldz-panel .rr{display:flex;align-items:center;gap:10px;min-width:120px;justify-content:flex-end}'+
-    '#ldz-panel .rv{font-size:13px;color:#aaa;min-width:42px;text-align:right}'+
+    '#ldz-panel .rv{font-size:13px!important;color:#aaa;min-width:42px;text-align:right}'+
     '#ldz-panel input[type=range]{-webkit-appearance:none;appearance:none;width:100px;height:4px;border-radius:2px;background:rgba(255,255,255,0.12);outline:none;cursor:pointer;margin:4px 0}'+
     '#ldz-panel input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#4b8df8;border:2px solid rgba(255,255,255,0.15);cursor:pointer}'+
     '#ldz-panel .f{display:flex;gap:10px;padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06)}'+
-    '#ldz-panel .fb{flex:1;padding:8px 0;border-radius:6px;font-size:13px;cursor:pointer;text-align:center;border:1px solid transparent;font-family:inherit}'+
+    '#ldz-panel .fb{flex:1;padding:8px 0;border-radius:6px;font-size:13px!important;cursor:pointer;text-align:center;border:1px solid transparent;font-family:inherit}'+
     '#ldz-panel .fs{background:rgba(255,255,255,0.06);color:#bbb;border-color:rgba(255,255,255,0.08)}'+
     '#ldz-panel .fs:hover{background:rgba(255,255,255,0.12);color:#fff}'+
     '#ldz-panel .fp{background:#4b8df8;color:#fff}'+
@@ -86,14 +97,18 @@ function buildPanel(){
     var sl=r.querySelector('input'),vl=r.querySelector('.rv');
     sl.oninput=function(){
       var v=parseFloat(sl.value);vl.textContent=v+unit;
-      C[id]=v;if(id==='cw')C.iw=v;save(C);apply();
-    };b.appendChild(r);
+      C[id]=v;
+      // 全局宽度滑块联动 iw（保持消息区与输入框默认对齐；输入框单独控制可手动改 iw）
+      if(id==='cw') C.iw=v;
+      save(C);apply();
+    };
+    b.appendChild(r);
   }
   addSlider('cw','全局宽度','消息区 + 输入框统一宽度',24,120,C.cw,'rem');
   addSlider('ih','输入框高度','输入框最小高度',4,40,C.ih,'rem');
-  addSlider('fs','文字大小','全局文字大小',10,24,C.fs,'px');
+  addSlider('fs','文字大小','消息内容文字大小（不影响输入框/侧栏）',10,24,C.fs,'px');
   var sp=document.createElement('div');sp.className='r sep';
-  sp.innerHTML='<div class="rt"><div class="rn" style="font-size:12px;color:#888">ZCode 设置</div></div>';b.appendChild(sp);
+  sp.innerHTML='<div class="rt"><div class="rn" style="font-size:12px!important;color:#888">ZCode 设置</div></div>';b.appendChild(sp);
   var mr=document.createElement('div');mr.className='r';
   mr.innerHTML='<div class="rt"><div class="rn">并行对话</div><div class="rd" id="ldz-md">—</div></div>'+
     '<div class="rr"><span class="sw" id="ldz-ms"></span></div>';b.appendChild(mr);

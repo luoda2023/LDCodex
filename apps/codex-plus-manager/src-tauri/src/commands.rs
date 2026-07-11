@@ -2943,110 +2943,65 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
     let source = ldzcode_dir.join("zcode-customize.js");
     let _ = std::fs::write(&source, include_str!("../assets/zcode-customize.js"));
 
-    // 同时释放 inject-zcode.bat 和 toggle-parallel.js 到 LDZcode 目录
+    // 同时释放 inject-zcode.bat、do-inject.js 和 toggle-parallel.js 到 LDZcode 目录
     let bat_path = ldzcode_dir.join("inject-zcode.bat");
     let _ = std::fs::write(&bat_path, include_str!("../assets/inject-zcode.bat"));
+    let do_inject_path = ldzcode_dir.join("do-inject.js");
+    let _ = std::fs::write(&do_inject_path, include_str!("../assets/do-inject.js"));
     let toggle_path = ldzcode_dir.join("toggle-parallel.js");
     let _ = std::fs::write(&toggle_path, include_str!("../assets/toggle-parallel.js"));
 
     let source_str = source.to_string_lossy().to_string();
     let asar_str = asar_path.to_string_lossy().to_string();
 
-    // ---------- 定位 @electron/asar CLI 路径 ----------
-    // 从当前 exe 目录向上找 node_modules（开发时：apps/../node_modules；打包后：资源目录）
-    let asar_cli_path = (|| -> Option<PathBuf> {
-        // 1. 开发环境：相对 exe 路径找 node_modules
-        if let Ok(exe) = std::env::current_exe() {
-            // 向上找 node_modules/@electron/asar/bin/asar.mjs
-            let mut dir = exe.parent()?;
-            for _ in 0..6 {
-                let candidate = dir.join("node_modules")
-                    .join("@electron").join("asar").join("bin").join("asar.mjs");
-                if candidate.is_file() {
-                    return Some(candidate);
-                }
-                // 也检查 asar.js（非ESM）
-                let candidate_js = dir.join("node_modules")
-                    .join("@electron").join("asar").join("bin").join("asar.js");
-                if candidate_js.is_file() {
-                    return Some(candidate_js);
-                }
-                dir = dir.parent()?;
-            }
-        }
-        // 2. 打包后：检查资源目录（Tauri 打包会将 asar 放入 exe 同级的资源目录）
-        None
-    })();
-
-    // 查找 node 可执行文件
+    // ---------- 注入方案1：调用 do-inject.js（Node + @electron/asar API） ----------
+    // 比 asar CLI 更可靠，不依赖 PowerShell 转义和参数顺序
     let node_path = find_node();
 
     let mut inject_success = false;
     let mut last_error = String::new();
+    let mut method = String::new();
 
-    if let (Some(ref node), Some(ref asar_cli)) = (node_path.as_ref(), asar_cli_path.as_ref()) {
-        let tmp_dir = std::env::temp_dir().join("ldzcode-inject");
-        let _ = std::fs::remove_dir_all(&tmp_dir);
-        std::fs::create_dir_all(&tmp_dir).unwrap_or_default();
-        let tmp_str = tmp_dir.to_string_lossy().to_string();
-
-        // 步骤1：解包 asar
-        let extract_output = std::process::Command::new(node)
-            .arg(asar_cli)
-            .args(["e", &asar_str, &tmp_str])
-            .output();
-        let extract_ok = extract_output.as_ref().map(|o| o.status.success()).unwrap_or(false);
-        if !extract_ok {
-            let stderr = extract_output
-                .map(|o| String::from_utf8_lossy(&o.stderr).trim().to_string())
-                .unwrap_or_default();
-            last_error = format!("解包失败（asar extract）: {}", stderr);
-        }
-
-        if extract_ok {
-            // 步骤2：复制脚本到解包目录
-            let assets_dir = tmp_dir.join("out").join("renderer").join("assets");
-            let _ = std::fs::create_dir_all(&assets_dir);
-            let target_js = assets_dir.join("zcode-customize.js");
-            if std::fs::copy(&source, &target_js).is_ok() {
-                // 步骤3：修改 index.html 注入 script 标签
-                let index_html = tmp_dir.join("out").join("renderer").join("index.html");
-                if index_html.exists() {
-                    if let Ok(html) = std::fs::read_to_string(&index_html) {
-                        let marker = "<script defer src=\"./assets/zcode-customize.js\"></script>";
-                        if !html.contains(marker) {
-                            let new_html = html.replace("</body>", &format!("  {marker}\n</body>"));
-                            let _ = std::fs::write(&index_html, new_html);
-                        }
-                    }
+    if let Some(ref node) = node_path {
+        // 查找 @electron/asar 路径（在 LDZcode 目录或其上级找 node_modules）
+        let asar_found = (|| -> Option<PathBuf> {
+            let mut dir = ldzcode_dir.as_path();
+            for _ in 0..6 {
+                let candidate = dir.join("node_modules")
+                    .join("@electron").join("asar").join("package.json");
+                if candidate.is_file() {
+                    return Some(dir.join("node_modules").join("@electron").join("asar"));
                 }
+                if let Some(p) = dir.parent() { dir = p; } else { break; }
+            }
+            None
+        })();
 
-                // 步骤4：重新打包为 asar
-                let pack_output = std::process::Command::new(node)
-                    .arg(asar_cli)
-                    .args(["p", &tmp_str, &asar_str])
-                    .output();
-                let pack_ok = pack_output.as_ref().map(|o| o.status.success()).unwrap_or(false);
-                if pack_ok {
+        if asar_found.is_some() {
+            // 调用 do-inject.js
+            let result = std::process::Command::new(node)
+                .arg(&do_inject_path)
+                .arg(&asar_path)
+                .arg(&source)
+                .output();
+            if let Ok(out) = result {
+                if out.status.success() {
                     inject_success = true;
+                    method = "do-inject.js".to_string();
                 } else {
-                    let stderr = pack_output
-                        .map(|o| String::from_utf8_lossy(&o.stderr).trim().to_string())
-                        .unwrap_or_default();
-                    last_error = format!("打包失败（asar pack）: {}", stderr);
+                    last_error = format!(
+                        "do-inject.js 失败: {}",
+                        String::from_utf8_lossy(&out.stderr).trim()
+                    );
                 }
             } else {
-                last_error = "复制脚本失败".to_string();
+                last_error = format!("无法运行 do-inject.js: {:?}", node);
             }
-        }
-
-        let _ = std::fs::remove_dir_all(&tmp_dir);
-    } else {
-        if node_path.is_none() {
-            last_error = "未找到 Node.js，请安装 Node.js".to_string();
         } else {
-            last_error = "未找到 @electron/asar 包".to_string();
+            last_error = "未找到 @electron/asar 包，请在 LDZcode 目录运行 npm install @electron/asar".to_string();
         }
+    } else {
+        last_error = "未找到 Node.js，请安装 Node.js".to_string();
     }
 
     // ---------- 返回结果 ----------
@@ -3056,7 +3011,7 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
         let _ = std::fs::write(&bak_path, b"injected");
         ok(
             "插件注入成功！请重启 ZCode 后生效。",
-            json!({"source": source_str, "asar": asar_str, "method": "asar-cli"}),
+            json!({"source": source_str, "asar": asar_str, "method": method}),
         )
     } else {
         ok(
