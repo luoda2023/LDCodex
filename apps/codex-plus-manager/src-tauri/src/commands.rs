@@ -503,9 +503,17 @@ fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
         return spawn_codex_directly(request);
     }
 
+    // 自动检测 codex.exe 真实路径（如果用户没填，兜底查找）
+    let mut app_path = request.app_path.trim().to_string();
+    if app_path.is_empty() {
+        if let Some(p) = find_codex_exe_path() {
+            app_path = p.to_string_lossy().to_string();
+        }
+    }
+
     let mut command = std::process::Command::new(&launcher);
-    if !request.app_path.trim().is_empty() {
-        command.arg("--app-path").arg(request.app_path.trim());
+    if !app_path.is_empty() {
+        command.arg("--app-path").arg(&app_path);
     }
     command
         .arg("--debug-port")
@@ -523,31 +531,47 @@ fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
         .map_err(|error| anyhow::anyhow!("无法启动 {}：{error}", launcher.to_string_lossy()))
 }
 
+/// 查找 Codex.exe 真实路径
+fn find_codex_exe_path() -> Option<PathBuf> {
+    // 1. 通过 app_paths 核心库查找
+    if let Some(app_dir) = codex_plus_core::app_paths::find_latest_codex_app_dir_default() {
+        let exe = codex_plus_core::app_paths::build_codex_executable(&app_dir);
+        if exe.exists() {
+            return Some(exe);
+        }
+    }
+    // 2. 标准路径扫描
+    let candidates: Vec<PathBuf> = vec![
+        std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("Codex").join("Codex.exe")),
+        std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LDCodex").join("Codex.exe")),
+        std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LDCodex").join("ldcodex.exe")),
+        std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LUODA-Codex").join("luoda-codex.exe")),
+        std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LUODA-Codex").join("Codex.exe")),
+        Some(PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\LUODA-Codex\luoda-codex.exe")),
+        Some(PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\LDCodex\ldcodex.exe")),
+        Some(PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\Codex\Codex.exe")),
+    ].into_iter().flatten().collect();
+    for p in candidates {
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    None
+}
+
 /// 兜底方案：silent launcher 不存在或失败时，直接调 Codex.exe
 fn spawn_codex_directly(request: &LaunchRequest) -> anyhow::Result<()> {
     // 自动检测 Codex.exe 路径
     let mut codex_exe = if !request.app_path.trim().is_empty() {
         PathBuf::from(request.app_path.trim())
-    } else if let Some(app_dir) = codex_plus_core::app_paths::find_latest_codex_app_dir_default() {
-        codex_plus_core::app_paths::build_codex_executable(&app_dir)
     } else {
-        PathBuf::new()
+        find_codex_exe_path().unwrap_or_default()
     };
 
-    // 兜底候选路径
-    if !codex_exe.exists() {
-        let candidates = [
-            || std::env::var_os("LOCALAPPDATA").map(PathBuf::from).map(|p| p.join("Programs").join("Codex").join("Codex.exe")),
-            || std::env::var_os("USERPROFILE").map(PathBuf::from).map(|p| p.join("AppData").join("Local").join("Programs").join("Codex").join("Codex.exe")),
-            || Some(PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\Codex\Codex.exe")),
-        ];
-        for f in &candidates {
-            if let Some(p) = f() {
-                if p.exists() {
-                    codex_exe = p;
-                    break;
-                }
-            }
+    if codex_exe.as_os_str().is_empty() || !codex_exe.exists() {
+        // 再扫一遍所有候选路径
+        if let Some(p) = find_codex_exe_path() {
+            codex_exe = p;
         }
     }
 
