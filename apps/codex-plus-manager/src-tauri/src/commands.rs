@@ -531,7 +531,7 @@ fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
         .map_err(|error| anyhow::anyhow!("无法启动 {}：{error}", launcher.to_string_lossy()))
 }
 
-/// 查找 Codex.exe 真实路径
+/// 查找 Codex.exe / ChatGPT.exe 真实路径
 fn find_codex_exe_path() -> Option<PathBuf> {
     // 1. 通过 app_paths 核心库查找
     if let Some(app_dir) = codex_plus_core::app_paths::find_latest_codex_app_dir_default() {
@@ -542,20 +542,47 @@ fn find_codex_exe_path() -> Option<PathBuf> {
     }
     // 2. 标准路径扫描
     let candidates: Vec<PathBuf> = vec![
+        // 标准 Codex
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("Codex").join("Codex.exe")),
+        // LDCodex 品牌
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LDCodex").join("Codex.exe")),
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LDCodex").join("ldcodex.exe")),
+        // LUODA-Codex 品牌
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LUODA-Codex").join("luoda-codex.exe")),
         std::env::var_os("LOCALAPPDATA").map(|s| PathBuf::from(s).join("Programs").join("LUODA-Codex").join("Codex.exe")),
+        // 硬编码绝对路径
         Some(PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\LUODA-Codex\luoda-codex.exe")),
         Some(PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\LDCodex\ldcodex.exe")),
         Some(PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\Codex\Codex.exe")),
+        // Program Files
+        std::env::var_os("ProgramFiles").map(|s| PathBuf::from(s).join("Codex").join("Codex.exe")),
     ].into_iter().flatten().collect();
+
     for p in candidates {
         if p.exists() {
             return Some(p);
         }
     }
+
+    // 3. WindowsApps 通配符扫描：OpenAI.Codex_*/app/ChatGPT.exe 或 Codex.exe
+    if let Ok(entries) = fs::read_dir(r"C:\Program Files\WindowsApps") {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with("OpenAI.Codex_") {
+                let app_dir = entry.path().join("app");
+                // 优先 ChatGPT.exe（用户报告的实际可执行）
+                let chatgpt = app_dir.join("ChatGPT.exe");
+                if chatgpt.exists() {
+                    return Some(chatgpt);
+                }
+                let codex = app_dir.join("Codex.exe");
+                if codex.exists() {
+                    return Some(codex);
+                }
+            }
+        }
+    }
+
     None
 }
 
