@@ -222,13 +222,22 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     if app_dir.extension() == Some(OsStr::new("app")) {
         return app_dir.join("Contents").join("MacOS").join("Codex");
     }
+    // Codex 大升级后变成 MSIX 应用，主执行可能叫 ChatGPT.exe
+    // 优先级：Codex.exe（旧名保留兼容）> ChatGPT.exe（MSIX新版）> codex.exe（小写）
     let upper = app_dir.join("Codex.exe");
     if upper.exists() {
-        upper
-    } else {
-        let lower = app_dir.join("codex.exe");
-        if lower.exists() { lower } else { upper }
+        return upper;
     }
+    let chatgpt = app_dir.join("ChatGPT.exe");
+    if chatgpt.exists() {
+        return chatgpt;
+    }
+    let lower = app_dir.join("codex.exe");
+    if lower.exists() {
+        return lower;
+    }
+    // 兜底（即使不存在也返回一个，调用方会检查 exists）
+    upper
 }
 
 pub fn codex_app_version(app_dir: &Path) -> Option<String> {
