@@ -497,6 +497,12 @@ fn spawn_codex_plus_launch(request: LaunchRequest, accepted_message: &str) -> Co
 
 fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
     let launcher = codex_plus_core::install::companion_binary_path(SILENT_BINARY);
+
+    // 如果 silent launcher 不存在，直接调 Codex.exe 兜底
+    if !launcher.exists() {
+        return spawn_codex_directly(request);
+    }
+
     let mut command = std::process::Command::new(&launcher);
     if !request.app_path.trim().is_empty() {
         command.arg("--app-path").arg(request.app_path.trim());
@@ -515,6 +521,56 @@ fn spawn_silent_launcher(request: &LaunchRequest) -> anyhow::Result<()> {
         .spawn()
         .map(|_| ())
         .map_err(|error| anyhow::anyhow!("无法启动 {}：{error}", launcher.to_string_lossy()))
+}
+
+/// 兜底方案：silent launcher 不存在或失败时，直接调 Codex.exe
+fn spawn_codex_directly(request: &LaunchRequest) -> anyhow::Result<()> {
+    // 自动检测 Codex.exe 路径
+    let mut codex_exe = if !request.app_path.trim().is_empty() {
+        PathBuf::from(request.app_path.trim())
+    } else if let Some(app_dir) = codex_plus_core::app_paths::find_latest_codex_app_dir_default() {
+        codex_plus_core::app_paths::build_codex_executable(&app_dir)
+    } else {
+        PathBuf::new()
+    };
+
+    // 兜底候选路径
+    if !codex_exe.exists() {
+        let candidates = [
+            || std::env::var_os("LOCALAPPDATA").map(PathBuf::from).map(|p| p.join("Programs").join("Codex").join("Codex.exe")),
+            || std::env::var_os("USERPROFILE").map(PathBuf::from).map(|p| p.join("AppData").join("Local").join("Programs").join("Codex").join("Codex.exe")),
+            || Some(PathBuf::from(r"C:\Users\Administrator\AppData\Local\Programs\Codex\Codex.exe")),
+        ];
+        for f in &candidates {
+            if let Some(p) = f() {
+                if p.exists() {
+                    codex_exe = p;
+                    break;
+                }
+            }
+        }
+    }
+
+    if !codex_exe.exists() {
+        return Err(anyhow::anyhow!("找不到 Codex.exe，请在设置页选择 Codex 安装路径"));
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new(&codex_exe)
+            .creation_flags(0x08000000)
+            .spawn()
+            .map(|_| ())
+            .map_err(|error| anyhow::anyhow!("无法启动 {}：{error}", codex_exe.display()))
+    }
+    #[cfg(not(windows))]
+    {
+        std::process::Command::new(&codex_exe)
+            .spawn()
+            .map(|_| ())
+            .map_err(|error| anyhow::anyhow!("无法启动 {}：{error}", codex_exe.display()))
+    }
 }
 
 #[tauri::command]
@@ -2943,7 +2999,7 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
     let source = ldzcode_dir.join("zcode-customize.js");
     let _ = std::fs::write(&source, include_str!("../assets/zcode-customize.js"));
 
-    // 同时释放 inject-zcode.bat、do-inject.js 和 toggle-parallel.js 到 LDZcode 目录
+    // 同时释放 inject-zcode.bat、do-inject.js 和 toggle-parallel.js 到 LDZcode 目录（兜底手动注入用）
     let bat_path = ldzcode_dir.join("inject-zcode.bat");
     let _ = std::fs::write(&bat_path, include_str!("../assets/inject-zcode.bat"));
     let do_inject_path = ldzcode_dir.join("do-inject.js");
@@ -2954,60 +3010,28 @@ pub fn inject_zcode_plugin() -> CommandResult<Value> {
     let source_str = source.to_string_lossy().to_string();
     let asar_str = asar_path.to_string_lossy().to_string();
 
-    // ---------- 注入方案1：调用 do-inject.js（Node + @electron/asar API） ----------
-    // 比 asar CLI 更可靠，不依赖 PowerShell 转义和参数顺序
-    let node_path = find_node();
+    // 备份原始 app.asar（仅首次）
+    let bak_path = PathBuf::from(format!("{}.bak", asar_str));
+    if !bak_path.exists() {
+        let _ = std::fs::copy(&asar_path, &bak_path);
+    }
 
+    // ---------- 注入方案：纯 Rust 实现 asar 解包/打包（零外部依赖） ----------
     let mut inject_success = false;
     let mut last_error = String::new();
-    let mut method = String::new();
+    let method = "rust-asar".to_string();
 
-    if let Some(ref node) = node_path {
-        // 查找 @electron/asar 路径（在 LDZcode 目录或其上级找 node_modules）
-        let asar_found = (|| -> Option<PathBuf> {
-            let mut dir = ldzcode_dir.as_path();
-            for _ in 0..6 {
-                let candidate = dir.join("node_modules")
-                    .join("@electron").join("asar").join("package.json");
-                if candidate.is_file() {
-                    return Some(dir.join("node_modules").join("@electron").join("asar"));
-                }
-                if let Some(p) = dir.parent() { dir = p; } else { break; }
-            }
-            None
-        })();
-
-        if asar_found.is_some() {
-            // 调用 do-inject.js
-            let result = std::process::Command::new(node)
-                .arg(&do_inject_path)
-                .arg(&asar_path)
-                .arg(&source)
-                .output();
-            if let Ok(out) = result {
-                if out.status.success() {
-                    inject_success = true;
-                    method = "do-inject.js".to_string();
-                } else {
-                    last_error = format!(
-                        "do-inject.js 失败: {}",
-                        String::from_utf8_lossy(&out.stderr).trim()
-                    );
-                }
-            } else {
-                last_error = format!("无法运行 do-inject.js: {:?}", node);
-            }
-        } else {
-            last_error = "未找到 @electron/asar 包，请在 LDZcode 目录运行 npm install @electron/asar".to_string();
+    match codex_plus_core::asar_rust::inject_zcode_plugin_asar(&asar_path, &source) {
+        Ok(()) => {
+            inject_success = true;
         }
-    } else {
-        last_error = "未找到 Node.js，请安装 Node.js".to_string();
+        Err(e) => {
+            last_error = format!("{}", e);
+        }
     }
 
     // ---------- 返回结果 ----------
-    // 清理 .bak 标记（覆盖上次失败状态）
     if inject_success {
-        let bak_path = PathBuf::from(format!("{}.bak", asar_str));
         let _ = std::fs::write(&bak_path, b"injected");
         ok(
             "插件注入成功！请重启 ZCode 后生效。",

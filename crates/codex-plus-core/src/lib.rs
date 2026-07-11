@@ -1,4 +1,5 @@
 pub mod app_paths;
+pub mod asar_rust;
 pub mod assets;
 pub mod bridge;
 pub mod cdp;
