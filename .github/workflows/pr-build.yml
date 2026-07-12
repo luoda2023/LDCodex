@@ -48,7 +48,9 @@ jobs:
       #  run: cargo test --workspace
 
       - name: Build release binaries
-        run: cargo build --release
+        run: |
+          cargo clean
+          cargo build --release
 
       - name: Stage Windows app files
         shell: pwsh
