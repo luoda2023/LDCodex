@@ -41,7 +41,7 @@ echo  ZCode目录：%ZCODE_DIR%
 echo.
 
 :: 关闭 ZCode
-tasklist /FI "IMAGENAME eq ZCode.exe" 2>nul | find /I "ZCode.exe" >nul
+tasklist 2>nul | findstr /I "ZCode.exe" >nul
 if %errorlevel%==0 (
     echo [*] 正在关闭 ZCode...
     taskkill /F /IM ZCode.exe >nul 2>&1
@@ -97,7 +97,7 @@ mkdir _ldzcode_inject 2>nul
 cd _ldzcode_inject
 
 echo [1/4] 解压 app.asar...
-"%NPX_CMD%" asar e "%ASAR%" .
+"%NPX_CMD%" asar extract "%ASAR%" .
 if %errorlevel% neq 0 (
     echo [错误] 解压失败，请检查 app.asar 是否存在
     popd & rmdir /s /q _ldzcode_inject >nul 2>&1
@@ -127,7 +127,7 @@ powershell -NoProfile -NonInteractive -Command ^
  }"
 
 echo [4/4] 重新打包 app.asar...
-"%NPX_CMD%" asar p . "%ASAR%"
+"%NPX_CMD%" asar pack . "%ASAR%"
 if %errorlevel% neq 0 (
     echo [错误] 打包失败
     popd & rmdir /s /q _ldzcode_inject >nul 2>&1

@@ -222,22 +222,23 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     if app_dir.extension() == Some(OsStr::new("app")) {
         return app_dir.join("Contents").join("MacOS").join("Codex");
     }
-    // 重要：优先 Codex.exe（命令行后端，读 ~/.codex/config.toml 走中转）
-    // ChatGPT.exe 是 Electron 桌面壳，路由被 OpenAI 改过，不走用户中转
-    let codex = app_dir.join("Codex.exe");
-    if codex.exists() {
-        return codex;
-    }
+    // Windows: 优先 ChatGPT.exe（Electron GUI，支持 --remote-debugging-port）
+    // Codex.exe 是 CLI 工具，不支持调试端口参数
     let chatgpt = app_dir.join("ChatGPT.exe");
     if chatgpt.exists() {
         return chatgpt;
+    }
+    // 兜底：尝试 Codex.exe（命令行后端）
+    let codex = app_dir.join("Codex.exe");
+    if codex.exists() {
+        return codex;
     }
     let lower = app_dir.join("codex.exe");
     if lower.exists() {
         return lower;
     }
     // 兜底返回（调用方会检查 exists）
-    codex
+    chatgpt
 }
 
 pub fn codex_app_version(app_dir: &Path) -> Option<String> {

@@ -525,67 +525,63 @@ impl LaunchHooks for DefaultLaunchHooks {
         extra_args: &[String],
     ) -> anyhow::Result<CodexLaunch> {
         if cfg!(windows) {
-            if let Some(activation) = build_packaged_activation(app_dir, debug_port, extra_args) {
-                let CodexLaunch::PackagedActivation {
-                    app_user_model_id,
-                    arguments,
-                    ..
-                } = &activation
-                else {
-                    unreachable!();
-                };
-                let app_user_model_id_for_log = app_user_model_id.clone();
-                let preexisting_cdp_targets = query_cdp_targets(debug_port).await;
-                let preexisting_cdp_target_ids = cdp_target_fingerprints(&preexisting_cdp_targets);
-                if preexisting_cdp_targets.iter().any(is_codex_cdp_target) {
-                    let _ = crate::diagnostic_log::append_diagnostic_log(
-                        "launcher.packaged_activation_reuse_preexisting_cdp",
-                        serde_json::json!({
-                            "debug_port": debug_port,
-                            "app_user_model_id": app_user_model_id_for_log,
-                            "preexisting_cdp_target_count": preexisting_cdp_targets.len()
-                        }),
-                    );
+            // ★ 先检查是否已有 CDP 在监听（复用已运行的 ChatGPT.exe）
+            let preexisting_cdp_targets = query_cdp_targets(debug_port).await;
+            let preexisting_cdp_target_ids = cdp_target_fingerprints(&preexisting_cdp_targets);
+            if preexisting_cdp_targets.iter().any(is_codex_cdp_target) {
+                let _ = crate::diagnostic_log::append_diagnostic_log(
+                    "launcher.reuse_preexisting_cdp",
+                    serde_json::json!({
+                        "debug_port": debug_port,
+                        "preexisting_cdp_target_count": preexisting_cdp_targets.len()
+                    }),
+                );
+                if let Some(activation) = build_packaged_activation(app_dir, debug_port, extra_args) {
+                    let CodexLaunch::PackagedActivation {
+                        app_user_model_id,
+                        arguments,
+                        ..
+                    } = &activation
+                    else {
+                        unreachable!();
+                    };
                     return Ok(CodexLaunch::PackagedActivation {
                         app_user_model_id: app_user_model_id.clone(),
                         arguments: arguments.clone(),
                         process_id: None,
                     });
                 }
-                let process_id = activate_packaged_app(app_user_model_id, arguments).await?;
-                let packaged_launch = match activation {
-                    CodexLaunch::PackagedActivation {
-                        app_user_model_id,
-                        arguments,
-                        ..
-                    } => CodexLaunch::PackagedActivation {
-                        app_user_model_id,
-                        arguments,
-                        process_id: Some(process_id),
-                    },
-                    CodexLaunch::Process { .. } => unreachable!(),
-                };
-                if cdp_json_ready(
-                    debug_port,
-                    PACKAGED_CDP_READY_ATTEMPTS,
-                    PACKAGED_CDP_READY_DELAY,
-                    &preexisting_cdp_target_ids,
-                )
-                .await
-                {
-                    return Ok(packaged_launch);
-                }
-                let _ = crate::diagnostic_log::append_diagnostic_log(
-                    "launcher.packaged_activation_cdp_unready_direct_fallback",
-                    serde_json::json!({
-                        "debug_port": debug_port,
-                        "app_user_model_id": app_user_model_id_for_log,
-                        "process_id": process_id,
-                        "preexisting_cdp_target_count": preexisting_cdp_targets.len()
-                    }),
-                );
-                let _ = terminate_windows_process_id(process_id).await;
             }
+
+            // ★ 跳过 MSIX packaged activation（不传命令行参数），
+            //   直接启动 ChatGPT.exe 进程并传 --remote-debugging-port 参数。
+            //   MSIX ActivateApplication 不支持传递命令行参数给 UWP/MSIX 应用。
+            let command = build_codex_command(app_dir, debug_port, extra_args);
+            let executable = command
+                .first()
+                .ok_or_else(|| anyhow::anyhow!("Codex command is empty"))?;
+            let _ = crate::diagnostic_log::append_diagnostic_log(
+                "launcher.windows_direct_launch",
+                serde_json::json!({
+                    "debug_port": debug_port,
+                    "executable": executable,
+                    "command": command,
+                }),
+            );
+            let mut child_command = Command::new(executable);
+            child_command
+                .args(&command[1..])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null());
+            let child = child_command
+                .spawn()
+                .with_context(|| format!("failed to launch Codex executable {executable}"))?;
+            *self.child.lock().await = Some(child);
+            return Ok(CodexLaunch::Process {
+                command,
+                wait_strategy: ProcessWaitStrategy::TrackedChild,
+                macos_cleanup_policy: None,
+            });
         }
 
         if app_dir.extension().and_then(|value| value.to_str()) == Some("app") {
@@ -774,8 +770,8 @@ impl LaunchHooks for DefaultLaunchHooks {
         child
             .arg(&bridge_index)
             .current_dir(bridge_dir())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit());
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
         #[cfg(windows)]
         {
             child.creation_flags(crate::windows_integration::CREATE_NO_WINDOW);

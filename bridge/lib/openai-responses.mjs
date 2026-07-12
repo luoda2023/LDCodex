@@ -129,7 +129,7 @@ export async function handleResponses(ctx, req, body) {
       type: "response.created",
       response: {
         id: responseId, object: "response", model: model,
-        created: created, status: "in_progress", output: []
+        created_at: created, status: "in_progress", output: [], background: false, error: null
       }
     }) + "\n\n");
 
@@ -138,7 +138,7 @@ export async function handleResponses(ctx, req, body) {
       type: "response.in_progress",
       response: {
         id: responseId, object: "response", model: model,
-        created: created, status: "in_progress", output: []
+        created_at: created, status: "in_progress", output: [], background: false, error: null
       }
     }) + "\n\n");
 
@@ -552,8 +552,10 @@ function chatToResponses(chatData, modelId) {
     });
   }
 
-  return {
-    id: chatData.id || "resp_" + Date.now(),
+  const isCodexAPI = modelId === "codexAPI";
+
+  const base = {
+    id: "resp_" + (chatData.id ? String(chatData.id).replace(/^resp_/, "") : Date.now()),
     object: "response",
     model: modelId,
     created: Math.floor(Date.now() / 1000),
@@ -565,6 +567,15 @@ function chatToResponses(chatData, modelId) {
       total_tokens: 0,
     },
   };
+
+  if (isCodexAPI) {
+    base.created_at = base.created;
+    base.completed_at = base.created;
+    base.background = false;
+    base.error = null;
+  }
+
+  return base;
 }
 
 /**

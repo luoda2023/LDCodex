@@ -1,1 +1,8 @@
-[]
+[{
+  "name": "LUODA",
+  "slug": "luoda",
+  "base": "http://47.114.75.115:40000/v1",
+  "key": "sk-proxy-local-51f5bd4b9797f2620bc55460946802711cf7312b38c24794",
+  "id": "codexAPI",
+  "models": ["codexAPI"]
+}]
