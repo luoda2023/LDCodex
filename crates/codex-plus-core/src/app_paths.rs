@@ -225,16 +225,31 @@ pub fn build_codex_executable(app_dir: &Path) -> PathBuf {
     // Windows: 优先 ChatGPT.exe（Electron GUI，支持 --remote-debugging-port）
     // Codex.exe 是 CLI 工具，不支持调试端口参数
     let chatgpt = app_dir.join("ChatGPT.exe");
-    if chatgpt.exists() {
+    let chatgpt_exists = chatgpt.exists();
+    let codex = app_dir.join("Codex.exe");
+    let codex_exists = codex.exists();
+    let lower = app_dir.join("codex.exe");
+    let lower_exists = lower.exists();
+    let _ = crate::diagnostic_log::append_diagnostic_log(
+        "launcher.build_codex_executable_check",
+        serde_json::json!({
+            "app_dir": app_dir.to_string_lossy(),
+            "chatgpt_path": chatgpt.to_string_lossy(),
+            "chatgpt_exists": chatgpt_exists,
+            "codex_path": codex.to_string_lossy(),
+            "codex_exists": codex_exists,
+            "lower_path": lower.to_string_lossy(),
+            "lower_exists": lower_exists,
+        }),
+    );
+    if chatgpt_exists {
         return chatgpt;
     }
     // 兜底：尝试 Codex.exe（命令行后端）
-    let codex = app_dir.join("Codex.exe");
-    if codex.exists() {
+    if codex_exists {
         return codex;
     }
-    let lower = app_dir.join("codex.exe");
-    if lower.exists() {
+    if lower_exists {
         return lower;
     }
     // 兜底返回（调用方会检查 exists）
