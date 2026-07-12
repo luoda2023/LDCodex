@@ -26,6 +26,7 @@ import {
   Copy,
   Download,
   Edit3,
+  Gauge,
   GripVertical,
   Info,
   ExternalLink,
@@ -388,6 +389,28 @@ type EnvConflictsResult = CommandResult<{
   conflicts: EnvConflict[];
 }>;
 
+type RelayLatencyResult = CommandResult<{
+  latencyMs: number | null;
+  httpStatus: number | null;
+}>;
+
+type RelayEnvironmentResult = CommandResult<{
+  clashVergeTun: {
+    enabled: boolean;
+    configPath: string | null;
+  };
+  proxyEnvironment: {
+    variables: Array<{
+      name: string;
+      source: "process" | "user" | "system" | string;
+    }>;
+  };
+  codexEnvFile: {
+    exists: boolean;
+    path: string;
+  };
+}>;
+
 type RemoveEnvConflictsResult = CommandResult<{
   removed: Array<{
     name: string;
@@ -516,13 +539,14 @@ type StartupResult = CommandResult<{
   showUpdate: boolean;
 }>;
 
-type Route = "overview" | "relay" | "sessions" | "context" | "enhance" | "zcode-sessions" | "zcode-plugins" | "zcode-enhance" | "zcode-profiles" | "workbuddy-profiles" | "proxy" | "maintenance" | "about" | "settings";
+type Route = "overview" | "relay" | "relayEnvironment" | "sessions" | "context" | "enhance" | "zcode-sessions" | "zcode-plugins" | "zcode-enhance" | "zcode-profiles" | "workbuddy-profiles" | "proxy" | "maintenance" | "about" | "settings";
 type Theme = "dark" | "light";
 
 /** 所有路由（用于标题查找、路由匹配） */
 const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string }> = [
   { id: "overview", label: "概览", icon: LayoutDashboard },
   { id: "relay", label: "模型配置", icon: KeyRound },
+  { id: "relayEnvironment", label: "中转站环境配置检测", icon: ShieldCheck },
   { id: "sessions", label: "会话管理", icon: MessageCircle },
   { id: "context", label: "工具与插件", icon: Network },
   { id: "enhance", label: "增强设置", icon: Hammer },
@@ -550,13 +574,14 @@ const navGroups: Array<{
   },
   {
     label: "Codex 工具",
-    items: [
-      { id: "relay", label: "模型配置", icon: KeyRound },
-      { id: "proxy", label: "代理服务器", icon: ShieldCheck },
-      { id: "sessions", label: "会话管理", icon: MessageCircle },
-      { id: "context", label: "工具与插件", icon: Network },
-      { id: "enhance", label: "增强设置", icon: Hammer },
-    ],
+        items: [
+          { id: "relay", label: "模型配置", icon: KeyRound },
+          { id: "relayEnvironment", label: "环境配置检测", icon: ShieldCheck },
+          { id: "proxy", label: "代理服务器", icon: ShieldCheck },
+          { id: "sessions", label: "会话管理", icon: MessageCircle },
+          { id: "context", label: "工具与插件", icon: Network },
+          { id: "enhance", label: "增强设置", icon: Hammer },
+        ],
   },
   {
     label: "ZCode 工具",
@@ -671,6 +696,7 @@ export function App() {
   const [relay, setRelay] = useState<RelayResult | null>(null);
   const [relayFiles, setRelayFiles] = useState<RelayFilesResult | null>(null);
   const [envConflicts, setEnvConflicts] = useState<EnvConflictsResult | null>(null);
+  const [relayEnvironment, setRelayEnvironment] = useState<RelayEnvironmentResult | null>(null);
   const [ccsProviders, setCcsProviders] = useState<CcsProvidersResult | null>(null);
   const [localSessions, setLocalSessions] = useState<LocalSessionsResult | null>(null);
   const [liveContextEntries, setLiveContextEntries] = useState<CodexContextEntries | null>(null);
@@ -771,6 +797,15 @@ export function App() {
     if (result) {
       setEnvConflicts(result);
       if (!silent || !isSuccessStatus(result.status)) showResultNotice("环境变量检测", result, { silentSuccess: true });
+    }
+    return result;
+  };
+
+  const refreshRelayEnvironment = async (silent = false) => {
+    const result = await run(() => call<RelayEnvironmentResult>("check_relay_environment"));
+    if (result) {
+      setRelayEnvironment(result);
+      if (!silent) showResultNotice("中转站环境配置检测", result, { silentSuccess: true });
     }
     return result;
   };
@@ -937,6 +972,7 @@ export function App() {
       await refreshEnvConflicts(true);
       await refreshCcsProviders(true);
     }
+    if (next === "relayEnvironment") await refreshRelayEnvironment(true);
     if (next === "sessions") {
       await refreshSettings(true);
       await refreshLocalSessions(true);
@@ -1357,6 +1393,10 @@ export function App() {
     if (result) showNotice("模型测试", result.message, result.status);
   };
 
+  const measureRelayLatency = async (url: string) => {
+    return await run(() => call<RelayLatencyResult>("measure_relay_latency", { url }));
+  };
+
   const fetchRelayProfileModels = async (profile: RelayProfile) => {
     const result = await run(() => call<RelayProfileModelsResult>("fetch_relay_profile_models", { profile }));
     if (result) showNotice("模型列表", result.message, result.status);
@@ -1458,7 +1498,6 @@ export function App() {
         launchMode: selectedSettings.launchMode,
         status: result.status,
       });
-      showNotice("模型切换", relayProfileModeSwitchedText(currentSelected), result.status);
     } finally {
       setRelaySwitching(false);
     }
@@ -1679,6 +1718,7 @@ export function App() {
       refreshRelay,
       refreshRelayFiles,
       refreshEnvConflicts,
+      refreshRelayEnvironment,
       removeEnvConflicts,
       refreshCcsProviders,
       importCcsProviders,
@@ -1698,6 +1738,7 @@ export function App() {
       deleteContextEntry,
       extractRelayCommonConfig,
       testRelayProfile,
+      measureRelayLatency,
       fetchRelayProfileModels,
       switchRelayProfile,
       relaySwitching,
@@ -1721,7 +1762,7 @@ export function App() {
       disableWatcher: () => watcherAction("disable_watcher"),
       toggleTheme: () => setTheme((current) => (current === "dark" ? "light" : "dark")),
     }),
-    [route, launchForm, settingsForm, settings, removeOwnedData, update, logs, diagnostics, theme, relayFiles, localSessions, selectedProviderSyncTarget, envConflicts, ccsProviders],
+    [route, launchForm, settingsForm, settings, removeOwnedData, update, logs, diagnostics, theme, relayFiles, localSessions, selectedProviderSyncTarget, envConflicts, relayEnvironment, ccsProviders],
   );
   const hasUpdate = update?.updateAvailable === true;
 
@@ -1840,6 +1881,9 @@ export function App() {
               onFormChange={setSettingsForm}
               actions={actions}
             />
+          ) : null}
+          {route === "relayEnvironment" ? (
+            <RelayEnvironmentScreen result={relayEnvironment} actions={actions} />
           ) : null}
           {route === "sessions" ? (
             <SessionsScreen
@@ -1978,6 +2022,7 @@ type Actions = {
   refreshRelay: () => Promise<void>;
   refreshRelayFiles: () => Promise<RelayFilesResult | null>;
   refreshEnvConflicts: (silent?: boolean) => Promise<EnvConflictsResult | null>;
+  refreshRelayEnvironment: (silent?: boolean) => Promise<RelayEnvironmentResult | null>;
   removeEnvConflicts: (names: string[]) => Promise<void>;
   refreshCcsProviders: (silent?: boolean) => Promise<CcsProvidersResult | null>;
   importCcsProviders: () => Promise<void>;
@@ -2001,6 +2046,7 @@ type Actions = {
   deleteContextEntry: (settings: BackendSettings, kind: ContextKind, id: string) => Promise<BackendSettings | null>;
   extractRelayCommonConfig: (configContents: string) => Promise<ExtractRelayCommonConfigResult | null>;
   testRelayProfile: (profile: RelayProfile) => Promise<void>;
+  measureRelayLatency: (url: string) => Promise<RelayLatencyResult | null>;
   fetchRelayProfileModels: (profile: RelayProfile) => Promise<string[] | null>;
   switchRelayProfile: (settings: BackendSettings, previousActiveRelayId?: string) => Promise<void>;
   relaySwitching: boolean;
@@ -2094,6 +2140,80 @@ function OverviewScreen({
         </CardContent>
       </Panel>
     </>
+  );
+}
+
+function RelayEnvironmentScreen({ result, actions }: { result: RelayEnvironmentResult | null; actions: Actions }) {
+  const proxyVariables = result?.proxyEnvironment.variables ?? [];
+  const proxyVariableLabels = proxyVariables.map((item) => {
+    const source = item.source === "user" ? "用户环境" : item.source === "system" ? "系统环境" : "进程环境";
+    return `${item.name}（${source}）`;
+  });
+  const checks = [
+    {
+      id: "clash-verge-tun",
+      title: "Clash Verge Rev TUN 模式",
+      passed: result ? !result.clashVergeTun.enabled : false,
+      detail: result
+        ? result.clashVergeTun.enabled
+          ? `检测到 TUN 模式已开启，请在 Clash Verge Rev 中关闭。配置：${result.clashVergeTun.configPath || "未记录路径"}`
+          : result.clashVergeTun.configPath
+            ? `TUN 模式已关闭。配置：${result.clashVergeTun.configPath}`
+            : "未发现 Clash Verge Rev 配置，按未开启处理。"
+        : "等待检测。",
+    },
+    {
+      id: "proxy-environment",
+      title: "系统代理环境变量",
+      passed: result ? proxyVariables.length === 0 : false,
+      detail: result
+        ? proxyVariables.length
+          ? `检测到代理环境变量：${proxyVariableLabels.join("、")}。请清理后重新启动 Codex++。`
+          : "未检测到 HTTP_PROXY、HTTPS_PROXY、ALL_PROXY、NO_PROXY 或 FTP_PROXY。"
+        : "等待检测。",
+    },
+    {
+      id: "codex-dotenv",
+      title: "Codex .env 文件",
+      passed: result ? !result.codexEnvFile.exists : false,
+      detail: result
+        ? result.codexEnvFile.exists
+          ? `检测到可能干扰供应商配置的 .env 文件：${result.codexEnvFile.path}`
+          : `未发现 .env 文件：${result.codexEnvFile.path}`
+        : "等待检测。",
+    },
+  ];
+  const allPassed = Boolean(result) && checks.every((check) => check.passed);
+
+  return (
+    <Panel>
+      <CardHead
+        title="中转站环境配置检测"
+        detail={result ? (allPassed ? "三项检测全部通过" : "检测到需要处理的环境问题") : "正在读取本机环境"}
+      />
+      <CardContent>
+        <div className="relay-environment-checks">
+          {checks.map((check) => (
+            <div className={`relay-environment-check ${result ? (check.passed ? "ok" : "failed") : "pending"}`} key={check.id}>
+              <div className="relay-environment-check-icon">
+                {result ? (check.passed ? <CheckCircle2 className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />) : <RefreshCw className="h-5 w-5" />}
+              </div>
+              <div className="relay-environment-check-copy">
+                <strong>{check.title}</strong>
+                <span>{check.detail}</span>
+              </div>
+              <Badge status={result ? (check.passed ? "ok" : "failed") : "not_checked"} />
+            </div>
+          ))}
+        </div>
+        <Toolbar>
+          <Button onClick={() => void actions.refreshRelayEnvironment()}>
+            <RefreshCw className="h-4 w-4" />
+            重新检测
+          </Button>
+        </Toolbar>
+      </CardContent>
+    </Panel>
   );
 }
 
@@ -3696,10 +3816,50 @@ function SortableRelayProfileCard({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: profile.id });
   const active = profile.id === form.activeRelayId;
+  const latencyTarget = relayProfileLatencyTarget(profile);
+  const [latency, setLatency] = useState<{ status: "idle" | "loading" | "ok" | "failed"; latencyMs: number | null }>({
+    status: latencyTarget ? "loading" : "idle",
+    latencyMs: null,
+  });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+  const refreshLatency = async () => {
+    if (!latencyTarget) {
+      setLatency({ status: "idle", latencyMs: null });
+      return;
+    }
+    setLatency({ status: "loading", latencyMs: null });
+    const result = await actions.measureRelayLatency(latencyTarget);
+    setLatency(
+      result && isSuccessStatus(result.status) && result.latencyMs !== null
+        ? { status: "ok", latencyMs: result.latencyMs }
+        : { status: "failed", latencyMs: null },
+    );
+  };
+
+  useEffect(() => {
+    let active = true;
+    if (!latencyTarget) {
+      setLatency({ status: "idle", latencyMs: null });
+      return () => {
+        active = false;
+      };
+    }
+    setLatency({ status: "loading", latencyMs: null });
+    void actions.measureRelayLatency(latencyTarget).then((result) => {
+      if (!active) return;
+      setLatency(
+        result && isSuccessStatus(result.status) && result.latencyMs !== null
+          ? { status: "ok", latencyMs: result.latencyMs }
+          : { status: "failed", latencyMs: null },
+      );
+    });
+    return () => {
+      active = false;
+    };
+  }, [latencyTarget]);
 
   return (
     <div
@@ -3730,6 +3890,27 @@ function SortableRelayProfileCard({
         <strong>{profile.name || "未命名模型"}</strong>
         <small>{relayModeLabel(profile.relayMode)} · {relayProtocolLabel(profile.protocol)} · {relayProfileConfigBrief(profile)}</small>
       </span>
+      <button
+        className={`relay-latency ${latency.status}`}
+        disabled={!latencyTarget || latency.status === "loading"}
+        onClick={(event) => {
+          event.stopPropagation();
+          void refreshLatency();
+        }}
+        title={latencyTarget ? "重新检测延迟" : "此供应商没有单一目标 URL"}
+        type="button"
+      >
+        <Gauge className="h-4 w-4" />
+        <span>
+          {latency.status === "loading"
+            ? "..."
+            : latency.status === "ok" && latency.latencyMs !== null
+              ? `${latency.latencyMs} ms`
+              : latency.status === "failed"
+                ? "不可用"
+                : "--"}
+        </span>
+      </button>
       <span className="relay-card-actions">
         <Button
           className={`relay-use-button ${active ? "active" : ""}`}
@@ -5057,6 +5238,7 @@ function routeSubtitle(route: Route) {
   const subtitles: Record<Route, string> = {
     overview: "LDAI管理工具 — Codex & ZCode 双工具集成管理",
     relay: "管理 API 模型、协议、Key 与配置文件",
+    relayEnvironment: "排查可能干扰中转站配置的本机环境",
     sessions: "查看、删除和修复 Codex 本地会话",
     context: "独立管理 MCP、Skills、Plugins",
     enhance: "Codex 增强功能：启动、重启、插件与设置",
@@ -5968,6 +6150,15 @@ function relayProfileConfigBrief(profile: RelayProfile): string {
   return profile.baseUrl || "未填写 URL";
 }
 
+function relayProfileLatencyTarget(profile: RelayProfile): string {
+  if (isAggregateRelayProfile(profile)) return "";
+  if (profile.relayMode === "official" && !profile.officialMixApiKey) return "";
+  if (profile.protocol === "chatCompletions") {
+    return (profile.upstreamBaseUrl || profile.baseUrl).trim();
+  }
+  return profile.baseUrl.trim();
+}
+
 function relayProfileModeHelp(profile: RelayProfile): string {
   if (isAggregateRelayProfile(profile)) {
     return "聚合模型只保存成员和策略配置，成员来自已有 API 模型；切为当前后会通过本地协议代理轮转请求。";
@@ -6013,12 +6204,6 @@ function relayProfileSwitchCommand(profile: RelayProfile): "clear_relay_injectio
   if (profile.relayMode === "official" && !profile.officialMixApiKey) return "clear_relay_injection";
   if (profile.configContents.trim()) return "apply_relay_injection";
   return profile.officialMixApiKey ? "apply_relay_injection" : "clear_relay_injection";
-}
-function relayProfileModeSwitchedText(profile: RelayProfile): string {
-  if (isAggregateRelayProfile(profile)) return "已切换到聚合模型；真实对话会按所选策略轮转成员。";
-  if (profile.relayMode === "pureApi") return "已按此模型切换到纯 API；Codex增强已设为完整增强。";
-  if (profile.officialMixApiKey) return "已按此模型使用官方登录，并混入 API Key；Codex增强已设为兼容增强。";
-  return "已按此模型切回官方登录；Codex增强已设为兼容增强。";
 }
 
 function withGeneratedRelayFiles(profile: RelayProfile): RelayProfile {

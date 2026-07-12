@@ -17,6 +17,8 @@ pub mod ports;
 pub mod protocol_proxy;
 pub mod proxy;
 pub mod relay_config;
+pub mod relay_environment;
+pub mod relay_latency;
 pub mod relay_switch;
 pub mod routes;
 pub mod script_market;

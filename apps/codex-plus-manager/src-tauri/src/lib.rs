@@ -121,6 +121,8 @@ pub fn run() {
             commands::delete_context_entry,
             commands::extract_relay_common_config,
             commands::test_relay_profile,
+            commands::check_relay_environment,
+            commands::measure_relay_latency,
             commands::fetch_relay_profile_models,
             commands::switch_relay_profile,
             commands::apply_relay_injection,
