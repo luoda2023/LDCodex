@@ -185,6 +185,11 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
+          name: ldai-windows-binaries
+          path: release-artifacts
+
+      - uses: actions/download-artifact@v4
+        with:
           name: ldai-macos-x64-dmg
           path: release-artifacts
 
