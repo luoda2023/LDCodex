@@ -222,7 +222,14 @@ jobs:
             --prerelease \
             --latest
 
-          # 上传产物（只上传安装包/压缩包/DMG，跳过 extracted 目录的桥接文件）
+          # 重新打包 ldai-windows-binaries 为 zip（download-artifact 会解压）
+          cd release-artifacts
+          if [ -f ldcodex.exe ]; then
+            zip -j ldai-windows-binaries.zip ldcodex.exe ldcodex-manager.exe ldzcode.exe 2>/dev/null || true
+          fi
+          cd "$OLDPWD"
+
+          # 上传产物
           for f in release-artifacts/*.zip release-artifacts/*.exe release-artifacts/*.dmg; do
             [ -f "$f" ] && gh release upload "$TAG" "$f" || true
           done
