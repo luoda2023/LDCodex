@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const CLASH_VERGE_APP_ID: &str = "io.github.clash-verge-rev.clash-verge-rev";
 const CLASH_VERGE_CONFIG_FILE: &str = "clash-verge.yaml";
@@ -10,14 +10,11 @@ const CLASH_VERGE_CONFIG_FILE: &str = "clash-verge.yaml";
 pub struct RelayEnvironmentReport {
     pub clash_verge_tun: ClashVergeTunCheck,
     pub proxy_environment: ProxyEnvironmentCheck,
-    pub codex_env_file: CodexEnvFileCheck,
 }
 
 impl RelayEnvironmentReport {
     pub fn all_passed(&self) -> bool {
-        !self.clash_verge_tun.enabled
-            && self.proxy_environment.variables.is_empty()
-            && !self.codex_env_file.exists
+        !self.clash_verge_tun.enabled && self.proxy_environment.variables.is_empty()
     }
 }
 
@@ -49,21 +46,12 @@ pub enum ProxyEnvironmentSource {
     System,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CodexEnvFileCheck {
-    pub exists: bool,
-    pub path: String,
-}
-
 pub fn inspect_relay_environment() -> RelayEnvironmentReport {
-    let codex_home = crate::codex_home::default_codex_home_dir();
     RelayEnvironmentReport {
         clash_verge_tun: inspect_clash_verge_tun(&clash_verge_config_candidates()),
         proxy_environment: ProxyEnvironmentCheck {
             variables: detect_proxy_environment_variables(),
         },
-        codex_env_file: inspect_codex_env_file(&codex_home),
     }
 }
 
@@ -212,14 +200,6 @@ fn detect_user_proxy_environment_variables() -> Vec<ProxyEnvironmentVariable> {
     Vec::new()
 }
 
-fn inspect_codex_env_file(codex_home: &Path) -> CodexEnvFileCheck {
-    let path = codex_home.join(".env");
-    CodexEnvFileCheck {
-        exists: path.is_file(),
-        path: path.to_string_lossy().to_string(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -258,18 +238,6 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["HTTPS_PROXY", "NO_PROXY"]
         );
-    }
-
-    #[test]
-    fn reports_codex_dotenv_presence_without_reading_contents() {
-        let temp = tempfile::tempdir().unwrap();
-        let missing = inspect_codex_env_file(temp.path());
-        assert!(!missing.exists);
-
-        std::fs::write(temp.path().join(".env"), "OPENAI_API_KEY=secret\n").unwrap();
-        let present = inspect_codex_env_file(temp.path());
-        assert!(present.exists);
-        assert!(present.path.ends_with(".env"));
     }
 
     #[test]

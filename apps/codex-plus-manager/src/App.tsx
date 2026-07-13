@@ -405,10 +405,6 @@ type RelayEnvironmentResult = CommandResult<{
       source: "process" | "user" | "system" | string;
     }>;
   };
-  codexEnvFile: {
-    exists: boolean;
-    path: string;
-  };
 }>;
 
 type RemoveEnvConflictsResult = CommandResult<{
@@ -2172,16 +2168,6 @@ function RelayEnvironmentScreen({ result, actions }: { result: RelayEnvironmentR
           : "未检测到 HTTP_PROXY、HTTPS_PROXY、ALL_PROXY、NO_PROXY 或 FTP_PROXY。"
         : "等待检测。",
     },
-    {
-      id: "codex-dotenv",
-      title: "Codex .env 文件",
-      passed: result ? !result.codexEnvFile.exists : false,
-      detail: result
-        ? result.codexEnvFile.exists
-          ? `检测到可能干扰供应商配置的 .env 文件：${result.codexEnvFile.path}`
-          : `未发现 .env 文件：${result.codexEnvFile.path}`
-        : "等待检测。",
-    },
   ];
   const allPassed = Boolean(result) && checks.every((check) => check.passed);
 
@@ -2189,7 +2175,7 @@ function RelayEnvironmentScreen({ result, actions }: { result: RelayEnvironmentR
     <Panel>
       <CardHead
         title="中转站环境配置检测"
-        detail={result ? (allPassed ? "三项检测全部通过" : "检测到需要处理的环境问题") : "正在读取本机环境"}
+        detail={result ? (allPassed ? "两项检测全部通过" : "检测到需要处理的环境问题") : "正在读取本机环境"}
       />
       <CardContent>
         <div className="relay-environment-checks">
