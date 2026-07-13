@@ -24,8 +24,10 @@ bridge/data/
 
 Download/
 .workbuddy/
+release-artifacts/
 
 # temp/debug/backup files
+*.bak
 *.bak.*
 *.bak_*
 temp_*.tsx
