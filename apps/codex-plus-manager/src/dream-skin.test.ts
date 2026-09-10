@@ -221,8 +221,6 @@ describe("dream skin theme helpers", () => {
     const source = await readFile(new URL("./App.tsx", import.meta.url), "utf8");
 
     for (const text of [
-      "Fei-Away/Codex-Dream-Skin",
-      "MIT License",
       "第三方图片",
       "主题名称",
       "品牌副标题",

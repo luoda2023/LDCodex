@@ -28,6 +28,7 @@ import {
   CircleArrowUp,
   Copy,
   Download,
+  Upload,
   Edit3,
   Eye,
   EyeOff,
@@ -143,6 +144,25 @@ import {
 } from "./dream-skin";
 import { getLanguage, t, tf, toggleLanguage } from "@/i18n";
 import { vlmTestTranslation } from "./vlm-test-translation";
+import {
+  type VirtualModel,
+  type VirtualEndpoint,
+  type VirtualModelConfig,
+  type EndpointTestResult,
+  type EndpointFailoverState,
+  loadVirtualModelConfig,
+  saveVirtualModelConfig,
+  createEmptyVirtualModel,
+  createEmptyEndpoint,
+  testEndpointConnection,
+  exportVirtualModelConfig,
+  importVirtualModelConfig,
+  getActiveEndpoint,
+  handleFailover,
+  resetModelFailover,
+  resetAllFailover,
+  getFailoverState,
+} from "./virtual-models";
 
 const isWindowsPlatform = /\bWindows\b/i.test(navigator.userAgent);
 const dreamSkinWindowsPreviewUrl = new URL("../../../assets/inject/upstream/dream-skin/windows/dream-reference.jpg", import.meta.url).href;
@@ -1094,6 +1114,7 @@ export function App() {
   const [selectedProviderSyncTarget, setSelectedProviderSyncTarget] = useState("");
   const [removeOwnedData, setRemoveOwnedData] = useState(false);
   const [relaySwitching, setRelaySwitching] = useState(false);
+  const [virtualModelConfigOpen, setVirtualModelConfigOpen] = useState(false);
   const dreamSkinDraftDirty = Boolean(
     savedDreamSkinThemeDraft
       && dreamSkinThemeDraft
@@ -3278,6 +3299,15 @@ export function App() {
             <p>{routeSubtitle(route)}</p>
           </div>
           <div className="topbar-actions">
+            {route === "relay" ? (
+              <Button
+                onClick={() => setVirtualModelConfigOpen(true)}
+                variant="outline"
+              >
+                <Cpu className="h-4 w-4" />
+                {t("自定多模态模型")}
+              </Button>
+            ) : null}
             <Button
               onClick={() => toggleLanguage()}
               size="icon"
@@ -3310,17 +3340,17 @@ export function App() {
               pluginMarketplaceProgress={pluginMarketplaceProgress}
               actions={actions}
             />
-          ) : null}
-          {route === "relay" ? (
-            <RelayScreen
-              settings={settings}
-              relayFiles={relayFiles}
-              envConflicts={envConflicts}
-              ccsProviders={ccsProviders}
-              form={settingsForm}
-              actions={actions}
-            />
-          ) : null}
+          ) : null} {route === "relay" ? (
+ <RelayScreen
+ settings={settings}
+ relayFiles={relayFiles}
+ envConflicts={envConflicts}
+ ccsProviders={ccsProviders}
+ form={settingsForm}
+ actions={actions}
+ onOpenVirtualModelConfig={() => setVirtualModelConfigOpen(true)}
+ />
+ ) : null}
           {route === "relayEnvironment" ? (
             <RelayEnvironmentScreen result={relayEnvironment} actions={actions} />
           ) : null}
@@ -3492,6 +3522,9 @@ export function App() {
           onConfirm={() => void confirmPendingDreamSkinCommunity()}
           onDismiss={() => void dismissPendingDreamSkinCommunity()}
         />
+      ) : null}
+      {virtualModelConfigOpen ? (
+        <VirtualModelConfigScreen onClose={() => setVirtualModelConfigOpen(false)} />
       ) : null}
     </div>
   );
@@ -4217,6 +4250,7 @@ function RelayScreen({
   ccsProviders,
   form,
   actions,
+  onOpenVirtualModelConfig,
 }: {
   settings: SettingsResult | null;
   relayFiles: RelayFilesResult | null;
@@ -4224,6 +4258,7 @@ function RelayScreen({
   ccsProviders: CcsProvidersResult | null;
   form: BackendSettings;
   actions: Actions;
+  onOpenVirtualModelConfig: () => void;
 }) {
   const normalized = normalizeSettings(form);
   const [detailProfileId, setDetailProfileId] = useState<string | null>(null);
@@ -4321,14 +4356,20 @@ function RelayScreen({
             >
               <Plus className="h-4 w-4" />
               {t("添加供应商")}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={createNewAggregateProfile}
-            >
-              <Plus className="h-4 w-4" />
-              {t("添加聚合供应商")}
-            </Button>
+            </Button> <Button
+ variant="secondary"
+ onClick={createNewAggregateProfile}
+ >
+ <Plus className="h-4 w-4" />
+ {t("添加聚合供应商")}
+ </Button>
+ <Button
+ variant="secondary"
+ onClick={onOpenVirtualModelConfig}
+ >
+ <Cpu className="h-4 w-4" />
+ {t("自定多模态模型")}
+ </Button>
             <div className="third-party-import">
               <Button
                 onClick={openThirdPartyImport}
@@ -11606,6 +11647,397 @@ function formatDuration(startedAtMs: number): string {
 function stringifyError(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function VirtualModelConfigScreen({ onClose }: { onClose: () => void }) {
+  const [config, setConfig] = useState<VirtualModelConfig>(() => loadVirtualModelConfig());
+  const [editingModelId, setEditingModelId] = useState<string | null>(null);
+  const [editingEndpointId, setEditingEndpointId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Map<string, EndpointTestResult>>(new Map());
+  const [testingEndpoints, setTestingEndpoints] = useState<Set<string>>(new Set());
+  const editingModel = editingModelId ? config.models.find((m) => m.id === editingModelId) ?? null : null;
+  const editingEndpoint = editingModel && editingEndpointId ? editingModel.endpoints.find((e) => e.id === editingEndpointId) ?? null : null;
+
+  const testEndpoint = async (endpoint: VirtualEndpoint) => {
+    if (!endpoint.baseUrl || !endpoint.apiKey) {
+      setTestResults((prev) => new Map(prev).set(endpoint.id, {
+        success: false,
+        message: t("请先填写 Base URL 和 API Key"),
+      }));
+      return;
+    }
+    setTestingEndpoints((prev) => new Set(prev).add(endpoint.id));
+    try {
+      const result = await testEndpointConnection(endpoint.baseUrl, endpoint.apiKey);
+      setTestResults((prev) => new Map(prev).set(endpoint.id, result));
+    } finally {
+      setTestingEndpoints((prev) => {
+        const next = new Set(prev);
+        next.delete(endpoint.id);
+        return next;
+      });
+    }
+  };
+
+  const testAllEndpoints = async (model: VirtualModel) => {
+    for (const ep of model.endpoints) {
+      if (ep.enabled && ep.baseUrl && ep.apiKey) {
+        await testEndpoint(ep);
+      }
+    }
+  };
+
+  const updateConfig = (next: VirtualModelConfig) => {
+    setConfig(next);
+    saveVirtualModelConfig(next);
+  };
+
+  const addModel = () => {
+    const model = createEmptyVirtualModel();
+    updateConfig({ models: [...config.models, model] });
+    setEditingModelId(model.id);
+    setEditingEndpointId(null);
+  };
+
+  const removeModel = (modelId: string) => {
+    updateConfig({ models: config.models.filter((m) => m.id !== modelId) });
+    if (editingModelId === modelId) {
+      setEditingModelId(null);
+      setEditingEndpointId(null);
+    }
+  };
+
+  const updateModel = (modelId: string, patch: Partial<VirtualModel>) => {
+    updateConfig({
+      models: config.models.map((m) => (m.id === modelId ? { ...m, ...patch } : m)),
+    });
+  };
+
+  const addEndpoint = (modelId: string) => {
+    const ep = createEmptyEndpoint();
+    updateConfig({
+      models: config.models.map((m) => (m.id === modelId ? { ...m, endpoints: [...m.endpoints, ep] } : m)),
+    });
+    setEditingModelId(modelId);
+    setEditingEndpointId(ep.id);
+  };
+
+  const removeEndpoint = (modelId: string, endpointId: string) => {
+    updateConfig({
+      models: config.models.map((m) =>
+        m.id === modelId ? { ...m, endpoints: m.endpoints.filter((e) => e.id !== endpointId) } : m,
+      ),
+    });
+    if (editingEndpointId === endpointId) setEditingEndpointId(null);
+  };
+
+  const updateEndpoint = (modelId: string, endpointId: string, patch: Partial<VirtualEndpoint>) => {
+    updateConfig({
+      models: config.models.map((m) =>
+        m.id === modelId
+          ? { ...m, endpoints: m.endpoints.map((e) => (e.id === endpointId ? { ...e, ...patch } : e)) }
+          : m,
+      ),
+    });
+  };
+
+  const [failoverState, setFailoverState] = useState<EndpointFailoverState[]>([]);
+
+  const refreshFailoverState = () => {
+    setFailoverState(getFailoverState());
+  };
+
+  const handleResetModelFailover = (modelId: string) => {
+    resetModelFailover(modelId);
+    refreshFailoverState();
+  };
+
+  const handleResetAllFailover = () => {
+    resetAllFailover();
+    refreshFailoverState();
+  };
+
+  // 初始加载失败状态
+  useState(() => {
+    refreshFailoverState();
+  });
+
+  const isEndpointFailed = (endpointId: string) => {
+    return failoverState.some((s) => s.endpointId === endpointId);
+  };
+
+  const getEndpointFailReason = (endpointId: string) => {
+    return failoverState.find((s) => s.endpointId === endpointId)?.reason ?? null;
+  };
+
+  const handleExport = () => {
+    const json = exportVirtualModelConfig(config);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ldcodex-virtual-models-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const imported = importVirtualModelConfig(text);
+        updateConfig(imported);
+        setEditingModelId(null);
+        setEditingEndpointId(null);
+      } catch (err) {
+        alert(t("导入失败：") + (err instanceof Error ? err.message : String(err)));
+      }
+    };
+    input.click();
+  };
+
+  return (
+    <div className="virtual-model-overlay">
+      <div className="virtual-model-panel">
+        <div className="virtual-model-header">
+          <div>              <h2>{t("自定多模态模型")}</h2>
+            <p className="muted-text">{t("配置虚拟模型，每个模型可包含多个 API 端点，429 / 额度耗尽时自动轮转。")}</p>
+          </div>
+          <div className="virtual-model-header-actions">
+            <Button onClick={handleExport} size="sm" variant="secondary" title={t("导出配置为 JSON 文件")}>
+              <Download className="h-4 w-4" />
+              {t("导出")}
+            </Button>
+            <Button onClick={handleImport} size="sm" variant="secondary" title={t("从 JSON 文件导入配置")}>
+              <Upload className="h-4 w-4" />
+              {t("导入")}
+            </Button>
+            <Button onClick={onClose} size="icon" variant="outline">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="virtual-model-body">
+          {/* 左侧：模型列表 */}
+          <div className="virtual-model-list">
+            <Button onClick={addModel} className="virtual-model-add-btn" variant="secondary">
+              <Plus className="h-4 w-4" />
+              {t("添加虚拟模型")}
+            </Button>
+            {config.models.length === 0 ? (
+              <p className="muted-text" style={{ padding: "16px", textAlign: "center" }}>
+                {t("暂无虚拟模型，点击上方按钮添加。")}
+              </p>
+            ) : (
+              config.models.map((model) => (
+                <div
+                  key={model.id}
+                  className={`virtual-model-item ${editingModelId === model.id ? "active" : ""}`}
+                  onClick={() => {
+                    setEditingModelId(model.id);
+                    setEditingEndpointId(null);
+                  }}
+                >
+                  <div className="virtual-model-item-header">
+                    <span className="virtual-model-item-name">{model.name || model.virtualModelId || t("未命名")}</span>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeModel(model.id);
+                      }}
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <span className="virtual-model-item-sub">
+                    {model.virtualModelId || "—"} · {model.endpoints.length} {t("端点")}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+          {/* 右侧：编辑区 */}
+          <div className="virtual-model-editor">
+            {editingModel ? (
+              <>
+                <div className="virtual-model-editor-header">
+                  <h3>{t("虚拟模型详情")}</h3>
+                </div>
+                <div className="virtual-model-fields">
+                  <Field label={t("虚拟模型名称")}>
+                    <Input
+                      value={editingModel.name}
+                      onChange={(e) => updateModel(editingModel.id, { name: e.currentTarget.value })}
+                      placeholder={t("如 my-gpt4o")}
+                    />
+                  </Field>
+                  <Field label={t("虚拟模型 ID")}>
+                    <Input
+                      value={editingModel.virtualModelId}
+                      onChange={(e) => updateModel(editingModel.id, { virtualModelId: e.currentTarget.value })}
+                      placeholder={t("Codex 里配置的模型名，如 gpt-4o")}
+                    />
+                  </Field>
+                  <label className="switch-row">
+                    <input
+                      checked={editingModel.enabled}
+                      onChange={(e) => updateModel(editingModel.id, { enabled: e.currentTarget.checked })}
+                      type="checkbox"
+                    />
+                    <span><strong>{t("启用")}</strong></span>
+                    <ToggleVisual />
+                  </label>
+                  <Button
+                    onClick={() => handleResetModelFailover(editingModel.id)}
+                    size="sm"
+                    variant="ghost"
+                    className="virtual-model-reset-btn"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    {t("重置失败状态")}
+                  </Button>
+                </div>
+                <div className="virtual-model-endpoints">
+                  <div className="virtual-model-endpoints-header">
+                    <h4>{tf("API 端点（{0} 个）", [editingModel.endpoints.length])}</h4>
+                    <div className="virtual-model-endpoints-actions">
+                      <Button
+                        onClick={() => void testAllEndpoints(editingModel)}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        <TestTube className="h-3 w-3" />
+                        {t("测试全部")}
+                      </Button>
+                      <Button onClick={() => addEndpoint(editingModel.id)} size="sm" variant="secondary">
+                        <Plus className="h-3 w-3" />
+                        {t("添加端点")}
+                      </Button>
+                    </div>
+                  </div>
+                  {editingModel.endpoints.length === 0 ? (
+                    <p className="muted-text" style={{ padding: "12px" }}>
+                      {t("暂无端点。添加 API 地址和密钥后，429 时自动轮转。")}
+                    </p>
+                  ) : (
+                    editingModel.endpoints.map((ep, idx) => (
+                      <div
+                        key={ep.id}
+                        className={`virtual-endpoint-item ${editingEndpointId === ep.id ? "active" : ""}`}
+                        onClick={() => setEditingEndpointId(ep.id)}
+                      >
+                        <div className="virtual-endpoint-item-header">
+                          <span className="virtual-endpoint-index">#{idx + 1}</span>
+                          <span className="virtual-endpoint-label">{ep.label || ep.baseUrl || t("未配置")}</span>
+                          {isEndpointFailed(ep.id) ? (
+                            <span className="virtual-endpoint-failover-badge" title={getEndpointFailReason(ep.id) ?? ""}>
+                              <ShieldAlert className="h-3 w-3" />
+                              {t("冷却中")}
+                            </span>
+                          ) : null}
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeEndpoint(editingModel.id, ep.id);
+                            }}
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        {editingEndpointId === ep.id ? (
+                          <div className="virtual-endpoint-fields" onClick={(e) => e.stopPropagation()}>
+                            <Field label={t("备注名")}>
+                              <Input
+                                value={ep.label}
+                                onChange={(e) => updateEndpoint(editingModel.id, ep.id, { label: e.currentTarget.value })}
+                                placeholder={t("可选，如 付费API-1")}
+                              />
+                            </Field>
+                            <Field label={t("Base URL")}>
+                              <Input
+                                value={ep.baseUrl}
+                                onChange={(e) => updateEndpoint(editingModel.id, ep.id, { baseUrl: e.currentTarget.value })}
+                                placeholder={t("https://api.openai.com/v1")}
+                              />
+                            </Field>
+                            <Field label={t("API Key")}>
+                              <Input
+                                type="password"
+                                value={ep.apiKey}
+                                onChange={(e) => updateEndpoint(editingModel.id, ep.id, { apiKey: e.currentTarget.value })}
+                                placeholder={t("sk-...")}
+                              />
+                            </Field>
+                            <Field label={t("模型 ID")}>
+                              <Input
+                                value={ep.modelId}
+                                onChange={(e) => updateEndpoint(editingModel.id, ep.id, { modelId: e.currentTarget.value })}
+                                placeholder={t("如 gpt-4o")}
+                              />
+                            </Field>
+                            <label className="switch-row">
+                              <input
+                                checked={ep.enabled}
+                                onChange={(e) => updateEndpoint(editingModel.id, ep.id, { enabled: e.currentTarget.checked })}
+                                type="checkbox"
+                              />
+                              <span><strong>{t("启用")}</strong></span>
+                              <ToggleVisual />
+                            </label>
+                            <div className="virtual-endpoint-test">
+                              <Button
+                                onClick={() => void testEndpoint(ep)}
+                                disabled={testingEndpoints.has(ep.id)}
+                                size="sm"
+                                variant="secondary"
+                              >
+                                {testingEndpoints.has(ep.id) ? (
+                                  <>
+                                    <RefreshCw className="h-3 w-3 animate-spin" />
+                                    {t("测试中")}
+                                  </>
+                                ) : (
+                                  <>
+                                    <TestTube className="h-3 w-3" />
+                                    {t("测试连接")}
+                                  </>
+                                )}
+                              </Button>
+                              {testResults.has(ep.id) ? (
+                                <span className={`virtual-endpoint-test-result ${testResults.get(ep.id)!.success ? "success" : "error"}`}>
+                                  {testResults.get(ep.id)!.message}
+                                  {testResults.get(ep.id)!.latencyMs != null ? ` (${testResults.get(ep.id)!.latencyMs}ms)` : ""}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="virtual-model-empty">
+                <p className="muted-text">{t("选择左侧模型进行编辑，或添加新的虚拟模型。")}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function loadInitialTheme(): Theme {

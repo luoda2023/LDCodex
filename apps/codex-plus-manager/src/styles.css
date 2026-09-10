@@ -8396,3 +8396,267 @@ select {
   }
 }
 
+/* ─── 自定多模态模型 ─── */
+.virtual-model-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.virtual-model-panel {
+  width: min(96vw, 920px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 12px 40px hsl(var(--shadow-color) / 0.35);
+  overflow: hidden;
+}
+
+.virtual-model-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.virtual-model-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.virtual-model-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.muted-text {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.virtual-model-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.virtual-model-list {
+  width: 240px;
+  min-width: 200px;
+  border-right: 1px solid hsl(var(--border));
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.virtual-model-add-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.virtual-model-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.virtual-model-item:hover {
+  background: hsl(var(--accent));
+}
+
+.virtual-model-item.active {
+  background: hsl(var(--primary) / 0.15);
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+.virtual-model-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.virtual-model-item-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.virtual-model-item-sub {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
+.virtual-model-editor {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.virtual-model-editor-header {
+  margin-bottom: 16px;
+}
+
+.virtual-model-editor-header h3 {
+  margin: 0;
+}
+
+.virtual-model-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.virtual-model-endpoints {
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 16px;
+}
+
+.virtual-model-endpoints-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.virtual-model-endpoints-header h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.virtual-endpoint-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.virtual-endpoint-item:hover {
+  border-color: hsl(var(--primary) / 0.4);
+}
+
+.virtual-endpoint-item.active {
+  border-color: hsl(var(--primary));
+}
+
+.virtual-endpoint-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.virtual-endpoint-index {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  min-width: 24px;
+}
+
+.virtual-endpoint-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.virtual-endpoint-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.virtual-model-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 200px;
+}
+
+@media (max-width: 760px) {
+  .virtual-model-body {
+    flex-direction: column;
+  }
+  .virtual-model-list {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid hsl(var(--border));
+    max-height: 200px;
+  }
+}
+
+/* 测试连接按钮和结果 */
+.virtual-endpoint-test {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.virtual-endpoint-test-result {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.virtual-endpoint-test-result.success {
+  color: hsl(var(--status-success));
+  background: hsl(var(--status-success) / 0.1);
+}
+
+.virtual-endpoint-test-result.error {
+  color: hsl(var(--status-error));
+  background: hsl(var(--status-error) / 0.1);
+}
+
+.virtual-model-endpoints-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.virtual-endpoint-failover-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: hsl(var(--status-warning));
+  background: hsl(var(--status-warning) / 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.virtual-model-reset-btn {
+  color: hsl(var(--muted-foreground));
+}
+
+.virtual-model-reset-btn:hover {
+  color: hsl(var(--primary));
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
