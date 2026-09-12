@@ -458,6 +458,48 @@ pub fn freebuff_delete_model(id: String) -> CommandResult<FreeBuffModelsPayload>
     }
 }
 
+/// 重启 Freebuff 桌面版：结束现有进程树后重新拉起 Freebuff.exe。
+/// Freebuff 没在运行时直接启动；未检测到安装目录时返回失败。
+#[tauri::command]
+pub fn freebuff_restart() -> CommandResult<Value> {
+    use std::os::windows::process::CommandExt as _;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+    let Some(install_dir) = freebuff_install_dir() else {
+        return failed(
+            "未检测到 Freebuff 桌面版，无法重启。请先安装 Freebuff。",
+            json!({ "killed": false, "relaunched": false }),
+        );
+    };
+    let exe = install_dir.join("Freebuff.exe");
+    if !exe.exists() {
+        return failed(
+            "安装目录里没有 Freebuff.exe，无法重启。",
+            json!({ "killed": false, "relaunched": false }),
+        );
+    }
+    // 结束现有进程树（没有在运行时 taskkill 返回非零，忽略即可）。
+    let kill = std::process::Command::new("taskkill")
+        .args(["/F", "/T", "/IM", "Freebuff.exe"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+    let killed = kill.map(|output| output.status.success()).unwrap_or(false);
+    if killed {
+        // 给系统一点时间释放文件与端口，避免立刻重启时单实例锁还没放。
+        std::thread::sleep(std::time::Duration::from_millis(1200));
+    }
+    match std::process::Command::new(&exe).spawn() {
+        Ok(_) => ok(
+            "Freebuff 已重启。",
+            json!({ "killed": killed, "relaunched": true }),
+        ),
+        Err(error) => failed(
+            &format!("重启 Freebuff 失败：{error}"),
+            json!({ "killed": killed, "relaunched": false }),
+        ),
+    }
+}
+
 #[tauri::command]
 pub async fn freebuff_run_patch(action: String) -> CommandResult<FreeBuffPatchPayload> {
     let Some(install_dir) = freebuff_install_dir() else {

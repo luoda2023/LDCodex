@@ -1,7 +1,8 @@
 use codex_plus_core::install::{
-    InstallOptions, MANAGER_BUNDLE_ID, SILENT_BINARY, SILENT_BUNDLE_ID, app_bundle_names,
-    build_macos_app_bundle, build_windows_entrypoint_plan, companion_binary_path_from_exe,
-    default_install_root_strategy, macos_companion_bundle_identifier_from_exe, shortcut_names,
+    InstallOptions, MANAGER_BUNDLE_ID, SILENT_BINARY, SILENT_BUNDLE_ID, WORKBUDDY_ENHANCE_NAME,
+    WORKBUDDY_ROUTE_ARGUMENT, app_bundle_names, build_macos_app_bundle,
+    build_windows_entrypoint_plan, companion_binary_path_from_exe, default_install_root_strategy,
+    macos_companion_bundle_identifier_from_exe, shortcut_names, workbuddy_shortcut_candidates,
 };
 
 #[test]
@@ -83,15 +84,17 @@ fn macos_bundle_metadata_contains_silent_and_manager_apps() {
     assert!(manager.info_plist.contains("<string>dreamskin</string>"));
     assert!(manager.info_plist.contains("<string>ldcodex</string>"));
     assert!(!silent.info_plist.contains("<string>dreamskin</string>"));
+    // 静默启动器二进制名与上游区分（SILENT_BINARY = "ldcodex"），
+    // 避免与原版 Codex++ 的 NSIS 互杀/单实例守卫冲突。
     assert_eq!(
         silent.binary_target_name.as_deref(),
-        Some("LDCodex")
+        Some("ldcodex")
     );
     assert_eq!(
         manager.binary_target_name.as_deref(),
         Some("LDCodexManager")
     );
-    assert!(silent.launch_script.contains("$DIR/LDCodex"));
+    assert!(silent.launch_script.contains("$DIR/ldcodex"));
     assert!(
         manager
             .launch_script
@@ -103,6 +106,48 @@ fn macos_bundle_metadata_contains_silent_and_manager_apps() {
 fn installer_exports_expected_two_entrypoint_names() {
     assert_eq!(shortcut_names(), ("LDCodex.lnk".to_string(), "LDCodex 管理工具.lnk".to_string()));
     assert_eq!(app_bundle_names(), ("LDCodex.app".to_string(), "LDCodex 管理工具.app".to_string()));
+}
+
+#[test]
+fn windows_entrypoint_plan_contains_workbuddy_enhance_shortcut() {
+    let options = InstallOptions {
+        install_root: Some("C:/Users/A/Desktop".into()),
+        launcher_path: Some("C:/Tools/ldcodex.exe".into()),
+        manager_path: Some("C:/Tools/LDCodexManager.exe".into()),
+        remove_owned_data: false,
+    };
+
+    let plan = build_windows_entrypoint_plan(&options);
+
+    assert_eq!(WORKBUDDY_ENHANCE_NAME, "WorkBuddy增强");
+    assert!(
+        plan.workbuddy_shortcut
+            .ends_with("WorkBuddy增强.lnk"),
+        "unexpected workbuddy shortcut path: {}",
+        plan.workbuddy_shortcut
+    );
+    assert_ne!(plan.workbuddy_shortcut, plan.manager_shortcut);
+    assert_ne!(plan.workbuddy_shortcut, plan.silent_shortcut);
+}
+
+#[test]
+fn workbuddy_shortcut_argument_targets_the_manager_route() {
+    assert_eq!(WORKBUDDY_ROUTE_ARGUMENT, "--route=workbuddy");
+}
+
+#[test]
+fn workbuddy_shortcut_candidates_are_named_after_the_feature() {
+    let candidates = workbuddy_shortcut_candidates();
+    for candidate in candidates {
+        let name = candidate
+            .file_name()
+            .map(|value| value.to_string_lossy().to_string())
+            .unwrap_or_default();
+        assert!(
+            name.starts_with(WORKBUDDY_ENHANCE_NAME),
+            "unexpected candidate name: {name}"
+        );
+    }
 }
 
 #[test]
@@ -225,7 +270,7 @@ fn macos_bundle_does_not_wrap_the_bundle_executable_in_itself() {
             "/Applications/LDCodex 管理工具.app/Contents/MacOS/CodexPlusPlusManager"
         ))
     );
-    assert!(silent.launch_script.contains("$DIR/LDCodex"));
+    assert!(silent.launch_script.contains("$DIR/ldcodex"));
     assert!(
         manager
             .launch_script

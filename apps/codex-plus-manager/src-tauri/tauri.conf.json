@@ -4,8 +4,8 @@
   "version": "1.2.56",
   "identifier": "cn.dicad.ldcodex.manager",
   "build": {
-    "beforeDevCommand": "npm run vite:dev",
-    "beforeBuildCommand": "npm run vite:build",
+    "beforeDevCommand": "npm run workbuddy:prepare && npm run vite:dev",
+    "beforeBuildCommand": "npm run launcher:stage && npm run workbuddy:prepare && npm run vite:build && npm run verify:dist",
     "devUrl": "http://127.0.0.1:1420",
     "frontendDist": "../dist"
   },
@@ -33,12 +33,18 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "publisher": "LUODA",
     "homepage": "https://dicad.cn",
     "shortDescription": "LDCodex 管理工具",
     "longDescription": "LDCodex 管理工具：Codex++ 风格的中转与助手配置面板（作者 LUODA，官网 dicad.cn）。",
     "category": "DeveloperTool",
+    "resources": [
+      "workbuddy-runtime/**/*",
+      "resources/**/*"
+    ],
     "icon": [
       "icons/icon.ico"
     ],
@@ -46,7 +52,10 @@
       "nsis": {
         "installMode": "perMachine",
         "displayLanguageSelector": false,
-        "languages": ["SimpChinese", "English"],
+        "languages": [
+          "SimpChinese",
+          "English"
+        ],
         "compression": "lzma",
         "startMenuFolder": "LDCodex 管理工具"
       }

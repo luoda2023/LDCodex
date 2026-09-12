@@ -22,13 +22,16 @@ import {
   ArrowLeft,
   ArrowRight,
   Bell,
+  Bot,
   CheckCircle2,
   ChevronDown,
   Camera,
   CircleArrowUp,
+  CircleStop,
   Copy,
   Download,
   Upload,
+  Users,
   Edit3,
   Eye,
   EyeOff,
@@ -51,9 +54,11 @@ import {
   Plug2,
   Cpu,
   FileCode2,
+  Globe,
   Moon,
   Minus,
   Maximize2,
+  MonitorSmartphone,
   X,
   Network,
   Power,
@@ -75,11 +80,12 @@ import {
   TestTube,
   Trash2,
   Wrench,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { ProviderPresetSelector } from "@/components/ProviderPresetSelector";
 import type { PresetPatch } from "@/components/ProviderPresetSelector";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { Badge as UiBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -317,6 +323,7 @@ type BackendSettings = {
   relayApiKey: string;
   relayProfiles: RelayProfile[];
   aggregateRelayProfiles: AggregateRelayProfile[];
+  modelPools: ModelPoolConfig[];
   activeAggregateRelayId: string;
   relayCommonConfigContents: string;
   relayContextConfigContents: string;
@@ -382,6 +389,22 @@ type AggregateRelayProfile = {
   sessionProvider?: RelaySessionProvider;
   strategy: RelayAggregateStrategy;
   members: AggregateRelayMember[];
+};
+
+type ModelPoolEndpoint = {
+  baseUrl: string;
+  apiKey: string;
+  modelId: string;
+  label: string;
+  enabled: boolean;
+};
+
+type ModelPoolConfig = {
+  id: string;
+  name: string;
+  virtualModelId: string;
+  enabled: boolean;
+  endpoints: ModelPoolEndpoint[];
 };
 
 type RelayContextSelection = {
@@ -886,11 +909,12 @@ type StartupResult = CommandResult<{
 }>;
 
 type ManagerNavigationIntent = {
-  page: "settings";
+  // "workbuddy" 来自桌面「WorkBuddy增强」图标的 `--route=workbuddy`。
+  page: "settings" | "workbuddy";
   section?: "stepwise";
 };
 
-type Route = "overview" | "relay" | "grok" | "relayEnvironment" | "sessions" | "context" | "skills" | "weixin" | "enhance" | "dreamSkin" | "zedRemote" | "userScripts" | "maintenance" | "freebuffConfig" | "about" | "settings";
+type Route = "overview" | "relay" | "grok" | "relayEnvironment" | "sessions" | "context" | "skills" | "weixin" | "enhance" | "workbuddy" | "workbuddyIntl" | "dreamSkin" | "zedRemote" | "userScripts" | "maintenance" | "freebuffConfig" | "about" | "settings";
 type Theme = "dark" | "light";
 
 const MANAGER_NAVIGATION_EVENT = "manager-navigation-requested";
@@ -904,6 +928,8 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string
   { id: "weixin", label: t("微信连接"), icon: ScanLine },
   { id: "enhance", label: t("Codex增强"), icon: Hammer },
   { id: "freebuffConfig", label: t("freebuff增强"), icon: Plug2 },
+  { id: "workbuddy", label: t("WorkBuddy 国内版"), icon: Bot },
+  { id: "workbuddyIntl", label: t("WorkBuddy 国际版"), icon: Globe },
   { id: "dreamSkin", label: t("皮肤管理"), icon: Palette },
   { id: "zedRemote", label: t("Zed 远程项目"), icon: ExternalLink },
   { id: "userScripts", label: t("脚本市场"), icon: FileCode2 },
@@ -920,7 +946,7 @@ const navigationSections: Array<{ label: string; routes: Route[]; placement?: "b
   },
   {
     label: t("扩展"),
-    routes: ["weixin", "enhance", "freebuffConfig", "dreamSkin", "zedRemote", "userScripts"],
+    routes: ["weixin", "enhance", "freebuffConfig", "workbuddy", "workbuddyIntl", "dreamSkin", "zedRemote", "userScripts"],
   },
   {
     label: t("系统"),
@@ -1030,6 +1056,7 @@ const defaultSettings: BackendSettings = {
   relayContextConfigContents: "",
   activeRelayId: "default",
   aggregateRelayProfiles: [],
+  modelPools: [],
   activeAggregateRelayId: "",
   relayTestModel: "gpt-5.4-mini",
 };
@@ -2009,6 +2036,11 @@ export function App() {
         await refreshSettings(true);
         return true;
       }
+      // LDCodex：桌面「WorkBuddy增强」图标带 --route=workbuddy 启动，落在这里。
+      if (navigation.page === "workbuddy") {
+        setRoute("workbuddy");
+        return true;
+      }
     } catch (error) {
       logDiagnostic("manager.navigation_failed", { error: stringifyError(error) });
     }
@@ -2031,18 +2063,66 @@ export function App() {
     const result = await launchCommand("restart_codex_plus", syncActiveRelay);
     if (!result) return false;
     if (!isSuccessStatus(result.status)) {
-      showNotice(t("重启 LDCodex"), result.message, result.status);
+      showNotice(t("重启 Codex/Chat"), result.message, result.status);
       return false;
     }
-    showNotice(t("重启 LDCodex"), t("正在等待 Codex 重新启动…"), "accepted");
+    showNotice(t("重启 Codex/Chat"), t("正在等待 Codex 重新启动…"), "accepted");
     const completion = await waitForLaunchCompletion(result.launchStartedAtMs);
-    showLaunchCompletionNotice(t("重启 LDCodex"), completion);
+    showLaunchCompletionNotice(t("重启 Codex/Chat"), completion);
     const succeeded = Boolean(
       completion
       && resolveLaunchStatus(completion.latest_launch, result.launchStartedAtMs ?? 0) === "success",
     );
     if (succeeded) setPendingDreamSkinRestart(null);
     return succeeded;
+  };
+
+  /** 重启 Freebuff 桌面版：结束进程树后重新拉起 Freebuff.exe。 */
+  const restartFreebuffClient = async () => {
+    const result = await call<CommandResult<Record<string, unknown>>>("freebuff_restart");
+    if (!result) return;
+    showNotice(
+      t("重启 Freebuff"),
+      result.message || (isSuccessStatus(result.status) ? t("Freebuff 已重启。") : t("重启失败")),
+      result.status as Status,
+    );
+  };
+
+  /** 重启 WorkBuddy 客户端：经本地守护进程以 CDP 模式重新拉起。
+   *  profile 决定操作的是国内版还是国际版 —— 两者是两套完全独立的服务。 */
+  const restartWorkBuddyClient = async (profile: WorkBuddyProfileId) => {
+    const title = profile === "workbuddy-ai" ? t("重启 WorkBuddy 国际版") : t("重启 WorkBuddy 国内版");
+    showNotice(title, t("正在重启 WorkBuddy…"), "accepted");
+    try {
+      const runtime = await invoke<WorkBuddyRuntimeStatus>("workbuddy_runtime_status", { profile });
+      if (!runtime.running) {
+        showNotice(title, t("增强服务未运行，无需重启。"), "failed");
+        return;
+      }
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      if (runtime.apiToken) headers["X-LDCodex-Token"] = runtime.apiToken;
+      const response = await fetch(`http://127.0.0.1:${runtime.port}/api/relaunch-cdp`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ force: runtime.clientRunning ? true : false }),
+      });
+      const parsed = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+      if (response.ok && parsed && parsed.ok !== false) {
+        showNotice(
+          title,
+          t("已经用调试模式重启 WorkBuddy，增强能力会在它启动后自动接上。"),
+          "ok",
+        );
+      } else {
+        const message =
+          parsed && typeof parsed === "object" && parsed.error
+            ? String(parsed.error)
+            : t("重启 WorkBuddy 没有成功。请先手动退出 WorkBuddy，再点一次「重启并让增强生效」。");
+        showNotice(title, message, "failed");
+      }
+    } catch (e) {
+      showNotice(title, friendlyRuntimeError(e), "failed");
+    }
   };
 
   const launchCommand = async (command: "launch_codex_plus" | "restart_codex_plus", syncActiveRelay = false) => {
@@ -3305,7 +3385,7 @@ export function App() {
                 variant="outline"
               >
                 <Cpu className="h-4 w-4" />
-                {t("自定多模态模型")}
+                {t("自定义模型池")}
               </Button>
             ) : null}
             <Button
@@ -3324,9 +3404,32 @@ export function App() {
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button onClick={() => void actions.restart()} title={t("重启 LDCodex")} variant="outline">
+            <Button
+              onClick={() => {
+                if (route === "freebuffConfig") void restartFreebuffClient();
+                else if (route === "workbuddy") void restartWorkBuddyClient("workbuddy-cn");
+                else if (route === "workbuddyIntl") void restartWorkBuddyClient("workbuddy-ai");
+                else void restart();
+              }}
+              title={
+                route === "freebuffConfig"
+                  ? t("重启 Freebuff")
+                  : route === "workbuddy"
+                    ? t("重启 WorkBuddy 国内版")
+                    : route === "workbuddyIntl"
+                      ? t("重启 WorkBuddy 国际版")
+                      : t("重启 Codex/Chat")
+              }
+              variant="outline"
+            >
               <Rocket className="h-4 w-4" />
-              {t("重启 LDCodex")}
+              {route === "freebuffConfig"
+                ? t("重启 Freebuff")
+                : route === "workbuddy"
+                  ? t("重启 WorkBuddy 国内版")
+                  : route === "workbuddyIntl"
+                    ? t("重启 WorkBuddy 国际版")
+                    : t("重启 Codex/Chat")}
             </Button>
             <Button onClick={() => void actions.refreshCurrent()} size="icon" title={t("刷新当前页面")} variant="outline">
               <RefreshCw className="h-4 w-4" />
@@ -3425,6 +3528,8 @@ export function App() {
             <ZedRemoteScreen projects={zedRemoteProjects} form={settingsForm} onFormChange={setSettingsForm} actions={actions} />
           ) : null}
           {route === "freebuffConfig" ? <FreebuffConfigScreen actions={actions} /> : null}
+          {route === "workbuddy" ? <WorkBuddyEnhanceScreen actions={actions} profile="workbuddy-cn" /> : null}
+          {route === "workbuddyIntl" ? <WorkBuddyEnhanceScreen actions={actions} profile="workbuddy-ai" /> : null}
           {route === "userScripts" ? <UserScriptsScreen settings={settings} market={scriptMarket} actions={actions} /> : null}
           {route === "maintenance" ? (
             <MaintenanceScreen
@@ -4264,24 +4369,14 @@ function RelayScreen({
   const [detailProfileId, setDetailProfileId] = useState<string | null>(null);
   const [newProfileDraft, setNewProfileDraft] = useState<RelayProfile | null>(null);
   const [thirdPartyImportOpen, setThirdPartyImportOpen] = useState(false);
+  const [virtualModelDropOpen, setVirtualModelDropOpen] = useState(false);
   const detailProfile = newProfileDraft || (detailProfileId
-    ? normalized.relayProfiles.find((profile) => profile.id === detailProfileId) || null
-    : null);
+ ? normalized.relayProfiles.find((profile) => profile.id === detailProfileId) || null
+ : null);
   const isNewProfile = !!newProfileDraft;
+  const virtualModels = useMemo(() => loadVirtualModelConfig().models, [newProfileDraft, detailProfileId]);
   const saveRelaySettings = async (next: BackendSettings) => {
     return actions.saveSettingsValue(next, true);
-  };
-  const createNewAggregateProfile = () => {
-    const draft = createAggregateRelayProfile(normalized);
-    setDetailProfileId(null);
-    setNewProfileDraft(draft);
-    if (!normalizeAggregateConfig(draft.aggregate, aggregateMemberCandidates(normalized, draft.id)).members.length) {
-      void actions.showMessage(
-        t("添加聚合供应商"),
-        t("已打开聚合供应商详情；请先添加或完善至少 1 个普通 API 供应商的 Base URL / Key，再勾选为成员。"),
-        "failed",
-      );
-    }
   };
   const editRelayProfile = async (profileId: string) => {
     setNewProfileDraft(null);
@@ -4321,6 +4416,7 @@ function RelayScreen({
           setDetailProfileId(null);
         }}
         actions={actions}
+        virtualModels={virtualModels}
       />
     );
   }
@@ -4345,32 +4441,50 @@ function RelayScreen({
               <small>{t("关闭后本工具不会在手动切换时写入 Codex 的 config.toml / auth.json；启动 Codex 时始终不会自动改这些文件。")}</small>
             </span>
             <ToggleVisual />
-          </label>
-          <div className="relay-add-row">
-            <Button
-              variant="secondary"
+          </label> <div className="relay-add-row">
+ <div className="add-provider-drop">
+ <Button
+ variant="secondary"
+ onClick={() => {
+ setVirtualModelDropOpen((open) => !open);
+ setThirdPartyImportOpen(false);
+ }}
+ >
+ <Plus className="h-4 w-4" />
+ {t("添加供应商")}
+ <ChevronDown className="h-4 w-4" />
+ </Button>
+        {virtualModelDropOpen ? (
+          <div className="add-provider-menu">
+            <button
+              type="button"
               onClick={() => {
+                setVirtualModelDropOpen(false);
                 setNewProfileDraft(createRelayProfile(normalized));
                 setDetailProfileId(null);
               }}
             >
-              <Plus className="h-4 w-4" />
-              {t("添加供应商")}
-            </Button> <Button
- variant="secondary"
- onClick={createNewAggregateProfile}
- >
- <Plus className="h-4 w-4" />
- {t("添加聚合供应商")}
- </Button>
- <Button
- variant="secondary"
- onClick={onOpenVirtualModelConfig}
- >
- <Cpu className="h-4 w-4" />
- {t("自定多模态模型")}
- </Button>
-            <div className="third-party-import">
+              <strong>{t("新建 API 供应商")}</strong>
+              <span>{t("创建单个 Base URL / Key 的普通供应商；表单里可从自定义模型池一键填充")}</span>
+            </button>
+            <div className="add-provider-menu-divider" />
+            <button
+              type="button"
+              onClick={() => {
+                setVirtualModelDropOpen(false);
+                onOpenVirtualModelConfig();
+              }}
+            >
+              <strong>
+                <Cpu className="h-4 w-4" />
+                {t("管理/新建 自定义模型池")}
+              </strong>
+              <span>{t("打开配置面板维护多端点模型")}</span>
+            </button>
+          </div>
+        ) : null}
+ </div>
+ <div className="third-party-import">
               <Button
                 onClick={openThirdPartyImport}
                 variant="secondary"
@@ -7234,6 +7348,7 @@ function RelayProfileDetail({
   onFormChange,
   onSaved,
   actions,
+  virtualModels,
 }: {
   profile: RelayProfile;
   relayFiles: RelayFilesResult | null;
@@ -7243,6 +7358,7 @@ function RelayProfileDetail({
   onFormChange: (value: BackendSettings) => Promise<BackendSettings | null>;
   onSaved?: () => void;
   actions: Actions;
+  virtualModels: VirtualModel[];
 }) {
   const [draft, setDraft] = useState<RelayProfile>(profile);
   const [modelWindowRows, setModelWindowRows] = useState<ModelWindowRow[]>(
@@ -7253,6 +7369,7 @@ function RelayProfileDetail({
   const [doctorRunning, setDoctorRunning] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const isActive = !isNew && profile.id === form.activeRelayId;
+  const [poolPickId, setPoolPickId] = useState("");
   const profileUsesLiveFiles = relayProfileUsesLiveFiles(profile);
   useEffect(() => {
     const useLiveFiles = isActive && profileUsesLiveFiles && relayFiles;
@@ -7272,6 +7389,7 @@ function RelayProfileDetail({
       ? applyRelayProfilePatchToFiles(liveDraft, { apiKey: storedApiKey })
       : liveDraft;
     setDraft(nextDraft);
+    setPoolPickId("");
     setModelWindowRows(modelWindowRowsFromProfile(nextDraft.modelList, nextDraft.modelWindows || "", nextDraft.modelVlm, nextDraft.modelAutoCompact));
   }, [profile.id, profile.modelList, profile.modelWindows, profile.modelAutoCompact, profile.modelMetadata, profile.modelVlm, profileUsesLiveFiles, isActive, isNew, relayFiles?.configContents, relayFiles?.authContents]);
   const validationSettings = relaySettingsWithDraft(form, profile.id, draft, isNew);
@@ -7313,9 +7431,27 @@ function RelayProfileDetail({
     try {
       const draftWithWindows = draftWithModelRows();
       const normalizedDraft = isAggregateRelayProfile(draftWithWindows) ? normalizeAggregateRelayProfile(draftWithWindows, form) : deriveRelayProfileFromFiles(draftWithWindows);
-      const next = normalizeSettings(isNew
+      // 选了模型池：只保存这条普通供应商（API 地址 = 本地转发代理，模型 ID = 池名）。
+      // 池内端点数据保存在 settings.modelPools（由「自定义模型池」配置自动同步），
+      // 本地代理按池名直连端点并自动轮转（429 / 额度耗尽自动切换）；
+      // 供应商列表里不产生任何成员 / 聚合条目。
+      if (poolPickId) {
+        const pickedPool = virtualModels.find((item) => item.id === poolPickId);
+        const usable = pickedPool?.endpoints.filter(
+          (endpoint) => endpoint.enabled && endpoint.baseUrl.trim() && endpoint.apiKey.trim(),
+        );
+        if (!usable?.length) {
+          void actions.showMessage(
+            t("自定义模型池"),
+            t("这个模型池还没有可用的端点（缺少 Base URL 或 API Key），请先去「自定义模型池」里补齐。"),
+            "failed",
+          );
+          return;
+        }
+      }
+      const next = normalizeSettings(settingsWithModelPoolsSynced(isNew
         ? addRelayProfile(form, normalizedDraft)
-        : updateRelayProfile(form, profile.id, normalizedDraft));
+        : updateRelayProfile(form, profile.id, normalizedDraft)));
       const settingsValidationError = relaySettingsValidation(next);
       if (settingsValidationError) return;
       const activeLiveBaseUrl = codexBaseUrlFromConfig(
@@ -7429,6 +7565,8 @@ function RelayProfileDetail({
           actions={actions}
           modelWindowRows={modelWindowRows}
           setModelWindowRows={setModelWindowRows}
+          virtualModels={virtualModels}
+          onPoolSelected={setPoolPickId}
         />
         {isAggregateRelayProfile(draft) ? null : (
         <RelayFileEditors
@@ -7485,6 +7623,12 @@ function ContextScreen({
   );
 }
 
+/** 本地协议代理地址：Codex 用 Responses 协议接这个地址，代理按供应商/模型池自动转发与轮转。
+ *  与 Rust 侧 protocol_proxy::DEFAULT_PROTOCOL_PROXY_PORT 保持一致（58321）。 */
+const LOCAL_PROTOCOL_PROXY_BASE_URL = "http://127.0.0.1:58321/v1";
+/** 本地代理的鉴权令牌（与 Rust 侧 protocol_proxy::NO_AUTH_PROXY_BEARER_TOKEN 一致）。 */
+const LOCAL_PROTOCOL_PROXY_TOKEN = "codex-plus-no-auth";
+
 function RelayProfileEditor({
   profile,
   form,
@@ -7493,6 +7637,8 @@ function RelayProfileEditor({
   actions,
   modelWindowRows,
   setModelWindowRows,
+  virtualModels,
+  onPoolSelected,
 }: {
   profile: RelayProfile;
   form: BackendSettings;
@@ -7501,11 +7647,16 @@ function RelayProfileEditor({
   actions: Actions;
   modelWindowRows: ModelWindowRow[];
   setModelWindowRows: (value: ModelWindowRow[]) => void;
+  virtualModels: VirtualModel[];
+  /** 选中模型池时上抛（保存时按池展开为成员 + 聚合供应商）。空串表示清除选择。 */
+  onPoolSelected: (poolId: string) => void;
 }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [vlmTestOpen, setVlmTestOpen] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showVlmApiKey, setShowVlmApiKey] = useState(false);
+  // 「从自定义模型池填充」当前选中的池子 id（仅用于回显，选完即把值写进表单字段）。
+  const [poolPickId, setPoolPickId] = useState("");
   const useCommonConfig = profile.useCommonConfig !== false;
   const [metadataImportTarget, setMetadataImportTarget] = useState<{
     index: number;
@@ -7521,6 +7672,10 @@ function RelayProfileEditor({
   useEffect(() => {
     modelSlugOriginsRef.current = modelWindowRows.map((row) => row.model.trim());
   }, [profile.id, profile.modelList]);
+  // 换了供应商草稿（尤其新建另一份草稿）时，池子选择回到「手动填写」默认项。
+  useEffect(() => {
+    setPoolPickId("");
+  }, [profile.id]);
   const importedModelMetadata = useMemo(
     () => parseModelMetadataMap(profile.modelMetadata),
     [profile.modelMetadata],
@@ -7550,7 +7705,68 @@ function RelayProfileEditor({
   const updateDraft = (patch: Partial<RelayProfile>) => {
     onProfileChange(applyRelayProfilePatchToFiles(profile, patch, { allowGenerateFiles: isNew }));
   };
+  /**
+   * 池子下拉的统一入口：
+   *  - 不选池（默认项）→ 完全手动模式，三个字段可自由编辑单一模型的地址 / 密钥 / 模型 ID；
+   *    若字段还是池子生成的内定值，则清空让客户重新手填；
+   *  - 选了池 → 走 fillFromVirtualModelPool 自动填充并锁定内定值。
+   */
+  const handlePoolChange = (poolId: string) => {
+    setPoolPickId(poolId);
+    onPoolSelected(poolId);
+    if (!poolId) {
+      if (profile.baseUrl.trim() === LOCAL_PROTOCOL_PROXY_BASE_URL) {
+        updateDraft({ baseUrl: "", upstreamBaseUrl: "", apiKey: "", model: "", testModel: "" });
+      }
+      return;
+    }
+    fillFromVirtualModelPool(poolId);
+  };
+
+  /**
+   * 「从自定义模型池填充」：模型池是一个虚拟模型，内部挂着多个真实端点。
+   * Codex 不直接访问端点 —— 它访问**本地转发代理**（IP + 端口，Responses 协议），
+   * 由代理按池内端点自动轮转（429 / 额度耗尽自动切换）。所以表单里填的是：
+   *   - API 地址 = 本地代理地址（http://127.0.0.1:58321/v1）
+   *   - 模型 ID  = 模型池名称（虚拟模型名，Codex 配置里的 model）
+   *   - 密钥     = 本地代理的内置令牌（代理不校验真实密钥，真实 Key 在各端点上）
+   * 保存时会自动把池内端点注册为成员供应商 + 聚合供应商，轮转才真正生效。
+   * 这里必须走 updateDraft（内部是 applyRelayProfilePatchToFiles），不能直接改 profile 字段。
+   */
+  const fillFromVirtualModelPool = (poolId: string) => {
+    onPoolSelected(poolId);
+    if (!poolId) return;
+    const pool = virtualModels.find((item) => item.id === poolId);
+    if (!pool) return;
+    const poolName = pool.name || pool.virtualModelId || t("自定义模型池");
+    const virtualModelId = pool.virtualModelId.trim();
+    if (!virtualModelId) {
+      void actions.showMessage(
+        t("自定义模型池"),
+        t("这个模型池还没有设置「模型 ID（对外名称）」，请先去「自定义模型池」里补齐。"),
+        "failed",
+      );
+      return;
+    }
+    updateDraft({
+      name: profile.name.trim() ? profile.name : poolName,
+      baseUrl: LOCAL_PROTOCOL_PROXY_BASE_URL,
+      upstreamBaseUrl: LOCAL_PROTOCOL_PROXY_BASE_URL,
+      apiKey: LOCAL_PROTOCOL_PROXY_TOKEN,
+      model: virtualModelId,
+      testModel: virtualModelId,
+      relayMode: "pureApi",
+      officialMixApiKey: false,
+    });
+    void actions.showMessage(
+      t("自定义模型池"),
+      tf("已按模型池「{0}」填好：API 地址是本地转发代理，模型 ID 就是池名。保存后由本地代理在池内端点间自动轮转（429 / 额度耗尽自动切换）。", [poolName]),
+      "ok",
+    );
+  };
   const modelRoutes = normalizeRelayModelRoutes(profile.modelRoutes);
+  // 选了模型池后，API 地址 / 密钥 / 模型 ID 全部由 LDCodex 内定（本地转发代理），客户不可改。
+  const poolLocked = isNew && poolPickId !== "";
   const modelRouteTargets = form.relayProfiles.filter(
     (candidate) => candidate.id !== profile.id && !isAggregateRelayProfile(candidate) && candidate.protocol === "responses",
   );
@@ -7705,6 +7921,28 @@ function RelayProfileEditor({
         />
       ) : null}
       <div className="relay-fields">
+        {virtualModels.length ? (
+          <Field className="relay-field-pool" label={t("从自定义模型池填充")}>
+            <AppSelect
+              value={poolPickId}
+              onChange={(poolId) => handlePoolChange(poolId)}
+              options={[
+                { value: "", label: t("不使用模型池（手动填写单一模型）") },
+                ...virtualModels.map((pool) => ({
+                  value: pool.id,
+                  label:
+                    (pool.name || pool.virtualModelId || t("自定义模型池"))
+                    + (pool.virtualModelId ? ` (${pool.virtualModelId})` : ""),
+                })),
+              ]}
+            />
+            <p className="field-hint">
+              {poolLocked
+                ? t("已选模型池：下面三项由 LDCodex 内置的本地转发代理代管，保存后按池内端点 429 自动轮转。")
+                : t("默认手动填写单一模型。选一个模型池则自动接管地址 / 密钥 / 模型，无需手填。")}
+            </p>
+          </Field>
+        ) : null}
         <Field className="relay-field-name" label={t("名称")}>
           <Input
             value={profile.name}
@@ -7726,11 +7964,14 @@ function RelayProfileEditor({
         <Field className="relay-field-config-model" label={t("配置模型")}>
           <Input
             value={profile.model}
+            disabled={poolLocked}
             onChange={(event) => updateDraft({ model: event.currentTarget.value })}
             placeholder={t("例如 deepseek-v4-pro")}
           />
           <p className="field-hint">
-            {t("默认启动 Codex 时使用的模型名，请勿带后缀；上下文窗口请在下方「模型列表」中按模型单独配置。")}
+            {poolLocked
+              ? t("已由模型池自动生成（模型 ID 就是池名），不可手改。")
+              : t("默认启动 Codex 时使用的模型名，请勿带后缀；上下文窗口请在下方「模型列表」中按模型单独配置。")}
           </p>
         </Field>
         <Field className="relay-field-goals" label={t("Codex 目标")}>
@@ -7821,15 +8062,22 @@ function RelayProfileEditor({
             <Field className="relay-field-base-url" label="Base URL">
               <Input
                 value={profile.baseUrl}
+                disabled={poolLocked}
                 onChange={(event) => updateDraft({ baseUrl: event.currentTarget.value })}
                 placeholder={t("填写中转服务 Base URL")}
               />
+              {poolLocked ? (
+                <p className="field-hint">
+                  {t("内置本地转发代理地址，由 LDCodex 自动生成与维护，无需填写。")}
+                </p>
+              ) : null}
             </Field>
             <Field className="relay-field-key" label="Key">
               <div className="secret-input-wrap">
                 <Input
                   type={showApiKey ? "text" : "password"}
                   value={profile.apiKey}
+                  disabled={poolLocked}
                   onChange={(event) => updateDraft({ apiKey: event.currentTarget.value })}
                   placeholder={t("输入中转服务的 API Key")}
                 />
@@ -7843,6 +8091,11 @@ function RelayProfileEditor({
                   {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {poolLocked ? (
+                <p className="field-hint">
+                  {t("真实密钥保存在模型池的各个端点里，这里由本地代理自动接管。")}
+                </p>
+              ) : null}
             </Field>
             <Field className="relay-field-protocol" label={t("上游协议")}>
               <div className="protocol-options">
@@ -9730,6 +9983,8 @@ function routeSubtitle(route: Route) {
     weixin: t("通过个人微信连接本机 Codex 会话"),
     enhance: t("会话删除、导出和脚本能力"),
     freebuffConfig: t("Freebuff 桌面版汉化、插件增强与自定义模型管理"),
+    workbuddy: t("WorkBuddy 多账号、主题、会话、模型、免打扰与自动化增强"),
+    workbuddyIntl: t("WorkBuddy 国际版（www.workbuddy.ai）的多账号、主题、会话、模型、免打扰与自动化增强"),
     dreamSkin: t("Dream Skin 风格主题与换图"),
     zedRemote: t("管理 Codex SSH 项目并加入 Zed workspace"),
     userScripts: t("内置和用户自定义脚本清单"),
@@ -11286,6 +11541,29 @@ function tomlString(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+/**
+ * 把「自定义模型池」配置（localStorage）同步进 settings.modelPools，
+ * 本地协议代理按池名直连池内端点并自动轮转；供应商结构保持纯普通供应商。
+ */
+function settingsWithModelPoolsSynced(settings: BackendSettings): BackendSettings {
+  return {
+    ...settings,
+    modelPools: loadVirtualModelConfig().models.map((model) => ({
+      id: model.id,
+      name: model.name,
+      virtualModelId: model.virtualModelId,
+      enabled: model.enabled,
+      endpoints: model.endpoints.map((endpoint) => ({
+        baseUrl: endpoint.baseUrl,
+        apiKey: endpoint.apiKey,
+        modelId: endpoint.modelId,
+        label: endpoint.label,
+        enabled: endpoint.enabled,
+      })),
+    })),
+  };
+}
+
 function syncLegacyRelayFields(settings: BackendSettings): BackendSettings {
   const relayProfiles = settings.relayProfiles.map((profile) =>
     isAggregateRelayProfile(profile) ? normalizeAggregateRelayProfile(profile, { ...settings, relayProfiles: settings.relayProfiles }) : deriveRelayProfileFromFiles(profile),
@@ -11421,6 +11699,15 @@ function createAggregateRelayProfile(settings: BackendSettings): RelayProfile {
     },
     settings,
   );
+}
+
+function normalizeCodexBaseUrl(raw: string): string {
+  let value = raw.trim().replace(/\/+$/, "");
+  if (!value) return value;
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(value)) {
+ value = `http://${value}`;
+  }
+  return value;
 }
 
 function addRelayProfile(settings: BackendSettings, profile: RelayProfile): BackendSettings {
@@ -11649,6 +11936,29 @@ function stringifyError(error: unknown) {
   return String(error);
 }
 
+/**
+ * 把底层错误翻译成客户看得懂的话。
+ *
+ * 运行时（Node 守护进程 / 系统调用）抛出的原始信息形如
+ * `spawnSync powershell ETIMEDOUT`、`ENOENT: no such file`，这些是给我们排查用的，
+ * 不该出现在客户界面上。这里只做一层"翻译"：本来就通顺的中文提示原样透出，
+ * 命中底层特征词的换成可操作的说明，原始信息仍会打到控制台便于定位。
+ */
+function friendlyRuntimeError(error: unknown): string {
+  const raw = stringifyError(error).trim();
+  if (!raw) return t("操作没有完成，请稍后重试。");
+  const looksTechnical =
+    /spawnSync|execFileSync|ETIMEDOUT|ENOENT|EACCES|EPERM|ECONNREFUSED|ECONNRESET|EPIPE|powershell|osascript|taskkill|tasklist|wmic|\.exe\b|node:internal|at [A-Za-z_$][\w.$]* \(/i.test(
+      raw,
+    );
+  if (!looksTechnical) return raw;
+  if (typeof console !== "undefined") console.warn("[LDCodex] 运行时底层错误：", raw);
+  if (/cdp|WorkBuddy/i.test(raw)) {
+    return t("重启 WorkBuddy 没有成功。请先手动退出 WorkBuddy，再点一次「重启并让增强生效」。");
+  }
+  return t("操作没有完成，请稍后重试；如果反复出现，重启 Codex 再试。");
+}
+
 function VirtualModelConfigScreen({ onClose }: { onClose: () => void }) {
   const [config, setConfig] = useState<VirtualModelConfig>(() => loadVirtualModelConfig());
   const [editingModelId, setEditingModelId] = useState<string | null>(null);
@@ -11805,7 +12115,7 @@ function VirtualModelConfigScreen({ onClose }: { onClose: () => void }) {
     <div className="virtual-model-overlay">
       <div className="virtual-model-panel">
         <div className="virtual-model-header">
-          <div>              <h2>{t("自定多模态模型")}</h2>
+          <div>              <h2>{t("自定义模型池")}</h2>
             <p className="muted-text">{t("配置虚拟模型，每个模型可包含多个 API 端点，429 / 额度耗尽时自动轮转。")}</p>
           </div>
           <div className="virtual-model-header-actions">
@@ -12052,4 +12362,1084 @@ function loadInitialRoute(): Route {
     return "about";
   }
   return "overview";
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * WorkBuddy 增强（运行时位于 src-tauri/workbuddy-runtime）
+ *
+ * 说明：这是 LDCodex 自有的 WorkBuddy 桌面端增强界面。
+ *   - 生命周期（启动 / 停止 / 提权 / 桌面图标）由 Rust 侧负责，
+ *     客户不需要知道 Node 在哪、端口是多少、日志写到哪里。
+ *   - 业务能力全部通过 127.0.0.1 上的本地守护进程 API 驱动，数据留在本机，
+ *     不做任何外部上报。
+ *
+ * 能力分层：
+ *   - 不需要 CDP：账号备份/切换、模型、会话、积分签到、电脑休眠（读写本地文件 + 官方 API）
+ *   - 需要 CDP ：主题、暂存提示词、快捷短语、免打扰自动点允许、自动化页面操作
+ *     （CDP 只能在 WorkBuddy 启动时用 --remote-debugging-port 打开，事后无法补开，
+ *       因此「让增强生效」这一步必须重启客户端）
+ * ──────────────────────────────────────────────────────────────── */
+const WORKBUDDY_DAEMON_PORT = 47832;
+
+/** WorkBuddy 桌面端发行版档案：国内版 / 国际版，两套服务完全独立。 */
+type WorkBuddyProfileId = "workbuddy-cn" | "workbuddy-ai";
+
+type WorkBuddyTab = "account" | "theme" | "sessions" | "models" | "enhance" | "automations" | "pc" | "settings";
+
+/** Rust 侧 `workbuddy_runtime_status` 的返回结构。 */
+type WorkBuddyRuntimeStatus = {
+  running: boolean;
+  port: number;
+  /** 当前档案标识（workbuddy-cn / workbuddy-ai）。 */
+  profile: string;
+  /** 当前档案展示名（WorkBuddy 国内版 / WorkBuddy 国际版）。 */
+  profileName: string;
+  apiToken: string | null;
+  dataDir: string;
+  runtimeDir: string | null;
+  nodePath: string | null;
+  clientInstalled: boolean;
+  clientRunning: boolean;
+  cdpPort: number;
+  shortcutInstalled: boolean;
+  shortcutPath: string | null;
+  managerExe: string | null;
+  elevated: boolean;
+  detail: string;
+  ready: boolean;
+};
+
+/** Rust 侧动作类命令的统一返回结构。 */
+type WorkBuddyActionResult = {
+  status: string;
+  message: string;
+  statusDetail: WorkBuddyRuntimeStatus;
+};
+
+const workBuddyTabs: Array<{ id: WorkBuddyTab; label: string; icon: LucideIcon }> = [
+  { id: "account", label: t("账号"), icon: Users },
+  { id: "theme", label: t("主题"), icon: Palette },
+  { id: "sessions", label: t("会话"), icon: MessageCircle },
+  { id: "models", label: t("模型"), icon: Cpu },
+  { id: "enhance", label: t("增强"), icon: Hammer },
+  { id: "automations", label: t("自动化"), icon: Play },
+  { id: "pc", label: t("电脑"), icon: Power },
+  { id: "settings", label: t("设置"), icon: Settings },
+];
+
+/** 免打扰开关的中文名（key 与守护进程 /api/no-disturb 一致）。 */
+const WORKBUDDY_NO_DISTURB_LABELS: Record<string, { label: string; detail: string }> = {
+  autoApprove: { label: t("自动点「允许」"), detail: t("决策弹窗出现时自动点允许，避免长任务卡在授权上。") },
+  outsideWrite: { label: t("允许访问工作区外文件"), detail: t("放开对工作目录之外文件的读写请求。") },
+  commands: { label: t("自动允许执行命令"), detail: t("跳过命令执行的确认步骤。") },
+  bulkDelete: { label: t("自动允许批量删除"), detail: t("跳过批量删除的确认步骤。") },
+  systemTools: { label: t("自动允许系统工具"), detail: t("跳过系统级工具的确认步骤。") },
+};
+
+/** 会话状态的中文显示。 */
+const WORKBUDDY_SESSION_STATUS: Record<string, string> = {
+  working: t("进行中"),
+  completed: t("已完成"),
+  archived: t("已归档"),
+};
+
+function workBuddyFormatTime(value: unknown): string {
+  const raw = Number(value);
+  if (!Number.isFinite(raw) || raw <= 0) return "—";
+  // 守护进程有的字段是毫秒时间戳，有的是秒级字符串，这里统一兼容。
+  const ms = raw > 1e12 ? raw : raw * 1000;
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString();
+}
+
+function workBuddyFormatExpiry(value: unknown): string {
+  const raw = Number(value);
+  if (!Number.isFinite(raw) || raw <= 0) return "—";
+  const ms = raw > 1e12 ? raw : raw * 1000;
+  const days = Math.floor((ms - Date.now()) / 86400000);
+  if (days < 0) return t("已过期");
+  return tf("{0} 天后过期", [String(days)]);
+}
+
+function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profile: WorkBuddyProfileId }) {
+  void actions;
+  const isIntl = profile === "workbuddy-ai";
+  const profileLabel = isIntl ? t("WorkBuddy 国际版") : t("WorkBuddy 国内版");
+  const [tab, setTab] = useState<WorkBuddyTab>("account");
+  const [status, setStatus] = useState<WorkBuddyRuntimeStatus | null>(null);
+  const [daemonStatus, setDaemonStatus] = useState<Record<string, unknown> | null>(null);
+  const [payload, setPayload] = useState<Record<string, unknown> | null>(null);
+  const [askState, setAskState] = useState<Record<string, unknown> | null>(null);
+  const [autoContinueState, setAutoContinueState] = useState<Record<string, unknown> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [themeBusyId, setThemeBusyId] = useState("");
+  // 「添加账号」无感登录：申请授权链接 → 浏览器登录 → 轮询自动入库。
+  const [oauth, setOauth] = useState<{ loginId: string; verificationUri: string } | null>(null);
+  const [oauthMessage, setOauthMessage] = useState("");
+  const oauthPollingRef = useRef(false);
+
+  // 两个档案的守护进程监听不同端口（国内版 47832 / 国际版 47833）。
+  // 状态还没读回来时先用本档案的固定端口兜底，避免第一次请求打错端口。
+  const base = `http://127.0.0.1:${status?.port ?? (isIntl ? 47833 : WORKBUDDY_DAEMON_PORT)}`;
+  const connected = !!status?.running;
+
+  /** 调用本地守护进程接口，自动带上本机令牌（除 /api/status 外都需要）。
+   *  tokenOverride：初次加载时组件 state 里的 status 还是旧值（token 为空），
+   *  必须显式传入刚从 workbuddy_runtime_status 拿到的令牌，否则请求会被 401 拒绝。 */
+  const call = useCallback(
+    async (path: string, init?: RequestInit, tokenOverride?: string | null) => {
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      const token = tokenOverride ?? status?.apiToken;
+      if (token) headers["X-LDCodex-Token"] = token;
+      const response = await fetch(base + path, {
+        ...init,
+        headers: { ...headers, ...((init?.headers as Record<string, string>) || {}) },
+      });
+      const text = await response.text();
+      let parsed: unknown = text;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        /* 保持纯文本 */
+      }
+      if (!response.ok) {
+        const message =
+          parsed && typeof parsed === "object" && "error" in parsed
+            ? String((parsed as { error?: unknown }).error || "")
+            : `HTTP ${response.status}`;
+        throw new Error(message || `HTTP ${response.status}`);
+      }
+      return parsed as Record<string, unknown>;
+    },
+    [base, status?.apiToken],
+  );
+
+  const refreshStatus = useCallback(async () => {
+    try {
+      const next = await invoke<WorkBuddyRuntimeStatus>("workbuddy_runtime_status", { profile });
+      setStatus(next);
+      return next;
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+      return null;
+    }
+  }, [profile]);
+
+  /** 读取当前页签的数据。 */
+  const loadTab = useCallback(
+    async (next: WorkBuddyTab, runtime: WorkBuddyRuntimeStatus | null = status) => {
+      setTab(next);
+      setPayload(null);
+      setError("");
+      if (!runtime?.running) return;
+      const endpoints: Partial<Record<WorkBuddyTab, string>> = {
+        account: "/api/accounts",
+        theme: "/api/themes",
+        sessions: "/api/sessions",
+        models: "/api/models",
+        enhance: "/api/no-disturb",
+        automations: "/api/automations",
+        pc: "/api/sleep-mode",
+      };
+      const path = endpoints[next];
+      if (!path) return;
+      setBusy(true);
+      try {
+        // 「增强」页签要同时读免打扰 / 决策弹窗 / 自动续写三份状态，
+        // 否则开关会显示成"关"，客户一勾反而把已开的关掉了。
+        const extra = next === "enhance" ? ["/api/ask-mode", "/api/auto-continue"] : [];
+        const override = runtime?.apiToken ?? undefined;
+        const [data, daemon, ...rest] = await Promise.all([
+          call(path, undefined, override),
+          call("/api/status", undefined, override).catch(() => null),
+          ...extra.map((extraPath) => call(extraPath, undefined, override).catch(() => null)),
+        ]);
+        setPayload(data);
+        if (daemon) setDaemonStatus(daemon);
+        if (next === "enhance") {
+          setAskState(rest[0] ?? null);
+          setAutoContinueState(rest[1] ?? null);
+        }
+      } catch (e) {
+        setError(friendlyRuntimeError(e));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [call, status],
+  );
+
+  const startRuntime = async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await invoke<WorkBuddyActionResult>("workbuddy_start_runtime", { profile });
+      setStatus(result.statusDetail);
+      setNotice(result.message);
+      if (result.status === "ok") await loadTab(tab, result.statusDetail);
+      else setError(result.message);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const stopRuntime = async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await invoke<WorkBuddyActionResult>("workbuddy_stop_runtime", {
+        profile,
+        options: { force: true },
+      });
+      setStatus(result.statusDetail);
+      setNotice(result.message);
+      setPayload(null);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** 让 WorkBuddy 以调试模式重启，打开 CDP 通道。 */
+  const enableCdp = async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await call("/api/relaunch-cdp", {
+        method: "POST",
+        body: JSON.stringify({ force: status?.clientRunning ? true : false }),
+      });
+      const failure = friendlyRuntimeError(result.error || t("重启失败"));
+      setNotice(
+        result.ok
+          ? t("已经用调试模式重启 WorkBuddy，增强能力会在它启动后自动接上。")
+          : tf("{0}", [failure]),
+      );
+      if (!result.ok) setError(failure);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runAction = async (path: string, body?: unknown, successMessage?: string) => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await call(path, {
+        method: "POST",
+        body: JSON.stringify(body ?? {}),
+      });
+      if (result && result.ok === false) {
+        throw new Error(String(result.error || t("操作失败")));
+      }
+      if (successMessage) setNotice(successMessage);
+      await loadTab(tab);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const installShortcut = async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await invoke<WorkBuddyActionResult>("workbuddy_install_shortcut", { profile });
+      setStatus(result.statusDetail);
+      if (result.status === "ok") setNotice(result.message);
+      else setError(result.message);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeShortcut = async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await invoke<WorkBuddyActionResult>("workbuddy_uninstall_shortcut", { profile });
+      setStatus(result.statusDetail);
+      if (result.status === "ok") setNotice(result.message);
+      else setError(result.message);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const relaunchElevated = async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await invoke<WorkBuddyActionResult>("workbuddy_relaunch_elevated", { profile });
+      setStatus(result.statusDetail);
+      if (result.status === "ok") setNotice(result.message);
+      else setError(result.message);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    void (async () => {
+      const runtime = await refreshStatus();
+      if (runtime?.running) await loadTab(tab, runtime);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cdpConnected = Boolean(
+    daemonStatus && (daemonStatus.cdp as { connected?: boolean } | undefined)?.connected,
+  );
+  const daemonVersion = String(daemonStatus?.version || "");
+  const daemonPrivilege = String(daemonStatus?.privilege || "");
+  const rows = (value: unknown): Array<Record<string, unknown>> =>
+    Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
+
+  /* ───────────── 各页签内容 ───────────── */
+
+  /** 「添加账号」：走守护进程的无感登录 —— 申请授权链接，自动打开浏览器，登录完成自动入库备份列表。 */
+  const startOauthLogin = async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setOauthMessage("");
+    try {
+      const result = await call("/api/oauth/start", { method: "POST", body: JSON.stringify({}) }) as Record<string, unknown>;
+      if (!result?.ok) throw new Error(String(result?.error || t("发起登录失败")));
+      const loginId = String(result.loginId || "");
+      const verificationUri = String(result.verificationUri || "");
+      setOauth({ loginId, verificationUri });
+      // 自动在系统浏览器打开授权页（失败不打断，用户可点链接手动打开）
+      void call("/api/open-url", { method: "POST", body: JSON.stringify({ url: verificationUri }) }).catch(() => {});
+      setOauthMessage(t("已打开浏览器授权页面，完成登录后账号会自动加进备份列表。"));
+      oauthPollingRef.current = true;
+      const poll = async (): Promise<void> => {
+        if (!oauthPollingRef.current) return;
+        try {
+          const r = await call(`/api/oauth/poll?loginId=${encodeURIComponent(loginId)}`) as Record<string, unknown>;
+          if (r?.ok && r.done) {
+            oauthPollingRef.current = false;
+            setOauth(null);
+            setOauthMessage("");
+            if (r.error) {
+              setError(tf("添加账号没有成功：{0}", [String(r.error)]));
+            } else {
+              const saved = (r.result || {}) as Record<string, unknown>;
+              const name = String(saved.nickname || (saved.account as Record<string, unknown>)?.nickname || saved.uid || "");
+              setNotice(name ? tf("账号「{0}」已添加到备份列表。", [name]) : t("账号已添加到备份列表。"));
+              await loadTab("account");
+            }
+            return;
+          }
+        } catch {
+          /* 网络抖动，继续轮询 */
+        }
+        setTimeout(() => void poll(), 2500);
+      };
+      setTimeout(() => void poll(), 2500);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelOauthLogin = () => {
+    oauthPollingRef.current = false;
+    setOauth(null);
+    setOauthMessage("");
+  };
+
+  const reopenOauthPage = async () => {
+    if (!oauth?.verificationUri) return;
+    try {
+      await call("/api/open-url", { method: "POST", body: JSON.stringify({ url: oauth.verificationUri }) });
+      setOauthMessage(t("已重新打开授权页面。"));
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    }
+  };
+
+  const renderAccount = () => {
+    const current = (payload?.current || {}) as Record<string, unknown>;
+    const accounts = rows(payload?.accounts);
+    const hasCurrent = !!current.uid;
+    return (
+      <div className="workbuddy-section">
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <strong>{t("添加账号")}</strong>
+            {oauth ? (
+              <Button disabled={busy} onClick={cancelOauthLogin} size="sm" type="button" variant="outline">
+                {t("取消")}
+              </Button>
+            ) : (
+              <Button disabled={busy} onClick={() => void startOauthLogin()} size="sm" type="button" variant="outline">
+                <Plus className="h-4 w-4" />
+                {t("添加账号")}
+              </Button>
+            )}
+          </div>
+          {oauth ? (
+            <div>
+              <p className="muted-text">{t("正在等待登录完成，不需要扫码截图，也不会打断当前账号。")}</p>
+              <p className="workbuddy-mono" style={{ wordBreak: "break-all" }}>
+                <a href={oauth.verificationUri} rel="noreferrer" target="_blank">{oauth.verificationUri}</a>
+              </p>
+              <Button disabled={busy} onClick={() => void reopenOauthPage()} size="sm" type="button" variant="secondary">
+                {t("重新打开授权页面")}
+              </Button>
+            </div>
+          ) : (
+            <p className="muted-text">
+              {t("支持多账号管理：点「添加账号」会打开浏览器授权页，登录 WorkBuddy 后账号自动备份，随时一键切换。")}
+            </p>
+          )}
+          {oauthMessage ? <p className="workbuddy-notice is-ok">{oauthMessage}</p> : null}
+        </div>
+
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <strong>{t("当前登录")}</strong>
+            <Button
+              disabled={busy}
+              onClick={() => void runAction("/api/logout", {}, t("已退出登录并重新启动 WorkBuddy。"))}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {t("退出登录")}
+            </Button>
+          </div>
+          {hasCurrent ? (
+            <dl className="workbuddy-meta">
+              <div><dt>{t("昵称")}</dt><dd>{String(current.nickname || "—")}</dd></div>
+              <div><dt>{t("手机号")}</dt><dd>{String(current.phone || "—")}</dd></div>
+              <div><dt>{t("账号 ID")}</dt><dd className="workbuddy-mono">{String(current.uid)}</dd></div>
+              <div><dt>{t("登录有效期")}</dt><dd>{workBuddyFormatExpiry(current.tokenExpiresAt)}</dd></div>
+            </dl>
+          ) : (
+            <p className="muted-text">{t("没有读到当前登录信息。请先登录 WorkBuddy，或点上方「让增强生效」重启一次。")}</p>
+          )}
+        </div>
+
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <strong>{tf("已备份账号（{0}）", [String(accounts.length)])}</strong>
+            <small className="muted-text">{t("切换后 WorkBuddy 会重新读取登录信息，无需重新扫码。")}</small>
+          </div>
+          {accounts.length ? (
+            <div className="workbuddy-list">
+              {accounts.map((account, index) => {
+                const uid = String(account.uid || account.id || account.accountId || index);
+                const nickname = String(account.nickname || account.name || account.email || uid);
+                const isCurrent = uid === String(current.uid || "");
+                return (
+                  <div className="workbuddy-row" key={uid}>
+                    <div className="workbuddy-row-main">
+                      <strong>
+                        {nickname}
+                        {isCurrent ? <em className="workbuddy-badge">{t("当前")}</em> : null}
+                      </strong>
+                      <small className="workbuddy-mono">{uid}</small>
+                    </div>
+                    <Button
+                      disabled={busy || isCurrent}
+                      onClick={() =>
+                        void runAction("/api/switch", { uid, reload: true }, t("账号已切换。"))
+                      }
+                      size="sm"
+                      type="button"
+                      variant={isCurrent ? "ghost" : "secondary"}
+                    >
+                      {isCurrent ? t("使用中") : t("切换")}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="muted-text">{t("还没有备份账号。WorkBuddy 登录后会自动备份，之后就能一键切换。")}</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderTheme = () => {
+    const themes = rows(payload?.themes);
+    const current = String(payload?.current || "");
+    return (
+      <div className="workbuddy-card">
+        <div className="workbuddy-card-head">
+          <strong>{tf("可用主题（{0}）", [String(themes.length)])}</strong>
+          <small className="muted-text">{t("应用主题后 WorkBuddy 界面会自动刷新，无需手动重启。")}</small>
+        </div>
+        {themes.length ? (
+          <div className="workbuddy-list">
+            {themes.map((theme, index) => {
+              const id = String(theme.id || theme.name || index);
+              const active = id === current;
+              return (
+                <div className="workbuddy-row" key={id}>
+                  <div className="workbuddy-row-main">
+                    <strong>
+                      {String(theme.name || id)}
+                      {theme.dark ? <em className="workbuddy-badge">{t("深色")}</em> : null}
+                      {active ? <em className="workbuddy-badge">{t("使用中")}</em> : null}
+                    </strong>
+                    <small>{String(theme.author || "")}</small>
+                  </div>
+                  <Button
+                    disabled={busy || active || themeBusyId === id}
+                    onClick={() => {
+                      setThemeBusyId(id);
+                      void runAction("/api/theme-apply", { id }, t("主题已应用。")).finally(() =>
+                        setThemeBusyId(""),
+                      );
+                    }}
+                    size="sm"
+                    type="button"
+                    variant={active ? "ghost" : "secondary"}
+                  >
+                    {active ? t("使用中") : themeBusyId === id ? t("应用中…") : t("应用")}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="muted-text">{t("暂无可用主题。")}</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderSessions = () => {
+    const sessions = rows(payload?.sessions);
+    return (
+      <div className="workbuddy-card">
+        <div className="workbuddy-card-head">
+          <strong>{tf("会话（{0}）", [String(sessions.length)])}</strong>
+          <small className="muted-text">{t("这里展示 WorkBuddy 本机的会话列表，便于排查工作目录与状态。")}</small>
+        </div>
+        {sessions.length ? (
+          <div className="workbuddy-list">
+            {sessions.slice(0, 80).map((session, index) => {
+              const id = String(session.id || index);
+              const title = String(session.custom_title || session.title || t("未命名会话"));
+              const stateKey = String(session.status || "");
+              return (
+                <div className="workbuddy-row" key={id}>
+                  <div className="workbuddy-row-main">
+                    <strong>{title}</strong>
+                    <small className="workbuddy-mono" title={String(session.cwd || "")}>
+                      {String(session.cwd || "—")}
+                    </small>
+                    <small className="muted-text">
+                      {tf("{0} · 更新于 {1}", [
+                        WORKBUDDY_SESSION_STATUS[stateKey] || stateKey || "—",
+                        workBuddyFormatTime(session.updated_at || session.last_activity_at),
+                      ])}
+                    </small>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="muted-text">{t("没有读到会话。确认 WorkBuddy 已登录并至少使用过一次。")}</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderModels = () => {
+    const official = rows(payload?.official);
+    const backups = rows(payload?.backups);
+    const imports = rows(payload?.imports);
+    const empty = !official.length && !backups.length && !imports.length;
+    return (
+      <div className="workbuddy-section">
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <strong>{tf("已安装模型（{0}）", [String(official.length)])}</strong>
+            <small className="muted-text">{t("读取自 WorkBuddy 的模型配置文件；改动会在客户端下次读取时生效。")}</small>
+          </div>
+          {official.length ? (
+            <div className="workbuddy-list">
+              {official.map((model, index) => {
+                const id = String(model.id || model.model || model.name || index);
+                const enabled = model.enabled !== false;
+                return (
+                  <div className="workbuddy-row" key={id}>
+                    <div className="workbuddy-row-main">
+                      <strong>{String(model.name || model.displayName || id)}</strong>
+                      <small className="workbuddy-mono">{String(model.model || id)}</small>
+                    </div>
+                    <em className={`workbuddy-badge ${enabled ? "is-on" : ""}`}>
+                      {enabled ? t("已启用") : t("已停用")}
+                    </em>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="muted-text">
+              {t("没有读到已安装模型。可以在 WorkBuddy 里配置模型后回到本页刷新。")}
+            </p>
+          )}
+        </div>
+        {backups.length ? (
+          <div className="workbuddy-card">
+            <div className="workbuddy-card-head">
+              <strong>{tf("模型备份（{0}）", [String(backups.length)])}</strong>
+            </div>
+            <div className="workbuddy-list">
+              {backups.map((item, index) => (
+                <div className="workbuddy-row" key={String(item.id || index)}>
+                  <div className="workbuddy-row-main">
+                    <strong>{String(item.name || item.id || index)}</strong>
+                    <small className="muted-text">{workBuddyFormatTime(item.createdAt || item.at)}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {empty ? (
+          <p className="muted-text">{tf("模型配置文件：{0}", [String(payload?.file || "—")])}</p>
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderEnhance = () => {
+    const switches = (payload?.switches || {}) as Record<string, boolean>;
+    const askMode = Boolean(askState?.enabled);
+    const autoContinue = Boolean(autoContinueState?.enabled);
+    return (
+      <div className="workbuddy-section">
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <strong>{t("免打扰")}</strong>
+            <small className="muted-text">{t("让长任务不再卡在确认弹窗上。开启项越多，自动化越顺畅，请按需开启。")}</small>
+          </div>
+          <div className="workbuddy-list">
+            {Object.keys(WORKBUDDY_NO_DISTURB_LABELS).map((name) => {
+              const meta = WORKBUDDY_NO_DISTURB_LABELS[name];
+              const enabled = !!switches[name];
+              return (
+                <label className="switch-row" key={name}>
+                  <input
+                    checked={enabled}
+                    disabled={busy || !cdpConnected}
+                    onChange={(event) =>
+                      void runAction("/api/no-disturb-set", {
+                        name,
+                        enabled: event.currentTarget.checked,
+                      })
+                    }
+                    type="checkbox"
+                  />
+                  <span>
+                    <strong>{meta.label}</strong>
+                    <small>{meta.detail}</small>
+                  </span>
+                  <ToggleVisual />
+                </label>
+              );
+            })}
+          </div>
+          {!cdpConnected ? (
+            <p className="field-hint">{t("这些开关要等 WorkBuddy 打开调试通道后才能生效。")}</p>
+          ) : null}
+        </div>
+
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <strong>{t("长任务自动化")}</strong>
+            <small className="muted-text">{t("由 WorkBuddy 侧接管，无需保持管理器窗口打开。")}</small>
+          </div>
+          <div className="workbuddy-list">
+            <label className="switch-row">
+              <input
+                checked={askMode}
+                disabled={busy || !cdpConnected}
+                onChange={(event) =>
+                  void runAction("/api/ask-mode-set", { enabled: event.currentTarget.checked })
+                }
+                type="checkbox"
+              />
+              <span>
+                <strong>{t("自动处理决策弹窗")}</strong>
+                <small>{t("会话中出现需要选择的问题时自动选择推荐项，下次会话生效。")}</small>
+              </span>
+              <ToggleVisual />
+            </label>
+            <label className="switch-row">
+              <input
+                checked={autoContinue}
+                disabled={busy || !cdpConnected}
+                onChange={(event) =>
+                  void runAction("/api/auto-continue-set", { enabled: event.currentTarget.checked })
+                }
+                type="checkbox"
+              />
+              <span>
+                <strong>{t("任务中断后自动继续")}</strong>
+                <small>{t("长任务被中断时自动补一句继续，减少人工盯着。")}</small>
+              </span>
+              <ToggleVisual />
+            </label>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAutomations = () => {
+    const tasks = rows(payload?.tasks);
+    return (
+      <div className="workbuddy-card">
+        <div className="workbuddy-card-head">
+          <strong>{tf("自动化任务（{0}）", [String(tasks.length)])}</strong>
+          <small className="muted-text">{t("任务在 WorkBuddy 页面内执行，管理器关闭也不影响。")}</small>
+        </div>
+        {tasks.length ? (
+          <div className="workbuddy-list">
+            {tasks.map((task, index) => {
+              const id = String(task.id || index);
+              const enabled = !!task.enabled;
+              const trigger = (task.trigger || {}) as Record<string, unknown>;
+              return (
+                <label className="switch-row" key={id}>
+                  <input
+                    checked={enabled}
+                    disabled={busy}
+                    onChange={() =>
+                      void runAction(
+                        "/api/automations/bulk",
+                        { ids: [id], action: enabled ? "disable" : "enable" },
+                        enabled ? t("任务已停用。") : t("任务已启用。"),
+                      )
+                    }
+                    type="checkbox"
+                  />
+                  <span>
+                    <strong>{String(task.name || id)}</strong>
+                    <small>{String(task.description || "")}</small>
+                    <small className="muted-text">
+                      {tf("触发方式：{0}", [String(trigger.type || (task.schedule as Record<string, unknown>)?.type || "—")])}
+                    </small>
+                  </span>
+                  <ToggleVisual />
+                </label>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="muted-text">{t("还没有自动化任务。")}</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderPc = () => {
+    const mode = String(payload?.mode || "allow");
+    const preventing = Boolean(payload?.preventing);
+    return (
+      <div className="workbuddy-card">
+        <div className="workbuddy-card-head">
+          <strong>{t("电脑休眠")}</strong>
+          <small className="muted-text">
+            {preventing ? t("当前正在阻止休眠：长任务运行期间电脑不会睡着。") : t("当前不阻止休眠。")}
+          </small>
+        </div>
+        <div className="workbuddy-list">
+          <label className="switch-row">
+            <input
+              checked={mode === "keep"}
+              disabled={busy}
+              onChange={(event) =>
+                void runAction("/api/sleep-mode", {
+                  mode: event.currentTarget.checked ? "keep" : "allow",
+                  displaySleep: false,
+                })
+              }
+              type="checkbox"
+            />
+            <span>
+              <strong>{t("保持常亮，不进入休眠")}</strong>
+              <small>{t("开启后，运行中的任务不会因为电脑休眠而中断。")}</small>
+            </span>
+            <ToggleVisual />
+          </label>
+          <label className="switch-row">
+            <input
+              checked={mode === "until-done"}
+              disabled={busy}
+              onChange={(event) =>
+                void runAction("/api/sleep-mode", {
+                  mode: event.currentTarget.checked ? "until-done" : "allow",
+                  displaySleep: false,
+                })
+              }
+              type="checkbox"
+            />
+            <span>
+              <strong>{t("仅任务期间阻止休眠")}</strong>
+              <small>{t("任务结束后自动恢复，兼顾省电。")}</small>
+            </span>
+            <ToggleVisual />
+          </label>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSettings = () => {
+    const info = status;
+    return (
+      <div className="workbuddy-section">
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <strong>{t("桌面图标")}</strong>
+            <small className="muted-text">
+              {t("桌面上会有一个「WorkBuddy增强」图标，双击直接打开本页面。")}
+            </small>
+          </div>
+          <dl className="workbuddy-meta">
+            <div>
+              <dt>{t("状态")}</dt>
+              <dd>{info?.shortcutInstalled ? t("已创建") : t("尚未创建")}</dd>
+            </div>
+            <div>
+              <dt>{t("位置")}</dt>
+              <dd className="workbuddy-mono">{info?.shortcutPath || "—"}</dd>
+            </div>
+            <div>
+              <dt>{t("指向")}</dt>
+              <dd className="workbuddy-mono">{info?.managerExe || "—"}</dd>
+            </div>
+          </dl>
+          <div className="workbuddy-actions">
+            <Button disabled={busy} onClick={() => void installShortcut()} size="sm" type="button">
+              <MonitorSmartphone className="h-4 w-4" />
+              {info?.shortcutInstalled ? t("修复桌面图标") : t("创建桌面图标")}
+            </Button>
+            <Button
+              disabled={busy || !info?.shortcutInstalled}
+              onClick={() => void removeShortcut()}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {t("移除桌面图标")}
+            </Button>
+          </div>
+        </div>
+
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <strong>{t("运行时信息")}</strong>
+            <small className="muted-text">{t("排查问题时把这些信息发给技术支持即可。")}</small>
+          </div>
+          <dl className="workbuddy-meta">
+            <div><dt>{t("服务端口")}</dt><dd className="workbuddy-mono">{String(info?.port ?? WORKBUDDY_DAEMON_PORT)}</dd></div>
+            <div><dt>{t("服务版本")}</dt><dd className="workbuddy-mono">{daemonVersion || "—"}</dd></div>
+            <div><dt>{t("调试通道")}</dt><dd>{cdpConnected ? t("已连接") : t("未连接")}</dd></div>
+            <div><dt>{t("客户端")}</dt><dd>{info?.clientInstalled ? (info.clientRunning ? t("已安装 · 正在运行") : t("已安装 · 未运行")) : t("未安装")}</dd></div>
+            <div><dt>{t("数据目录")}</dt><dd className="workbuddy-mono">{info?.dataDir || "—"}</dd></div>
+            <div><dt>{t("运行时目录")}</dt><dd className="workbuddy-mono">{info?.runtimeDir || "—"}</dd></div>
+            <div><dt>{t("Node 运行时")}</dt><dd className="workbuddy-mono">{info?.nodePath || "—"}</dd></div>
+            <div><dt>{t("当前权限")}</dt><dd>{info?.elevated ? t("管理员") : daemonPrivilege === "standard" ? t("普通用户") : t("普通用户")}</dd></div>
+          </dl>
+          <div className="workbuddy-actions">
+            <Button disabled={busy} onClick={() => void refreshStatus()} size="sm" type="button" variant="secondary">
+              <RefreshCw className="h-4 w-4" />
+              {t("重新检测")}
+            </Button>
+            <Button disabled={busy} onClick={() => void relaunchElevated()} size="sm" type="button" variant="outline">
+              {t("以管理员身份重启")}
+            </Button>
+          </div>
+          <p className="field-hint">
+            {t("LDCodex 正常使用不需要管理员权限。只有在排查权限相关问题时，才需要用「以管理员身份重启」，系统会弹出 UAC 让你确认。")}
+          </p>
+          {info?.elevated ? (
+            <p className="field-hint">
+              {t("当前以管理员权限运行（通常说明系统 UAC 已关闭）。LDCodex 不依赖 UAC，功能不受影响；桌面图标用普通双击启动即可。")}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
+  const renderBody = () => {
+    switch (tab) {
+      case "account":
+        return renderAccount();
+      case "theme":
+        return renderTheme();
+      case "sessions":
+        return renderSessions();
+      case "models":
+        return renderModels();
+      case "enhance":
+        return renderEnhance();
+      case "automations":
+        return renderAutomations();
+      case "pc":
+        return renderPc();
+      case "settings":
+        return renderSettings();
+      default:
+        return null;
+    }
+  };
+
+  /** 主按钮：客户只需要看一个按钮，它的文案随状态变化。 */
+  const primaryAction = () => {
+    if (!status) {
+      return (
+        <Button disabled={busy} onClick={() => void refreshStatus()} size="sm" type="button">
+          <RefreshCw className="h-4 w-4" />
+          {t("检测环境")}
+        </Button>
+      );
+    }
+    if (!status.running) {
+      return (
+        <Button disabled={busy || !status.ready} onClick={() => void startRuntime()} size="sm" type="button">
+          <Play className="h-4 w-4" />
+          {t("启动增强服务")}
+        </Button>
+      );
+    }
+    if (!cdpConnected) {
+      return (
+        <Button disabled={busy} onClick={() => void enableCdp()} size="sm" type="button">
+          <Zap className="h-4 w-4" />
+          {status.clientRunning ? t("重启并让增强生效") : t("让增强生效")}
+        </Button>
+      );
+    }
+    return (
+      <Button disabled={busy} onClick={() => void stopRuntime()} size="sm" type="button" variant="secondary">
+        <CircleStop className="h-4 w-4" />
+        {t("停止服务")}
+      </Button>
+    );
+  };
+
+  const statusTone = !status ? "" : status.running ? (cdpConnected ? "is-on" : "is-warn") : "";
+
+  return (
+    <Panel fill>
+      <CardHead
+        title={profileLabel}
+        detail={
+          isIntl
+            ? t("管理 WorkBuddy 国际版（www.workbuddy.ai）桌面端的账号、主题、会话、模型、免打扰与自动化；与国内版完全独立，数据全部留在本机。")
+            : t("管理 WorkBuddy 国内版桌面端的账号、主题、会话、模型、免打扰与自动化；数据全部留在本机。")
+        }
+      />
+      <CardContent>
+        <div className="workbuddy-status">
+          <span aria-hidden="true" className={`workbuddy-dot ${statusTone}`} />
+          <div className="workbuddy-status-copy">
+            <strong>
+              {!status
+                ? t("正在检测增强服务…")
+                : status.running
+                  ? cdpConnected
+                    ? t("增强服务运行中 · 全部能力已就绪")
+                    : t("增强服务运行中 · 部分能力待启用")
+                  : t("增强服务未运行")}
+            </strong>
+            <small>
+              {status
+                ? status.detail
+                : t("正在读取本机运行时环境，请稍候。")}
+            </small>
+          </div>
+          <div className="workbuddy-actions">
+            {status?.running ? (
+              <Button disabled={busy} onClick={() => void refreshStatus()} size="sm" type="button" variant="ghost">
+                <RefreshCw className="h-4 w-4" />
+                {t("刷新")}
+              </Button>
+            ) : null}
+            {primaryAction()}
+          </div>
+        </div>
+
+        {error ? <p className="workbuddy-notice is-error">{error}</p> : null}
+        {notice ? <p className="workbuddy-notice is-ok">{notice}</p> : null}
+
+        <div className="workbuddy-tabs" role="tablist">
+          {workBuddyTabs.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                aria-selected={tab === item.id}
+                className={`workbuddy-tab ${tab === item.id ? "is-active" : ""}`}
+                key={item.id}
+                onClick={() => (status?.running ? void loadTab(item.id) : setTab(item.id))}
+                role="tab"
+                type="button"
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="workbuddy-pane">
+          {!status?.running ? (
+            <div className="workbuddy-empty">
+              <Bot aria-hidden="true" className="h-6 w-6" />
+              <p>
+                {status?.ready
+                  ? t("增强服务还没有运行。点右上角「启动增强服务」，LDCodex 会自动把运行时和调试通道都准备好 —— 你不需要手动记任何参数。")
+                  : t("环境还没就绪。请先按上方提示处理，然后点「重新检测」。")}
+              </p>
+            </div>
+          ) : busy && !payload ? (
+            <div className="workbuddy-empty">
+              <RefreshCw aria-hidden="true" className="h-5 w-5" />
+              <p>{t("正在读取…")}</p>
+            </div>
+          ) : (
+            renderBody()
+          )}
+        </div>
+      </CardContent>
+    </Panel>
+  );
 }

@@ -14,6 +14,55 @@ use crate::settings::{RelayProtocol, SettingsStore};
 
 pub const DEFAULT_PROTOCOL_PROXY_PORT: u16 = 58321;
 pub const NO_AUTH_PROXY_BEARER_TOKEN: &str = "codex-plus-no-auth";
+
+/// 本地转发代理的实际监听端口（helper 启动时登记，0 = 未知）。
+/// 用于自环防护：供应商若指向代理自身，转发会无限循环，必须拦截。
+static LOCAL_PROXY_PORT: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(0);
+
+/// helper 启动监听成功后登记端口，供转发时的自环检测使用。
+pub fn set_local_proxy_port(port: u16) {
+    LOCAL_PROXY_PORT.store(port, std::sync::atomic::Ordering::SeqCst);
+}
+
+fn local_proxy_port() -> u16 {
+    LOCAL_PROXY_PORT.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+/// 自环防护：供应商/端点的上游地址若指向本地转发代理自身，
+/// 转发会造成无限循环（进程内存暴涨、对话永远无响应）。
+/// 典型成因：激活供应商由模型池一键生成（Base URL=本地代理、模型=池名），
+/// 但设置里缺少该池的数据，代理无法按池名改道到真实端点。
+fn ensure_not_self_loop(endpoint: &str) -> anyhow::Result<()> {
+    let port = local_proxy_port();
+    if port == 0 {
+        return Ok(());
+    }
+    let Some(rest) = endpoint
+        .strip_prefix("http://")
+        .or_else(|| endpoint.strip_prefix("https://"))
+    else {
+        return Ok(());
+    };
+    let host_part = rest.split(['/', '?']).next().unwrap_or("");
+    let Some((host, port_text)) = host_part.rsplit_once(':') else {
+        return Ok(());
+    };
+    let is_local = matches!(host, "127.0.0.1" | "localhost" | "[::1]" | "::1");
+    if !is_local {
+        return Ok(());
+    }
+    let Ok(target_port) = port_text.parse::<u16>() else {
+        return Ok(());
+    };
+    if target_port == port {
+        anyhow::bail!(
+            "供应商的 API 地址指向本地转发代理自身（127.0.0.1:{port}），已拦截以避免无限循环。\
+             请打开「AI模型配置」，删除该供应商后重新「新增供应商」并选择模型池保存。"
+        );
+    }
+    Ok(())
+}
+
 const UPSTREAM_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const UPSTREAM_HEADER_TIMEOUT: Duration = Duration::from_secs(30);
 const UPSTREAM_STREAM_HEADER_TIMEOUT: Duration = Duration::from_secs(120);
@@ -569,6 +618,8 @@ async fn open_responses_proxy_request_with_settings_and_user_agent(
         .map(str::trim)
         .unwrap_or("")
         .to_string();
+    // 模型池直连：请求模型名命中池名时，用池内端点当候选成员（不改落盘的供应商结构）。
+    let settings = resolve_model_pool_override(settings, &source_model);
     let model_route = select_model_route(&settings, &source_model)?;
     if let Some(route) = &model_route
         && route.upstream_model != source_model
@@ -593,10 +644,18 @@ async fn open_responses_proxy_request_with_settings_and_user_agent(
         Some(relay.id.as_str())
     );
     let relay_count = relays.len();
+    // 聚合（模型池）模式下，请求里的模型名是对外的池名；
+    // 转发到成员端点前要改写成该成员配置的真实模型 ID，否则上游不认识池名。
+    let aggregate_active = settings.active_aggregate_relay_profile().is_some();
     for (attempt, relay) in relays.into_iter().enumerate() {
         validate_upstream(&relay)?;
+        let mut upstream_body_json = request_json.clone();
+        if aggregate_active && model_route.is_none() {
+            apply_aggregate_model_rewrite(&mut upstream_body_json, &relay.model);
+        }
         let (endpoint, upstream_body, wire_api) =
-            upstream_request_parts(&relay, request_json.clone(), request_path).await?;
+            upstream_request_parts(&relay, upstream_body_json, request_path).await?;
+        ensure_not_self_loop(&endpoint)?;
         let has_more_candidates = attempt + 1 < relay_count;
         let header_timeout = response_header_timeout(is_stream);
         let _ = crate::diagnostic_log::append_diagnostic_log(
@@ -719,11 +778,118 @@ async fn open_responses_proxy_request_with_settings_and_user_agent(
     anyhow::bail!("未找到可用的聚合供应商成员")
 }
 
+/** 聚合（模型池）转发的模型名改写：请求里的模型名是对外的池名，转发给成员端点时改成成员配置的真实模型 ID。成员未配置模型时保持原样。 */
+fn apply_aggregate_model_rewrite(body: &mut Value, member_model: &str) {
+    let member_model = member_model.trim();
+    if member_model.is_empty() {
+        return;
+    }
+    let current = body
+        .get("model")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if current != member_model {
+        body["model"] = Value::String(member_model.to_string());
+    }
+}
+
+/// 模型池直连路由：当前激活供应商不是聚合供应商、且请求模型名命中某个启用的模型池时，
+/// 把池内端点合成为一组候选成员，交给既有的聚合轮转机制（429 / 额度耗尽自动切换）。
+/// 落盘的供应商结构保持不变 —— 列表里只有一条普通供应商（本地代理地址 + 池名），
+/// 没有任何成员 / 聚合条目；池数据来自设置里的 modelPools（由「自定义模型池」配置同步）。
+fn resolve_model_pool_override(
+    settings: crate::settings::BackendSettings,
+    model: &str,
+) -> crate::settings::BackendSettings {
+    use crate::settings::{
+        AggregateRelayMember, AggregateRelayProfile, AggregateRelayStrategy, PoolEndpointProtocol,
+        RelayMode, RelayProfile, RelayProtocol,
+    };
+
+    let model = model.trim();
+    if model.is_empty() || settings.active_aggregate_relay_profile().is_some() {
+        return settings;
+    }
+    let pool_matches = |pool: &crate::settings::ModelPoolConfig| {
+        pool.enabled
+            && pool.virtual_model_id.trim() == model
+            && pool
+                .endpoints
+                .iter()
+                .any(|endpoint| endpoint.enabled && !endpoint.base_url.trim().is_empty())
+    };
+    let Some(pool) = settings.model_pools.iter().find(|pool| pool_matches(pool)) else {
+        return settings;
+    };
+
+    let pool_aggregate_id = format!("{}-pool", pool.id);
+    let mut relay_profiles = settings.relay_profiles.clone();
+    // 合成的聚合供应商本身也要出现在 relay_profiles 里，
+    // 否则 active_relay_profile() 找不到激活条目，会回落到空 Base URL 的默认中转。
+    relay_profiles.retain(|relay| relay.id != pool_aggregate_id);
+    relay_profiles.push(RelayProfile {
+        id: pool_aggregate_id.clone(),
+        name: format!("{}（模型池）", pool.name),
+        relay_mode: RelayMode::Aggregate,
+        ..RelayProfile::default()
+    });
+    let mut members = Vec::new();
+    for (index, endpoint) in pool
+        .endpoints
+        .iter()
+        .filter(|endpoint| endpoint.enabled && !endpoint.base_url.trim().is_empty())
+        .enumerate()
+    {
+        let relay_id = format!("{}-endpoint-{index}", pool.id);
+        relay_profiles.retain(|relay| relay.id != relay_id);
+        relay_profiles.push(RelayProfile {
+            id: relay_id.clone(),
+            name: endpoint.label.trim().is_empty()
+                .then(|| format!("{} · 端点 {}", pool.name, index + 1))
+                .unwrap_or_else(|| endpoint.label.trim().to_string()),
+            model: endpoint.model_id.trim().to_string(),
+            base_url: endpoint.base_url.trim().to_string(),
+            upstream_base_url: endpoint.base_url.trim().to_string(),
+            api_key: endpoint.api_key.trim().to_string(),
+            protocol: match endpoint.protocol {
+                PoolEndpointProtocol::ChatCompletions => RelayProtocol::ChatCompletions,
+                PoolEndpointProtocol::Responses => RelayProtocol::Responses,
+            },
+            relay_mode: RelayMode::PureApi,
+            no_auth: endpoint.api_key.trim().is_empty(),
+            ..RelayProfile::default()
+        });
+        members.push(AggregateRelayMember {
+            relay_id,
+            weight: 1,
+        });
+    }
+
+    let mut aggregate_relay_profiles = settings.aggregate_relay_profiles.clone();
+    aggregate_relay_profiles.retain(|aggregate| aggregate.id != pool_aggregate_id);
+    aggregate_relay_profiles.push(AggregateRelayProfile {
+        id: pool_aggregate_id.clone(),
+        name: format!("{}（模型池）", pool.name),
+        session_provider: crate::settings::RelaySessionProvider::Custom,
+        strategy: AggregateRelayStrategy::Failover,
+        members,
+    });
+
+    crate::settings::BackendSettings {
+        relay_profiles,
+        aggregate_relay_profiles,
+        active_relay_id: pool_aggregate_id.clone(),
+        active_aggregate_relay_id: pool_aggregate_id,
+        ..settings
+    }
+}
+
 fn select_model_route(
     settings: &crate::settings::BackendSettings,
     model: &str,
-) -> anyhow::Result<Option<ModelRouteSelection>> {
-    if model.is_empty() || settings.active_aggregate_relay_profile().is_some() {
+) -> anyhow::Result<Option<ModelRouteSelection>> {    if model.is_empty() || settings.active_aggregate_relay_profile().is_some() {
         return Ok(None);
     }
 

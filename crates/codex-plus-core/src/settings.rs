@@ -174,6 +174,51 @@ pub struct AggregateRelayProfile {
     pub members: Vec<AggregateRelayMember>,
 }
 
+/// 自定义模型池端点：池内一个真实 API 端点（地址 / 密钥 / 实际模型 ID）。
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelPoolEndpoint {
+    #[serde(default)]
+    pub base_url: String,
+    #[serde(default)]
+    pub api_key: String,
+    #[serde(default)]
+    pub model_id: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// 上游协议；缺省 Chat Completions（池端点通常是 OpenAI 兼容中转）。
+    #[serde(default)]
+    pub protocol: PoolEndpointProtocol,
+}
+
+/// 模型池端点上游协议。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum PoolEndpointProtocol {
+    #[default]
+    ChatCompletions,
+    Responses,
+}
+
+/// 自定义模型池：一个对外模型 ID（池名）背后挂多个真实端点，
+/// 由本地协议代理在端点间轮转（429 / 额度耗尽自动切换）。
+/// 数据由前端「自定义模型池」配置同步而来；供应商列表里不产生任何成员/聚合条目。
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelPoolConfig {
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub virtual_model_id: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub endpoints: Vec<ModelPoolEndpoint>,
+}
+
 impl Default for RelayProfile {
     fn default() -> Self {
         Self {
@@ -558,6 +603,8 @@ pub struct BackendSettings {
     pub aggregate_relay_profiles: Vec<AggregateRelayProfile>,
     #[serde(rename = "activeAggregateRelayId", default)]
     pub active_aggregate_relay_id: String,
+    #[serde(rename = "modelPools", default)]
+    pub model_pools: Vec<ModelPoolConfig>,
     #[serde(rename = "relayTestModel", default = "default_relay_test_model")]
     pub relay_test_model: String,
 }
@@ -635,6 +682,7 @@ impl Default for BackendSettings {
             active_relay_id: default_active_relay_id(),
             aggregate_relay_profiles: Vec::new(),
             active_aggregate_relay_id: String::new(),
+            model_pools: Vec::new(),
             relay_test_model: default_relay_test_model(),
         }
     }

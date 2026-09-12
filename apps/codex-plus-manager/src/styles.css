@@ -820,6 +820,69 @@ body {
   white-space: nowrap;
 }
 
+/* ─── 「添加供应商」下拉菜单 ─── */
+.add-provider-drop {
+  position: relative;
+}
+
+.add-provider-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  display: grid;
+  gap: 6px;
+  min-width: 300px;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--popover));
+  box-shadow: 0 12px 26px hsl(var(--foreground) / 0.08);
+  padding: 8px;
+}
+
+.add-provider-menu button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  font: inherit;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.add-provider-menu button:hover {
+  background: hsl(var(--secondary));
+}
+
+.add-provider-menu button strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.add-provider-menu button span {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-provider-menu-divider {
+  height: 1px;
+  margin: 2px 4px;
+  background: hsl(var(--border));
+}
+
 .env-conflict-notice {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
@@ -5791,6 +5854,7 @@ select {
 /* ── 浮层 ───────────────────────────────────────────────────── */
 
 .third-party-import-menu,
+.add-provider-menu,
 .modal-card,
 .toast-card {
   border-color: hsl(var(--border));
@@ -5885,7 +5949,8 @@ select {
 
 .light .toast-card,
 .light .modal-card,
-.light .third-party-import-menu {
+.light .third-party-import-menu,
+.light .add-provider-menu {
   box-shadow: var(--shadow-lg);
 }
 
@@ -8396,7 +8461,7 @@ select {
   }
 }
 
-/* ─── 自定多模态模型 ─── */
+/* ─── 自定义模型池 ─── */
 .virtual-model-overlay {
   position: fixed;
   inset: 0;
@@ -8660,3 +8725,290 @@ select {
   to { transform: rotate(360deg); }
 }
 
+/* ─── WorkBuddy 增强 ───
+   统一走主题变量，浅色/深色自动适配；控件风格与 LDCodex 其它页面保持一致。 */
+
+.workbuddy-status {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--secondary) / 0.4);
+}
+
+.workbuddy-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(var(--muted-foreground));
+}
+
+.workbuddy-dot.is-on {
+  background: hsl(var(--status-success, 142 71% 45%));
+  box-shadow: 0 0 0 3px hsl(var(--status-success, 142 71% 45%) / 0.18);
+}
+
+/* 服务已起但调试通道未连上：不是错误，是"还差一步"，用警示色而不是失败色。 */
+.workbuddy-dot.is-warn {
+  background: hsl(var(--status-warning, 38 92% 50%));
+  box-shadow: 0 0 0 3px hsl(var(--status-warning, 38 92% 50%) / 0.18);
+}
+
+.workbuddy-status-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workbuddy-status-copy small {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.workbuddy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.workbuddy-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.workbuddy-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.workbuddy-tab:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.workbuddy-tab.is-active {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.workbuddy-pane {
+  min-height: 180px;
+  /* 页签内容超出可视高度时在面板内滚动，保证「增强」等长页面所有开关都能看到、点到。 */
+  max-height: calc(100vh - 330px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+}
+
+/* 页签内的分区：多张卡片纵向排列 */
+.workbuddy-section {
+  display: grid;
+  gap: 12px;
+}
+
+.workbuddy-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--secondary) / 0.25);
+}
+
+.workbuddy-card-head {
+  display: grid;
+  gap: 3px;
+}
+
+.workbuddy-card-head > strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.workbuddy-list {
+  display: grid;
+  gap: 8px;
+}
+
+.workbuddy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--card) / 0.6);
+}
+
+.workbuddy-row-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workbuddy-row-main > strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.workbuddy-row-main small {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 键值信息表：设置页 / 账号页共用 */
+.workbuddy-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+}
+
+.workbuddy-meta > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workbuddy-meta dt {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+.workbuddy-meta dd {
+  margin: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workbuddy-mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  direction: rtl;
+  text-align: left;
+}
+
+.workbuddy-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.workbuddy-badge.is-on {
+  border-color: hsl(var(--status-success, 142 71% 45%) / 0.4);
+  color: hsl(var(--status-success, 142 71% 45%));
+}
+
+.workbuddy-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 26px 12px;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+.workbuddy-empty p {
+  max-width: 46ch;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.workbuddy-notice {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.workbuddy-notice.is-error {
+  border-color: hsl(var(--destructive) / 0.45);
+  background: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
+}
+
+.workbuddy-notice.is-ok {
+  border-color: hsl(var(--status-success, 142 71% 45%) / 0.4);
+  background: hsl(var(--status-success, 142 71% 45%) / 0.08);
+  color: hsl(var(--status-success, 142 71% 45%));
+}
+
+.workbuddy-raw {
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: hsl(var(--secondary) / 0.5);
+  color: hsl(var(--foreground));
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 增强页的开关：沿用 .switch-row 的既有观感，这里只补齐说明文字的排版。 */
+.workbuddy-list .switch-row {
+  align-items: flex-start;
+  padding: 9px 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--card) / 0.6);
+}
+
+.workbuddy-list .switch-row > span {
+  display: grid;
+  gap: 2px;
+}
+
+.workbuddy-list .switch-row > span > strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.workbuddy-list .switch-row > span > small {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 1.5;
+}

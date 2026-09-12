@@ -1,0 +1,26 @@
+本目录（workbuddy-runtime/）是 LDCodex 的「WorkBuddy 增强」组件运行时。
+
+## 来源与许可
+
+本目录代码派生自开源项目 WorkDaddy（AGPL-3.0-or-later）：
+
+    https://github.com/babygoton/WorkDaddy
+
+原始版权归其作者所有。根据 AGPL-3.0 的要求，此来源说明必须随代码保留。
+LDCodex 中已按产品需要做如下修改（详见仓库 tools/workbuddy-port-codemod.mjs）：
+
+  1. 移除面向用户的产品品牌、GitHub 仓库/Issues/Star 入口与在线更新链路；
+  2. 移除全部外部诊断上报（Sentry），sentry-report.js 改为本地 no-op；
+  3. 数据目录由 WorkDaddy 改为 LDCodex-WorkBuddy，避免与上游数据冲突；
+  4. 关闭注入到 WorkBuddy 的面板入口（右下角悬浮按钮），仅保留功能生效逻辑；
+  5. 删除与本产品无关的独立安装器与进程生命周期脚本。
+
+## 说明
+
+上述修改仅影响产品呈现与对外行为；来源说明属于 AGPL 合规义务，不对外展示，
+也不得从本文件中删除。
+
+本组件不含任何外部上报端点，运行期仅访问：
+  - 本机回环地址（CDP 与本地 HTTP 服务）
+  - WorkBuddy 官方 API（登录态、积分/签到等显式功能）
+  - 用户自行配置的第三方模型服务（仅在你主动触发连通性测试时）

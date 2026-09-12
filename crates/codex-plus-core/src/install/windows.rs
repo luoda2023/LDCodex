@@ -16,6 +16,7 @@ pub struct WindowsEntrypointPlan {
     pub install_root: String,
     pub silent_shortcut: String,
     pub manager_shortcut: String,
+    pub workbuddy_shortcut: String,
     pub launcher_path: String,
     pub manager_path: String,
     pub icon_path: String,
@@ -50,6 +51,10 @@ pub fn build_windows_entrypoint_plan(options: &InstallOptions) -> WindowsEntrypo
             .join(format!("{MANAGER_NAME}.lnk"))
             .to_string_lossy()
             .to_string(),
+        workbuddy_shortcut: install_root
+            .join(format!("{}.lnk", super::WORKBUDDY_ENHANCE_NAME))
+            .to_string_lossy()
+            .to_string(),
         install_root: install_root.to_string_lossy().to_string(),
         launcher_path: launcher_path.to_string_lossy().to_string(),
         manager_path: manager_path.to_string_lossy().to_string(),
@@ -82,6 +87,7 @@ pub fn install_shortcuts(options: &InstallOptions) -> anyhow::Result<()> {
         "Open LDCodex management tool",
         PathBuf::from(&plan.manager_icon_path),
     )?;
+    install_workbuddy_shortcut(options)?;
     register_url_protocol(&plan.manager_path)?;
     write_uninstall_registration(&plan)?;
     Ok(())
@@ -92,6 +98,7 @@ pub fn uninstall_shortcuts(options: &InstallOptions) -> anyhow::Result<()> {
     let plan = build_windows_entrypoint_plan(options);
     let _ = std::fs::remove_file(&plan.silent_shortcut);
     let _ = std::fs::remove_file(&plan.manager_shortcut);
+    let _ = std::fs::remove_file(&plan.workbuddy_shortcut);
     let _ = crate::windows_integration::delete_current_user_key(&format!(
         r"{URL_PROTOCOL_SUBKEY}\shell\open\command"
     ));
@@ -134,15 +141,51 @@ fn create_entrypoint_shortcut(
     description: &str,
     icon: PathBuf,
 ) -> anyhow::Result<()> {
+    create_entrypoint_shortcut_with_arguments(path, target, String::new(), description, icon)
+}
+
+#[cfg(windows)]
+fn create_entrypoint_shortcut_with_arguments(
+    path: PathBuf,
+    target: PathBuf,
+    arguments: String,
+    description: &str,
+    icon: PathBuf,
+) -> anyhow::Result<()> {
     crate::windows_integration::create_shortcut(&crate::windows_integration::ShortcutSpec {
         working_directory: target.parent().map(Path::to_path_buf),
         path,
         target,
-        arguments: String::new(),
+        arguments,
         description: description.to_string(),
         icon: Some(icon),
         show_minimized: false,
     })
+}
+
+/// LDCodex：桌面「WorkBuddy增强」图标。
+///
+/// 它指向管理器本体，并带上 `--route=workbuddy` 参数，双击后直接落在增强页面。
+/// 这样客户桌面上多一个一眼能看懂的入口，又不需要我们多维护一个可执行文件。
+#[cfg(windows)]
+pub fn install_workbuddy_shortcut(options: &InstallOptions) -> anyhow::Result<()> {
+    let plan = build_windows_entrypoint_plan(options);
+    let install_root = PathBuf::from(&plan.install_root);
+    std::fs::create_dir_all(&install_root)?;
+    create_entrypoint_shortcut_with_arguments(
+        PathBuf::from(&plan.workbuddy_shortcut),
+        PathBuf::from(&plan.manager_path),
+        super::WORKBUDDY_ROUTE_ARGUMENT.to_string(),
+        "Open LDCodex WorkBuddy enhancements",
+        PathBuf::from(&plan.manager_icon_path),
+    )
+}
+
+#[cfg(windows)]
+pub fn uninstall_workbuddy_shortcut(options: &InstallOptions) -> anyhow::Result<()> {
+    let plan = build_windows_entrypoint_plan(options);
+    let _ = std::fs::remove_file(&plan.workbuddy_shortcut);
+    Ok(())
 }
 
 #[cfg(windows)]

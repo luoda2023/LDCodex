@@ -175,6 +175,39 @@ pub fn open_url(url: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// 以管理员身份启动一个可执行文件（会触发系统 UAC 弹窗）。
+///
+/// 说明：程序**不能**去开关系统 UAC —— 那是需要管理员权限并重启的系统级安全设置，
+/// 静默改动它属于恶意软件行为。程序唯一正当的做法是：在需要时为自己这一次启动
+/// 请求提权，由系统弹出 UAC 让用户自己决定。这个函数就是做这件事。
+///
+/// 如果系统 UAC 被关闭，"runas" 不会弹窗，会直接以管理员令牌启动。
+#[cfg(windows)]
+pub fn shell_execute_run_as_admin(exe: &std::path::Path, parameters: &str) -> anyhow::Result<()> {
+    let operation = wide_null("runas");
+    let file = wide_null(exe.as_os_str());
+    let params = wide_null(parameters);
+    let result = unsafe {
+        ShellExecuteW(
+            None,
+            PCWSTR(operation.as_ptr()),
+            PCWSTR(file.as_ptr()),
+            PCWSTR(params.as_ptr()),
+            PCWSTR::null(),
+            SW_SHOW,
+        )
+    };
+    let code = result.0 as isize;
+    if code <= 32 {
+        // 1223 = 用户在弹出的 UAC 里点了"否"。这是用户的合法选择，不该当成错误刷屏。
+        if code == 1223 {
+            anyhow::bail!("用户取消了提权请求");
+        }
+        anyhow::bail!("以管理员身份启动失败（ShellExecuteW 返回 {code}）");
+    }
+    Ok(())
+}
+
 #[cfg(windows)]
 pub fn set_current_user_string_value(subkey: &str, name: &str, value: &str) -> anyhow::Result<()> {
     with_created_current_user_key(subkey, |key| {

@@ -33,6 +33,15 @@ toml = "0.8"
 toml_edit = "0.22"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
-winresource = "0.1"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 zstd = "0.13"
+
+# 构建内存约束（本机 8GB 物理 / 固定页面文件，提交上限约 15GB）。
+#
+# release 下编译 `codex-plus-manager` 这个巨型 crate（Tauri + windows 生成绑定，
+# 且 crate-type 同时含 staticlib/cdylib/rlib）时，LLVM 会因提交内存不足直接
+# `rustc-LLVM ERROR: out of memory`（退出码 0xC0000409）。这里只对该包把
+# codegen-units 提高，使单个 LLVM 模块更小、峰值内存更低 —— 不改 opt-level，
+# 优化级别与其它 crate 保持一致；后续机器内存宽裕时可直接删掉本段。
+[profile.release.package.codex-plus-manager]
+codegen-units = 32

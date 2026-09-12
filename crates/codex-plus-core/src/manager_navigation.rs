@@ -120,6 +120,9 @@ fn remove_pending_manager_navigation_if_matches_at(
 fn validate_navigation(navigation: &ManagerNavigationIntent) -> anyhow::Result<()> {
     match (navigation.page.as_str(), navigation.section.as_deref()) {
         ("settings", None | Some("stepwise")) => Ok(()),
+        // LDCodex：桌面「WorkBuddy增强」图标以 `--route=workbuddy` 启动管理器，
+        // 新进程先把意图落盘，再由（可能已在运行的）管理器实例消费并切页。
+        ("workbuddy", None) => Ok(()),
         _ => anyhow::bail!(
             "不支持的管理工具导航：{}/{}",
             navigation.page,
@@ -148,6 +151,32 @@ mod tests {
             Some(navigation)
         );
         assert_eq!(consume_pending_manager_navigation_at(&path).unwrap(), None);
+    }
+
+    #[test]
+    fn accepts_workbuddy_enhance_route() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pending-manager-navigation.json");
+        let navigation = ManagerNavigationIntent {
+            page: "workbuddy".to_string(),
+            section: None,
+        };
+
+        save_pending_manager_navigation_at(&path, &navigation).unwrap();
+
+        assert_eq!(
+            consume_pending_manager_navigation_at(&path).unwrap(),
+            Some(navigation)
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_route() {
+        let navigation = ManagerNavigationIntent {
+            page: "not-a-real-page".to_string(),
+            section: None,
+        };
+        assert!(validate_navigation(&navigation).is_err());
     }
 
     #[test]

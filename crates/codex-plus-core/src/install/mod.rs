@@ -15,6 +15,11 @@ pub const MANAGER_BINARY: &str = "LDCodexManager"; // LDCodex 管理工具二进
 pub const SILENT_BUNDLE_ID: &str = "cn.dicad.ldcodex";
 pub const MANAGER_BUNDLE_ID: &str = "cn.dicad.ldcodex.manager";
 
+/// LDCodex：桌面「WorkBuddy增强」图标名称。
+pub const WORKBUDDY_ENHANCE_NAME: &str = "WorkBuddy增强";
+/// 桌面「WorkBuddy增强」图标启动管理器时使用的参数，用于直达增强页面。
+pub const WORKBUDDY_ROUTE_ARGUMENT: &str = "--route=workbuddy";
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct InstallOptions {
@@ -108,6 +113,98 @@ pub fn uninstall_entrypoints(options: &InstallOptions) -> InstallActionResult {
 pub fn repair_entrypoints(options: &InstallOptions) -> InstallActionResult {
     let result = platform_install(options);
     action_result(result, "入口已修复。")
+}
+
+/// LDCodex：桌面「WorkBuddy增强」快捷方式的候选路径。
+pub fn workbuddy_shortcut_candidates() -> Vec<PathBuf> {
+    let Some(root) = default_install_root() else {
+        return Vec::new();
+    };
+    if cfg!(windows) {
+        vec![root.join(format!("{WORKBUDDY_ENHANCE_NAME}.lnk"))]
+    } else if cfg!(target_os = "macos") {
+        vec![root.join(format!("{WORKBUDDY_ENHANCE_NAME}.app"))]
+    } else {
+        vec![root.join(format!("{WORKBUDDY_ENHANCE_NAME}.desktop"))]
+    }
+}
+
+/// LDCodex：查询桌面「WorkBuddy增强」图标的安装状态（只读，不创建任何文件）。
+pub fn inspect_workbuddy_shortcut() -> ShortcutState {
+    ShortcutState::from_candidates(workbuddy_shortcut_candidates())
+}
+
+/// LDCodex：桌面「WorkBuddy增强」图标的操作结果。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkBuddyShortcutResult {
+    pub status: String,
+    pub message: String,
+    pub installed: bool,
+    pub path: Option<String>,
+}
+
+impl WorkBuddyShortcutResult {
+    fn from_state(result: anyhow::Result<()>, success_message: &str) -> Self {
+        let state = inspect_workbuddy_shortcut();
+        match result {
+            Ok(()) => Self {
+                status: "ok".to_string(),
+                message: success_message.to_string(),
+                installed: state.installed,
+                path: state.path,
+            },
+            Err(error) => Self {
+                status: "failed".to_string(),
+                message: error.to_string(),
+                installed: state.installed,
+                path: state.path,
+            },
+        }
+    }
+}
+
+/// LDCodex：创建/刷新桌面「WorkBuddy增强」图标。
+///
+/// 该图标指向管理器本体并附带 `--route=workbuddy`，双击即可直达增强页面。
+/// 幂等：重复调用只会覆盖同一个快捷方式，不会产生多余图标。
+pub fn install_workbuddy_shortcut() -> WorkBuddyShortcutResult {
+    WorkBuddyShortcutResult::from_state(
+        platform_install_workbuddy_shortcut(),
+        "桌面「WorkBuddy增强」图标已就绪。",
+    )
+}
+
+/// LDCodex：删除桌面「WorkBuddy增强」图标。
+pub fn uninstall_workbuddy_shortcut() -> WorkBuddyShortcutResult {
+    WorkBuddyShortcutResult::from_state(
+        platform_uninstall_workbuddy_shortcut(),
+        "桌面「WorkBuddy增强」图标已移除。",
+    )
+}
+
+fn platform_install_workbuddy_shortcut() -> anyhow::Result<()> {
+    #[cfg(windows)]
+    {
+        windows::install_workbuddy_shortcut(&InstallOptions::default())
+    }
+
+    #[cfg(not(windows))]
+    {
+        anyhow::bail!("当前平台暂不支持创建桌面「WorkBuddy增强」图标")
+    }
+}
+
+fn platform_uninstall_workbuddy_shortcut() -> anyhow::Result<()> {
+    #[cfg(windows)]
+    {
+        windows::uninstall_workbuddy_shortcut(&InstallOptions::default())
+    }
+
+    #[cfg(not(windows))]
+    {
+        anyhow::bail!("当前平台暂不支持移除桌面「WorkBuddy增强」图标")
+    }
 }
 
 pub fn build_windows_entrypoint_plan(options: &InstallOptions) -> windows::WindowsEntrypointPlan {
@@ -348,7 +445,18 @@ pub fn companion_binary_path_from_exe(exe: &Path, binary: &str) -> PathBuf {
     if same_bundle.exists() {
         return same_bundle;
     }
-    dir.join(format!("{binary}{suffix}"))
+    let exe_binary = dir.join(format!("{binary}{suffix}"));
+    if exe_binary.exists() {
+        return exe_binary;
+    }
+    // 安装版：启动器随 Tauri 资源目录分发（<install>/resources/ldcodex.exe）。
+    // 打包时由 tools/stage-launcher.mjs 复制进资源目录，避免安装包缺失启动器、
+    // 点击「启动/重启 Codex」时报「系统找不到指定的文件 (os error 2)」。
+    let staged = dir.join("resources").join(format!("{binary}{suffix}"));
+    if staged.exists() {
+        return staged;
+    }
+    exe_binary
 }
 
 fn is_macos_development_bundle(exe: &Path) -> bool {

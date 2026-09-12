@@ -776,6 +776,8 @@ impl LaunchHooks for DefaultLaunchHooks {
             }),
         );
         let (shutdown_tx, mut shutdown_rx) = tokio::sync::oneshot::channel();
+        // 登记实际监听端口，供协议代理转发时的自环防护使用。
+        crate::protocol_proxy::set_local_proxy_port(helper_port);
         let task = tokio::spawn(async move {
             loop {
                 tokio::select! {

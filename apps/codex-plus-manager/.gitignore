@@ -1,0 +1,6 @@
+# 随包 Node 运行时（约 83MB，构建前用 tools/prepare-workbuddy-runtime.mjs 生成）
+src-tauri/resources/node/
+
+# 随包启动器（构建产物，由 tools/stage-launcher.mjs 从 target/release 复制，约 17MB）
+src-tauri/resources/ldcodex.exe
+src-tauri/resources/ldcodex

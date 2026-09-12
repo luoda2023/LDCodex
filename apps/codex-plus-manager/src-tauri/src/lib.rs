@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod install;
+pub mod workbuddy;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -25,6 +26,13 @@ pub fn run() {
         }),
     );
     let Some(_guard) = acquire_single_instance_guard() else {
+        // 已有实例在运行（关窗只是缩到托盘、进程不退出）：把它的窗口唤到前台，
+        // 而不是让用户双击桌面图标后毫无反应。
+        let summoned = codex_plus_core::window_summon::summon_window_by_title("LDCodex 管理工具");
+        let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
+            "manager.single_instance_summon",
+            serde_json::json!({ "summoned": summoned }),
+        );
         return;
     };
     if let Ok(settings) = codex_plus_core::settings::SettingsStore::default().load()
@@ -44,6 +52,7 @@ pub fn run() {
     let _ = commands::startup_should_show_update();
     let app_result = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .manage(workbuddy::WorkBuddyRuntimeState::default())
         .setup(move |app| {
             let url = "/index.html";
             let mut main_window_builder =
@@ -88,6 +97,7 @@ pub fn run() {
             commands::freebuff_upsert_model,
             commands::freebuff_delete_model,
             commands::freebuff_run_patch,
+            commands::freebuff_restart,
             commands::dream_skin_status,
             commands::import_dream_skin_image,
             commands::reset_dream_skin_image,
@@ -190,6 +200,12 @@ pub fn run() {
             commands::apply_relay_injection,
             commands::apply_pure_api_injection,
             commands::clear_relay_injection,
+            workbuddy::workbuddy_runtime_status,
+            workbuddy::workbuddy_start_runtime,
+            workbuddy::workbuddy_stop_runtime,
+            workbuddy::workbuddy_launch_client,
+            workbuddy::workbuddy_install_shortcut,
+            workbuddy::workbuddy_uninstall_shortcut,
             manager_exit_app,
             manager_hide_to_tray,
             update_tray_labels

@@ -14,7 +14,8 @@ use codex_plus_core::protocol_proxy::{
 use codex_plus_core::relay_config::test_relay_profile;
 use codex_plus_core::settings::{
     AggregateRelayMember, AggregateRelayProfile, AggregateRelayStrategy, BackendSettings,
-    RelayMode, RelayModelRoute, RelayProfile, RelayProtocol, RelaySessionProvider,
+    ModelPoolConfig, ModelPoolEndpoint, PoolEndpointProtocol, RelayMode, RelayModelRoute,
+    RelayProfile, RelayProtocol, RelaySessionProvider,
 };
 use serde_json::json;
 use std::io::{Read, Write};
@@ -1856,6 +1857,157 @@ async fn aggregate_proxy_fails_over_to_next_member_in_same_request() {
             .to_ascii_lowercase()
             .contains("authorization:")
     );
+}
+
+#[tokio::test]
+async fn aggregate_proxy_rewrites_pool_model_to_member_model() {
+    let _lock = settings_path_test_lock().lock().unwrap();
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(capture_json_request_once(listener));
+    let mut settings = aggregate_proxy_settings(
+        "model-rewrite",
+        format!("http://{addr}/v1"),
+        format!("http://{addr}/v1"),
+    );
+    // 第一个成员配置了真实模型 ID；请求带的是对外的池名。
+    settings.relay_profiles[0].model = "real-model-a".to_string();
+    settings.relay_profiles[0].relay_mode = RelayMode::PureApi;
+
+    let result = open_responses_proxy_request_with_settings(
+        r#"{"model":"hermes-pool","input":"hi","stream":false}"#,
+        settings,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.status_code, 200);
+    let (_, upstream_body) = server.await.unwrap();
+    assert_eq!(upstream_body["model"], "real-model-a");
+}
+
+#[tokio::test]
+async fn aggregate_proxy_keeps_model_when_member_model_is_empty() {
+    let _lock = settings_path_test_lock().lock().unwrap();
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(capture_json_request_once(listener));
+    let settings = aggregate_proxy_settings(
+        "model-keep",
+        format!("http://{addr}/v1"),
+        format!("http://{addr}/v1"),
+    );
+
+    let result = open_responses_proxy_request_with_settings(
+        r#"{"model":"as-is-model","input":"hi","stream":false}"#,
+        settings,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.status_code, 200);
+    let (_, upstream_body) = server.await.unwrap();
+    assert_eq!(upstream_body["model"], "as-is-model");
+}
+
+#[tokio::test]
+async fn model_pool_request_routes_to_pool_endpoints_and_rewrites_model() {
+    let _lock = settings_path_test_lock().lock().unwrap();
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(capture_json_request_once(listener));
+    // 供应商列表里只有一条普通供应商（指向本地代理 + 池名）；
+    // 池端点配置在 modelPools，代理按池名直连端点并改写模型 ID。
+    let settings = BackendSettings {
+        relay_profiles: vec![RelayProfile {
+            id: "pool-provider".to_string(),
+            name: "模型池供应商".to_string(),
+            relay_mode: RelayMode::PureApi,
+            protocol: RelayProtocol::Responses,
+            model: "hermes-pool".to_string(),
+            base_url: "http://127.0.0.1:58321/v1".to_string(),
+            api_key: "codex-plus-no-auth".to_string(),
+            ..RelayProfile::default()
+        }],
+        active_relay_id: "pool-provider".to_string(),
+        model_pools: vec![ModelPoolConfig {
+            id: "pool-test".to_string(),
+            name: "测试池".to_string(),
+            virtual_model_id: "hermes-pool".to_string(),
+            enabled: true,
+            endpoints: vec![ModelPoolEndpoint {
+                base_url: format!("http://{addr}/v1"),
+                api_key: "sk-endpoint".to_string(),
+                model_id: "real-model".to_string(),
+                label: "dicad-hermesAPI".to_string(),
+                enabled: true,
+                protocol: PoolEndpointProtocol::default(),
+            }],
+        }],
+        ..BackendSettings::default()
+    };
+
+    let result = open_responses_proxy_request_with_settings(
+        r#"{"model":"hermes-pool","input":"hi","stream":false}"#,
+        settings,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.status_code, 200);
+    let (headers, upstream_body) = server.await.unwrap();
+    // 池端点默认走 Chat Completions 协议：Codex 的 Responses 请求被转换后转发。
+    assert!(headers.starts_with("POST /v1/chat/completions HTTP/1.1"));
+    assert!(headers.to_ascii_lowercase().contains("bearer sk-endpoint"));
+    // 池名改写成端点的真实模型 ID。
+    assert_eq!(upstream_body["model"], "real-model");
+    assert!(upstream_body["messages"].is_array());
+}
+
+#[tokio::test]
+async fn self_loop_request_is_rejected_when_provider_points_at_local_proxy() {
+    let _lock = settings_path_test_lock().lock().unwrap();
+    // 登记"本地代理端口"为 mock 端口；激活供应商恰好指向同一端口 ——
+    // 这是池数据缺失时的经典死循环场景，代理必须拦截而不是转发给自己。
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let addr = listener.local_addr().unwrap();
+    codex_plus_core::protocol_proxy::set_local_proxy_port(addr.port());
+    let settings = BackendSettings {
+        relay_profiles: vec![RelayProfile {
+            id: "pool-provider".to_string(),
+            name: "模型池供应商".to_string(),
+            relay_mode: RelayMode::PureApi,
+            protocol: RelayProtocol::Responses,
+            model: "hermes-pool".to_string(),
+            base_url: format!("http://{addr}/v1"),
+            api_key: "codex-plus-no-auth".to_string(),
+            ..RelayProfile::default()
+        }],
+        active_relay_id: "pool-provider".to_string(),
+        // 注意：model_pools 为空 —— 池数据缺失，池名无法改道。
+        ..BackendSettings::default()
+    };
+
+    let error = match open_responses_proxy_request_with_settings(
+        r#"{"model":"hermes-pool","input":"hi","stream":false}"#,
+        settings,
+    )
+    .await
+    {
+        Ok(_) => panic!("自环请求应被拦截"),
+        Err(error) => error,
+    };
+
+    assert!(error.to_string().contains("无限循环"));
+    codex_plus_core::protocol_proxy::set_local_proxy_port(0);
 }
 
 #[tokio::test]

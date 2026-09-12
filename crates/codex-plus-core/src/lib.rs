@@ -56,6 +56,7 @@ pub mod vision;
 pub mod watcher;
 #[cfg(windows)]
 mod windows_integration;
+pub mod window_summon;
 pub mod zed_remote;
 
 #[cfg(windows)]
@@ -66,6 +67,14 @@ pub fn windows_create_no_window() -> u32 {
 #[cfg(windows)]
 pub fn windows_open_url(url: &str) -> anyhow::Result<()> {
     windows_integration::open_url(url)
+}
+
+/// 以管理员身份启动可执行文件（触发 UAC 弹窗）。
+///
+/// 用于少数确实需要管理员权限的动作；正常使用 LDCodex 不需要提权。
+#[cfg(windows)]
+pub fn windows_run_as_admin(exe: &std::path::Path, parameters: &str) -> anyhow::Result<()> {
+    windows_integration::shell_execute_run_as_admin(exe, parameters)
 }
 
 #[cfg(windows)]
