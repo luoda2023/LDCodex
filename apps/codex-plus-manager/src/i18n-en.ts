@@ -1240,11 +1240,30 @@ export const EN_PLAIN: Record<string, string> = {
   "跳过批量删除的确认步骤。": "Skips the confirmation step for bulk deletion.",
   "自动允许系统工具": "Auto-approve system tools",
   "跳过系统级工具的确认步骤。": "Skips the confirmation step for system-level tools.",
+  "国内版与国际版继续使用各自数据库、账号和 CDP 通道；双向同步会在两边生成独立副本，不共写数据库，因此同时打开也不会互相抢占。": "The China and International builds keep separate databases, accounts and CDP channels. Two-way sync creates independent copies instead of sharing a database, so both can stay open without interfering.",
+  "双向同步全部会话": "Sync all sessions both ways",
+  "同步中…": "Syncing…",
+  "增强服务未启动；启动后可进行双向会话同步。": "Enhancement service is not running; start it to sync sessions in both directions.",
 };
 
 // Interpolated strings: tf("前缀 {0}", [x]) -> EN_TEMPLATE["前缀 {0}"] with {0} filled.
 export const EN_TEMPLATE: Record<string, string> = {
-  "账号「{0}」已添加到备份列表。": "Account \"{0}\" added to the backup list.",
+  "另一版本：{0}": "Other build: {0}",
+  "启动{0}增强": "Start {0} enhancements",
+  "{0}增强服务已启动；两个版本现在可以同时运行，数据和端口互不影响。": "{0} enhancements started; both builds can now run together with isolated data and ports.",
+  "国内版与国际版继续使用各自数据库、账号和 CDP 通道；双向同步会在两边生成独立副本，不共写数据库，因此同时打开也不会互相抢占。": "The China and International builds keep separate databases, accounts and CDP channels. Two-way sync creates independent copies instead of sharing a database, so both can stay open without interfering.",
+  "双向同步完成：新增/更新{0}个会话，{1}个文件复制不完整。": "Two-way sync finished: added/updated {0} session(s); {1} file(s) were incomplete.",
+  "双向同步完成：已让两个版本共用{0}个会话副本。": "Two-way sync finished: both builds now share {0} session copies.",
+  "，{0}个文件复制不完整": ", {0} file(s) copied incompletely",
+  "已从{0}复制{1}个会话到当前版本{2}。": "Copied {1} session(s) from {0} to the current build{2}.",
+  "已从当前版本复制{0}个会话到{1}{2}。": "Copied {0} session(s) from the current build to {1}{2}.",
+  "增强服务运行中 · API {0} · 数据目录独立": "Enhancement service running · API {0} · isolated data directory",
+  "增强服务运行中 · API {0} · 独立 CDP 已连接": "Enhancement service running · API {0} · independent CDP connected",
+  "增强服务运行中 · API {0} · 等待独立 CDP": "Enhancement service running · API {0} · waiting for independent CDP",
+  "增强服务未启动；启动后可进行双向会话同步。": "Enhancement service is not running; start it to sync sessions in both directions.",
+  "已重启{0}并开启独立调试通道。": "Restarted {0} with its independent debug channel enabled.",
+  "重启{0}让增强生效": "Restart {0} to enable enhancements",
+  "账号「{0}」已添加到备份列表。":  "Account \"{0}\" added to the backup list.",
   "添加账号没有成功：{0}": "Adding the account failed: {0}",
   "已按模型池「{0}」填好：API 地址是本地转发代理，模型 ID 就是池名。保存后由本地代理在池内端点间自动轮转（429 / 额度耗尽自动切换）。": "Filled from pool \"{0}\": the API URL is the built-in local forwarding proxy and the model ID is the pool name. After saving, the proxy rotates across pool endpoints automatically (429 / quota-exhausted failover).",
   "{0} 个模型": "{0} model(s)",
@@ -1446,6 +1465,10 @@ export const EN_BACKEND: Record<string, string> = {
   "供应商导入后重新读取设置失败": "Failed to reload settings after provider import",
   "诊断日志已写入。": "Diagnostics log written.",
   "未命名供应商": "Unnamed provider",
+  "国内版与国际版继续使用各自数据库、账号和 CDP 通道；双向同步会在两边生成独立副本，不共写数据库，因此同时打开也不会互相抢占。": "The China and International builds keep separate databases, accounts and CDP channels. Two-way sync creates independent copies instead of sharing a database, so both can stay open without interfering.",
+  "双向同步全部会话": "Sync all sessions both ways",
+  "同步中…": "Syncing…",
+  "增强服务未启动；启动后可进行双向会话同步。": "Enhancement service is not running; start it to sync sessions in both directions.",
   "响应内容为空": "Response is empty",
 };
 

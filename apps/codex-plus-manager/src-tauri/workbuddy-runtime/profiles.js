@@ -90,7 +90,9 @@ function applyWorkBuddyTarget(profile, target) {
       ...profile,
       appPath: target.binary,
       binaryNames: target.processNames || [path.basename(target.binary)],
-      cdp: target.cdp || { mode: 'argument' },
+      // 目标配置可能来自旧版，未保存 cdp 字段时必须继承内置 profile 的环境变量模式；
+      // 回退到命令行参数会让 WorkBuddy 国内版/国际版直接拒绝启动并留下 Failed to fetch。
+      cdp: target.cdp || profile.cdp || { mode: 'environment' },
       configuredTarget: true,
       customTarget: false,
       targetVersion: target.version || '',

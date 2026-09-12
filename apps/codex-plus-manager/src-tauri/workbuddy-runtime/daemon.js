@@ -134,7 +134,7 @@ const {
   telemetryEnabled,
   telemetryEnvironmentOverride,
 } = require('./sentry-report.js');
-const { getProfile, profileDataDir, listInstalledModelSources } = require('./profiles.js');
+const { PROFILES, getProfile, profileDataDir, listInstalledModelSources } = require('./profiles.js');
 const { readWorkBuddyTarget } = require('./workbuddy-target.js');
 const { classifyTarget, looksLikeWbFamilyTarget, isTargetForProfile } = require('./cdp-targets.js');
 const { createSessionDb, normalizeSessionIdBatch, parameterCount } = require('./session-db.js');
@@ -333,8 +333,11 @@ const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.exis
 // 1.1.65：自动化会话发送前确保进入新版 WorkBuddy 新建任务页。
 // 1.1.66：新版侧栏 tab 共用 conversation-list-tab-button-box，改用文字确认新建任务。
 // 1.1.67：项目页存在普通 composer 时仍强制定位并点击新建任务 tab。
-const DAEMON_VERSION = '1.2.4';
-const DAEMON_BUILD_ID = 'release-1.2.4-20260908-send-button-poll-200ms';
+// 1.2.5：国内版 / 国际版会话桥：保持双端数据隔离，同时允许双向复制会话与消息附件。
+// 1.2.6：本地 API 读取请求允许短暂断线后自动恢复；旧 target 配置继承环境变量 CDP 模式，
+//         避免国内版偶发启动失败后注入组件弹出 Failed to fetch。
+const DAEMON_VERSION = '1.2.6';
+const DAEMON_BUILD_ID = 'release-1.2.6-20260912-cross-profile-fetch-recovery';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）
@@ -3691,6 +3694,194 @@ async function copySessionFiles(wbHome, oldId, newId) {
   await copyOne(path.join(wbHome, 'artifact-index', oldId + '.json'), path.join(wbHome, 'artifact-index', newId + '.json'));
   log('[sessions-copy] 已复制消息文件 ' + oldId + ' -> ' + newId);
   return result;
+}
+
+// ─────────────────────────── 国内版 / 国际版会话桥 ───────────────────────────
+// 两个 WorkBuddy 客户端必须继续使用各自的 SQLite 与消息目录，不能通过软链接或
+// 共用 workbuddy.db 来“共享”：那会把账号、CDP 注入和客户端写入边界重新混在一起。
+// 互通采用受限的本地桥：目标 daemon 持有目标数据库写锁，只允许访问另一个内置
+// WorkBuddy profile 的固定 sessionDb/dataRoot，并为每次复制生成独立的新会话 ID。
+const CROSS_PROFILE_IDS = new Set(['workbuddy-cn', 'workbuddy-ai']);
+const CROSS_PROFILE_LINKS_FILE = path.join(DATA_DIR, 'cross-profile-links.json');
+const CROSS_PROFILE_MAX_BATCH = 100;
+
+function crossProfileDefinition(id) {
+  const key = String(id || '').trim().toLowerCase();
+  if (!CROSS_PROFILE_IDS.has(key) || key === PROFILE.id) {
+    throw new Error('只能选择另一个 WorkBuddy 版本');
+  }
+  // 不能直接拿 PROFILES[key]：用户可能在管理器里为某个版本配置了便携版/自定义
+  // dataRoot。跨版本读取必须复用 getProfile 的目标解析，否则会把会话复制到默认目录，
+  // 表面成功但目标客户端看不到。
+  let definition;
+  try {
+    const base = PROFILES[key];
+    definition = getProfile(key, { dataDir: profileDataDir(base) });
+  } catch (_) {
+    definition = null;
+  }
+  if (!definition || definition.kind !== 'workbuddy') throw new Error('目标 WorkBuddy 版本不可用');
+  return definition;
+}
+
+function crossProfileSessionDb(definition) {
+  return createSessionDb({ dbPath: definition.sessionDb });
+}
+
+function normalizeSessionRows(rows) {
+  return (Array.isArray(rows) ? rows : []).map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [
+    key,
+    value === null || value === undefined ? '' : String(value).trim(),
+  ])));
+}
+
+async function crossProfileRows(definition, ids = null) {
+  const db = crossProfileSessionDb(definition);
+  const selected = ids && ids.length ? ids : null;
+  const sql = 'SELECT ' + SESSION_COPY_COLUMNS.join(',') + ' FROM sessions WHERE deleted_at IS NULL' +
+    (selected ? ' AND id IN (' + sqlPlaceholders(selected) + ')' : '') + ' ORDER BY created_at DESC;';
+  return normalizeSessionRows(await db.all(sql, selected || []));
+}
+
+function readCrossProfileLinks() {
+  try {
+    const value = JSON.parse(fs.readFileSync(CROSS_PROFILE_LINKS_FILE, 'utf8'));
+    return value && typeof value === 'object' && value.links && typeof value.links === 'object' ? value.links : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function writeCrossProfileLinks(links) {
+  fs.mkdirSync(path.dirname(CROSS_PROFILE_LINKS_FILE), { recursive: true });
+  const temp = CROSS_PROFILE_LINKS_FILE + '.tmp-' + process.pid + '-' + Date.now();
+  fs.writeFileSync(temp, JSON.stringify({ version: 1, links }, null, 2), { mode: 0o600 });
+  fs.renameSync(temp, CROSS_PROFILE_LINKS_FILE);
+}
+
+function crossProfileLinkKey(sourceProfile, sourceId) {
+  return String(sourceProfile) + ':' + String(sourceId);
+}
+
+function crossProfileTargetId(sourceProfile, sourceId) {
+  const item = readCrossProfileLinks()[crossProfileLinkKey(sourceProfile, sourceId)];
+  return item && item.targetId ? String(item.targetId) : '';
+}
+
+function crossProfilePathPairs(sourceHome, targetHome, oldId, newId) {
+  const pairs = [];
+  const sourceProjects = path.join(sourceHome, 'projects');
+  try {
+    for (const entry of fs.readdirSync(sourceProjects, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+      const sourceProject = path.join(sourceProjects, entry.name);
+      const targetProject = path.join(targetHome, 'projects', entry.name);
+      pairs.push([path.join(sourceProject, oldId + '.jsonl'), path.join(targetProject, newId + '.jsonl')]);
+      pairs.push([path.join(sourceProject, oldId), path.join(targetProject, newId)]);
+    }
+  } catch (_) {}
+  pairs.push([path.join(sourceHome, 'workspace', 'sessions', oldId), path.join(targetHome, 'workspace', 'sessions', newId)]);
+  pairs.push([path.join(sourceHome, 'tasks', oldId), path.join(targetHome, 'tasks', newId)]);
+  pairs.push([path.join(sourceHome, 'file-history', oldId), path.join(targetHome, 'file-history', newId)]);
+  pairs.push([path.join(sourceHome, 'artifact-index', oldId + '.json'), path.join(targetHome, 'artifact-index', newId + '.json')]);
+  return pairs;
+}
+
+async function copyCrossProfileFiles(sourceHome, targetHome, oldId, newId) {
+  const result = { copied: 0, failed: 0 };
+  const sourceRoot = path.resolve(sourceHome);
+  const targetRoot = path.resolve(targetHome);
+  const copyOne = async (from, to) => {
+    try {
+      const source = path.resolve(from);
+      const target = path.resolve(to);
+      const sourceRel = path.relative(sourceRoot, source);
+      const targetRel = path.relative(targetRoot, target);
+      if (!sourceRel || sourceRel.startsWith('..' + path.sep) || path.isAbsolute(sourceRel) ||
+          !targetRel || targetRel.startsWith('..' + path.sep) || path.isAbsolute(targetRel)) {
+        throw new Error('会话文件路径越过受管目录');
+      }
+      if (!fs.existsSync(source)) return;
+      const stat = fs.lstatSync(source);
+      if (stat.isSymbolicLink()) return;
+      fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
+      await fs.promises.cp(source, target, { recursive: true, force: true, dereference: false });
+      result.copied++;
+    } catch (error) {
+      result.failed++;
+      log('[cross-profile-copy] 文件复制失败 ' + from + ' -> ' + to + ': ' + error.message);
+    }
+  };
+  for (const [source, target] of crossProfilePathPairs(sourceRoot, targetRoot, oldId, newId)) {
+    await copyOne(source, target);
+  }
+  return result;
+}
+
+async function copyCrossProfileSession(sourceProfileId, sourceRow, targetUid) {
+  const definition = crossProfileDefinition(sourceProfileId);
+  const sourceId = String(sourceRow && sourceRow.id || '').trim();
+  const ownerUid = validImportedSessionUid(targetUid);
+  if (!isValidSessionId(sourceId)) throw new Error('跨版本复制包含无效会话 ID');
+  const sourceRows = await crossProfileRows(definition, [sourceId]);
+  const source = sourceRows.find((row) => String(row.id) === sourceId);
+  if (!source) throw new Error('源版本中找不到该会话');
+  const links = readCrossProfileLinks();
+  const key = crossProfileLinkKey(definition.id, sourceId);
+  let targetId = links[key] && String(links[key].targetId || '');
+  let updated = false;
+  if (targetId) {
+    const existing = await sqliteQuery(
+      'SELECT id, user_id FROM sessions WHERE id = ? AND deleted_at IS NULL LIMIT 1;',
+      [targetId]
+    );
+    if (!existing.length || String(existing[0].user_id || '') !== ownerUid) targetId = '';
+  }
+  if (!targetId) targetId = crypto.randomUUID();
+  else updated = true;
+
+  const files = await copyCrossProfileFiles(definition.dataRoot, PROFILE.dataRoot, sourceId, targetId);
+  if (!updated) {
+    await insertCopiedSession(source, ownerUid, targetId);
+  } else {
+    await sqliteRun(
+      'UPDATE sessions SET cwd = ?, title = ?, custom_title = ?, status = ?, updated_at = ?, last_activity_at = ?, mode = ?, model = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL;',
+      [source.cwd || '', source.title || '', source.custom_title || '', source.status || 'Pending',
+        Number(source.updated_at || Date.now()), Number(source.last_activity_at || source.updated_at || Date.now()),
+        source.mode || null, source.model || null, targetId, ownerUid]
+    );
+  }
+  links[key] = {
+    sourceProfile: definition.id,
+    sourceId,
+    targetProfile: PROFILE.id,
+    targetId,
+    targetUid: ownerUid,
+    copiedAt: Date.now(),
+    failedFiles: files.failed,
+  };
+  writeCrossProfileLinks(links);
+  return { status: updated ? 'updated' : 'copied', sourceProfile: definition.id, sourceId, targetId, failedFiles: files.failed };
+}
+
+async function copyCrossProfileSessions(sourceProfileId, ids, targetUid) {
+  const selectedIds = normalizeSessionIdBatch(ids);
+  if (!selectedIds.length) throw new Error('未选择跨版本会话');
+  if (selectedIds.length > CROSS_PROFILE_MAX_BATCH) throw new Error('单次最多复制 100 个跨版本会话');
+  const ownerUid = validImportedSessionUid(targetUid);
+  const definition = crossProfileDefinition(sourceProfileId);
+  const rows = await crossProfileRows(definition, selectedIds);
+  const byId = new Map(rows.map((row) => [String(row.id), row]));
+  const copied = [];
+  const errors = [];
+  for (const id of selectedIds) {
+    const source = byId.get(id);
+    if (!source) { errors.push(id + ': 源版本找不到会话'); continue; }
+    try { copied.push(await copyCrossProfileSession(definition.id, source, ownerUid)); }
+    catch (error) { errors.push(id + ': ' + error.message); }
+  }
+  if (!copied.length) throw new Error(errors[0] || '没有可复制的跨版本会话');
+  return { copied, failed: errors.length, errors: errors.slice(0, MAX_SESSION_IMPORT_ERRORS) };
 }
 
 function sessionContentMtime(wbHome, sessionId) {
@@ -7756,6 +7947,57 @@ function handleApi(req, res) {
       })
       .catch((e) => json(res, 500, { ok: false, error: e.message }));
   }
+
+  // 跨版本会话列表：只读另一个内置 WorkBuddy profile 的数据库，不改变对方客户端。
+  // GET /api/sessions/cross-profile?profile=workbuddy-cn|workbuddy-ai&uid=&range=all
+  if (req.method === 'GET' && p === '/api/sessions/cross-profile') {
+    return (async () => {
+      try {
+        const sourceProfile = crossProfileDefinition(url.searchParams.get('profile'));
+        const uid = String(url.searchParams.get('uid') || '').trim();
+        const range = url.searchParams.get('range') || 'all';
+        const rangeMs = sessionRangeMs(range);
+        let sessions = await crossProfileRows(sourceProfile);
+        if (uid) sessions = sessions.filter((session) => String(session.user_id || '') === uid);
+        if (rangeMs) sessions = sessions.filter((session) => Number(session.last_activity_at || session.updated_at || session.created_at || 0) >= rangeMs);
+        const links = readCrossProfileLinks();
+        sessions = sessions.map((session) => Object.assign({}, session, {
+          sourceProfile: sourceProfile.id,
+          linkedTargetId: crossProfileTargetId(sourceProfile.id, session.id) || null,
+          linkedTarget: links[crossProfileLinkKey(sourceProfile.id, session.id)] || null,
+        }));
+        return json(res, 200, {
+          ok: true,
+          sourceProfile: sourceProfile.id,
+          sourceName: sourceProfile.name,
+          targetProfile: PROFILE.id,
+          targetName: PROFILE.name,
+          sessions,
+          count: sessions.length,
+          uid,
+          range,
+        });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: error.message });
+      }
+    })();
+  }
+
+  // 跨版本复制：当前 daemon 是目标端，目标数据库和目标消息目录始终由它自己写。
+  // POST /api/sessions/cross-profile-copy { sourceProfile, ids, targetUid? }
+  if (req.method === 'POST' && p === '/api/sessions/cross-profile-copy') {
+    return readBody(req).then(async (body) => {
+      try {
+        const targetUid = String((body && body.targetUid) || ((currentAccount() || {}).uid || '')).trim();
+        const result = await copyCrossProfileSessions(body && body.sourceProfile, body && body.ids, targetUid);
+        log(`[cross-profile-copy] ${result.copied.length} 个会话已从 ${body.sourceProfile} 复制到 ${PROFILE.id}`);
+        return json(res, 200, { ok: true, ...result, targetProfile: PROFILE.id, targetUid });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: error.message });
+      }
+    });
+  }
+
   // 会话空间列表：GET /api/sessions/workspaces
   if (req.method === 'GET' && p === '/api/sessions/workspaces') {
       return sqliteQuery("SELECT DISTINCT cwd FROM sessions WHERE deleted_at IS NULL AND cwd IS NOT NULL AND cwd != '' ORDER BY cwd;")

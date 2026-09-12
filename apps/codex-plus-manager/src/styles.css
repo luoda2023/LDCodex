@@ -8770,6 +8770,37 @@ select {
   line-height: 1.5;
 }
 
+.workbuddy-peer-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px dashed hsl(var(--border));
+  border-radius: 9px;
+  background: hsl(var(--surface-sunken) / 0.55);
+}
+
+.workbuddy-peer-status > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workbuddy-peer-status small {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .workbuddy-peer-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .workbuddy-actions {
   display: flex;
   flex-wrap: wrap;

@@ -2099,15 +2099,24 @@ export function App() {
         showNotice(title, t("增强服务未运行，无需重启。"), "failed");
         return;
       }
-      const headers: Record<string, string> = { "content-type": "application/json" };
-      if (runtime.apiToken) headers["X-LDCodex-Token"] = runtime.apiToken;
-      const response = await fetch(`http://127.0.0.1:${runtime.port}/api/relaunch-cdp`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ force: runtime.clientRunning ? true : false }),
-      });
-      const parsed = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-      if (response.ok && parsed && parsed.ok !== false) {
+      let parsed: Record<string, unknown> | null = null;
+      try {
+        parsed = await requestWorkBuddyRuntime(runtime, "/api/relaunch-cdp", {
+          method: "POST",
+          body: JSON.stringify({ force: runtime.clientRunning ? true : false }),
+        });
+      } catch (requestError) {
+        // POST 可能已经在 daemon 端执行成功，只是 WorkBuddy 重启瞬间让响应连接丢失。
+        // 绝不重复发送 POST；改用只读 status 轮询确认结果。
+        const recovered = await waitForWorkBuddyRuntime(runtime);
+        const recoveredCdp = (recovered?.cdp || {}) as Record<string, unknown>;
+        if (recovered && recoveredCdp.connected === true) {
+          showNotice(title, t("WorkBuddy 已重启，增强调试通道已恢复。"), "ok");
+          return;
+        }
+        throw requestError;
+      }
+      if (parsed && parsed.ok !== false) {
         showNotice(
           title,
           t("已经用调试模式重启 WorkBuddy，增强能力会在它启动后自动接上。"),
@@ -11944,6 +11953,47 @@ function stringifyError(error: unknown) {
  * 不该出现在客户界面上。这里只做一层"翻译"：本来就通顺的中文提示原样透出，
  * 命中底层特征词的换成可操作的说明，原始信息仍会打到控制台便于定位。
  */
+async function requestWorkBuddyRuntime(
+  runtime: WorkBuddyRuntimeStatus,
+  path: string,
+  init?: RequestInit,
+): Promise<Record<string, unknown>> {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (runtime.apiToken) headers["X-LDCodex-Token"] = runtime.apiToken;
+  const response = await fetch(`http://127.0.0.1:${runtime.port}${path}`, {
+    ...init,
+    headers: { ...headers, ...((init?.headers as Record<string, string>) || {}) },
+  });
+  const text = await response.text();
+  let parsed: unknown = text;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    /* 保持纯文本 */
+  }
+  if (!response.ok) {
+    const message = parsed && typeof parsed === "object" && "error" in parsed
+      ? String((parsed as { error?: unknown }).error || "")
+      : `HTTP ${response.status}`;
+    throw new Error(message || `HTTP ${response.status}`);
+  }
+  return parsed as Record<string, unknown>;
+}
+
+async function waitForWorkBuddyRuntime(runtime: WorkBuddyRuntimeStatus, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const result = await requestWorkBuddyRuntime(runtime, "/api/status");
+      if (result && result.ok !== false) return result;
+    } catch {
+      /* 客户端重启窗口，继续等待 */
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  return null;
+}
+
 function friendlyRuntimeError(error: unknown): string {
   const raw = stringifyError(error).trim();
   if (!raw) return t("操作没有完成，请稍后重试。");
@@ -11951,6 +12001,10 @@ function friendlyRuntimeError(error: unknown): string {
     /spawnSync|execFileSync|ETIMEDOUT|ENOENT|EACCES|EPERM|ECONNREFUSED|ECONNRESET|EPIPE|powershell|osascript|taskkill|tasklist|wmic|\.exe\b|node:internal|at [A-Za-z_$][\w.$]* \(/i.test(
       raw,
     );
+  if (/Failed to fetch|NetworkError|网络请求失败|WBS_LOCAL_SERVICE_UNAVAILABLE/i.test(raw)) {
+    if (typeof console !== "undefined") console.warn("[LDCodex] 本地增强服务连接错误：", raw);
+    return t("国内版/国际版增强服务正在重启或暂时不可达，已自动恢复；如果仍未恢复，请点击「刷新」后再试。");
+  }
   if (!looksTechnical) return raw;
   if (typeof console !== "undefined") console.warn("[LDCodex] 运行时底层错误：", raw);
   if (/cdp|WorkBuddy/i.test(raw)) {
@@ -12468,8 +12522,12 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
   const profileLabel = isIntl ? t("WorkBuddy 国际版") : t("WorkBuddy 国内版");
   const [tab, setTab] = useState<WorkBuddyTab>("account");
   const [status, setStatus] = useState<WorkBuddyRuntimeStatus | null>(null);
+  const [peerStatus, setPeerStatus] = useState<WorkBuddyRuntimeStatus | null>(null);
+  const [peerDaemonStatus, setPeerDaemonStatus] = useState<Record<string, unknown> | null>(null);
   const [daemonStatus, setDaemonStatus] = useState<Record<string, unknown> | null>(null);
   const [payload, setPayload] = useState<Record<string, unknown> | null>(null);
+  const [crossPayload, setCrossPayload] = useState<Record<string, unknown> | null>(null);
+  const [crossBusy, setCrossBusy] = useState("");
   const [askState, setAskState] = useState<Record<string, unknown> | null>(null);
   const [autoContinueState, setAutoContinueState] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -12483,6 +12541,8 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
 
   // 两个档案的守护进程监听不同端口（国内版 47832 / 国际版 47833）。
   // 状态还没读回来时先用本档案的固定端口兜底，避免第一次请求打错端口。
+  const peerProfile: WorkBuddyProfileId = isIntl ? "workbuddy-cn" : "workbuddy-ai";
+  const peerLabel = isIntl ? t("WorkBuddy 国内版") : t("WorkBuddy 国际版");
   const base = `http://127.0.0.1:${status?.port ?? (isIntl ? 47833 : WORKBUDDY_DAEMON_PORT)}`;
   const connected = !!status?.running;
 
@@ -12517,6 +12577,47 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     [base, status?.apiToken],
   );
 
+  /** 调用另一个版本的本地 daemon。跨版本写入永远发给目标版本的 daemon，
+   * 由目标端自己持有 SQLite 写锁，避免两个客户端同时写同一个数据库。 */
+  const callRuntime = async (runtime: WorkBuddyRuntimeStatus, path: string, init?: RequestInit) => {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (runtime.apiToken) headers["X-LDCodex-Token"] = runtime.apiToken;
+    const response = await fetch(`http://127.0.0.1:${runtime.port}${path}`, {
+      ...init,
+      headers: { ...headers, ...((init?.headers as Record<string, string>) || {}) },
+    });
+    const text = await response.text();
+    let parsed: unknown = text;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      /* 保持纯文本 */
+    }
+    if (!response.ok) {
+      const message = parsed && typeof parsed === "object" && "error" in parsed
+        ? String((parsed as { error?: unknown }).error || "")
+        : `HTTP ${response.status}`;
+      throw new Error(message || `HTTP ${response.status}`);
+    }
+    return parsed as Record<string, unknown>;
+  };
+
+  /** WorkBuddy 重启客户端时，旧页面可能短暂丢失到 127.0.0.1 的连接。
+   * 不重试有副作用的 POST；只轮询无副作用的 /api/status，确认 daemon 已恢复后再给用户成功状态。 */
+  const waitForRuntimeAfterRestart = async (runtime: WorkBuddyRuntimeStatus, timeoutMs = 30000) => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        const result = await callRuntime(runtime, "/api/status");
+        if (result && result.ok !== false) return result;
+      } catch {
+        /* daemon/客户端重启窗口，继续等待 */
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    return null;
+  };
+
   const refreshStatus = useCallback(async () => {
     try {
       const next = await invoke<WorkBuddyRuntimeStatus>("workbuddy_runtime_status", { profile });
@@ -12528,6 +12629,30 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     }
   }, [profile]);
 
+  const refreshPeerStatus = useCallback(async () => {
+    try {
+      const next = await invoke<WorkBuddyRuntimeStatus>("workbuddy_runtime_status", { profile: peerProfile });
+      setPeerStatus(next);
+      if (next.running) {
+        try {
+          const response = await fetch(`http://127.0.0.1:${next.port}/api/status`, {
+            headers: next.apiToken ? { "X-LDCodex-Token": next.apiToken } : undefined,
+          });
+          const data = await response.json() as Record<string, unknown>;
+          if (response.ok) setPeerDaemonStatus(data);
+        } catch {
+          setPeerDaemonStatus(null);
+        }
+      } else {
+        setPeerDaemonStatus(null);
+      }
+      return next;
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+      return null;
+    }
+  }, [peerProfile]);
+
   /** 读取当前页签的数据。 */
   const loadTab = useCallback(
     async (next: WorkBuddyTab, runtime: WorkBuddyRuntimeStatus | null = status) => {
@@ -12538,7 +12663,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
       const endpoints: Partial<Record<WorkBuddyTab, string>> = {
         account: "/api/accounts",
         theme: "/api/themes",
-        sessions: "/api/sessions",
+        sessions: "/api/sessions?uid=&range=all",
         models: "/api/models",
         enhance: "/api/no-disturb",
         automations: "/api/automations",
@@ -12551,14 +12676,26 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
         // 「增强」页签要同时读免打扰 / 决策弹窗 / 自动续写三份状态，
         // 否则开关会显示成"关"，客户一勾反而把已开的关掉了。
         const extra = next === "enhance" ? ["/api/ask-mode", "/api/auto-continue"] : [];
+        const crossPath = next === "sessions"
+          ? `/api/sessions/cross-profile?profile=${encodeURIComponent(peerProfile)}&range=all`
+          : null;
         const override = runtime?.apiToken ?? undefined;
-        const [data, daemon, ...rest] = await Promise.all([
+        const responses = await Promise.all([
           call(path, undefined, override),
           call("/api/status", undefined, override).catch(() => null),
           ...extra.map((extraPath) => call(extraPath, undefined, override).catch(() => null)),
+          ...(crossPath ? [call(crossPath, undefined, override).catch(() => null)] : []),
         ]);
+        const data = responses[0];
+        const daemon = responses[1];
+        const rest = responses.slice(2);
         setPayload(data);
         if (daemon) setDaemonStatus(daemon);
+        if (next === "sessions") {
+          setCrossPayload(rest[0] ?? null);
+        } else {
+          setCrossPayload(null);
+        }
         if (next === "enhance") {
           setAskState(rest[0] ?? null);
           setAutoContinueState(rest[1] ?? null);
@@ -12569,7 +12706,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
         setBusy(false);
       }
     },
-    [call, status],
+    [call, peerProfile, status],
   );
 
   const startRuntime = async () => {
@@ -12703,7 +12840,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
 
   useEffect(() => {
     void (async () => {
-      const runtime = await refreshStatus();
+      const [runtime] = await Promise.all([refreshStatus(), refreshPeerStatus()]);
       if (runtime?.running) await loadTab(tab, runtime);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -12937,41 +13074,269 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     );
   };
 
+  const ensurePeerRuntime = async (): Promise<WorkBuddyRuntimeStatus> => {
+    const current = await invoke<WorkBuddyRuntimeStatus>("workbuddy_runtime_status", { profile: peerProfile });
+    if (current.running) {
+      setPeerStatus(current);
+      return current;
+    }
+    const started = await invoke<WorkBuddyActionResult>("workbuddy_start_runtime", { profile: peerProfile });
+    if (started.status !== "ok" || !started.statusDetail.running) {
+      throw new Error(started.message || tf("无法启动{0}增强服务", [peerLabel]));
+    }
+    setPeerStatus(started.statusDetail);
+    return started.statusDetail;
+  };
+
+  const copyInBatches = async (
+    ids: string[],
+    copyBatch: (batch: string[]) => Promise<Record<string, unknown>>,
+  ) => {
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    let copied = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    for (let offset = 0; offset < unique.length; offset += 100) {
+      const result = await copyBatch(unique.slice(offset, offset + 100));
+      const batchCopied = Array.isArray(result.copied) ? result.copied.length : 0;
+      copied += batchCopied;
+      failed += Number(result.failed || 0);
+      if (Array.isArray(result.errors)) errors.push(...result.errors.map(String));
+    }
+    return { copied, failed, errors };
+  };
+
+  const copySessionsToCurrent = async (ids: string[]) => {
+    const selected = Array.from(new Set(ids.filter(Boolean)));
+    if (!selected.length) return;
+    setCrossBusy("peer-to-current");
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const summary = await copyInBatches(selected, async (batch) => {
+        const result = await call("/api/sessions/cross-profile-copy", {
+          method: "POST",
+          body: JSON.stringify({ sourceProfile: peerProfile, ids: batch }),
+        });
+        if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
+        return result;
+      });
+      const detail = summary.failed ? tf("，{0}个文件复制不完整", [String(summary.failed)]) : "";
+      setNotice(tf("已从{0}复制{1}个会话到当前版本{2}。", [peerLabel, String(summary.copied), detail]));
+      await loadTab("sessions");
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+      setCrossBusy("");
+    }
+  };
+
+  const copySessionsToPeer = async (ids: string[]) => {
+    const selected = Array.from(new Set(ids.filter(Boolean)));
+    if (!selected.length) return;
+    setCrossBusy("current-to-peer");
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const peerRuntime = await ensurePeerRuntime();
+      const summary = await copyInBatches(selected, async (batch) => {
+        const result = await callRuntime(peerRuntime, "/api/sessions/cross-profile-copy", {
+          method: "POST",
+          body: JSON.stringify({ sourceProfile: profile, ids: batch }),
+        });
+        if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
+        return result;
+      });
+      const detail = summary.failed ? tf("，{0}个文件复制不完整", [String(summary.failed)]) : "";
+      setNotice(tf("已从当前版本复制{0}个会话到{1}{2}。", [String(summary.copied), peerLabel, detail]));
+      await loadTab("sessions");
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+      setCrossBusy("");
+    }
+  };
+
+  const syncAllSessionsBothWays = async () => {
+    const currentIds = rows(payload?.sessions).map((session) => String(session.id || "")).filter(Boolean);
+    const peerIds = rows(crossPayload?.sessions).map((session) => String(session.id || "")).filter(Boolean);
+    if (!currentIds.length && !peerIds.length) return;
+    setCrossBusy("both-ways");
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const peerRuntime = await ensurePeerRuntime();
+      const [toPeer, toCurrent] = await Promise.all([
+        copyInBatches(currentIds, async (batch) => {
+          const result = await callRuntime(peerRuntime, "/api/sessions/cross-profile-copy", {
+            method: "POST",
+            body: JSON.stringify({ sourceProfile: profile, ids: batch }),
+          });
+          if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
+          return result;
+        }),
+        copyInBatches(peerIds, async (batch) => {
+          const result = await call("/api/sessions/cross-profile-copy", {
+            method: "POST",
+            body: JSON.stringify({ sourceProfile: peerProfile, ids: batch }),
+          });
+          if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
+          return result;
+        }),
+      ]);
+      const total = toPeer.copied + toCurrent.copied;
+      const partial = toPeer.failed + toCurrent.failed;
+      setNotice(
+        partial
+          ? tf("双向同步完成：新增/更新{0}个会话，{1}个文件复制不完整。", [String(total), String(partial)])
+          : tf("双向同步完成：已让两个版本共用{0}个会话副本。", [String(total)]),
+      );
+      await loadTab("sessions");
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+      setCrossBusy("");
+    }
+  };
+
   const renderSessions = () => {
     const sessions = rows(payload?.sessions);
+    const peerSessions = rows(crossPayload?.sessions);
+    const sessionIds = sessions.map((session) => String(session.id || "")).filter(Boolean);
+    const peerSessionIds = peerSessions.map((session) => String(session.id || "")).filter(Boolean);
     return (
-      <div className="workbuddy-card">
-        <div className="workbuddy-card-head">
-          <strong>{tf("会话（{0}）", [String(sessions.length)])}</strong>
-          <small className="muted-text">{t("这里展示 WorkBuddy 本机的会话列表，便于排查工作目录与状态。")}</small>
-        </div>
-        {sessions.length ? (
-          <div className="workbuddy-list">
-            {sessions.slice(0, 80).map((session, index) => {
-              const id = String(session.id || index);
-              const title = String(session.custom_title || session.title || t("未命名会话"));
-              const stateKey = String(session.status || "");
-              return (
-                <div className="workbuddy-row" key={id}>
-                  <div className="workbuddy-row-main">
-                    <strong>{title}</strong>
-                    <small className="workbuddy-mono" title={String(session.cwd || "")}>
-                      {String(session.cwd || "—")}
-                    </small>
-                    <small className="muted-text">
-                      {tf("{0} · 更新于 {1}", [
-                        WORKBUDDY_SESSION_STATUS[stateKey] || stateKey || "—",
-                        workBuddyFormatTime(session.updated_at || session.last_activity_at),
-                      ])}
-                    </small>
-                  </div>
-                </div>
-              );
-            })}
+      <div className="workbuddy-section">
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <div>
+              <strong>{tf("当前版本会话（{0}）", [String(sessions.length)])}</strong>
+              <small className="muted-text">{t("国内版与国际版继续使用各自数据库、账号和 CDP 通道；双向同步会在两边生成独立副本，不共写数据库，因此同时打开也不会互相抢占。")}</small>
+            </div>
+            <div className="workbuddy-actions">
+              <Button
+                disabled={busy || (!sessionIds.length && !peerSessionIds.length) || crossBusy !== ""}
+                onClick={() => void syncAllSessionsBothWays()}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                <RefreshCw className="h-4 w-4" />
+                {crossBusy === "both-ways" ? t("同步中…") : t("双向同步全部会话")}
+              </Button>
+              <Button
+                disabled={busy || !sessionIds.length || crossBusy !== ""}
+                onClick={() => void copySessionsToPeer(sessionIds)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                <Copy className="h-4 w-4" />
+                {crossBusy === "current-to-peer" ? t("复制中…") : tf("全部复制到{0}", [peerLabel])}
+              </Button>
+            </div>
           </div>
-        ) : (
-          <p className="muted-text">{t("没有读到会话。确认 WorkBuddy 已登录并至少使用过一次。")}</p>
-        )}
+          {sessions.length ? (
+            <div className="workbuddy-list">
+              {sessions.slice(0, 100).map((session, index) => {
+                const id = String(session.id || index);
+                const title = String(session.custom_title || session.title || t("未命名会话"));
+                const stateKey = String(session.status || "");
+                return (
+                  <div className="workbuddy-row" key={id}>
+                    <div className="workbuddy-row-main">
+                      <strong>{title}</strong>
+                      <small className="workbuddy-mono" title={String(session.cwd || "")}>
+                        {String(session.cwd || "—")}
+                      </small>
+                      <small className="muted-text">
+                        {tf("{0} · 更新于 {1}", [
+                          WORKBUDDY_SESSION_STATUS[stateKey] || stateKey || "—",
+                          workBuddyFormatTime(session.updated_at || session.last_activity_at),
+                        ])}
+                      </small>
+                    </div>
+                    <Button
+                      disabled={busy || crossBusy !== ""}
+                      onClick={() => void copySessionsToPeer([id])}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      {t("复制到另一版本")}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="muted-text">{t("没有读到会话。确认 WorkBuddy 已登录并至少使用过一次。")}</p>
+          )}
+          {sessions.length > 100 ? <p className="field-hint">{t("单次最多复制 100 个会话；当前列表已显示前 100 个。")}</p> : null}
+        </div>
+
+        <div className="workbuddy-card">
+          <div className="workbuddy-card-head">
+            <div>
+              <strong>{tf("{0}会话（{1}）", [peerLabel, String(peerSessions.length)])}</strong>
+              <small className="muted-text">{tf("读取自{0}；点击复制后，会在当前版本生成独立会话，原会话仍保留。", [peerLabel])}</small>
+            </div>
+            <div className="workbuddy-actions">
+              <Button
+                disabled={busy || !peerSessionIds.length || crossBusy !== ""}
+                onClick={() => void copySessionsToCurrent(peerSessionIds)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                <Copy className="h-4 w-4" />
+                {crossBusy === "peer-to-current" ? t("复制中…") : t("全部复制到当前版本")}
+              </Button>
+            </div>
+          </div>
+          {peerSessions.length ? (
+            <div className="workbuddy-list">
+              {peerSessions.slice(0, 100).map((session, index) => {
+                const id = String(session.id || index);
+                const title = String(session.custom_title || session.title || t("未命名会话"));
+                const stateKey = String(session.status || "");
+                return (
+                  <div className="workbuddy-row" key={`${peerProfile}:${id}`}>
+                    <div className="workbuddy-row-main">
+                      <strong>{title}</strong>
+                      <small className="workbuddy-mono" title={String(session.cwd || "")}>
+                        {String(session.cwd || "—")}
+                      </small>
+                      <small className="muted-text">
+                        {tf("{0} · 更新于 {1}", [
+                          WORKBUDDY_SESSION_STATUS[stateKey] || stateKey || "—",
+                          workBuddyFormatTime(session.updated_at || session.last_activity_at),
+                        ])}
+                      </small>
+                    </div>
+                    <Button
+                      disabled={busy || crossBusy !== ""}
+                      onClick={() => void copySessionsToCurrent([id])}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      {t("复制到当前版本")}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="muted-text">{tf("没有读到{0}的会话。确认该版本已登录并至少使用过一次。", [peerLabel])}</p>
+          )}
+          {peerSessions.length > 100 ? <p className="field-hint">{t("单次最多复制 100 个会话；当前列表已显示前 100 个。")}</p> : null}
+        </div>
       </div>
     );
   };
@@ -13322,6 +13687,42 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     }
   };
 
+  const startPeerEnhance = async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const next = await ensurePeerRuntime();
+      setNotice(tf("{0}增强服务已启动；两个版本现在可以同时运行，数据和端口互不影响。", [peerLabel]));
+      setPeerStatus(next);
+      await refreshPeerStatus();
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const enablePeerCdp = async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const runtime = await ensurePeerRuntime();
+      const result = await callRuntime(runtime, "/api/relaunch-cdp", {
+        method: "POST",
+        body: JSON.stringify({ force: runtime.clientRunning }),
+      });
+      if (result.ok === false) throw new Error(String(result.error || t("重启失败")));
+      setNotice(tf("已重启{0}并开启独立调试通道。", [peerLabel]));
+      await refreshPeerStatus();
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /** 主按钮：客户只需要看一个按钮，它的文案随状态变化。 */
   const primaryAction = () => {
     if (!status) {
@@ -13395,6 +13796,36 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
               </Button>
             ) : null}
             {primaryAction()}
+          </div>
+        </div>
+
+        <div className="workbuddy-peer-status">
+          <div>
+            <strong>{tf("另一版本：{0}", [peerLabel])}</strong>
+            <small>
+              {peerStatus?.running
+                ? peerDaemonStatus && (peerDaemonStatus.cdp as { connected?: boolean } | undefined)?.connected
+                  ? tf("增强服务运行中 · API {0} · 独立 CDP 已连接", [String(peerStatus.port)])
+                  : tf("增强服务运行中 · API {0} · 等待独立 CDP", [String(peerStatus.port)])
+                : t("增强服务未启动；启动后可进行双向会话同步。")}
+            </small>
+          </div>
+          <div className="workbuddy-actions">
+            <Button disabled={busy} onClick={() => void refreshPeerStatus()} size="sm" type="button" variant="ghost">
+              <RefreshCw className="h-4 w-4" />
+              {t("刷新")}
+            </Button>
+            {!peerStatus?.running ? (
+              <Button disabled={busy || peerStatus?.ready === false} onClick={() => void startPeerEnhance()} size="sm" type="button" variant="outline">
+                <Play className="h-4 w-4" />
+                {tf("启动{0}增强", [peerLabel])}
+              </Button>
+            ) : peerDaemonStatus && !(peerDaemonStatus.cdp as { connected?: boolean } | undefined)?.connected ? (
+              <Button disabled={busy} onClick={() => void enablePeerCdp()} size="sm" type="button" variant="outline">
+                <Zap className="h-4 w-4" />
+                {tf("重启{0}让增强生效", [peerLabel])}
+              </Button>
+            ) : null}
           </div>
         </div>
 

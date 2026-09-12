@@ -1291,16 +1291,38 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     }
     headers['X-LDCodex-Token'] = WBS_API_TOKEN;
     request.headers = headers;
-    return fetch(API + path, request).then(function (r) {
-      return r.json().then(function (j) {
-        if (!r.ok || j.ok === false) {
-          var error = new Error(j.error || '请求失败');
-          error.payload = j;
-          throw error;
+    var method = String(request.method || 'GET').toUpperCase();
+    var retryable = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+    var attempt = 0;
+    function run() {
+      attempt += 1;
+      return fetch(API + path, request).then(function (r) {
+        return r.json().then(function (j) {
+          if (!r.ok || j.ok === false) {
+            var error = new Error(j.error || '请求失败');
+            error.payload = j;
+            throw error;
+          }
+          return j;
+        });
+      }).catch(function (error) {
+        var message = String((error && error.message) || error || '');
+        var networkLost = /Failed to fetch|NetworkError|Network request failed|Load failed|ECONNREFUSED|ECONNRESET|EPIPE/i.test(message);
+        // 页面刷新、WorkBuddy 切换 profile 或 daemon 热重启时，旧连接会短暂失效。
+        // 只重试无副作用读取；POST 不重试，避免切号/删除/发送等操作重复执行。
+        if (retryable && networkLost && attempt < 4) {
+          return new Promise(function (resolve) { setTimeout(resolve, 250 * attempt); }).then(run);
         }
-        return j;
+        if (networkLost) {
+          var friendly = new Error('增强服务正在恢复，请稍后重试');
+          friendly.code = 'WBS_LOCAL_SERVICE_UNAVAILABLE';
+          friendly.cause = error;
+          throw friendly;
+        }
+        throw error;
       });
-    });
+    }
+    return run();
   }
 
   // 调试：递归收集所有元素（含 shadowRoot 与同域 iframe），用于抓取输入框内容

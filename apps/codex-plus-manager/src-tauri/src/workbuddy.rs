@@ -355,6 +355,22 @@ fn read_api_token(data_dir: &Path) -> Option<String> {
     if token.is_empty() { None } else { Some(token) }
 }
 
+fn read_cdp_port(data_dir: &Path, fallback: u16) -> u16 {
+    let path = data_dir.join("cdp-port.json");
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return fallback;
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return fallback;
+    };
+    value
+        .get("port")
+        .and_then(|port| port.as_u64())
+        .and_then(|port| u16::try_from(port).ok())
+        .filter(|port| *port >= 1024)
+        .unwrap_or(fallback)
+}
+
 fn read_lock_pid(data_dir: &Path) -> Option<u32> {
     let content = std::fs::read_to_string(lock_file_path(data_dir)).ok()?;
     let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;
@@ -430,7 +446,9 @@ fn build_status<R: Runtime>(app: &AppHandle<R>, profile: WorkBuddyProfile) -> Wo
         node_path: node_path.map(|path| path.to_string_lossy().to_string()),
         client_installed,
         client_running,
-        cdp_port: profile.cdp_port(),
+        // daemon 在端口冲突时会选择备用端口并写入 cdp-port.json；返回实际端口，
+        // 避免双开时界面仍显示固定端口而误判另一版本抢占了 CDP。
+        cdp_port: read_cdp_port(&data_dir, profile.cdp_port()),
         shortcut_installed: shortcut.installed,
         shortcut_path: shortcut
             .path
@@ -667,7 +685,9 @@ pub fn workbuddy_launch_client<R: Runtime>(
 
     let mut command = Command::new(&binary);
     command
-        .arg(format!("--remote-debugging-port={}", profile.cdp_port()))
+        // WorkBuddy / WorkBuddy AI 会在 argv 校验阶段拒绝
+        // --remote-debugging-port=...；两个版本都只接受环境变量注入。
+        .env("WORKBUDDY_REMOTE_DEBUGGING_PORT", profile.cdp_port().to_string())
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
