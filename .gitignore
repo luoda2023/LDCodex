@@ -40,6 +40,7 @@ _*.tsx
 _*.css
 _*.py
 _*.ps1
+_*.sh
 _*.txt
 _*.png
 _*.json
