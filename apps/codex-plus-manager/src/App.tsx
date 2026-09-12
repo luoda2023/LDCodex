@@ -12528,6 +12528,14 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
   const [payload, setPayload] = useState<Record<string, unknown> | null>(null);
   const [crossPayload, setCrossPayload] = useState<Record<string, unknown> | null>(null);
   const [crossBusy, setCrossBusy] = useState("");
+  // 跨版本自动镜像：开启后两端按消息更新自动互相同步，真正"共用"同一批对话。
+  const [crossMirror, setCrossMirror] = useState<{ enabled: boolean; intervalMs: number; lastResult: unknown }>({
+    enabled: false,
+    intervalMs: 120000,
+    lastResult: null,
+  });
+  // 复制完成后让目标客户端重新加载页面，否则新会话要等重启才出现在列表里。
+  const [crossRefresh, setCrossRefresh] = useState(true);
   const [askState, setAskState] = useState<Record<string, unknown> | null>(null);
   const [autoContinueState, setAutoContinueState] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -13074,6 +13082,52 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     );
   };
 
+  /** 读取跨版本自动镜像设置（旧守护进程没有该接口，失败即忽略）。 */
+  const loadCrossMirror = useCallback(async () => {
+    try {
+      const result = await call("/api/sessions/cross-profile-mirror", undefined, status?.apiToken ?? undefined);
+      setCrossMirror({
+        enabled: result.enabled === true,
+        intervalMs: Number(result.intervalMs) || 120000,
+        lastResult: result.lastResult ?? null,
+      });
+    } catch {
+      /* 守护进程尚未升级，忽略 */
+    }
+  }, [call, status?.apiToken]);
+
+  useEffect(() => {
+    if (tab !== "sessions" || !connected) return;
+    void loadCrossMirror();
+  }, [tab, connected, loadCrossMirror]);
+
+  const toggleCrossMirror = async () => {
+    const next = !crossMirror.enabled;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await call("/api/sessions/cross-profile-mirror", {
+        method: "POST",
+        body: JSON.stringify({ enabled: next, runNow: next }),
+      });
+      setCrossMirror({
+        enabled: result.enabled === true,
+        intervalMs: Number(result.intervalMs) || 120000,
+        lastResult: result.result ?? result.lastResult ?? null,
+      });
+      setNotice(
+        next
+          ? tf("已开启跨版本自动镜像：本版本与{0}会按消息更新自动互相同步，复制回去只会更新原来的对话，不会再产生副本。", [peerLabel])
+          : t("已关闭跨版本自动镜像。"),
+      );
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const ensurePeerRuntime = async (): Promise<WorkBuddyRuntimeStatus> => {
     const current = await invoke<WorkBuddyRuntimeStatus>("workbuddy_runtime_status", { profile: peerProfile });
     if (current.running) {
@@ -13094,16 +13148,18 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
   ) => {
     const unique = Array.from(new Set(ids.filter(Boolean)));
     let copied = 0;
+    let updated = 0;
     let failed = 0;
     const errors: string[] = [];
     for (let offset = 0; offset < unique.length; offset += 100) {
       const result = await copyBatch(unique.slice(offset, offset + 100));
       const batchCopied = Array.isArray(result.copied) ? result.copied.length : 0;
       copied += batchCopied;
+      updated += Number(result.updated || 0);
       failed += Number(result.failed || 0);
       if (Array.isArray(result.errors)) errors.push(...result.errors.map(String));
     }
-    return { copied, failed, errors };
+    return { copied, updated, failed, errors };
   };
 
   const copySessionsToCurrent = async (ids: string[]) => {
@@ -13117,13 +13173,17 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
       const summary = await copyInBatches(selected, async (batch) => {
         const result = await call("/api/sessions/cross-profile-copy", {
           method: "POST",
-          body: JSON.stringify({ sourceProfile: peerProfile, ids: batch }),
+          body: JSON.stringify({ sourceProfile: peerProfile, ids: batch, refresh: crossRefresh }),
         });
         if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
         return result;
       });
       const detail = summary.failed ? tf("，{0}个文件复制不完整", [String(summary.failed)]) : "";
-      setNotice(tf("已从{0}复制{1}个会话到当前版本{2}。", [peerLabel, String(summary.copied), detail]));
+      setNotice(
+        summary.updated
+          ? tf("已从{0}同步{1}个会话到当前版本（其中{2}个是回写更新，未产生副本）{3}。", [peerLabel, String(summary.copied), String(summary.updated), detail])
+          : tf("已从{0}复制{1}个会话到当前版本{2}。", [peerLabel, String(summary.copied), detail]),
+      );
       await loadTab("sessions");
     } catch (e) {
       setError(friendlyRuntimeError(e));
@@ -13145,13 +13205,17 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
       const summary = await copyInBatches(selected, async (batch) => {
         const result = await callRuntime(peerRuntime, "/api/sessions/cross-profile-copy", {
           method: "POST",
-          body: JSON.stringify({ sourceProfile: profile, ids: batch }),
+          body: JSON.stringify({ sourceProfile: profile, ids: batch, refresh: crossRefresh }),
         });
         if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
         return result;
       });
       const detail = summary.failed ? tf("，{0}个文件复制不完整", [String(summary.failed)]) : "";
-      setNotice(tf("已从当前版本复制{0}个会话到{1}{2}。", [String(summary.copied), peerLabel, detail]));
+      setNotice(
+        summary.updated
+          ? tf("已同步{0}个会话到{1}（其中{2}个是回写更新，未产生副本）{3}。", [String(summary.copied), peerLabel, String(summary.updated), detail])
+          : tf("已从当前版本复制{0}个会话到{1}{2}。", [String(summary.copied), peerLabel, detail]),
+      );
       await loadTab("sessions");
     } catch (e) {
       setError(friendlyRuntimeError(e));
@@ -13175,7 +13239,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
         copyInBatches(currentIds, async (batch) => {
           const result = await callRuntime(peerRuntime, "/api/sessions/cross-profile-copy", {
             method: "POST",
-            body: JSON.stringify({ sourceProfile: profile, ids: batch }),
+            body: JSON.stringify({ sourceProfile: profile, ids: batch, refresh: crossRefresh }),
           });
           if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
           return result;
@@ -13183,18 +13247,19 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
         copyInBatches(peerIds, async (batch) => {
           const result = await call("/api/sessions/cross-profile-copy", {
             method: "POST",
-            body: JSON.stringify({ sourceProfile: peerProfile, ids: batch }),
+            body: JSON.stringify({ sourceProfile: peerProfile, ids: batch, refresh: crossRefresh }),
           });
           if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
           return result;
         }),
       ]);
       const total = toPeer.copied + toCurrent.copied;
+      const updated = toPeer.updated + toCurrent.updated;
       const partial = toPeer.failed + toCurrent.failed;
       setNotice(
         partial
-          ? tf("双向同步完成：新增/更新{0}个会话，{1}个文件复制不完整。", [String(total), String(partial)])
-          : tf("双向同步完成：已让两个版本共用{0}个会话副本。", [String(total)]),
+          ? tf("双向同步完成：新增/更新{0}个会话（{1}个为回写更新），{2}个文件复制不完整。", [String(total), String(updated), String(partial)])
+          : tf("双向同步完成：已让两个版本共用{0}个会话（{1}个为回写更新）。", [String(total), String(updated)]),
       );
       await loadTab("sessions");
     } catch (e) {
@@ -13216,7 +13281,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
           <div className="workbuddy-card-head">
             <div>
               <strong>{tf("当前版本会话（{0}）", [String(sessions.length)])}</strong>
-              <small className="muted-text">{t("国内版与国际版继续使用各自数据库、账号和 CDP 通道；双向同步会在两边生成独立副本，不共写数据库，因此同时打开也不会互相抢占。")}</small>
+              <small className="muted-text">{t("两个版本各用自己的数据库、账号和 CDP 通道，同时打开不会互相抢占；复制回去会更新原来的那条对话，来回复制不会产生副本。")}</small>
             </div>
             <div className="workbuddy-actions">
               <Button
@@ -13241,16 +13306,48 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
               </Button>
             </div>
           </div>
+          <div className="workbuddy-mirror-bar">
+            <label className="workbuddy-check">
+              <input
+                checked={crossMirror.enabled}
+                disabled={busy}
+                onChange={() => void toggleCrossMirror()}
+                type="checkbox"
+              />
+              <span>{tf("自动与{0}互相同步对话", [peerLabel])}</span>
+            </label>
+            <label className="workbuddy-check">
+              <input
+                checked={crossRefresh}
+                disabled={busy}
+                onChange={(event) => setCrossRefresh(event.target.checked)}
+                type="checkbox"
+              />
+              <span>{t("复制后刷新客户端会话列表")}</span>
+            </label>
+            {crossMirror.lastResult ? (
+              <small className="muted-text">
+                {tf("上次同步：拉取{0} · 推送{1}", [
+                  String((crossMirror.lastResult as { pulled?: number }).pulled ?? 0),
+                  String((crossMirror.lastResult as { pushed?: number }).pushed ?? 0),
+                ])}
+              </small>
+            ) : null}
+          </div>
           {sessions.length ? (
             <div className="workbuddy-list">
               {sessions.slice(0, 100).map((session, index) => {
                 const id = String(session.id || index);
                 const title = String(session.custom_title || session.title || t("未命名会话"));
                 const stateKey = String(session.status || "");
+                const linked = !!String(session.linkedPeerId || "");
                 return (
                   <div className="workbuddy-row" key={id}>
                     <div className="workbuddy-row-main">
-                      <strong>{title}</strong>
+                      <strong>
+                        {title}
+                        {linked ? <span className="workbuddy-badge">{t("已同步")}</span> : null}
+                      </strong>
                       <small className="workbuddy-mono" title={String(session.cwd || "")}>
                         {String(session.cwd || "—")}
                       </small>
@@ -13268,7 +13365,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
                       type="button"
                       variant="ghost"
                     >
-                      {t("复制到另一版本")}
+                      {linked ? t("更新到另一版本") : t("复制到另一版本")}
                     </Button>
                   </div>
                 );
@@ -13305,10 +13402,14 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
                 const id = String(session.id || index);
                 const title = String(session.custom_title || session.title || t("未命名会话"));
                 const stateKey = String(session.status || "");
+                const linked = !!String(session.linkedTargetId || "");
                 return (
                   <div className="workbuddy-row" key={`${peerProfile}:${id}`}>
                     <div className="workbuddy-row-main">
-                      <strong>{title}</strong>
+                      <strong>
+                        {title}
+                        {linked ? <span className="workbuddy-badge">{t("已同步")}</span> : null}
+                      </strong>
                       <small className="workbuddy-mono" title={String(session.cwd || "")}>
                         {String(session.cwd || "—")}
                       </small>
@@ -13326,7 +13427,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
                       type="button"
                       variant="ghost"
                     >
-                      {t("复制到当前版本")}
+                      {linked ? t("更新到当前版本") : t("复制到当前版本")}
                     </Button>
                   </div>
                 );

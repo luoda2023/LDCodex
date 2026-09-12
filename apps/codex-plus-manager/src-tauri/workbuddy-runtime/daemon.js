@@ -336,8 +336,11 @@ const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.exis
 // 1.2.5：国内版 / 国际版会话桥：保持双端数据隔离，同时允许双向复制会话与消息附件。
 // 1.2.6：本地 API 读取请求允许短暂断线后自动恢复；旧 target 配置继承环境变量 CDP 模式，
 //         避免国内版偶发启动失败后注入组件弹出 Failed to fetch。
-const DAEMON_VERSION = '1.2.6';
-const DAEMON_BUILD_ID = 'release-1.2.6-20260912-cross-profile-fetch-recovery';
+// 1.2.7：双开隔离加固（CDP 端口/目标归属按 profile 独占，绝不扫到另一个版本的客户端）；
+//         跨版本对话双向复制改为「回写原会话」，来回复制不再产生分身副本；
+//         新增跨版本自动镜像开关，让两个版本持续共用同一批对话。
+const DAEMON_VERSION = '1.2.7';
+const DAEMON_BUILD_ID = 'release-1.2.7-20260913-dual-profile-isolation-and-mirror';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）
@@ -466,9 +469,32 @@ function writeUiPortFile(port, logFn = log) {
   }
 }
 
+// 双开隔离：每个 profile 有固定保留端口（国内 9222 / 国际 9223 / CodeBuddy 9224、9225）。
+// 任何情况下都不要把兄弟 profile 的保留端口当成自己的回退端口——那会让本端 daemon
+// 在对端客户端上注入组件、改写对端的面板与主题。
+// 例外：用户用 WBSWITCH_CDP_PORT 显式指定时完全听用户的。
+function cdpPortOwnedByOtherProfile(port) {
+  if (process.env.WBSWITCH_CDP_PORT) return false;
+  const value = Number(port);
+  if (!validCdpPort(value)) return false;
+  return Object.keys(PROFILE_CDP_PORT).some((id) => id !== PROFILE.id && Number(PROFILE_CDP_PORT[id]) === value);
+}
+
+function ownCdpPorts() {
+  const set = new Set();
+  if (validCdpPort(CDP_PORT_HINT)) set.add(Number(CDP_PORT_HINT));
+  const reserved = Number(PROFILE_CDP_PORT[PROFILE.id]);
+  if (validCdpPort(reserved)) set.add(reserved);
+  return set;
+}
+
 function cdpPortCandidates() {
   const ports = [];
-  const add = (port) => { if (validCdpPort(port) && !ports.includes(port)) ports.push(port); };
+  const add = (port) => {
+    if (!validCdpPort(port) || ports.includes(port)) return;
+    if (cdpPortOwnedByOtherProfile(port)) return;
+    ports.push(port);
+  };
   add(CDP_PORT_HINT);
   add(readCdpPortFile());
   for (let port = 9222; port <= 9232; port++) add(port);
@@ -1669,6 +1695,20 @@ function runPendingReloadInjection(reason, executionContextId) {
     });
 }
 
+function isWorkBuddyCdpTarget(target) {
+  // 严格归属判定（见 cdp-targets.js）：页面明确属于其他客户端 → 一律拒绝，
+  // 未绑定 profile 的旧 daemon 不会再靠标题 "WorkBuddy" 误连兄弟客户端页面。
+  return isTargetForProfile(target, PROFILE);
+}
+
+/** 自身端口（本 profile 保留端口 / 已持久化的端口）可以走宽松判定；
+ * 扫描到别的端口时（历史残留配置、手动指定）必须要求"页面属于本 profile"的强信号，
+ * 否则国内版与国际版标题相同，会把增强注入到另一个客户端。 */
+function cdpTargetMatcher(port) {
+  if (ownCdpPorts().has(Number(port))) return isWorkBuddyCdpTarget;
+  return (target) => classifyTarget(target && target.url, target && target.title, target && target.description) === PROFILE.id;
+}
+
 async function findCdpEndpoint() {
   // profile 已由启动器绑定时不能扫描其他产品的端口；CodeBuddy Agents/Editor
   // 共用 Browser 标识，跨 profile 扫描会把注入发到另一端。
@@ -1676,6 +1716,8 @@ async function findCdpEndpoint() {
     ? [CDP_PORT_HINT, readCdpPortFile()].filter((p, i, a) => validCdpPort(p) && a.indexOf(p) === i)
     : cdpPortCandidates();
   for (const p of ports) {
+    // 兄弟 profile 的保留端口一律跳过：双开时它上面跑的是另一个客户端。
+    if (cdpPortOwnedByOtherProfile(p)) continue;
     try {
       const [versionRes, listRes] = await Promise.all([
         fetch(`http://127.0.0.1:${p}/json/version`, { signal: AbortSignal.timeout(1500) }),
@@ -1686,7 +1728,7 @@ async function findCdpEndpoint() {
       const targets = Array.isArray(list) ? list : [];
       const browserInfo = [version.Browser, version['User-Agent']].filter(Boolean).join(' ');
       const belongsToWorkBuddy = /workbuddy|codebuddy/i.test(browserInfo);
-      if (belongsToWorkBuddy && targets.some(isWorkBuddyCdpTarget)) {
+      if (belongsToWorkBuddy && targets.some(cdpTargetMatcher(p))) {
         if (readCdpPortFile() !== p) writeCdpPortFile(p);
         return p;
       }
@@ -1700,16 +1742,13 @@ async function findCdpEndpoint() {
   return null;
 }
 
-function isWorkBuddyCdpTarget(target) {
-  // 严格归属判定（见 cdp-targets.js）：页面明确属于其他客户端 → 一律拒绝，
-  // 未绑定 profile 的旧 daemon 不会再靠标题 "WorkBuddy" 误连兄弟客户端页面。
-  return isTargetForProfile(target, PROFILE);
-}
-
-async function getPageTarget(port) {
+async function getPageTarget(port, strict = false) {
   const r = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(1500) });
   const list = await r.json();
-  return (Array.isArray(list) ? list : []).find(isWorkBuddyCdpTarget) || null;
+  const matcher = strict
+    ? (target) => classifyTarget(target && target.url, target && target.title, target && target.description) === PROFILE.id
+    : isWorkBuddyCdpTarget;
+  return (Array.isArray(list) ? list : []).find(matcher) || null;
 }
 
 async function cleanupForeignInjectedTargets(targets) {
@@ -1835,7 +1874,7 @@ async function connectCdp() {
     cdp.error = '未发现 CDP 端口（WorkBuddy 需以 --remote-debugging-port 启动）';
     return false;
   }
-  const target = await getPageTarget(cdp.port).catch(() => null);
+  const target = await getPageTarget(cdp.port, !ownCdpPorts().has(Number(cdp.port))).catch(() => null);
   if (!target) {
     cdp.connected = false;
     cdp.error = `端口 ${cdp.port} 上没有 WorkBuddy 页面目标`;
@@ -3743,13 +3782,70 @@ async function crossProfileRows(definition, ids = null) {
   return normalizeSessionRows(await db.all(sql, selected || []));
 }
 
-function readCrossProfileLinks() {
+/** 另一个 WorkBuddy 版本（本 profile 是 cn 时返回 ai，反之亦然）；非 WorkBuddy profile 返回 ''。 */
+function crossProfilePeerId() {
+  if (!CROSS_PROFILE_IDS.has(PROFILE.id)) return '';
+  for (const id of CROSS_PROFILE_IDS) if (id !== PROFILE.id) return id;
+  return '';
+}
+
+/** 对端 daemon 的会话桥注册表路径（只读访问：绝不写对方数据目录，只用来判断血缘）。 */
+function crossProfilePeerLinksFile(sourceProfileId) {
+  const base = PROFILES[sourceProfileId];
+  if (!base) return '';
+  return path.join(profileDataDir(base), 'cross-profile-links.json');
+}
+
+function readLinksFileAt(file) {
+  if (!file) return {};
   try {
-    const value = JSON.parse(fs.readFileSync(CROSS_PROFILE_LINKS_FILE, 'utf8'));
+    const value = JSON.parse(fs.readFileSync(file, 'utf8'));
     return value && typeof value === 'object' && value.links && typeof value.links === 'object' ? value.links : {};
   } catch (_) {
     return {};
   }
+}
+
+function readCrossProfileLinks() {
+  return readLinksFileAt(CROSS_PROFILE_LINKS_FILE);
+}
+
+/**
+ * 反向血缘：对端会话 sourceSessionId 是不是由「本 profile 的某个会话」复制过去的？
+ * 场景：国内版 A → 国际版 A'（副本），之后在国际版继续聊，再把 A' 复制回国内版。
+ * 没有这一步就会在国内版生成第二个副本 A''，来回复制越复制越多，永远无法"共用"。
+ * 只读对端的注册表即可判断，不需要写任何对方文件。
+ */
+function crossProfileReverseOrigin(sourceProfileId, sourceSessionId) {
+  const wanted = String(sourceSessionId || '').trim();
+  if (!wanted) return '';
+  const links = readLinksFileAt(crossProfilePeerLinksFile(sourceProfileId));
+  for (const item of Object.values(links)) {
+    if (!item || typeof item !== 'object') continue;
+    if (String(item.sourceProfile || '') !== PROFILE.id) continue;
+    if (String(item.targetProfile || '') !== String(sourceProfileId)) continue;
+    if (String(item.targetId || '') !== wanted) continue;
+    const origin = String(item.sourceId || '').trim();
+    if (origin) return origin;
+  }
+  return '';
+}
+
+/** 本 profile 会话 id → 它在对端的副本 id（同样只读对端注册表）。 */
+function crossProfilePeerTargets() {
+  const peerId = crossProfilePeerId();
+  if (!peerId) return new Map();
+  const links = readLinksFileAt(crossProfilePeerLinksFile(peerId));
+  const map = new Map();
+  for (const item of Object.values(links)) {
+    if (!item || typeof item !== 'object') continue;
+    if (String(item.sourceProfile || '') !== PROFILE.id) continue;
+    if (String(item.targetProfile || '') !== peerId) continue;
+    const sourceId = String(item.sourceId || '').trim();
+    const targetId = String(item.targetId || '').trim();
+    if (sourceId && targetId) map.set(sourceId, targetId);
+  }
+  return map;
 }
 
 function writeCrossProfileLinks(links) {
@@ -3821,7 +3917,8 @@ async function copyCrossProfileFiles(sourceHome, targetHome, oldId, newId) {
 async function copyCrossProfileSession(sourceProfileId, sourceRow, targetUid) {
   const definition = crossProfileDefinition(sourceProfileId);
   const sourceId = String(sourceRow && sourceRow.id || '').trim();
-  const ownerUid = validImportedSessionUid(targetUid);
+  // 自动镜像批量调用时可能拿不到历史 uid，回落到当前登录账号，避免出现"缺少账号归属"。
+  const ownerUid = validImportedSessionUid(targetUid || ((currentAccount() || {}).uid || ''));
   if (!isValidSessionId(sourceId)) throw new Error('跨版本复制包含无效会话 ID');
   const sourceRows = await crossProfileRows(definition, [sourceId]);
   const source = sourceRows.find((row) => String(row.id) === sourceId);
@@ -3830,15 +3927,32 @@ async function copyCrossProfileSession(sourceProfileId, sourceRow, targetUid) {
   const key = crossProfileLinkKey(definition.id, sourceId);
   let targetId = links[key] && String(links[key].targetId || '');
   let updated = false;
+  // 回写优先：这个源会话本来就是从本 profile 复制过去的 → 更新它最初的那一条，
+  // 不再生成新副本，两个版本才能真正"共用同一个对话"。
+  const originId = crossProfileReverseOrigin(definition.id, sourceId);
+  if (originId && originId !== targetId) {
+    const originRow = await sqliteQuery(
+      'SELECT id, user_id FROM sessions WHERE id = ? AND deleted_at IS NULL LIMIT 1;',
+      [originId]
+    );
+    if (originRow.length && String(originRow[0].user_id || '') === ownerUid) {
+      targetId = originId;
+      updated = true;
+    }
+  }
   if (targetId) {
     const existing = await sqliteQuery(
       'SELECT id, user_id FROM sessions WHERE id = ? AND deleted_at IS NULL LIMIT 1;',
       [targetId]
     );
-    if (!existing.length || String(existing[0].user_id || '') !== ownerUid) targetId = '';
+    if (!existing.length || String(existing[0].user_id || '') !== ownerUid) {
+      targetId = '';
+      updated = false;
+    } else {
+      updated = true;
+    }
   }
   if (!targetId) targetId = crypto.randomUUID();
-  else updated = true;
 
   const files = await copyCrossProfileFiles(definition.dataRoot, PROFILE.dataRoot, sourceId, targetId);
   if (!updated) {
@@ -3859,12 +3973,33 @@ async function copyCrossProfileSession(sourceProfileId, sourceRow, targetUid) {
     targetUid: ownerUid,
     copiedAt: Date.now(),
     failedFiles: files.failed,
+    roundTrip: originId !== '' && originId === targetId,
   };
   writeCrossProfileLinks(links);
-  return { status: updated ? 'updated' : 'copied', sourceProfile: definition.id, sourceId, targetId, failedFiles: files.failed };
+  return {
+    status: updated ? 'updated' : 'copied',
+    sourceProfile: definition.id,
+    sourceId,
+    targetId,
+    roundTrip: originId !== '' && originId === targetId,
+    failedFiles: files.failed,
+  };
 }
 
-async function copyCrossProfileSessions(sourceProfileId, ids, targetUid) {
+/** 复制完成后让本端客户端重新加载页面，新会话才会出现在它的会话列表里。
+ * 与「让增强生效」同源（CDP Page.reload），失败只记日志，不影响复制结果。 */
+async function reloadClientForCrossProfileCopy() {
+  if (!cdp.connected) return false;
+  try {
+    await withTimeout(cdpSend('Page.reload', { ignoreCache: false }), 10000, '刷新 WorkBuddy 页面');
+    return true;
+  } catch (error) {
+    log('[cross-profile-copy] 刷新客户端会话列表失败: ' + error.message);
+    return false;
+  }
+}
+
+async function copyCrossProfileSessions(sourceProfileId, ids, targetUid, options = {}) {
   const selectedIds = normalizeSessionIdBatch(ids);
   if (!selectedIds.length) throw new Error('未选择跨版本会话');
   if (selectedIds.length > CROSS_PROFILE_MAX_BATCH) throw new Error('单次最多复制 100 个跨版本会话');
@@ -3881,7 +4016,185 @@ async function copyCrossProfileSessions(sourceProfileId, ids, targetUid) {
     catch (error) { errors.push(id + ': ' + error.message); }
   }
   if (!copied.length) throw new Error(errors[0] || '没有可复制的跨版本会话');
-  return { copied, failed: errors.length, errors: errors.slice(0, MAX_SESSION_IMPORT_ERRORS) };
+  const refreshed = options.refresh === true ? await reloadClientForCrossProfileCopy() : false;
+  return {
+    copied,
+    failed: errors.length,
+    errors: errors.slice(0, MAX_SESSION_IMPORT_ERRORS),
+    updated: copied.filter((item) => item.status === 'updated').length,
+    refreshed,
+  };
+}
+
+/* ───────────── 跨版本对话自动镜像（可选开关，默认关） ─────────────
+ * 手动「双向同步」是一次性动作；打开镜像后 daemon 会周期性比较两端已经建立
+ * 血缘关系的会话，把较新的一侧同步到较旧的一侧：
+ *   - 拉取（对端 → 本端）：本端 daemon 自己写自己的库，与手动复制走同一条路径；
+ *   - 推送（本端 → 对端）：必须通过对端 daemon 的本地 API，由对端自己持有 SQLite 写锁。
+ * 只比较消息文件 mtime，没变化就不动作；对端没开就跳过，下次补上。
+ * 全程不共用数据库、不共用账号、不共用 CDP 通道，所以双开依然互不影响。
+ */
+const CROSS_PROFILE_MIRROR_FILE = path.join(DATA_DIR, 'cross-profile-mirror.json');
+const CROSS_MIRROR_TICK_MS = 60000;
+const CROSS_MIRROR_MIN_INTERVAL_MS = 60000;
+const CROSS_MIRROR_MAX_PER_ROUND = 10;
+let crossMirrorRunning = false;
+
+function readCrossMirrorSettings() {
+  try {
+    const value = JSON.parse(fs.readFileSync(CROSS_PROFILE_MIRROR_FILE, 'utf8'));
+    return {
+      enabled: !!(value && value.enabled),
+      intervalMs: Math.max(CROSS_MIRROR_MIN_INTERVAL_MS, Number(value && value.intervalMs) || 120000),
+      lastRunAt: Number(value && value.lastRunAt) || 0,
+      lastResult: (value && value.lastResult) || null,
+    };
+  } catch (_) {
+    return { enabled: false, intervalMs: 120000, lastRunAt: 0, lastResult: null };
+  }
+}
+
+function writeCrossMirrorSettings(next) {
+  try {
+    fs.mkdirSync(path.dirname(CROSS_PROFILE_MIRROR_FILE), { recursive: true });
+    const temp = CROSS_PROFILE_MIRROR_FILE + '.tmp-' + process.pid + '-' + Date.now();
+    fs.writeFileSync(temp, JSON.stringify({
+      version: 1,
+      enabled: !!next.enabled,
+      intervalMs: Math.max(CROSS_MIRROR_MIN_INTERVAL_MS, Number(next.intervalMs) || 120000),
+      lastRunAt: Number(next.lastRunAt) || 0,
+      lastResult: next.lastResult || null,
+    }, null, 2), { mode: 0o600 });
+    fs.renameSync(temp, CROSS_PROFILE_MIRROR_FILE);
+    return true;
+  } catch (error) {
+    log('[cross-mirror] 保存设置失败: ' + error.message);
+    return false;
+  }
+}
+
+/** 对端 daemon 的监听端口：优先用它自己持久化的端口（可能已回退到备用端口）。 */
+function peerDaemonPort(peerId) {
+  const base = PROFILES[peerId];
+  if (!base) return 0;
+  let persisted = null;
+  try {
+    persisted = parseUiPortState(fs.readFileSync(path.join(profileDataDir(base), 'ui-port.json'), 'utf8'), peerId);
+  } catch (_) { /* 未持久化时用默认候选 */ }
+  return Number(profileUiPortCandidates(peerId, { persistedPort: persisted })[0]) || 0;
+}
+
+/** 调用对端 daemon 的本地 API（只用于「让对端自己写自己的库」）。 */
+async function peerDaemonRequest(peerId, pathname, body) {
+  const base = PROFILES[peerId];
+  if (!base) throw new Error('目标 WorkBuddy 版本不可用');
+  const port = peerDaemonPort(peerId);
+  if (!port) throw new Error('目标 WorkBuddy 版本的守护进程端口不可用');
+  const headers = { 'content-type': 'application/json' };
+  try {
+    const token = fs.readFileSync(path.join(profileDataDir(base), '.api-token'), 'utf8').trim();
+    if (/^[a-f0-9]{64}$/i.test(token)) headers['X-LDCodex-Token'] = token;
+  } catch (_) { /* 对端没写 token 时按无鉴权尝试 */ }
+  const response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
+    method: body ? 'POST' : 'GET',
+    headers,
+    ...(body ? { body: JSON.stringify(body) } : {}),
+    signal: AbortSignal.timeout(20000),
+  });
+  const text = await response.text();
+  let parsed = null;
+  try { parsed = JSON.parse(text); } catch (_) { /* 保持空 */ }
+  if (!response.ok || (parsed && parsed.ok === false)) {
+    throw new Error(String((parsed && parsed.error) || `HTTP ${response.status}`));
+  }
+  return parsed || {};
+}
+
+async function runCrossProfileMirrorRound(options = {}) {
+  const settings = readCrossMirrorSettings();
+  if (!settings.enabled && !options.force) return null;
+  if (crossMirrorRunning) return null;
+  const peerId = crossProfilePeerId();
+  if (!peerId) return null;
+  crossMirrorRunning = true;
+  const result = { peerId, pulled: 0, pushed: 0, skipped: 0, failed: 0, errors: [], at: Date.now() };
+  try {
+    const definition = crossProfileDefinition(peerId);
+    // 1) 拉取：对端会话比本端副本新
+    const ownLinks = readCrossProfileLinks();
+    const pullItems = Object.values(ownLinks)
+      .filter((item) => item && String(item.sourceProfile || '') === peerId)
+      .slice(0, CROSS_MIRROR_MAX_PER_ROUND);
+    if (pullItems.length) {
+      const rows = await crossProfileRows(definition, pullItems.map((item) => String(item.sourceId || '')).filter(Boolean));
+      const byId = new Map(rows.map((row) => [String(row.id), row]));
+      for (const item of pullItems) {
+        const sourceId = String(item.sourceId || '').trim();
+        const targetId = String(item.targetId || '').trim();
+        if (!sourceId || !targetId) continue;
+        if (sessionContentMtime(definition.dataRoot, sourceId) <= sessionContentMtime(PROFILE.dataRoot, targetId)) {
+          result.skipped++;
+          continue;
+        }
+        const source = byId.get(sourceId);
+        if (!source) { result.skipped++; continue; }
+        try {
+          await copyCrossProfileSession(peerId, source, String(item.targetUid || '') || undefined);
+          result.pulled++;
+        } catch (error) {
+          result.failed++;
+          result.errors.push(`pull ${sourceId}: ${error.message}`);
+        }
+      }
+    }
+    // 2) 推送：本端会话比对端副本新 —— 交给对端 daemon 写入，本端不碰对端数据库
+    const pushItems = Object.values(readLinksFileAt(crossProfilePeerLinksFile(peerId)))
+      .filter((item) => item && String(item.sourceProfile || '') === PROFILE.id && String(item.targetProfile || '') === peerId)
+      .slice(0, CROSS_MIRROR_MAX_PER_ROUND);
+    for (const item of pushItems) {
+      const sourceId = String(item.sourceId || '').trim();
+      const targetId = String(item.targetId || '').trim();
+      if (!sourceId || !targetId) continue;
+      if (sessionContentMtime(PROFILE.dataRoot, sourceId) <= sessionContentMtime(definition.dataRoot, targetId)) {
+        result.skipped++;
+        continue;
+      }
+      try {
+        await peerDaemonRequest(peerId, '/api/sessions/cross-profile-copy', {
+          sourceProfile: PROFILE.id,
+          ids: [sourceId],
+          targetUid: String(item.targetUid || '') || undefined,
+          refresh: false,
+        });
+        result.pushed++;
+      } catch (error) {
+        result.failed++;
+        result.errors.push(`push ${sourceId}: ${error.message}`);
+      }
+    }
+    if (result.pulled || result.pushed || result.failed) {
+      log(`[cross-mirror] 拉取 ${result.pulled} / 推送 ${result.pushed} / 失败 ${result.failed}`);
+    }
+  } catch (error) {
+    result.failed++;
+    result.errors.push(String(error.message || error));
+    log('[cross-mirror] 本轮失败: ' + result.errors[result.errors.length - 1]);
+  } finally {
+    writeCrossMirrorSettings({ ...settings, lastRunAt: result.at, lastResult: result });
+    crossMirrorRunning = false;
+  }
+  return result;
+}
+
+function startCrossProfileMirror() {
+  if (!crossProfilePeerId()) return;
+  const timer = setInterval(() => {
+    const settings = readCrossMirrorSettings();
+    if (!settings.enabled) return;
+    if (Date.now() - Number(settings.lastRunAt || 0) < settings.intervalMs) return;
+    runCrossProfileMirrorRound().catch((error) => log('[cross-mirror] 异常: ' + error.message));
+  }, CROSS_MIRROR_TICK_MS);
+  timer.unref && timer.unref();
 }
 
 function sessionContentMtime(wbHome, sessionId) {
@@ -7922,11 +8235,15 @@ function handleApi(req, res) {
         });
         const lineagesByUid = {};
         Object.keys(rulesByUid).forEach((owner) => { lineagesByUid[owner] = rulesByUid[owner].lineages; });
+        // 跨版本血缘：本端会话在另一个 WorkBuddy 版本里的副本 id（只读对端注册表）。
+        // 界面据此把按钮文案从「复制到另一版本」改成「更新到另一版本」。
+        const peerTargets = crossProfilePeerTargets();
         const sessions = dedupeAutoCopySessionRows(rows, lineagesByUid).map((row) => {
           const rules = rulesByUid[String(row.user_id || '').trim()] || { sessions: new Set(), workspaces: new Set() };
           return Object.assign({}, row, {
             autoCopySession: rules.sessions.has(String(row.id)),
             autoCopyWorkspace: rules.workspaces.has(canonicalWorkspace(row.cwd)),
+            linkedPeerId: peerTargets.get(String(row.id)) || null,
           });
         });
         const currentRules = uid
@@ -7989,9 +8306,38 @@ function handleApi(req, res) {
     return readBody(req).then(async (body) => {
       try {
         const targetUid = String((body && body.targetUid) || ((currentAccount() || {}).uid || '')).trim();
-        const result = await copyCrossProfileSessions(body && body.sourceProfile, body && body.ids, targetUid);
-        log(`[cross-profile-copy] ${result.copied.length} 个会话已从 ${body.sourceProfile} 复制到 ${PROFILE.id}`);
+        const result = await copyCrossProfileSessions(body && body.sourceProfile, body && body.ids, targetUid, {
+          refresh: !!(body && body.refresh),
+        });
+        log(`[cross-profile-copy] ${result.copied.length} 个会话已从 ${body.sourceProfile} 复制到 ${PROFILE.id}` +
+          (result.updated ? `（其中 ${result.updated} 个为回写更新）` : ''));
         return json(res, 200, { ok: true, ...result, targetProfile: PROFILE.id, targetUid });
+      } catch (error) {
+        return json(res, 400, { ok: false, error: error.message });
+      }
+    });
+  }
+
+  // 跨版本自动镜像设置：GET /api/sessions/cross-profile-mirror
+  if (req.method === 'GET' && p === '/api/sessions/cross-profile-mirror') {
+    return json(res, 200, { ok: true, ...readCrossMirrorSettings(), peerProfile: crossProfilePeerId() });
+  }
+
+  // 跨版本自动镜像设置：POST /api/sessions/cross-profile-mirror { enabled, intervalMs?, runNow? }
+  if (req.method === 'POST' && p === '/api/sessions/cross-profile-mirror') {
+    return readBody(req).then(async (body) => {
+      try {
+        const current = readCrossMirrorSettings();
+        const next = {
+          enabled: body && typeof body.enabled === 'boolean' ? body.enabled : current.enabled,
+          intervalMs: Math.max(CROSS_MIRROR_MIN_INTERVAL_MS, Number(body && body.intervalMs) || current.intervalMs),
+          lastRunAt: current.lastRunAt,
+          lastResult: current.lastResult,
+        };
+        writeCrossMirrorSettings(next);
+        let result = null;
+        if (body && body.runNow) result = await runCrossProfileMirrorRound({ force: true });
+        return json(res, 200, { ok: true, ...readCrossMirrorSettings(), peerProfile: crossProfilePeerId(), result });
       } catch (error) {
         return json(res, 400, { ok: false, error: error.message });
       }
@@ -9242,6 +9588,8 @@ if (PROFILE.capabilities.accounts && PROFILE.capabilities.checkin !== false) {
 restoreSleepMode();
 startServer();
 cdpLoop();
+// 跨版本对话自动镜像（默认关，界面打开后才按间隔同步）
+startCrossProfileMirror();
 // All automatic check-in entry points are owned by the visible automation task.
 const tickAutomationSchedules = createScheduleTicker(DATA_DIR);
 function runAutomationSchedules() {

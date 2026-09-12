@@ -1244,6 +1244,12 @@ export const EN_PLAIN: Record<string, string> = {
   "双向同步全部会话": "Sync all sessions both ways",
   "同步中…": "Syncing…",
   "增强服务未启动；启动后可进行双向会话同步。": "Enhancement service is not running; start it to sync sessions in both directions.",
+  "两个版本各用自己的数据库、账号和 CDP 通道，同时打开不会互相抢占；复制回去会更新原来的那条对话，来回复制不会产生副本。": "Each build keeps its own database, account and CDP channel, so both can stay open without interference. Copying a conversation back updates the original instead of creating another copy, so round-trips never duplicate.",
+  "已同步": "Synced",
+  "更新到另一版本": "Update in the other build",
+  "更新到当前版本": "Update in this build",
+  "复制后刷新客户端会话列表": "Refresh the client conversation list after copying",
+  "已关闭跨版本自动镜像。": "Cross-build auto mirror disabled.",
 };
 
 // Interpolated strings: tf("前缀 {0}", [x]) -> EN_TEMPLATE["前缀 {0}"] with {0} filled.
@@ -1253,7 +1259,14 @@ export const EN_TEMPLATE: Record<string, string> = {
   "{0}增强服务已启动；两个版本现在可以同时运行，数据和端口互不影响。": "{0} enhancements started; both builds can now run together with isolated data and ports.",
   "国内版与国际版继续使用各自数据库、账号和 CDP 通道；双向同步会在两边生成独立副本，不共写数据库，因此同时打开也不会互相抢占。": "The China and International builds keep separate databases, accounts and CDP channels. Two-way sync creates independent copies instead of sharing a database, so both can stay open without interfering.",
   "双向同步完成：新增/更新{0}个会话，{1}个文件复制不完整。": "Two-way sync finished: added/updated {0} session(s); {1} file(s) were incomplete.",
+  "双向同步完成：新增/更新{0}个会话（{1}个为回写更新），{2}个文件复制不完整。": "Two-way sync finished: added/updated {0} session(s) ({1} updated in place); {2} file(s) were incomplete.",
   "双向同步完成：已让两个版本共用{0}个会话副本。": "Two-way sync finished: both builds now share {0} session copies.",
+  "双向同步完成：已让两个版本共用{0}个会话（{1}个为回写更新）。": "Two-way sync finished: both builds now share {0} session(s) ({1} updated in place).",
+  "已从{0}同步{1}个会话到当前版本（其中{2}个是回写更新，未产生副本）{3}。": "Synced {1} session(s) from {0} into the current build ({2} updated in place, no duplicates){3}.",
+  "已同步{0}个会话到{1}（其中{2}个是回写更新，未产生副本）{3}。": "Synced {0} session(s) into {1} ({2} updated in place, no duplicates){3}.",
+  "自动与{0}互相同步对话": "Auto-sync conversations with {0}",
+  "上次同步：拉取{0} · 推送{1}": "Last sync: pulled {0} · pushed {1}",
+  "已开启跨版本自动镜像：本版本与{0}会按消息更新自动互相同步，复制回去只会更新原来的对话，不会再产生副本。": "Cross-build auto mirror enabled: this build and {0} will keep conversations in sync automatically, and copying back updates the original instead of creating duplicates.",
   "，{0}个文件复制不完整": ", {0} file(s) copied incompletely",
   "已从{0}复制{1}个会话到当前版本{2}。": "Copied {1} session(s) from {0} to the current build{2}.",
   "已从当前版本复制{0}个会话到{1}{2}。": "Copied {0} session(s) from the current build to {1}{2}.",

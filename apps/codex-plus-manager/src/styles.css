@@ -8963,6 +8963,34 @@ select {
   line-height: 1.6;
 }
 
+/* 跨版本开关行：自动镜像 + 复制后刷新 */
+.workbuddy-mirror-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 10px;
+  border: 1px dashed hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--card) / 0.45);
+}
+
+.workbuddy-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.workbuddy-check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: hsl(var(--primary));
+  cursor: pointer;
+}
+
 .workbuddy-badge.is-on {
   border-color: hsl(var(--status-success, 142 71% 45%) / 0.4);
   color: hsl(var(--status-success, 142 71% 45%));

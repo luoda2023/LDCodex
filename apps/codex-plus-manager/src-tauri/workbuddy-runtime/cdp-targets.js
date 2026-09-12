@@ -22,6 +22,14 @@ const APP_CN = /\/WorkBuddy\.app(?:\/|$)/i;
 const APP_AI = /\/WorkBuddy AI\.app(?:\/|$)/i;
 const APP_CBCN = /\/CodeBuddy CN\.app(?:\/|$)/i;
 const APP_CBINTL = /\/CodeBuddy\.app(?:\/|$)/i;
+// Windows：没有 .app 包，renderer 的 file:// URL 指向安装目录里的 app.asar，例如
+//   file:///C:/Users/<u>/AppData/Local/Programs/WorkBuddyAI/resources/app.asar/dist/index.html
+//   file:///C:/Users/<u>/AppData/Local/Programs/WorkBuddy/resources/app.asar/dist/index.html
+// 双开场景下两个客户端的页面标题都是 "WorkBuddy"，没有这条强信号就只能靠端口猜，
+// 一旦猜错就会把注入组件送进另一个客户端（表现为：另一版本的面板/主题被莫名改写）。
+// 必须先判 AI：路径 "WorkBuddyAI" 也包含 "WorkBuddy"，靠 (?![A-Za-z0-9]) 排除。
+const WIN_APP_AI = /[\\/]WorkBuddyAI(?:[\\/]|\.exe|$)/i;
+const WIN_APP_CN = /[\\/]WorkBuddy(?![A-Za-z0-9])(?:[\\/]|\.exe|$)/i;
 const DOMAIN_WB_AI = /https?:\/\/(?:[^/]+\.)?workbuddy\.ai(?:\/|$)/i;
 const DOMAIN_WB_CN = /https?:\/\/(?:[^/]+\.)?workbuddy\.cn(?:\/|$)/i;
 const DOMAIN_CB_CN = /https?:\/\/(?:[^/]+\.)?codebuddy\.cn(?:\/|$)/i;
@@ -39,6 +47,8 @@ function classifyTarget(url, title, description) {
   if (APP_CN.test(u)) return 'workbuddy-cn';
   if (APP_CBCN.test(u)) return 'codebuddy-cn';
   if (APP_CBINTL.test(u)) return 'codebuddy-intl';
+  if (WIN_APP_AI.test(u)) return 'workbuddy-ai';
+  if (WIN_APP_CN.test(u)) return 'workbuddy-cn';
   if (DOMAIN_WB_AI.test(u)) return 'workbuddy-ai';
   if (DOMAIN_WB_CN.test(u)) return 'workbuddy-cn';
   if (DOMAIN_CB_CN.test(u)) return 'codebuddy-cn';
