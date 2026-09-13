@@ -406,8 +406,14 @@ function noteAccountUsage(uid) {
 //            现在 windows/hooks.nsh 通过 MUI_CUSTOMFUNCTION_GUIINIT 注册 .onGUIInit 回调，
 //            抢在「已安装」页面出现**之前**就把程序关干净（含 resources\node\node.exe 这个
 //            daemon 子进程），旧卸载器于是「无文件可锁」。
-const DAEMON_VERSION = '88.8.3';
-const DAEMON_BUILD_ID = 'release-88.8.3-20260913-plugin-panel-and-installer';
+// 88.8.4：给托盘图标补上**悬停提示文字**（鼠标移到 Windows 右下角托盘图标上时显示的说明）——
+//         此前 install_tray 只设了图标和右键菜单，没设 tooltip，悬停时基本是空白。
+//         现在显示「LDCodex 管理工具 v<版本> · 左键显示窗口，右键打开菜单」；英文环境由前端
+//         传本地化措辞（含 {version} 占位符），版本号统一由 Rust 侧从 CARGO_PKG_VERSION 注入
+//         （继承 Cargo.toml 的 workspace version），**不硬编码**，升级时不用回来改。
+//         详见 src-tauri/src/lib.rs 的 tray_tooltip_default / resolve_tray_tooltip。
+const DAEMON_VERSION = '88.8.4';
+const DAEMON_BUILD_ID = 'release-88.8.4-20260913-tray-tooltip';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）

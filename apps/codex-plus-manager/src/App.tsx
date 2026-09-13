@@ -3004,6 +3004,10 @@ export function App() {
         applySkinLabel: "Apply Dream Skin",
         quitLabel: "Quit",
         windowTitle: "LDCodex Manager",
+        // 托盘图标的悬停提示（鼠标移到右下角图标上时显示）。
+        // `{version}` 是占位符，由 Rust 侧的 resolve_tray_tooltip 注入真实版本号 ——
+        // 前端不硬编码版本，避免又多一处要手工同步的来源。
+        tooltip: "LDCodex Manager v{version} · Click to show the window, right-click for the menu",
       });
     }
   }, []);

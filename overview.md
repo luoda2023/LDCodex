@@ -1,16 +1,69 @@
-# LDCodex 88.8.3：插件面板不再顶出窗口 + 安装器不再卡在「无法卸载」
+# LDCodex 88.8.4：托盘图标悬停提示 + 插件面板不再顶出窗口 + 安装器不再卡在「无法卸载」
 
-> 本轮改动：`workbuddy-runtime/inject.js`（插件面板布局 6 处）｜ `src-tauri/windows/hooks.nsh`（安装器钩子重写）｜ 版本号 6 处来源统一升到 `88.8.3` ｜ `_test_daemon/*`（新增 T18/T19/T20 + 插件面板布局实测脚本与夹具 + 本机安装版本核验脚本）
-> 测试：**123/123 + 16/16 + 布局实测 14/14 + 插件面板实测 47/47 + 前端 159/159 + Rust 2/2 + tsc 全绿**
+> 本轮改动：`src-tauri/src/lib.rs`（托盘图标补**悬停提示 tooltip**）｜ `src/App.tsx`（英文环境传本地化 tooltip）｜ 版本号 6 处来源统一升到 `88.8.4` ｜ `workbuddy-runtime/inject.js`（插件面板布局 6 处）｜ `src-tauri/windows/hooks.nsh`（安装器钩子重写）｜ `_test_daemon/*`（新增 T18/T19/T20 + 插件面板布局实测脚本与夹具 + 本机安装版本核验脚本）
+> 测试：**123/123 + 16/16 + 布局实测 14/14 + 插件面板实测 47/47 + 前端 159/159 + Rust 单测 + tsc 全绿**
 
 ## 一句话结论
 
-两件事，一件是「修得对但你没装上」，一件是「真的没修」。
+三件事：一件是**新功能**（托盘悬停提示），一件是「修得对但你没装上」，一件是「真的没修」。
 
-1. **你没装到 88.8.2** —— 安装目录里躺的还是 **88.8.1**（`C:\Program Files\LDCodex\workbuddy-runtime\daemon.js` 写着 `DAEMON_VERSION = '88.8.1'`，目录时间 17:15，而 88.8.2 的包是 17:48 出的）。原因是「已安装」页选「安装前卸载」时，安装器去调**旧版**卸载器，而旧卸载器删不掉**正在运行**的 `LDCodexManager.exe`（当时 PID 5008），删完文件还在原地 → 命中 `FileExists "$INSTDIR\LDCodexManager.exe"` → 弹「无法卸载！」并 `Abort`，升级中断。**所以你看到的「帐号 / 会话 / 增强超出底边框」全是 88.8.1 的表现。**
-2. **插件面板确实有独立的溢出问题，上一轮没修** —— 用户点名的「帐号 / 会话 / 增强」正是插件面板（注入到 WorkBuddy 客户端里的那套 UI）的页签。它被 `inject.js` 里**两处硬编码 / 估值**撑爆，且其中一处是 **JS 内联样式**，改 CSS 根本没用。
+1. **托盘图标现在有悬停提示了** —— 鼠标移到 Windows 右下角托盘图标上，会显示「LDCodex 管理工具 v88.8.4 · 左键显示窗口，右键打开菜单」。此前 `install_tray` 只设了图标和右键菜单、**没设 tooltip**，悬停时基本是空白。
+2. **你没装到 88.8.2** —— 安装目录里躺的还是 **88.8.1**（`C:\Program Files\LDCodex\workbuddy-runtime\daemon.js` 写着 `DAEMON_VERSION = '88.8.1'`，目录时间 17:15，而 88.8.2 的包是 17:48 出的）。原因是「已安装」页选「安装前卸载」时，安装器去调**旧版**卸载器，而旧卸载器删不掉**正在运行**的 `LDCodexManager.exe`（当时 PID 5008），删完文件还在原地 → 命中 `FileExists "$INSTDIR\LDCodexManager.exe"` → 弹「无法卸载！」并 `Abort`，升级中断。**所以你看到的「帐号 / 会话 / 增强超出底边框」全是 88.8.1 的表现。**
+3. **插件面板确实有独立的溢出问题，上一轮没修** —— 用户点名的「帐号 / 会话 / 增强」正是插件面板（注入到 WorkBuddy 客户端里的那套 UI）的页签。它被 `inject.js` 里**两处硬编码 / 估值**撑爆，且其中一处是 **JS 内联样式**，改 CSS 根本没用。
 
-两件事本轮都修了。
+三件事本轮都做了。
+
+---
+
+## 零、托盘图标悬停提示（88.8.4 新增）
+
+### 需求（用户原话）
+
+> 「在右下角托盘里面的文字说明。鼠标移到图标上面，就有出来的提示文字」
+
+### 根因
+
+`src-tauri/src/lib.rs` 的 `install_tray` 建托盘时只设了三样东西 ——
+图标（`.icon(...)`）、右键菜单（`.menu(...)`）、左键单击/双击的行为（`.on_tray_icon_event`），
+**没有 `.tooltip(...)`**。Windows 托盘在没有 tooltip 时悬停基本是空白（或只显示进程名），
+用户看不到任何说明。`update_tray_labels`（语言切换时由前端调用）也只改了菜单项文字和窗口标题，同样没碰 tooltip。
+
+### 改法
+
+| 位置 | 改动 |
+|---|---|
+| `src-tauri/src/lib.rs` | 新增 `tray_tooltip_default()` / `resolve_tray_tooltip()`；`install_tray` 加 `.tooltip(tray_tooltip_default())`；`update_tray_labels` 新增 `tooltip: Option<String>` 参数并调用 `tray.set_tooltip(...)` |
+| `src/App.tsx` | 英文分支（`getLanguage() === "en"`）多传一个 `tooltip`，文案含 `{version}` 占位符 |
+| `src-tauri/src/commands.rs` | 新增测试 `tray_icon_exposes_hover_tooltip_with_workspace_version`（6 条断言）守这个机制 |
+
+**关键设计：版本号只有一处来源。** tooltip 里的版本号取自
+`env!("CARGO_PKG_VERSION")` —— 它继承 `Cargo.toml` 的 `[workspace.package] version`（唯一权威来源），
+所以以后升级版本号时**不用**回来改 tooltip。前端只负责本地化措辞，并把版本号写成 `{version}` 占位符，
+由 Rust 侧替换。这样既不会多出第 7 处要手工同步的版本号来源，也不会出现「中文有版本号、英文没有」这类不一致。
+
+默认文案（中文，Rust 内置）：
+
+```
+LDCodex 管理工具 v88.8.4 · 左键显示窗口，右键打开菜单
+```
+
+英文环境（前端传入）：
+
+```
+LDCodex Manager v{version} · Click to show the window, right-click for the menu
+```
+
+> ⚠️ Windows 托盘 tooltip 上限 **127 字符**（`NOTIFYICONDATA::szTip` 是 128 wchar），别写太长。
+>
+> ⚠️ 语言是**加载时确定、切换即重载 webview**（见 `src/i18n.ts` 顶部注释），所以
+> `App.tsx` 里那个 `[]` 依赖的 effect 每次加载都会跑，tooltip 能正确跟随语言 —— 不需要额外监听语言变化。
+
+### 怎么验证
+
+- **静态**：`cargo test -p codex-plus-manager --lib tray_icon_exposes_hover_tooltip_with_workspace_version`
+  —— 断言必须设 `.tooltip(...)`、必须能 `set_tooltip`、必须有 `{version}` 占位符机制、
+  tooltip 相关代码段里**不得出现硬编码版本号**（`88.`）、默认文案必须带产品名、`App.tsx` 英文分支必须传 `tooltip`。
+- **手动**：跑起管理器，鼠标停在右下角托盘图标上 → 应显示上面那句中文说明。
 
 ---
 
@@ -156,15 +209,18 @@ env -u NSISDIR -u NSISCONFDIR /e/devtools/tauri-cache/NSIS/makensis \
 
 | 文件 | 改动 |
 |---|---|
+| **`src-tauri/src/lib.rs`** | 新增 `tray_tooltip_default()` / `resolve_tray_tooltip()`；`install_tray` 加 `.tooltip(...)`；`update_tray_labels` 新增 `tooltip: Option<String>` 并 `set_tooltip` |
+| `src/App.tsx` | 英文分支多传 `tooltip`（含 `{version}` 占位符） |
+| `src-tauri/src/commands.rs` | 新增测试 `tray_icon_exposes_hover_tooltip_with_workspace_version`（6 条断言） |
 | `src-tauri/workbuddy-runtime/inject.js` | `.wbs-panel` 高度上限受视口约束；`.wbs-body` 去掉两处估值；`lockPanelHeight()` 内联 `maxHeight` 同步；三处列表滚动条可见 |
 | **`src-tauri/windows/hooks.nsh`（重写）** | 新增 `.onGUIInit` 回调抢在「已安装」页面之前关程序；停进程改为轮询等待；避开 `nsis_tauri_utils` / StrFunc 两个编译陷阱 |
-| `src-tauri/workbuddy-runtime/daemon.js` | `DAEMON_VERSION` → `88.8.3`；`DAEMON_BUILD_ID` → `release-88.8.3-20260913-plugin-panel-and-installer`；新增版本注释说明本次修复 |
-| `Cargo.toml` / `package.json` / `package-lock.json`(2处) / `tauri.conf.json` / `workbuddy-runtime/package.json` | 版本号 → `88.8.3` |
+| `src-tauri/workbuddy-runtime/daemon.js` | `DAEMON_VERSION` → `88.8.4`；`DAEMON_BUILD_ID` → `release-88.8.4-20260913-tray-tooltip`；新增版本注释说明本次修复 |
+| `Cargo.toml` / `package.json` / `package-lock.json`(2处) / `tauri.conf.json` / `workbuddy-runtime/package.json` | 版本号 → `88.8.4` |
 | `apps/codex-plus-launcher/build.rs` | 注释里的版本示例同步 |
 | **`_test_daemon/plugin-panel-harness.html`（新增）** | 插件面板 DOM 复刻夹具，样式表从 `inject.js` 现抽 |
 | **`_test_daemon/verify-plugin-layout.mjs`（新增）** | 三个页签 × 四种窗口高度的布局实测 + 反向自检 |
 | **`_test_daemon/verify-installed-version.mjs`（新增）** | 把安装目录 `workbuddy-runtime\` 与源码**逐文件比 sha256**，加读 `daemon.js` 版本与注册表 `DisplayVersion` —— 一条命令回答「用户机器上跑的到底是哪一版」 |
-| `_test_daemon/run-tests.js` | 新增 T18（5 项）/ T19（6 项）；T2c / T13i / T14 断言同步到 `88.8.3` |
+| `_test_daemon/run-tests.js` | 新增 T18（5 项）/ T19（6 项）/ T20（5 项）；T2c / T13i / T14 断言同步到 `88.8.4` |
 | `_test_daemon/test-run.sh` | 接入插件面板实测脚本；开头跑一次安装版本核验（信息性，不参与成败判定） |
 | `_test_daemon/TEST-REPORT.md` / `overview.md` | 同步版本号、总数、新增章节 |
 
@@ -172,7 +228,7 @@ env -u NSISDIR -u NSISCONFDIR /e/devtools/tauri-cache/NSIS/makensis \
 
 ## 六、以后怎么升级版本号（照这个做就行）
 
-**约定**：当前基线 `88.8.3`，以后**每升级一次加 1**（`88.8.4`、`88.8.5` ……）。
+**约定**：当前基线 `88.8.4`，以后**每升级一次加 1**（`88.8.5`、`88.8.6` ……）。
 
 必须同步改的 **6 处**（漏一处 `T14` 系列会直接失败并告诉你是哪一处）：
 
@@ -189,15 +245,38 @@ env -u NSISDIR -u NSISCONFDIR /e/devtools/tauri-cache/NSIS/makensis \
 
 另外记得同步：`run-tests.js` 的 `UNIFIED_VERSION` / T2c / T13i、`TEST-REPORT.md` 标题与版本行、`overview.md`。
 
+> ✅ **托盘 tooltip 不是第 7 处。** 它的版本号取自 `env!("CARGO_PKG_VERSION")`（继承第 1 处），
+> 所以升级时不用管它 —— 这正是当初刻意这么写的原因（避免又多一处「漏改就静默不一致」的来源）。
+> `commands.rs` 里那条测试专门断言 tooltip 相关代码段**不得出现硬编码版本号**。
+
 ---
 
 ## 七、安装
 
-**产物**：`target/release/bundle/nsis/LDCodex_88.8.3_x64-setup.exe`
+**产物**：`target/release/bundle/nsis/LDCodex_88.8.4_x64-setup.exe`
+
+| 项 | 值 |
+|---|---|
+| 大小 | 53,257,028 字节 |
+| 出包时间 | 2026-09-13 21:34:09 |
+| SHA-256 | `6C374B778F29EB1BCD0C509FEC993B41A5F161CC0DF5A48A516454B1B271CB27` |
+
+> ⚠️ 上面这个哈希**只用来对账**（确认你手上和我这里是同一个文件），**不能**用来判断「包是不是新构建的」——
+> 重新编一次大小/哈希就会变（原因见第七节 ⑦）。判断新旧请看那一节的三层判据。
+
+本次出包已核验（三层判据全过）：
+
+| 判据 | 实测 |
+|---|---|
+| PE 版本资源 | 安装包 `FileVersion = 88.8.4` / `ProductVersion = 88.8.4` |
+| 生成的 `installer.nsi` | `L34: !define VERSION "88.8.4"`、`L35: VERSIONWITHBUILD "88.8.4.0"` |
+| 源码 mtime < 产物 mtime | `lib.rs` 21:03:19、`App.tsx` 21:03:25、`daemon.js` 21:04:06、`Cargo.toml` 21:04:13，均 < `installer.nsi` 21:32:44 < 产物 21:34:09 |
+| tooltip 文案真在 exe 里 | `LDCodexManager.exe` 内可搜到 `LDCodex 管理工具 v`、`左键显示窗口，右键打开菜单`、`{version}` |
 
 装好后：
+- **鼠标移到右下角托盘图标上，会显示「LDCodex 管理工具 v88.8.4 · 左键显示窗口，右键打开菜单」**；
 - 插件面板在**任意窗口高度**下都完整落在 WorkBuddy 客户端窗口内，标题栏和 ✕ 一直看得见；账号 / 会话 / 模型三个列表的滚动条清晰可见；
-- 管理器「关于」页与客户端面板显示 **88.8.3**。
+- 管理器「关于」页与客户端面板显示 **88.8.4**。
 
 > **本次升级的注意点**：你现在装的是 88.8.1，**它的卸载器还是旧的**，所以这次仍可能撞上「无法卸载！」。新安装器已经能处理，但请按下面的顺序走最稳：
 > 1. **推荐**：先让安装程序自己处理 —— 运行安装包后，如果弹出「检测到 LDCodex 正在运行」，点**「确定」**，它会自动关掉程序再继续；或者
@@ -317,7 +396,7 @@ Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
 | # | 判据 | 命令 / 位置 |
 |---|---|---|
 | 1 | **PE 版本资源**（明文，LZMA 压不到） | `(Get-Item $exe).VersionInfo` → `FileVersion` / `ProductVersion` |
-| 2 | **安装器脚本引用源码绝对路径**，makensis 编译期同步读盘、无缓存 | `target/release/nsis/x64/installer.nsi` 里 `File /a "/oname=…" "D:\LUODA\LDcodex\…"`；再加 `:34 !define VERSION "88.8.3"` |
+| 2 | **安装器脚本引用源码绝对路径**，makensis 编译期同步读盘、无缓存 | `target/release/nsis/x64/installer.nsi` 里 `File /a "/oname=…" "D:\LUODA\LDcodex\…"`；再加 `:34 !define VERSION "88.8.4"` |
 | 3 | **直接量构建产物内容** | 管理器：`apps/codex-plus-manager/dist/assets/index-*.css`；插件：`_test_daemon/verify-plugin-layout.mjs`（从 `inject.js` 现抽） |
 
 用判据 2 时，只要「源码 mtime < 产物 mtime」就说明打进去的是当前源码。
@@ -350,10 +429,12 @@ node _test_daemon/verify-installed-version.mjs --strict   # 不匹配则 exit 1
 
 ---
 
-## 附录、88.8.3 这个包里还包含什么（此前已开发但你没装到的）
+## 附录、88.8.4 这个包里还包含什么（此前已开发但你没装到的）
 
-因为上一个安装包是 `88.8.1`，88.8.2 没装上，所以这个包**一次性包含 88.8.2 + 88.8.3 的全部内容**：
+因为上一个**装到机器上**的版本是 `88.8.1`（88.8.2 / 88.8.3 都没装上），所以这个包
+**一次性包含 88.8.2 + 88.8.3 + 88.8.4 的全部内容**：
 
+- **托盘图标悬停提示（88.8.4）**：鼠标移到右下角托盘图标上显示「LDCodex 管理工具 v88.8.4 · 左键显示窗口，右键打开菜单」。见上文第零节。
 - **列表不再掉出窗口下边框（88.8.2）**：修掉 `.workspace { height: 100vh }`（它位于 `.shell` 网格第 2 行，该行已是「100vh − 38px」，多出的 38px 被 `overflow:hidden` 裁掉）与 `.workbuddy-pane` 上拍脑袋的 `max-height: calc(100vh - 330px)`；滚动条滑块从 `--hairline + 0.16`（≈背景色、看不见）换成 `--muted-foreground + 0.42`。
 - **插件面板不再顶出窗口（88.8.3）**：见上文第三节。
 - **安装器不再卡在「无法卸载」（88.8.3）**：见上文第二节。

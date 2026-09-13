@@ -6623,7 +6623,16 @@ mod tests {
         let result = tauri::async_runtime::block_on(perform_update(None));
 
         assert_eq!(result.status, "failed");
-        assert!(result.message.contains("请先检查更新"));
+        // ⚠️ 这条断言曾经漏改：`perform_update` 早已被改成「更新功能已停用」，
+        // 文案从「请先检查更新」换成了「此版本不提供在线更新，请从官网 dicad.cn 获取新版本。」，
+        // 但断言还停在旧文案上 —— 于是 `cargo test -p codex-plus-manager --lib`
+        // 一直有一条红的，谁也没注意。断言改宽松成「必须说明不提供在线更新」，
+        // 既守住「没有 release 时必须失败」这个语义，又不会因为文案微调再失效。
+        assert!(
+            result.message.contains("不提供在线更新"),
+            "message = {}",
+            result.message
+        );
     }
 
     #[test]
@@ -6729,6 +6738,61 @@ mod tests {
         assert!(!source.contains("tray_pause_dream_skin"));
         assert!(!source.contains("pause_dream_skin_from_tray"));
         assert!(source.contains("!settings.codex_app_dream_skin_paused"));
+    }
+
+    /// 托盘图标的**悬停提示**（鼠标移到右下角托盘图标上时显示的说明文字）。
+    /// 用户明确要求：「在右下角托盘里面的文字说明。鼠标移到图标上面，就有出来的提示文字」。
+    #[test]
+    fn tray_icon_exposes_hover_tooltip_with_workspace_version() {
+        let source =
+            std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/lib.rs")).unwrap();
+
+        // ① 建托盘时必须设 tooltip —— 不设的话 Windows 悬停时基本是空白。
+        assert!(
+            source.contains(".tooltip(tray_tooltip_default())"),
+            "install_tray 必须给托盘图标设置悬停提示（.tooltip(...)）"
+        );
+        // ② 前端传本地化措辞时也要能改 tooltip。
+        assert!(
+            source.contains("set_tooltip"),
+            "update_tray_labels 必须能更新悬停提示（set_tooltip）"
+        );
+        // ③ 占位符机制必须存在：前端只传措辞，版本号由 Rust 注入。
+        assert!(
+            source.contains("TRAY_TOOLTIP_VERSION_TOKEN") && source.contains("\"{version}\""),
+            "必须支持 {{version}} 占位符替换"
+        );
+
+        // ④ 版本号只能来自 CARGO_PKG_VERSION（它继承 Cargo.toml 的 [workspace.package] version），
+        //    而且**只检查 tooltip 相关代码那一段** —— 免得别处一句提及版本号的注释就误报。
+        let start = source
+            .find("fn tray_tooltip_default")
+            .expect("缺少 tray_tooltip_default");
+        let end = source.find("fn install_tray").expect("缺少 install_tray");
+        assert!(start < end, "tray_tooltip_default 必须定义在 install_tray 之前");
+        let tooltip_region = &source[start..end];
+        assert!(
+            tooltip_region.contains("env!(\"CARGO_PKG_VERSION\")"),
+            "tooltip 里的版本号必须取自 env!(\"CARGO_PKG_VERSION\")"
+        );
+        assert!(
+            !tooltip_region.contains("88."),
+            "tooltip 相关代码里不得硬编码版本号（升级时会漏改，T14 系列正在防这个）"
+        );
+        // ⑤ 默认中文提示必须带产品名，别被改成空串。
+        assert!(
+            tooltip_region.contains("LDCodex 管理工具 v"),
+            "默认中文悬停提示必须包含产品名与版本号前缀"
+        );
+
+        // ⑥ 前端英文分支必须传 tooltip（含 {version} 占位符），否则英文环境下悬停还是中文。
+        let app_source =
+            std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../src/App.tsx"))
+                .unwrap();
+        assert!(
+            app_source.contains("tooltip:") && app_source.contains("{version}"),
+            "App.tsx 的英文分支必须传 tooltip（含 {{version}} 占位符）"
+        );
     }
 
     #[test]

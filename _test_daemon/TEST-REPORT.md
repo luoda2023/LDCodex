@@ -1,8 +1,10 @@
-# LDCodex daemon 88.8.3 功能测试报告
+# LDCodex daemon 88.8.4 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）；18:45（88.8.3 插件面板布局 + 安装器钩子，118 项 + 布局实测 14 项 + 插件面板实测 47 项）；19:55（88.8.3 出包后复跑，并修掉测试脚手架自身的 3 个 bug，见「一之零D-补」；118 项 + 16 项 + 14 项 + 47 项，3m39s 干净退出）；20:49（88.8.3 出包后再次复跑 + 新增「本机安装版本核验」，见「一之零D-补二」；118 + 16 + 14 + 47，2m00s 干净退出）；**20:52（新增 T20 系列 5 项守卫，安装版本核验脚本接入 test-run.sh；123 + 16 + 14 + 47，1m27s 干净退出）**
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）；18:45（88.8.3 插件面板布局 + 安装器钩子，118 项 + 布局实测 14 项 + 插件面板实测 47 项）；19:55（88.8.3 出包后复跑，并修掉测试脚手架自身的 3 个 bug，见「一之零D-补」；118 + 16 + 14 + 47，3m39s 干净退出）；20:49（88.8.3 出包后再次复跑 + 新增「本机安装版本核验」，见「一之零D-补二」；118 + 16 + 14 + 47，2m00s 干净退出）；20:52（新增 T20 系列 5 项守卫，安装版本核验脚本接入 test-run.sh；123 + 16 + 14 + 47，1m27s 干净退出）；21:25（88.8.4 托盘悬停提示，见「一之零E」；123 + 16 + 14 + 47 + Rust 70/70 + 前端 159/159 + tsc 全绿）；**21:34（88.8.4 出包并核验产物，见「一之零E-补」）**
 - **被测代码**：
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.3**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.4**）
+  - `apps/codex-plus-manager/src-tauri/src/lib.rs`（**88.8.4：托盘图标新增悬停提示 tooltip**）
+  - `apps/codex-plus-manager/src/App.tsx`（**88.8.4：英文环境传本地化 tooltip**）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**88.8.3：插件面板高度受视口约束 + 三处列表滚动条可见**；88.8.1：账号卡片「用过 N 次 · 今日 N 次」徽标；1.2.11 上弹面板行内新增常用语；1.2.10 扣费取样范围修复）
   - `apps/codex-plus-manager/src-tauri/windows/hooks.nsh`（**88.8.3：新增 .onGUIInit 回调，抢在「已安装」页面之前关掉程序**）
   - `apps/codex-plus-manager/src/styles.css`（88.8.2：列表不再掉出窗口下边框 + 滚动条可见）
@@ -20,14 +22,114 @@
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | 布局滚动实测（`verify-layout-scroll.mjs`，无头 Chrome 量真实产物） | **14 / 14 全部通过** ✅ |
 | 插件面板布局实测（`verify-plugin-layout.mjs`，账号 / 会话 / 增强 三页签） | **47 / 47 全部通过** ✅ |
-| 本机安装版本核验（`verify-installed-version.mjs`） | 信息性，**不参与成败判定**（当前 3/7 —— 本机仍是 88.8.1，尚未装上 88.8.3，见「一之零D-补二」） |
+| 本机安装版本核验（`verify-installed-version.mjs`） | 信息性，**不参与成败判定**（当前 3/7 —— 本机仍是 88.8.1，尚未装上 88.8.4；装上 `LDCodex_88.8.4_x64-setup.exe` 后应变为 **7/7 ✅**，见「一之零D-补二」） |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
 | 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅ |
+| Rust 单元测试（`cargo test -p codex-plus-manager --lib`） | **70 / 70 全部通过** ✅（含 88.8.4 新增的托盘 tooltip 守卫；另修掉 1 条**早已失效**的断言，见「一之零E」） |
 | Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
 | 安装器脚本编译（`makensis installer.nsi`） | 通过（仅 1 个模板自带的无关 warning）✅ |
 | 真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
 | i18n 词典校验（`tools/i18n-verify.mjs`） | 与基线持平（未新增缺失词条）✅ |
+
+## 一之零E、88.8.4 新增：托盘图标悬停提示（tooltip）
+
+### 需求（用户原话）
+
+> 「在右下角托盘里面的文字说明。鼠标移到图标上面，就有出来的提示文字」
+
+### 根因
+
+`src-tauri/src/lib.rs` 的 `install_tray` 建托盘时只设了图标（`.icon`）、右键菜单（`.menu`）、
+左键单击/双击行为（`.on_tray_icon_event`），**没有 `.tooltip(...)`** ——
+Windows 托盘在没有 tooltip 时悬停基本是空白，用户看不到任何说明。
+语言切换走的 `update_tray_labels` 也只改了菜单项文字与窗口标题，同样没碰 tooltip。
+
+### 改法
+
+| 位置 | 改动 |
+|---|---|
+| `src-tauri/src/lib.rs` | 新增 `tray_tooltip_default()` / `resolve_tray_tooltip()`；`install_tray` 加 `.tooltip(tray_tooltip_default())`；`update_tray_labels` 新增 `tooltip: Option<String>` 参数并调用 `tray.set_tooltip(...)` |
+| `src/App.tsx` | 英文分支多传 `tooltip`，文案含 `{version}` 占位符 |
+| `src-tauri/src/commands.rs` | 新增测试 `tray_icon_exposes_hover_tooltip_with_workspace_version`（6 条断言） |
+
+**关键设计：版本号只有一处来源。** tooltip 里的版本号取自 `env!("CARGO_PKG_VERSION")`
+（继承 `Cargo.toml` 的 `[workspace.package] version`），所以以后升级版本号**不用**回来改 tooltip ——
+刻意避免多出第 7 处「漏改就静默不一致」的版本号来源。前端只负责本地化措辞，
+把版本号写成 `{version}` 占位符交给 Rust 替换，这样也不会出现「中文有版本号、英文没有」这类不一致。
+
+默认文案（中文，Rust 内置）：
+`LDCodex 管理工具 v88.8.4 · 左键显示窗口，右键打开菜单`
+
+> ⚠️ Windows 托盘 tooltip 上限 **127 字符**（`NOTIFYICONDATA::szTip` 是 128 wchar）。
+>
+> ⚠️ 语言是**加载时确定、切换即重载 webview**（见 `src/i18n.ts` 顶部注释），
+> 所以 `App.tsx` 里那个 `[]` 依赖的 effect 每次加载都会跑，tooltip 能正确跟随语言，不需要额外监听。
+
+### 测试守卫（`cargo test -p codex-plus-manager --lib`）
+
+新增的 `tray_icon_exposes_hover_tooltip_with_workspace_version` 共 6 条断言：
+① `install_tray` 必须 `.tooltip(...)`；② 必须能 `set_tooltip`；③ 必须有 `{version}` 占位符机制；
+④ **tooltip 相关代码段里不得出现硬编码版本号**（`88.`）且必须用 `env!("CARGO_PKG_VERSION")`
+（只截取 `fn tray_tooltip_default` 到 `fn install_tray` 之间那段来判，免得别处一句提及版本号的注释就误报）；
+⑤ 默认中文文案必须带产品名；⑥ `App.tsx` 英文分支必须传 `tooltip`。
+
+### 顺带修掉一条**早已失效**的断言（不是我这次改坏的）
+
+复跑 `cargo test -p codex-plus-manager --lib` 时暴露出一条红：
+
+```
+commands::tests::update_install_requires_release_payload
+  panicked at commands.rs:6626: assertion failed: result.message.contains("请先检查更新")
+```
+
+原因：`perform_update` 早已被改成「更新功能已停用」，返回的文案是
+「此版本不提供在线更新，请从官网 dicad.cn 获取新版本。」，但断言还停在旧文案「请先检查更新」上。
+`git diff` 确认这条与本次改动**无关**（`commands.rs` 的 diff 只有新增的 tooltip 测试），
+属于仓库里一直存在的红灯 —— 谁也没注意到，因为平时只跑 `codex-plus-core` 那个 crate 的测试。
+
+修法：断言改宽松为「必须说明不提供在线更新」，既守住「没有 release 时必须失败」这个语义，
+又不会因为文案微调再失效。修完 **70 passed; 0 failed**。
+
+
+
+## 一之零E-补、88.8.4 出包并核验产物（2026-09-13 21:34）
+
+`npm run build` 干净退出（`BUILD_EXIT=0`，12m35s），产出：
+
+```
+D:\LUODA\LDcodex\target\release\bundle\nsis\LDCodex_88.8.4_x64-setup.exe
+  大小   53,257,028 字节
+  时间   2026-09-13 21:34:09
+  SHA256 6C374B778F29EB1BCD0C509FEC993B41A5F161CC0DF5A48A516454B1B271CB27
+```
+
+按第七节 ⑦ 的三层判据逐项核验（**不**用哈希比对判断新旧）：
+
+| 判据 | 实测 | 结论 |
+|---|---|---|
+| ① PE 版本资源 | 安装包 `FileVersion = 88.8.4`、`ProductVersion = 88.8.4` | ✅ |
+| ② 生成的 `installer.nsi` | `L34: !define VERSION "88.8.4"`、`L35: !define VERSIONWITHBUILD "88.8.4.0"` | ✅ |
+| ③ 源码 mtime < 产物 mtime | `lib.rs` 21:03:19 / `App.tsx` 21:03:25 / `daemon.js` 21:04:06 / `Cargo.toml` 21:04:13，全 < `installer.nsi` 21:32:44 < 产物 21:34:09 | ✅ |
+| ④ 前端构建产物 | `dist/assets/index-Drr3zI8K.css`（184,176 字节，21:26:43，本次新构建） | ✅ |
+
+**额外做了一次「文案真的编进二进制」的直接验证** —— 在 `target/release/LDCodexManager.exe`（46,021,632 字节）
+里按 UTF-8 字节搜 tooltip 相关字面量：
+
+```
+FOUND    "LDCodex 管理工具 v"       @byte 18076929
+FOUND    "左键显示窗口，右键打开菜单"  @byte 18076961
+FOUND    "{version}"                @byte 18076920
+FOUND    "88.8.4"                   @byte 12195131
+```
+
+即：tooltip 的中文字面量与 `{version}` 占位符**确实在编译产物里**，不是只躺在源码里。
+
+> 注：`LDCodexManager.exe` 的 mtime（21:34:11）比安装包（21:34:09）晚 2 秒，是 Tauri
+> 「Patching … with bundle type information」那一步写入造成的 —— 与 88.8.3 那次观察到的
+> 「出包后 exe 被重写」是同一现象，**不影响功能**，也**不能**据此认为包是旧的。
+
+
 
 ## 一之零D、88.8.3 修复：插件面板顶出窗口 + 安装器「无法卸载」
 
@@ -666,8 +768,6 @@ function ndCreditText(el) {
 - 首页带「积分」横幅时，权限确认弹窗**恢复正常自动点允许**；
 - 真正的扣费弹窗（弹窗自身含「本次生成将消耗 30 积分」）**仍被拒绝**，防护没有被削弱；
 - 通用「确认 / 取消」弹窗依旧不被点（保持「宁可漏点也不错点」）。
-
-## 二、1.2.9 修掉的三个真实缺陷
 
 ## 二、1.2.9 修掉的三个真实缺陷
 

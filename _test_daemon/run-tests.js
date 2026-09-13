@@ -1,6 +1,6 @@
 'use strict';
 /*
- * LDCodex daemon 88.8.3 功能测试
+ * LDCodex daemon 88.8.4 功能测试
  * 覆盖：双开隔离自检 / 账号导出导入（含安全校验）/ 跨版本镜像收敛 / 抗崩溃 / 鉴权 /
  *       弹窗自动点允许取样范围 / 快捷短语随账号导出导入去重 / 上弹面板行内新增入口 / 回归
  * 另见 verify-no-disturb.js：单独验证「弹窗自动点允许」的判定逻辑（1.2.10 修的积分误杀）
@@ -125,7 +125,7 @@ function extractRustFn(src, name) {
   rec('T2b 返回 sides 数组（本端在首位）', Array.isArray(b.sides) && b.sides.length >= 1 && b.sides[0] && b.sides[0].id === 'workbuddy-cn',
     'sides=' + JSON.stringify((b.sides || []).map((s) => s.id)));
   rec('T2c 含 isolated/conflicts/warnings/daemonVersion',
-    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '88.8.3',
+    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '88.8.4',
     'version=' + b.daemonVersion + ', isolated=' + b.isolated + ', conflicts=' + JSON.stringify(b.conflicts) + ', warnings=' + JSON.stringify(b.warnings));
   const s0 = (b.sides && b.sides[0]) || {};
   rec('T2d 本端字段完整（CDP/面板端口/目录/可执行文件）',
@@ -478,16 +478,16 @@ function extractRustFn(src, name) {
     !!fnRestore && /if \(found == IntPtr\.Zero\) return false;/.test(fnRestore)
       && !/if \(owner == targetPid\) \{ ShowWindowAsync\(hWnd, 9\);/.test(fnRestore),
     '已改为先筛选候选再恢复');
-  rec('T13i daemon 版本已统一为 88.8.3',
-    /const DAEMON_VERSION = '88\.8\.3';/.test(daemonSrc), 'DAEMON_VERSION=88.8.3');
+  rec('T13i daemon 版本已统一为 88.8.4',
+    /const DAEMON_VERSION = '88\.8\.4';/.test(daemonSrc), 'DAEMON_VERSION=88.8.4');
 
-  // ── T14 版本号统一（约定：当前基线 88.8.3，以后每升级一次加 1）──
+  // ── T14 版本号统一（约定：当前基线 88.8.4，以后每升级一次加 1）──
   // 背景：用户要求「软件的版本号统一为 88.8.1，以后每升级一次升一个」。此前各生态版本号各自为政
   // （安装包 1.2.56 / 运行时 package.json 1.2.11 / daemon 1.2.12）。这里做源码级
   // 断言，守住「所有版本号来源必须完全一致」这条约定，防止后续升级只改一半。
   // 升级步骤：改下方 UNIFIED_VERSION + 6 处版本号来源，本系列会逐条校验是否漏改。
-  section('T14 版本号统一为 88.8.3');
-  const UNIFIED_VERSION = '88.8.3';
+  section('T14 版本号统一为 88.8.4');
+  const UNIFIED_VERSION = '88.8.4';
   const readJsonVersion = (rel) => {
     try {
       return JSON.parse(fs.readFileSync(path.join(RUNTIME, rel), 'utf8')).version || null;

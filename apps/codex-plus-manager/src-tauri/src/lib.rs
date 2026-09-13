@@ -17,6 +17,34 @@ const TRAY_MENU_QUIT: &str = "tray_quit_app";
 const DREAM_SKIN_DEBUG_PORT: u16 = 9229;
 const MANAGER_NAVIGATION_EVENT: &str = "manager-navigation-requested";
 
+/// 托盘悬停提示里版本号的占位符：调用方在文案中写 `{version}`，由 [`resolve_tray_tooltip`] 替换。
+const TRAY_TOOLTIP_VERSION_TOKEN: &str = "{version}";
+
+/// 托盘图标的默认悬停提示（中文，鼠标移到右下角图标上时显示）。
+///
+/// ⚠️ 版本号必须来自 `env!("CARGO_PKG_VERSION")` —— 它继承 `Cargo.toml` 的
+/// `[workspace.package] version`（**唯一权威来源**），所以以后升级版本号时**不用**回来改这里。
+/// 一旦把版本号写成字面量，就又多出一处「漏改就静默不一致」的来源（T14 系列正是在防这个）。
+///
+/// Windows 托盘 tooltip 上限 127 字符（`NOTIFYICONDATA::szTip` 128 wchar），别写太长。
+fn tray_tooltip_default() -> String {
+    format!(
+        "LDCodex 管理工具 v{} · 左键显示窗口，右键打开菜单",
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
+/// 把前端传来的文案里的 `{version}` 换成真实版本号；文案为空时回落到默认中文提示。
+///
+/// 前端只负责**本地化措辞**，版本号一律由这里注入 —— 这样无论哪个语言、哪次调用，
+/// 版本号都只有一个来源。
+fn resolve_tray_tooltip(text: Option<&str>) -> String {
+    match text.map(str::trim).filter(|s| !s.is_empty()) {
+        Some(text) => text.replace(TRAY_TOOLTIP_VERSION_TOKEN, env!("CARGO_PKG_VERSION")),
+        None => tray_tooltip_default(),
+    }
+}
+
 pub fn run() {
     install_panic_logger();
     let _ = codex_plus_core::diagnostic_log::append_diagnostic_log(
@@ -292,6 +320,8 @@ fn install_tray<R: tauri::Runtime>(app: &tauri::App<R>) -> tauri::Result<()> {
 
     let mut tray_builder = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&tray_menu)
+        // 鼠标移到托盘图标上时显示的说明文字（Windows 右下角提示）。
+        .tooltip(tray_tooltip_default())
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             TRAY_MENU_SHOW => {
@@ -390,6 +420,7 @@ fn update_tray_labels<R: tauri::Runtime>(
     apply_skin_label: String,
     quit_label: String,
     window_title: String,
+    tooltip: Option<String>,
 ) {
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         let show_item = MenuItem::with_id(&app, TRAY_MENU_SHOW, &show_label, true, None::<&str>);
@@ -406,6 +437,9 @@ fn update_tray_labels<R: tauri::Runtime>(
                 let _ = tray.set_menu(Some(menu));
             }
         }
+        // 悬停提示也要跟着语言走：前端只传本地化措辞（含 `{version}` 占位符），
+        // 版本号由 resolve_tray_tooltip 统一注入。
+        let _ = tray.set_tooltip(Some(resolve_tray_tooltip(tooltip.as_deref())));
     }
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_title(&window_title);

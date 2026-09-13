@@ -216,7 +216,7 @@ if (reg.status === 'ok') {
   skip('读注册表 DisplayVersion', '读取失败：' + (reg.msg || '未知原因'));
 }
 
-// ── 6) 88.8.3 插件面板修复的落地标记（插件侧，源码里应有 5 处） ──
+// ── 6) 插件面板高度修复的落地标记（88.8.3 引入；插件侧，源码里应有 5 处） ──
 const MARKER = '100vh - 44px';
 function countOccurrences(haystack, needle) {
   if (!haystack || !needle) return 0;
@@ -224,7 +224,7 @@ function countOccurrences(haystack, needle) {
 }
 const srcHits = countOccurrences(readText(path.join(SRC_RUNTIME, 'inject.js')), MARKER);
 const insHits = countOccurrences(readText(path.join(INSTALL_RUNTIME, 'inject.js')), MARKER);
-rec('安装的 inject.js 含 88.8.3 面板高度修复标记「' + MARKER + '」',
+rec('安装的 inject.js 含插件面板高度修复标记「' + MARKER + '」（88.8.3 引入）',
   insHits > 0 && insHits === srcHits,
   '安装命中 ' + insHits + ' 处 / 源码 ' + srcHits + ' 处');
 
