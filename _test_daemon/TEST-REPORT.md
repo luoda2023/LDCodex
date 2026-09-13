@@ -275,6 +275,25 @@ LDCodex_88.8.4_x64-setup.exe /P          → 6.8 秒退出，ExitCode -1    ❌
   不是你刚编出来的那个。
 - **被动模式（`/P`）与交互模式的默认分支可能相反**，别拿 `/P` 的结果直接推断双击行为。
 
+### 启动冒烟（23:34）
+
+前面所有验证都停在「装上了、文件一致」，**从没真正把 88.8.4 跑起来过**。补一次冒烟：
+
+```
+C:\Program Files\LDCodex\LDCodexManager.exe
+  FileVersion = ProductVersion = 88.8.4        ✅
+  启动后 12 秒：进程仍在（PID 2756），未崩溃     ✅
+  工作集 33.4 MB / 16 线程
+```
+
+daemon 当前没在跑 —— 这是**正常的**：daemon 要等打开 WorkBuddy 客户端才会被拉起
+（真实 profile 的 `C:\Users\Administrator\.workbuddy\logs\daemon.log` 最后一次是 11:33 的
+`[Sidecar] Shutdown complete.`，干净关闭、无 ERROR）。daemon 88.8.4 的功能已由
+`test-run.sh` 的**隔离实例**完整覆盖（127/127 里就包含它的接口测试），不必再在真实环境单跑。
+
+> 为什么不把「启动程序」写进自动化测试：它会拉起托盘常驻进程、还会触发 daemon 连真实
+> profile 数据，副作用不小。留在出包后手工跑一次即可。
+
 ### 最终交付包：`npm run build` 全量重出（23:31）
 
 之前交付的包是手工 `makensis` 重编的，链路虽然正确但不是标准流程产物。23:31 跑了一次完整
