@@ -355,6 +355,13 @@ function extractFn(src, name) {
   const fnMenuClose = extractFn(injectSrc, 'acMenuClose');
   rec('T12f 关闭面板时收掉行内新增',
     !!fnMenuClose && /exploreEndEdit\(\)/.test(fnMenuClose), fnMenuClose ? 'len=' + fnMenuClose.length : '未提取到');
+  rec('T12g 底部右侧文案为「进入插件设置」（原「编辑 →」已替换）',
+    /进入插件设置<\/a>/.test(injectSrc) && !/编辑 →<\/a>/.test(injectSrc),
+    '文案已更新，且旧文案不再出现');
+  rec('T12h 「进入插件设置」已收录英文词条',
+    /'进入插件设置': 'Open plugin settings'/.test(injectSrc), '英文词条已加');
+  rec('T12i 该链接设了 white-space:nowrap（防中文折行）',
+    /\.wbs-explore-edit\{[^}]*white-space:nowrap/.test(injectSrc), 'nowrap 已加');
 
   // ── T7 回归 ──
   section('T7 回归');

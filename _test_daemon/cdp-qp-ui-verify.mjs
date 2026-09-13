@@ -60,7 +60,9 @@ const PROBE = `(() => {
   out['面板按钮 class'] = btn ? btn.className : null;
   out['已有 #wbs-explore-add（新版标志）'] = !!q('#wbs-explore-add');
   out['已有 .wbs-explore-foot（底部行）'] = !!q('.wbs-explore-foot');
-  out['已有 .wbs-explore-edit（编辑 →）'] = !!q('.wbs-explore-edit');
+  const editLink = q('.wbs-explore-edit');
+  out['已有 .wbs-explore-edit'] = !!editLink;
+  out['其文案（新版应为「进入插件设置」）'] = editLink ? editLink.textContent : null;
   out['已有 .wbs-explore-send-txt（点击后发送）'] = !!q('.wbs-explore-send-txt');
   out['已有 #wbs-explore-list'] = !!q('#wbs-explore-list');
   out['已有 .wbs-explore-item（列表项）'] = !!q('.wbs-explore-item');
@@ -100,6 +102,7 @@ const RENDER_TEST = `(() => {
     '.t12-item{position:relative;display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;font-size:12px;color:var(--wb-color-text-primary,#1f1f1f);line-height:1.4;cursor:pointer}',
     '.t12-edit-row{display:block;padding:4px 2px;cursor:default}',
     '.t12-input{display:block;width:100%;box-sizing:border-box;min-height:30px;max-height:96px;resize:none;padding:6px 8px;border-radius:8px;border:1px solid var(--wb-border-default,#e5e5e5);background:var(--wb-bg-input,var(--wb-bg-primary,#fff));color:var(--wb-color-text-primary,#1f1f1f);font-size:12px;line-height:1.5;font-family:inherit;outline:none;overflow-y:auto}',
+    '.t12-edit{font-size:12px;font-weight:500;color:var(--wb-icon-secondary,#666);text-decoration:none;cursor:pointer;white-space:nowrap}',
     '.t12-send{font-size:12px;color:color-mix(in srgb,var(--wb-color-text-primary) 40%,transparent)}',
   ].join('\\n');
   const style = document.createElement('style');
@@ -115,7 +118,7 @@ const RENDER_TEST = `(() => {
     '</div>' +
     '<div class="t12-foot">' +
       '<button type="button" class="t12-add"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg><span>添加</span></button>' +
-      '<span class="t12-foot-right"><span class="t12-send">点击后发送</span><a class="t12-edit" href="#" onclick="return false">编辑 →</a></span>' +
+      '<span class="t12-foot-right"><span class="t12-send">点击后发送</span><a class="t12-edit" href="#" onclick="return false">进入插件设置</a></span>' +
     '</div>';
   document.body.appendChild(box);
 
@@ -140,6 +143,18 @@ const RENDER_TEST = `(() => {
     '底部行尺寸': rect('.t12-foot'),
     '编辑行在列表首位': box.querySelector('.t12-list').firstElementChild.classList.contains('t12-edit-row'),
     '编辑行高度 > 0（未被压塌）': rect('.t12-edit-row').h > 0,
+    // —— 底部右侧文案由「编辑 →」改为「进入插件设置」后，核对变长是否挤压布局 ——
+    '编辑链接文案': box.querySelector('.t12-edit').textContent,
+    '编辑链接 white-space': g('.t12-edit', 'whiteSpace'),
+    '编辑链接尺寸': rect('.t12-edit'),
+    '右侧容器尺寸（发送提示+插件设置）': rect('.t12-foot-right'),
+    '编辑链接是否单行（高度 ≤ 20px 即未折行）': rect('.t12-edit').h <= 20,
+    '底部行未溢出且左右两段不重叠': (() => {
+      const foot = box.querySelector('.t12-foot').getBoundingClientRect();
+      const right = box.querySelector('.t12-foot-right').getBoundingClientRect();
+      const add = box.querySelector('.t12-add').getBoundingClientRect();
+      return right.right <= foot.right + 0.5 && add.right <= right.left + 0.5;
+    })(),
   };
   box.remove();
   style.remove();

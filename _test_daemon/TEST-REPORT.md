@@ -30,6 +30,8 @@
 
 底部行原本只有右侧的「点击后发送 / 编辑 →」，现改为左右两段：左侧是新增的 `#wbs-explore-add`，右侧内容用 `.wbs-explore-foot-right` 包起来。加号图标 `QP_PLUS_SVG` 按 12px 文字尺寸对齐（`width/height=12`）。
 
+右侧那个链接（`.wbs-explore-edit`）的文案由「编辑 →」改为 **「进入插件设置」**：它点下去是唤起 LDCodex 面板并跳到「增强」页的快捷短语管理区，叫「编辑」名不副实。文案变长（4 字 → 6 字）后补了 `white-space:nowrap`，防止中文被折成两行；实机实测单行 72×16px，底部行左右两段合计 202px，容器内容区 268px，余量充足。
+
 **（2）点「添加」→ 列表顶部插入空白行 → Ctrl+Enter 保存**
 
 `exploreAddRow()` 在 `#wbs-explore-list` 的**首位**插入一行 `.wbs-explore-edit-row`，内含自适应高度的 `<textarea>`；`Ctrl/Cmd+Enter` 在**捕获阶段**拦截并 `preventDefault + stopPropagation`（客户端自身把 Ctrl+Enter 绑成了「发送」，不先吃掉会被抢走），随后 `exploreSaveRow()` 调 `/api/quick-phrase-add`；`Escape` 取消。
@@ -303,7 +305,7 @@ if (process.env.WBSWITCH_CDP_PORT) return false;   // 一旦设置，不排除�
 |---|---|---|
 | `.wbs-explore-inline`（面板按钮） | ✅ 存在 | class = `wbs-stash-inline wbs-explore-inline wbs-stash-inline-inline` |
 | `.wbs-explore-foot`（底部行） | ✅ 存在 | 我的「添加」按钮就插在这一行 |
-| `.wbs-explore-edit`（编辑 →）/ `.wbs-explore-send-txt`（点击后发送） | ✅ 存在 | 被 `.wbs-explore-foot-right` 包起来后仍在 |
+| `.wbs-explore-edit`（进入插件设置）/ `.wbs-explore-send-txt`（点击后发送） | ✅ 存在 | 被 `.wbs-explore-foot-right` 包起来后仍在 |
 | `#wbs-explore-list` / `.wbs-explore-item` | ✅ 存在 | 编辑行 `className='wbs-explore-item wbs-explore-edit-row'` 与既有项兼容 |
 | `#wbs-explore-add` / `.wbs-explore-foot-right` / `wbs-explore-editing` 规则 | ❌ 不存在 | **确认当前客户端跑的仍是旧版注入**（`inject.js` 改动需重新构建安装包才生效） |
 
@@ -320,7 +322,7 @@ if (process.env.WBSWITCH_CDP_PORT) return false;   // 一旦设置，不排除�
 | 编辑行位于列表首位 / 高度未被压塌 | ✅ 均为真 |
 | 临时容器与样式残留 | ✅ 已彻底清理（零副作用） |
 
-> **可访问性取舍（已知）**：按钮实测 25px 高，低于 WCAG AA 的 44px 触摸目标建议。这是**桌面鼠标场景**下的刻意选择 —— 面板内既有元素（「编辑 →」「点击后发送」均为 12px 文字）统一是紧凑尺寸，保持一致比单点放大更重要。
+> **可访问性取舍（已知）**：按钮实测 25px 高，低于 WCAG AA 的 44px 触摸目标建议。这是**桌面鼠标场景**下的刻意选择 —— 面板内既有元素（「进入插件设置」「点击后发送」均为 12px 文字）统一是紧凑尺寸，保持一致比单点放大更重要。
 
 ## 五、关键机制说明：双开为什么会互相影响
 
