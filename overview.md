@@ -204,6 +204,97 @@ env -u NSISDIR -u NSISCONFDIR /e/devtools/tauri-cache/NSIS/makensis \
 >
 > 装上 88.8.3 之后，以后再升级就不会再遇到这个问题了（新版卸载器自带同样的关闭逻辑）。
 
+### 遇到「已安装 / 推荐先卸载 / 无法卸载！」时的完整排查手册
+
+这套排查是**在真实机器上跑通并验证过**的（2026-09-13 实测），照做即可。
+
+#### ① 先确认「到底装没装、装的哪一版」—— 别猜
+
+```bash
+# 安装目录：文件在不在、mtime 是不是旧版
+ls -la "C:/Program Files/LDCodex/"
+```
+```powershell
+# 注册表：安装器就是靠这个判断「已安装」的
+Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\LDCodex" |
+  Select DisplayName, DisplayVersion, UninstallString, InstallLocation
+```
+
+判据：安装器读的是 **`DisplayVersion`**。它还是旧版本号 → 安装器当然显示「已安装」。
+
+#### ② 确认有没有进程占着文件 —— 注意两个坑
+
+```bash
+tasklist | grep -i -E "LDCodex|ldcodex"
+```
+
+⚠️ **坑 1：`LDCodexManager.exe` 是托盘程序** —— 点窗口的 ✕ 只是收起，**进程还在跑**。
+排查时必须在**托盘图标右键 → 退出**，或确认 `tasklist` 里真的没有它。
+
+⚠️ **坑 2：别把别人的 `node.exe` 当成 LDCodex daemon。** 机器上常有 WorkBuddy 自己的
+MCP 进程（sheetagent / weixinpay 等）。要读 `CommandLine` 才能确认归属：
+
+```powershell
+Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
+  Select ProcessId, CommandLine | Format-List
+```
+
+#### ③ 「推荐先卸载」只是**推荐**，不是**必须**
+
+那句文案出自 `target/release/nsis/x64/SimpChinese.nsh:15` 的 `olderOrUnknownVersionInstalled`：
+
+> 「系统中已存在版本为 **$R4** 的 LDCodex。**推荐**先卸载当前版本后再进行安装。选择你想要执行的操作后点击下一步以继续。」
+
+对应 `installer.nsi:234-238` 的 **Upgrading** 分支，两个单选是
+`uninstallBeforeInstalling`（「安装前卸载」）/ `dontUninstall`（「**请勿卸载**」）。
+**直接选「请勿卸载」即可** —— 它走 `reinst_done`，根本不调用旧卸载器。
+
+#### ④ 「安装前卸载」为什么经常失败（根因）
+
+`installer.nsi:339-353` 的 `reinst_uninstall` 执行的是**旧版**
+`$INSTDIR\uninstall.exe`（并追加 `_?=$INSTDIR`）。旧卸载器的 `Section Uninstall` 开头有：
+
+```nsis
+!insertmacro NSIS_HOOK_PREUNINSTALL                      ; 旧版钩子：taskkill 杀进程
+!insertmacro CheckIfAppIsRunning "LDCodexManager.exe"    ; 模板 utils.nsh
+```
+
+`CheckIfAppIsRunning` 命中运行中进程就弹 `MB_OKCANCEL`：
+
+- 点**取消** → `Abort $R1`
+- 杀进程失败 → `Abort $R3`
+
+⚠️ **`Abort` = 整个卸载段立即退出：文件不删、注册表键也不删**
+（`DeleteRegKey HKLM "${UNINSTKEY}"` 在 `installer.nsi:936`，根本执行不到）。
+于是你看到的状态就是「**文件和注册表键都还在、版本仍是旧的**」，
+而 `Abort` 让卸载器返回非 0 退出码 → 安装器 `installer.nsi:373` 弹 **「无法卸载！」**。
+
+**为什么「单独运行 uninstall.exe」反而能成**：单独跑时那个「程序正在运行」的弹窗是**可见**的，
+你能点「确定」；从安装器里调用时，安装器先执行了 `HideWindow`（`installer.nsi:340`）把自己藏起来，
+弹窗容易被盖住或没注意到 → 超时或误点取消 → 整段 `Abort`。
+
+#### ⑤ 选「请勿卸载」之后会发生什么
+
+| 步骤 | 代码位置 | 效果 |
+|---|---|---|
+| 跳过旧卸载器 | `installer.nsi:328-330` → `reinst_done` | 不调用 `uninstall.exe`，不触发上面的 `Abort` |
+| 先关程序 | 88.8.3 的 `NSIS_HOOK_PREINSTALL` + `.onGUIInit` | 杀掉 `LDCodexManager.exe` / `ldcodex.exe` / 按命令行匹配的 daemon |
+| 覆盖旧文件 | NSIS 默认 `SetOverwrite on` | 旧文件被新版覆盖 |
+| **重写卸载器** | `installer.nsi:714 WriteUninstaller` | `uninstall.exe` 换成**带新钩子的 88.8.3 版** |
+| **更新版本号** | `installer.nsi:738` | 注册表 `DisplayVersion` → `88.8.3` |
+
+→ 因此**装完 88.8.3 之后，以后再升级就不会再看到这个页面了**。
+
+#### ⑥ 想先干净卸载（可选）
+
+1. **托盘图标右键 → 退出 LDCodex**（必须真退出，不能只关窗口）；
+2. 运行 `C:\Program Files\LDCodex\uninstall.exe`；
+3. 若中途弹「程序正在运行」，点**确定**。
+
+> 提示：如果安装目录里有 88.8.1 遗留的、88.8.3 已不再包含的文件，
+> 选「请勿卸载」时会留在原地（覆盖安装不会清理孤儿文件）。
+> 想要完全干净的目录，就走上面的「先卸载再装」。
+
 ---
 
 ## 附录、88.8.3 这个包里还包含什么（此前已开发但你没装到的）
