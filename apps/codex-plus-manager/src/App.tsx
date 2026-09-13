@@ -12979,7 +12979,12 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
         }),
       });
       if (result.ok === false) throw new Error(String(result.error || t("导出失败")));
-      setNotice(tf("已导出{0}个账号到：{1}", [String(result.count ?? 0), String(result.savedTo || target)]));
+      // 导出文件里同时带着自定义常用语（快捷短语），提示里点明条数，
+      // 否则用户不知道换机器后这些常用语也会跟着过去。
+      const phraseCount = Number(result.phraseCount ?? 0);
+      setNotice(phraseCount
+        ? tf("已导出{0}个账号、{1}条常用语到：{2}", [String(result.count ?? 0), String(phraseCount), String(result.savedTo || target)])
+        : tf("已导出{0}个账号到：{1}", [String(result.count ?? 0), String(result.savedTo || target)]));
       setTransferMode("");
       setTransferPassword("");
       setExportUids([]);
@@ -13016,6 +13021,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     setNotice("");
     try {
       let total = 0;
+      let phrasesTotal = 0;
       const failed: string[] = [];
       for (const filePath of importPaths) {
         const label = filePath.split(/[\\/]/).pop() || filePath;
@@ -13025,19 +13031,28 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
             body: JSON.stringify({ path: filePath, password: transferPassword }),
           });
           if (result.ok === false) failed.push(`${label}：${String(result.error || t("导入失败"))}`);
-          else total += Number(result.count || 0);
+          else {
+            total += Number(result.count || 0);
+            // 随账号一起导出的常用语：daemon 已按文案去重，这里只汇总新增条数。
+            phrasesTotal += Number(result.phrasesImported || 0);
+          }
         } catch (e) {
           // 单个文件失败不能中断整批：继续导入其余文件，最后统一汇报失败清单。
           failed.push(`${label}：${friendlyRuntimeError(e)}`);
         }
       }
       if (failed.length) setError(tf("有{0}个文件导入失败：{1}", [String(failed.length), failed.join("；")]));
-      if (total) {
-        setNotice(tf("已导入{0}个账号，现在可以一键切换。", [String(total)]));
+      if (total || phrasesTotal) {
+        setNotice(phrasesTotal
+          ? tf("已导入{0}个账号、{1}条常用语，现在可以一键切换。", [String(total), String(phrasesTotal)])
+          : tf("已导入{0}个账号，现在可以一键切换。", [String(total)]));
         await loadTab("account");
         setTransferMode("");
         setTransferPassword("");
         setImportPaths([]);
+      } else if (!failed.length) {
+        // 账号与常用语全都已存在（换机来回导入的常见情形），明确告知而不是静默无反应。
+        setNotice(t("没有新的账号或常用语需要导入，已存在的都已跳过。"));
       }
       // 全部失败时保留已选文件与输入，方便用户改密码后直接重试。
     } catch (e) {

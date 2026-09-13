@@ -1,9 +1,9 @@
-# LDCodex daemon 1.2.10 功能测试报告
+# LDCodex daemon 1.2.11 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；2026-09-13 14:20（1.2.10 复跑）
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）
 - **被测代码**：
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **1.2.10**）
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**1.2.10：弹窗自动点允许扣费取样范围修复**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **1.2.11**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**1.2.11：上弹面板行内新增常用语**；含 1.2.10 的扣费取样范围修复）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/automation.js`（抗崩溃加固）
   - `apps/codex-plus-manager/src-tauri/src/workbuddy.rs`（「重启并启用」真正结束旧客户端）
 - **测试方式**：隔离实例（独立数据目录 `data4` + 独立端口 47999 + CDP 指向空端口 47998），**不影响正在运行的真实客户端**
@@ -12,10 +12,74 @@
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **40 / 40 全部通过** ✅ |
+| 功能接口测试（`run-tests.js`） | **58 / 58 全部通过** ✅ |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
+| 真实页面 UI 只读验证（`_tmp/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
+
+## 一之三、1.2.11 新增：上弹面板行内新增常用语 + 短语随账号同步
+
+### 需求（用户原话）
+
+> 在国内版，国际版的输入框内的那个图标功能你改一下：点击后，向上弹出的发送常用语的选择，但是没有添加功能呀。你在下面第 1 行加一个添加按钮，点击添加按钮后，上面多一行空白的，我可以粘贴常用语或输入进去就就行了。CTRL+回车 自动保存成功。这些自定义的用语，在改出软件配置、帐号时，也要一起导出，将来导入时，先检查有没有相同的，没有话，自动添加到这个位置来。
+
+### 实现要点
+
+**（1）面板底部第 1 行加「+ 添加」按钮**（`inject.js`，explore 面板 HTML）
+
+底部行原本只有右侧的「点击后发送 / 编辑 →」，现改为左右两段：左侧是新增的 `#wbs-explore-add`，右侧内容用 `.wbs-explore-foot-right` 包起来。加号图标 `QP_PLUS_SVG` 按 12px 文字尺寸对齐（`width/height=12`）。
+
+**（2）点「添加」→ 列表顶部插入空白行 → Ctrl+Enter 保存**
+
+`exploreAddRow()` 在 `#wbs-explore-list` 的**首位**插入一行 `.wbs-explore-edit-row`，内含自适应高度的 `<textarea>`；`Ctrl/Cmd+Enter` 在**捕获阶段**拦截并 `preventDefault + stopPropagation`（客户端自身把 Ctrl+Enter 绑成了「发送」，不先吃掉会被抢走），随后 `exploreSaveRow()` 调 `/api/quick-phrase-add`；`Escape` 取消。
+
+三个必须处理的陷阱（已在代码注释里写明原因）：
+
+| 陷阱 | 处理 |
+|---|---|
+| 面板由 hover 驱动显隐，鼠标移开即 `visibility:hidden`，而隐藏元素**收不到键盘输入**，Ctrl+Enter 会失效 | 编辑期间给按钮挂 `wbs-explore-editing`，用一条特异性更高的规则强制展开 |
+| `renderExploreOptions()` 用 `innerHTML` 重建列表，会**冲掉输入到一半的草稿** | 函数开头 `if (exploreEditRow) return;` |
+| 外层按钮的 `mousedown` 被 `preventDefault()`（防输入框失焦），事件冒泡会让点 textarea 拿不到焦点 | textarea 与添加按钮都 `stopPropagation()`，再程序化 `focus()` |
+
+另有 `data-saving` 防 Ctrl+Enter 连击重复提交、`acMenuClose()` 关闭面板时收掉未保存的编辑行、动态节点显式补 `applyI18n()`。
+
+**（3）常用语随账号备份一起导出 / 导入去重**
+
+daemon 侧抽出可复用的 `mergeQuickPhrases(incoming)`：按 `text`（trim 后）去重，**已存在的跳过、其余追加**，没有新增时不写盘（避免无谓整文件重写 `settings.json`）。
+
+- 账号导出：payload 增加 `phrases` 字段（`exportType` / `version` **不变** → 旧文件仍可导入，新文件旧版本读到会忽略该字段）；响应增加 `phraseCount`。
+- 账号导入：`payload.phrases` 走 `mergeQuickPhrases` 合并；响应增加 `phrasesImported` / `phrasesSkipped`。短语合并**单独 try/catch**，失败不会把已成功的账号导入判为失败（否则用户会重复导入账号）。
+- 前端：导出/导入成功提示带上短语条数；全部已存在时明确提示「没有新的账号或常用语需要导入」，而不是静默无反应。
+
+### 顺带修掉的 i18n 缺陷：模板键被放进了 `EN_PLAIN`
+
+前端字典分两张表：`EN_PLAIN`（`t()` 用）与 `EN_TEMPLATE`（`tf()` 用，键含 `{0}` 占位符）。`t()` 只查 `EN_PLAIN`、`tf()` **只查 `EN_TEMPLATE`**，找不到就原样返回中文。
+
+而「账号导出 / 导入」这几条带占位符的提示一直被放在 `EN_PLAIN` 里 → 英文环境下**一直显示中文**（`tf()` 在 `EN_TEMPLATE` 里查不到）。本次把 5 条模板键归位：
+
+| 键 | 原位置 | 现位置 |
+|---|---|---|
+| `已导出{0}个账号到：{1}` | EN_PLAIN | EN_TEMPLATE |
+| `已导入{0}个账号，现在可以一键切换。` | EN_PLAIN | EN_TEMPLATE |
+| `有{0}个文件导入失败：{1}` | EN_PLAIN | EN_TEMPLATE |
+| `已导出{0}个账号、{1}条常用语到：{2}`（新） | — | EN_TEMPLATE |
+| `已导入{0}个账号、{1}条常用语，现在可以一键切换。`（新） | — | EN_TEMPLATE |
+
+`tools/i18n-verify.mjs` 前后对比（同一份源码）：
+
+| 指标 | 修复前 | 修复后 |
+|---|---|---|
+| `template` MISSING | 32 | **27** |
+| `template` translated | 119 | **124** |
+| `plain` STALE | 159 | **156** |
+| `plain` MISSING | 144 | **143** |
+
+> 仍存在**项目级**既有技术债：`plain` 143 MISSING / 156 STALE、`template` 27 MISSING / 24 STALE（大量字符串被 `t()/tf()` 包裹但字典缺失，或字典条目无人引用）。**非本次引入**，未在本轮处理。
+
+### 与既有增强页入口的关系
+
+增强页的快捷短语管理区（`#wbs-qp-area`）保持不变，两个入口共用同一份 `settings.json` 的 `wbs.session.phrases`，新增后两边同步刷新。
 
 ## 一之二、1.2.10 修掉的缺陷：「弹窗自动点允许」长期不生效
 
@@ -175,6 +239,24 @@ if (process.env.WBSWITCH_CDP_PORT) return false;   // 一旦设置，不排除�
 ### T10 弹窗自动点允许（1.2.10 修复）
 源码级确认：`ndIsPageRoot` 已定义 ✅；`ndCreditText` 排除页面根 ✅；扣费探测循环在页面根处 `break` ✅；主循环不再把 `body/html` 当决策容器 ✅；`ND_CREDIT_SCOPE_MAX = 1200` 存在 ✅
 
+### T11 快捷短语随账号导出 / 导入去重（1.2.11，真实 HTTP 端到端）
+源码级 4 项：`mergeQuickPhrases` 按 `text` 去重 ✅；导出 payload 带 `phrases` ✅；导入调 `mergeQuickPhrases` ✅；响应回传 `phrasesImported/phrasesSkipped` ✅
+
+行为级 7 项（在隔离 daemon 上真跑一遍）：
+
+| 断言 | 实测 |
+|---|---|
+| 通过接口写入 3 条常用语 | `["T11 常用语甲","T11 常用语乙","T11 常用语丙"]` ✅ |
+| 导出响应 `phraseCount=3` | `{"ok":true,"count":1,"phraseCount":3}` ✅ |
+| 导出文件解密后含 3 条 `phrases`（`text` + `createdAt`） | 3 条齐全 ✅ |
+| 导入「2 重复 + 1 全新」→ 新增 1 / 跳过 2 | `phrasesImported:1, phrasesSkipped:2` ✅ |
+| 最终列表 4 条、**无重复**且含新文案 | `[甲,乙,丙,丁]` ✅ |
+| **重复导入幂等**（同文件再导 → 新增 0 / 跳过 3） | `phrasesImported:0, phrasesSkipped:3` ✅ |
+| 旧版导出文件（无 `phrases` 字段）仍可导入、短语列表不变 | `ok:true, phrasesImported:0`，列表仍 4 条 ✅ |
+
+### T12 上弹面板「添加」入口（inject.js 源码级）
+`#wbs-explore-add` 按钮存在 ✅；`exploreAddRow` / `exploreSaveRow` / `exploreEndEdit` 三函数齐全 ✅；`Ctrl/Cmd+Enter` 捕获阶段保存 ✅；`wbs-explore-editing` 覆盖 `wbs-menu-closed` 的强制展开规则存在 ✅；`renderExploreOptions` 含 `if (exploreEditRow) return;` 保护 ✅；`acMenuClose` 调 `exploreEndEdit()` ✅
+
 ## 四之二、自动点允许判定测试明细（16/16 通过）
 
 从 `inject.js` 提取真实函数（`classifyNoDisturbApprovalCandidate` / `ndNormalizeLabel` / `ndIsDecisionGroup` / `ndIsPageRoot` / `ndCreditText` / `ndClassifyApprovalCandidate` / `ndApprovalContext`）注入最小 DOM 桩执行：
@@ -211,6 +293,35 @@ if (process.env.WBSWITCH_CDP_PORT) return false;   // 一旦设置，不排除�
 | CN daemon 在 9222 上认领自己的 / 拒绝国际版页面 | ✅ |
 | AI daemon 在本档案保留端口 9223 上认领自己的页面 | ✅ |
 
+## 四之三、真实页面 UI 只读验证（`_tmp/cdp-qp-ui-verify.mjs`）
+
+在**真实运行的 WorkBuddy 客户端页面**（CDP 9222）上核对改造所依赖的锚点与样式假设。**全程只读**：不点击、不落库、不改动既有面板；仅创建一个 `left:-9999px` 的临时容器验证 CSS 解析后立即移除。
+
+### 1. 真实页面锚点（我的 HTML 改造正是基于这些节点）
+
+| 选择器 | 真实页面 | 说明 |
+|---|---|---|
+| `.wbs-explore-inline`（面板按钮） | ✅ 存在 | class = `wbs-stash-inline wbs-explore-inline wbs-stash-inline-inline` |
+| `.wbs-explore-foot`（底部行） | ✅ 存在 | 我的「添加」按钮就插在这一行 |
+| `.wbs-explore-edit`（编辑 →）/ `.wbs-explore-send-txt`（点击后发送） | ✅ 存在 | 被 `.wbs-explore-foot-right` 包起来后仍在 |
+| `#wbs-explore-list` / `.wbs-explore-item` | ✅ 存在 | 编辑行 `className='wbs-explore-item wbs-explore-edit-row'` 与既有项兼容 |
+| `#wbs-explore-add` / `.wbs-explore-foot-right` / `wbs-explore-editing` 规则 | ❌ 不存在 | **确认当前客户端跑的仍是旧版注入**（`inject.js` 改动需重新构建安装包才生效） |
+
+### 2. 新样式在真实主题下的解析结果
+
+| 检查项 | 结果 |
+|---|---|
+| `color-mix()` 支持 | ✅ 真实页面解析为 `color(srgb 0.94902 0.94902 0.94902 / 0.8)` |
+| CSS 变量解析 | `--wb-border-subtle:#F2F2F2`、`--wb-icon-secondary:rgba(0,0,0,0.7)`、`--wb-button-primary-bg:rgba(0,0,0,0.9)` ✅ |
+| **`--wb-bg-input` 未定义时的 fallback 链** | ✅ 正确回退到 `var(--wb-bg-primary,#fff)` → `rgb(255,255,255)` |
+| 「添加」按钮 | `display:flex`、`border-radius:999px`、`font-size:12px`、实测 60×25px ✅ |
+| 编辑行 `display` | ✅ `block` —— 成功覆盖 `.wbs-explore-item` 的 `display:flex` |
+| 输入框在 280px 面板内 | ✅ 铺满 276px、高 32px、`min-height:30px`、`resize:none` |
+| 编辑行位于列表首位 / 高度未被压塌 | ✅ 均为真 |
+| 临时容器与样式残留 | ✅ 已彻底清理（零副作用） |
+
+> **可访问性取舍（已知）**：按钮实测 25px 高，低于 WCAG AA 的 44px 触摸目标建议。这是**桌面鼠标场景**下的刻意选择 —— 面板内既有元素（「编辑 →」「点击后发送」均为 12px 文字）统一是紧凑尺寸，保持一致比单点放大更重要。
+
 ## 五、关键机制说明：双开为什么会互相影响
 
 客户端（WorkBuddy / WorkBuddy AI）只在启动时读环境变量，事后无法补开调试通道。app.asar 实证：
@@ -243,6 +354,8 @@ bash D:/LUODA/LDcodex/_test_daemon/test-run.sh
 "C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_test_daemon/verify-cdp-isolation.js
 # 自动点允许判定逻辑（纯本地，无需 daemon）
 "C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_test_daemon/verify-no-disturb.js
+# 真实页面 UI 只读验证（需客户端已开 CDP；参数为 CDP 端口，默认 9222）
+"C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_tmp/cdp-qp-ui-verify.mjs 9222
 # 前端类型检查
 cd D:/LUODA/LDcodex/apps/codex-plus-manager && node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json
 ```
@@ -252,4 +365,5 @@ cd D:/LUODA/LDcodex/apps/codex-plus-manager && node node_modules/typescript/bin/
 - 用户级环境变量 `WORKBUDDY_REMOTE_DEBUGGING_PORT` 仍是全局单值。它是「手动双击启动也能用 CDP」的兜底，但双开时必然冲突。当前策略：保留它，靠管理器的「以正确端口重启客户端」纠正。
 - **daemon 单实例锁存在主/备双锁竞态**（本次实测到同 profile 同时跑了两个 daemon：pid 7872 与 pid 10720）。`acquireDaemonLock()` 的候选是 `[主锁, 备锁]`，两个进程可能各持一个都认为自己独占。未修：改动锁逻辑一旦出错会让 daemon 起不来，需单独设计后验证。
 - **daemon 会继承客户端注入的 `NODE_OPTIONS`**（实测：`--require .../WorkBuddyAI/resources/app.asar.unpacked/cli/vendor/shim/node-language-shim.cjs`）。该 shim 代理 fs 操作，会把部分操作拦成 `EPERM`（如 `mkdir .../automation-agent/inbox`、`watch .../CodeBuddyExtension/.../auth`）。1.2.9 的抗崩溃加固已让 daemon 不再因此退出；彻底规避可在 `spawn_daemon` 里 `env_remove("NODE_OPTIONS")`。
-- 安装包需重新构建才能带上 `windows/hooks.nsh`（安装时自动结束占用进程）与以上全部修复。
+- **前端 i18n 技术债**：`tools/i18n-verify.mjs` 目前仍报 `plain` 143 MISSING / 156 STALE、`template` 27 MISSING / 24 STALE。成因是「模板键被放进 `EN_PLAIN`」与「字典条目无人引用」两类，属**既有**问题（本轮只归位了账号导出/导入这一区块的 5 条）。建议后续单独跑一轮 `tools/wb-i18n-fill.mjs` + `tools/i18n-codemod.mjs` 统一清理。
+- **安装包需重新构建才能生效**：当前已安装版本是 **1.2.8**，1.2.9 / 1.2.10 / 1.2.11 的全部改动（CDP 隔离、弹窗自动点允许修复、上弹面板行内新增常用语、短语随账号同步）都在源码里，需要 `npm run build` 重新出包并安装后才会生效。安装包还需带上 `windows/hooks.nsh`（安装时自动结束占用进程）。

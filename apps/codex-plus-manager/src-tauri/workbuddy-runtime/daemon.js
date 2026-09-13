@@ -352,8 +352,11 @@ const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.exis
 //         「积分」，于是任何确认弹窗都被误判成扣费弹窗而永不点击。现改为只在弹窗自身容器
 //         内取样，页面根与超长页面级包裹层一律排除（实机复现：同一弹窗在旧逻辑下判定 null、
 //         新逻辑下判定 once）。
-const DAEMON_VERSION = '1.2.10';
-const DAEMON_BUILD_ID = 'release-1.2.10-20260913-no-disturb-credit-scope-fix';
+// 1.2.11：输入框旁的上弹面板支持直接新增常用语（底部第 1 行「添加」→ 列表顶部插入空白行 →
+//         Ctrl+Enter 保存）；自定义常用语随账号备份一起导出，导入时按文案查重、只追加缺的，
+//         换机器来回导入不会产生重复项（旧版导出文件无 phrases 字段，照常导入）。
+const DAEMON_VERSION = '1.2.11';
+const DAEMON_BUILD_ID = 'release-1.2.11-20260913-quick-phrase-inline-add-and-sync';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）
@@ -5721,28 +5724,40 @@ function exportQuickPhrases(ids, password) {
     count: phrases.length,
   };
 }
-function importQuickPhrases(content, password) {
-  const payload = openEncryptedExport(content, 'quick-phrases', password);
-  const incoming = Array.isArray(payload.phrases) ? payload.phrases : [];
-  if (!incoming.length) throw new Error('导入文件中没有快捷短语');
-  if (incoming.length > 1000) throw new Error('单次最多导入 1000 条快捷短语');
+/**
+ * 合并快捷短语：按 text（trim 后）去重，已存在的跳过，其余追加到列表末尾。
+ * 供「快捷短语加密导入」与「账号导出文件导入」共用 —— 后者把短语随账号一起带走，
+ * 导入时同样必须先查重再追加，避免多台机器来回导入产生重复项。
+ */
+function mergeQuickPhrases(incoming) {
+  const list = Array.isArray(incoming) ? incoming : [];
+  if (!list.length) return { imported: 0, skipped: 0 };
   const state = readSessionState();
   const existing = new Set(state.phrases.map((item) => String(item.text || '').trim()).filter(Boolean));
   let imported = 0;
   let skipped = 0;
-  for (const item of incoming) {
+  for (const item of list) {
     const text = String(item && item.text || '').trim();
     if (!text || existing.has(text)) { skipped++; continue; }
     existing.add(text);
     state.phrases.push({
-      id: 'qp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+      id: 'qp_' + Date.now().toString(36) + '_' + imported + '_' + Math.random().toString(36).slice(2, 8),
       text,
       createdAt: Number(item && item.createdAt || Date.now()),
     });
     imported++;
   }
+  // 没有新增时不写盘：避免无谓地整文件重写 settings.json
+  if (imported) writeSessionState(state);
+  return { imported, skipped };
+}
+function importQuickPhrases(content, password) {
+  const payload = openEncryptedExport(content, 'quick-phrases', password);
+  const incoming = Array.isArray(payload.phrases) ? payload.phrases : [];
+  if (!incoming.length) throw new Error('导入文件中没有快捷短语');
+  if (incoming.length > 1000) throw new Error('单次最多导入 1000 条快捷短语');
+  const { imported, skipped } = mergeQuickPhrases(incoming);
   if (!imported && !skipped) throw new Error('没有可导入的快捷短语');
-  writeSessionState(state);
   return { state: readSessionState(), imported, skipped };
 }
 /** 通过 CDP 发送指定短语：聚焦 composer → 全选 → 真实输入短语 → 真实 Enter（replace 式发送，多行短语按段落插入） */
@@ -8228,7 +8243,12 @@ function handleApi(req, res) {
           } catch (_) { /* 跳过 */ }
         }
         if (!items.length) return json(res, 200, { ok: false, error: '没有可导出的账号备份' });
-        const payload = { exportType: 'LDCodex-accounts', version: 2, accounts: items };
+        // 快捷短语（自定义常用语）随账号一起导出，换机器时不用再手工重录一遍。
+        // 纯附加字段：exportType / version 不变，旧版本读到会忽略，兼容既有导出文件。
+        const phrases = readSessionState().phrases
+          .map((item) => ({ text: String(item && item.text || '').trim(), createdAt: Number(item && item.createdAt || Date.now()) }))
+          .filter((item) => item.text);
+        const payload = { exportType: 'LDCodex-accounts', version: 2, accounts: items, phrases };
         const envelope = createEncryptedExport('accounts', payload, password);
         const filename = 'LDCodex-账号导出-' + new Date().toISOString().slice(0, 10) + '.json';
         // saveTo：前端「另存为」对话框选好的绝对路径，由 daemon 直接落盘（0600）。
@@ -8237,11 +8257,11 @@ function handleApi(req, res) {
         if (saveTo) {
           fs.writeFileSync(saveTo, envelope, { mode: 0o600 });
           try { fs.chmodSync(saveTo, 0o600); } catch (_) {}
-          log(`[export] 导出 ${items.length} 个账号 -> ${saveTo}`);
-          return json(res, 200, { ok: true, savedTo: saveTo, count: items.length });
+          log(`[export] 导出 ${items.length} 个账号 + ${phrases.length} 条快捷短语 -> ${saveTo}`);
+          return json(res, 200, { ok: true, savedTo: saveTo, count: items.length, phraseCount: phrases.length });
         }
-        log(`[export] 导出 ${items.length} 个账号 -> ${filename}`);
-        return json(res, 200, { ok: true, filename, content: envelope, count: items.length });
+        log(`[export] 导出 ${items.length} 个账号 + ${phrases.length} 条快捷短语 -> ${filename}`);
+        return json(res, 200, { ok: true, filename, content: envelope, count: items.length, phraseCount: phrases.length });
       } catch (e) {
         log(`[export] 导出失败: ${e.message}`);
         return json(res, 500, { ok: false, error: e.message });
@@ -8306,8 +8326,22 @@ function handleApi(req, res) {
           });
           imported.push(uid);
         }
-        log(`[import] 成功导入 ${imported.length}/${list.length} 个账号`);
-        return json(res, 200, { ok: true, imported, count: imported.length });
+        // 随账号一起导出的快捷短语：先查重再追加，相同文案跳过（多台机器来回导入不产生重复）。
+        const incomingPhrases = Array.isArray(payload && payload.phrases) ? payload.phrases : [];
+        let phrasesImported = 0;
+        let phrasesSkipped = 0;
+        if (incomingPhrases.length) {
+          try {
+            const merged = mergeQuickPhrases(incomingPhrases);
+            phrasesImported = merged.imported;
+            phrasesSkipped = merged.skipped;
+          } catch (phraseError) {
+            // 账号已经写盘成功，短语合并失败不能把整次导入判为失败（否则用户会重复导入账号）
+            log(`[import] 快捷短语合并失败（账号已导入）: ${phraseError.message}`);
+          }
+        }
+        log(`[import] 成功导入 ${imported.length}/${list.length} 个账号，快捷短语新增 ${phrasesImported} 条 / 跳过 ${phrasesSkipped} 条`);
+        return json(res, 200, { ok: true, imported, count: imported.length, phrasesImported, phrasesSkipped });
       } catch (e) {
         log(`[import] 导入失败: ${e.message}`);
         return json(res, 200, { ok: false, error: e.message });

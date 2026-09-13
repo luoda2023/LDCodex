@@ -648,12 +648,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '页面就绪': 'Page ready', '删除选中的': 'Delete selected', '删除该自动化任务？': 'Delete this automation task?', '删除选中的自动化任务？': 'Delete selected automation tasks?', '删除后无法恢复。': 'This cannot be undone.', '清除': 'Clear', '清除日志': 'Clear logs', '清除运行日志？': 'Clear run logs?', '仅清除已结束的运行记录。': 'Only completed run records will be cleared.', '清除日志失败': 'Failed to clear logs', '任务已启用': 'Task enabled', '任务已停用': 'Task disabled', '发送中': 'Sending',
     '账号': 'Accounts', '主题': 'Theme', '会话': 'Sessions', '模型': 'Models', '增强': 'Enhance', '自动化': 'Automation', '电脑': 'Computer', '关于': 'About', '设置': 'Settings',
     '导出': 'Export', '导入': 'Import', '删除': 'Delete', '编辑': 'Edit', '保存': 'Save', '取消': 'Cancel', '确定': 'Confirm', '确认': 'Confirm', '复制': 'Copy', '切换': 'Switch', '启用': 'Enable', '停用': 'Disable', '停止': 'Stop', '立即运行': 'Run now', '新建任务': 'New task', '刷新': 'Refresh', '步骤 JSON': 'Steps JSON', '任务说明': 'Task description', '任务名称': 'Task name', '调度': 'Schedule', '手动运行': 'Manual', '手动': 'Manual', '每小时': 'Hourly', '每天': 'Daily', '选择任务': 'Select tasks', '查看接口': 'View capabilities', '拾取元素': 'Pick element', '复制 XPath': 'Copy XPath', '运行中': 'Running', '已成功': 'Succeeded', '失败': 'Failed', '未运行': 'Not run', '页面加载完成': 'Page loaded', '账号切换完成': 'Account switched', '新自动化任务': 'New automation task', '任务已保存': 'Task saved', '任务已开始运行': 'Task started', '步骤 JSON 格式无效': 'Invalid steps JSON', '步骤 JSON 必须是数组': 'Steps JSON must be an array', '查看接口说明': 'View interface docs', '自动化接口协议': 'Automation interface protocol', '复制全部': 'Copy all', '接口协议已复制': 'Interface protocol copied', '暂无自动化任务，点击“新建任务”开始。': 'No automation tasks yet. Click “New task” to start.', '编辑任务': 'Edit task', '触发方式': 'Trigger', '插入点击步骤': 'Insert click step', 'XPath 已复制': 'XPath copied', '点击步骤已插入': 'Click step inserted', '请先拾取元素': 'Pick an element first', '加载自动化失败': 'Failed to load automations', '读取接口失败': 'Failed to read interfaces', '批量操作失败': 'Batch operation failed', '删除失败': 'Delete failed', '确认删除该任务？': 'Delete this task?', '执行': 'Apply', '已拾取': 'Picked', '运行失败': 'Run failed', '（副本）': ' (copy)', '查看提示词': 'View prompt', '交给 WorkBuddy 创建': 'Ask WorkBuddy to create', '正在打开新任务…': 'Opening a new task…', '已创建新会话，WorkBuddy 完成后任务会自动出现': 'New session created. The task will appear after WorkBuddy finishes.', 'WorkBuddy 创建失败': 'WorkBuddy creation failed', '加载示例失败': 'Failed to load examples', '暂无示例': 'No examples available', '运行日志': 'Run logs', '暂无运行日志': 'No run logs yet', '开始时间': 'Started', '结束时间': 'Finished', '捕获错误': 'Caught error', '暂无执行日志': 'No execution log entries', '执行日志': 'Execution log', '尚未结束': 'Still running',
-    '暂存提示词': 'Stash prompt', '暂存': 'Stashed', '引用文本': 'Quote text', '快捷短语': 'Quick phrases', '点击后发送': 'Send on click', '编辑 →': 'Edit →', '新增': 'Add', '批量操作': 'Batch actions', '批量管理': 'Batch manage', '全选': 'Select all', '取消全选': 'Deselect all', '已选 0': 'Selected 0',
+    '暂存提示词': 'Stash prompt', '暂存': 'Stashed', '引用文本': 'Quote text', '快捷短语': 'Quick phrases', '点击后发送': 'Send on click', '编辑 →': 'Edit →', '新增': 'Add', '添加': 'Add', '已添加常用语': 'Quick phrase added', '粘贴或输入常用语，Ctrl+Enter 保存': 'Paste or type a phrase, Ctrl+Enter to save', '批量操作': 'Batch actions', '批量管理': 'Batch manage', '全选': 'Select all', '取消全选': 'Deselect all', '已选 0': 'Selected 0',
     '账号汇总': 'Account summary', '账号数': 'Accounts', '总积分': 'Total credits', '手机': 'Phone', '有效期至': 'Expires', '当前使用中': 'Currently active', '隐藏敏感信息': 'Mask sensitive info', '显示明文': 'Show plaintext', '登录新账号': 'Log in a new account', '没有可导出的账号备份': 'No account backups to export', '还没有备份账号。打开/登录一次 WorkBuddy 后会自动备份，稍后再来查看。': 'No account backups yet. Open or log in to WorkBuddy once and check again later.',
     '语言': 'Language', '中文': 'Chinese', '英语': 'English', 'English': 'English', '跟随系统': 'Follow system', '设置语言': 'Language', '首次打开时自动跟随系统语言；未匹配时使用英语。': 'The first launch follows your system language. English is used when no match is found.', '语言设置已更新': 'Language updated',
     '默认': 'Default', 'LDCodex 主题': 'LDCodex theme', '毛玻璃': 'Frosted glass', '护眼绿': 'Eye-care green', '赛博紫': 'Cyber purple', '主题外观': 'Theme appearance', '壁纸': 'Wallpaper', '头像': 'Avatar', '自定义壁纸': 'Custom wallpaper', '背景蒙版': 'Background overlay', '背景毛玻璃': 'Background blur', '恢复默认': 'Restore default', '恢复官方头像': 'Restore official avatar',
     '加载中…': 'Loading…', '读取中…': 'Reading…', '正在读取设置…': 'Reading settings…', '查询中…': 'Checking…', '暂无快捷短语': 'No quick phrases', '暂无快捷短语，点击「+ 新增」添加': 'No quick phrases. Click “+ Add” to create one.', '当前还未添加模型': 'No models added yet', '还没有模型备份': 'No model backups yet', '当前筛选下没有会话': 'No sessions match the current filter', '暂无进行中的会话': 'No active sessions', '暂无官方壁纸': 'No built-in wallpapers', '还没有自定义壁纸，先上传一张': 'No custom wallpapers yet. Upload one to start.', '壁纸加载中…': 'Loading wallpapers…', '壁纸加载失败（daemon 不可达）': 'Wallpaper loading failed (daemon unavailable)',
-    '发送失败: ': 'Send failed: ', '发送失败': 'Send failed', '打开面板失败: ': 'Could not open panel: ', '设置失败: ': 'Settings failed: ', '设置失败': 'Settings failed', '请求失败': 'Request failed', '操作失败': 'Operation failed', '读取文件失败': 'Could not read file', '复制失败': 'Copy failed', '复制失败: ': 'Copy failed: ', '删除失败: ': 'Delete failed: ', '删除失败': 'Delete failed', '切换失败: ': 'Switch failed: ', '应用主题失败: ': 'Could not apply theme: ', '蒙版设置失败: ': 'Overlay setting failed: ', '毛玻璃设置失败: ': 'Blur setting failed: ', '诊断设置保存失败: ': 'Could not save diagnostics setting: ', '无法连接本地服务: ': 'Cannot connect to local service: ', '请确认守护进程已运行': 'Make sure the daemon is running',
+    '发送失败: ': 'Send failed: ', '发送失败': 'Send failed', '保存失败: ': 'Save failed: ', '保存失败': 'Save failed', '打开面板失败: ': 'Could not open panel: ', '设置失败: ': 'Settings failed: ', '设置失败': 'Settings failed', '请求失败': 'Request failed', '操作失败': 'Operation failed', '读取文件失败': 'Could not read file', '复制失败': 'Copy failed', '复制失败: ': 'Copy failed: ', '删除失败: ': 'Delete failed: ', '删除失败': 'Delete failed', '切换失败: ': 'Switch failed: ', '应用主题失败: ': 'Could not apply theme: ', '蒙版设置失败: ': 'Overlay setting failed: ', '毛玻璃设置失败: ': 'Blur setting failed: ', '诊断设置保存失败: ': 'Could not save diagnostics setting: ', '无法连接本地服务: ': 'Cannot connect to local service: ', '请确认守护进程已运行': 'Make sure the daemon is running',
     '执行中': 'Running', '已停用': 'Disabled', '示例': 'Examples', '手动触发': 'Manual trigger', '等待触发': 'Waiting for trigger', '上次已完成': 'Last completed', '上次失败': 'Last failed', '上次已停止': 'Last stopped', '停止本次执行': 'Stop this run', '手动任务无需自动触发': 'Manual tasks do not need automatic triggers', '启用自动触发': 'Enable automatic triggers', '成长计划连续活跃天数': 'Consecutive active days in Growth Plan', '活跃天数读取失败': 'Unable to read active days', '正在读取活跃天数': 'Loading active days', '活跃 ': 'Active ', '此任务由事件或定时自动触发，无需手动运行': 'This task runs automatically on its event or schedule', '当前客户端不支持成长活跃查询': 'Growth activity is unavailable in this client',
     "天": "days", " 日": " day",
     "定时已结束": "Schedule ended",
@@ -1208,6 +1208,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '<path fill="currentColor" d="M19 3a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7.333L4 21.5c-.824.618-2 .03-2-1V6a3 3 0 0 1 3-3h14Zm-8 9H8a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2Zm5-4H8a1 1 0 0 0-.117 1.993L8 10h8a1 1 0 0 0 .117-1.993L16 8Z"/></svg>';
   var EXPLORE_PREMIUM_SVG =
     '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
+  // 快捷短语「添加」按钮图标（加号，尺寸对齐 12px 文字）
+  var QP_PLUS_SVG =
+    '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">' +
+    '<path d="M8 3.2v9.6M3.2 8h9.6"/></svg>';
   var EXPLORE_CHECK_SVG =
     '<svg viewBox="0 0 20 20" width="15" height="15" fill="currentColor"><path d="M16.707 5.293a1 1 0 0 1 0 1.414l-8 8a1 1 0 0 1-1.414 0l-4-4a1 1 0 0 1 1.414-1.414L8 12.586l7.293-7.293a1 1 0 0 1 1.414 0z" clip-rule="evenodd" fill-rule="evenodd"/></svg>';
   var EXPLORE_LOCK_SVG =
@@ -2019,8 +2023,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       '<div class="wbs-explore-card">' +
       '<div class="wbs-explore-list" id="wbs-explore-list"></div>' +
       '<div class="wbs-explore-foot">' +
+      // 底部第 1 行左侧：新增常用语。点一下在列表顶部插入一行空白，粘/打进去后 Ctrl+Enter 保存。
+      '<button type="button" class="wbs-explore-add" id="wbs-explore-add">' + QP_PLUS_SVG + '<span>添加</span></button>' +
+      '<span class="wbs-explore-foot-right">' +
       '<span class="wbs-explore-send-txt">点击后发送</span>' +
       '<a class="wbs-explore-edit" href="#" onclick="return false">编辑 →</a>' +
+      '</span>' +
       '</div>' +
       '</div>' +
       '</div>';
@@ -2060,6 +2068,97 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         }
       });
     }
+
+    /* —— 行内新增常用语：底部「添加」→ 列表顶部插入一行空白 → Ctrl+Enter 保存 ——
+     * 用行内编辑而不是弹窗/跳转：诉求就是「点一下、粘进去、Ctrl+Enter 就好」，
+     * 不打断输入框里已有的内容，也不用跑到增强页。
+     * 编辑期间给按钮挂 wbs-explore-editing：这个面板平时由 hover 驱动显隐，鼠标一移开
+     * 就隐藏，而隐藏元素收不到键盘输入 —— 必须强制展开到保存或取消为止。 */
+    var exploreEditRow = null;
+    function exploreEndEdit() {
+      if (exploreEditRow) {
+        try { exploreEditRow.remove(); } catch (_) {}
+        exploreEditRow = null;
+      }
+      exploreBtn.classList.remove('wbs-explore-editing');
+      sessLastExploreSig = null; // 允许下一次渲染按真实列表重建
+    }
+    function exploreSaveRow(row) {
+      var ta = row && row.querySelector('.wbs-explore-input');
+      var text = ta ? String(ta.value || '').trim() : '';
+      if (!text) { exploreEndEdit(); return; }          // 空行直接撤掉，不落库
+      if (row.getAttribute('data-saving') === '1') return; // 防 Ctrl+Enter 连击重复提交
+      row.setAttribute('data-saving', '1');
+      api('/api/quick-phrase-add', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: text }),
+      }).then(function (d) {
+        if (!d || !d.ok) {
+          row.removeAttribute('data-saving');
+          toast('保存失败: ' + ((d && d.error) || 'daemon 未确认'), true, root);
+          return;
+        }
+        // daemon 直接回最新列表，采用它即可，不必再拉一次
+        if (Array.isArray(d.phrases)) sessState.phrases = d.phrases;
+        exploreEndEdit();
+        renderExploreOptions();
+        renderQpList();
+        toast('已添加常用语', false, root);
+      }).catch(function (e3) {
+        row.removeAttribute('data-saving');
+        toast('保存失败: ' + (e3.message || e3), true, root);
+      });
+    }
+    function exploreAddRow() {
+      if (exploreEditRow) { // 已在编辑：把焦点还回去，不重复插入
+        var prev = exploreEditRow.querySelector('.wbs-explore-input');
+        if (prev && prev.focus) { try { prev.focus(); } catch (_) {} }
+        return;
+      }
+      var listHost = exploreBtn.querySelector('#wbs-explore-list');
+      if (!listHost) return;
+      exploreBtn.classList.remove('wbs-menu-closed');
+      exploreBtn.classList.add('wbs-explore-editing');
+      var row = document.createElement('div');
+      row.className = 'wbs-explore-item wbs-explore-edit-row';
+      row.setAttribute('data-qp-new', '1');
+      var ta = document.createElement('textarea');
+      ta.className = 'wbs-explore-input';
+      ta.rows = 1;
+      ta.spellcheck = false;
+      ta.setAttribute('placeholder', '粘贴或输入常用语，Ctrl+Enter 保存');
+      row.appendChild(ta);
+      listHost.insertBefore(row, listHost.firstChild);
+      exploreEditRow = row;
+      // 动态创建的节点不走初始化时的批量本地化，这里显式补一次（placeholder 在英文环境下要翻译）。
+      applyI18n(row);
+      // 点按钮时 mousedown 被 preventDefault（防输入框失焦），事件会冒泡到外层按钮，
+      // 导致点输入框拿不到焦点 —— 这里拦下冒泡，并配合程序化 focus。
+      ta.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+      ta.addEventListener('input', function () {
+        ta.style.height = 'auto';
+        ta.style.height = Math.min(ta.scrollHeight, 96) + 'px';
+      });
+      ta.addEventListener('keydown', function (e) {
+        // 捕获阶段先吃掉 Ctrl/Cmd+Enter：客户端自身可能把它绑成「发送」，不能让它抢走
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          exploreSaveRow(row);
+          return;
+        }
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); exploreEndEdit(); }
+      }, true);
+      try { ta.focus(); } catch (_) {}
+      try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (_) {}
+    }
+    var exploreAddBtn = exploreBtn.querySelector('#wbs-explore-add');
+    if (exploreAddBtn) {
+      exploreAddBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+      exploreAddBtn.addEventListener('click', function (e) { e.stopPropagation(); exploreAddRow(); });
+    }
+
     // 面板关闭/重开：点击选项（发送/编辑/任意项）后关闭面板；重新进入按钮区恢复 hover 可展示
     function qpDiag(event, extra) {
       if (!WBS_DIAGNOSTICS_ENABLED) return;
@@ -2074,6 +2173,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     }
     function acMenuClose() {
       qpDiag('menu:close:before', { menuClass: exploreBtn.className });
+      // 关面板时一并收掉行内新增：wbs-explore-editing 是强制展开态，不撤掉的话
+      // 面板会永远挂着不隐藏，而没保存的草稿也没有留存意义。
+      exploreEndEdit();
       exploreBtn.classList.add('wbs-menu-closed');
       qpDiag('menu:close:after', { menuClass: exploreBtn.className });
     }
@@ -2355,6 +2457,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     function renderExploreOptions() {
       var listHost = exploreBtn && exploreBtn.querySelector('#wbs-explore-list');
       if (!listHost) return;
+      // 正在行内新增：绝不能重建列表，否则输入到一半的内容会被 innerHTML 冲掉
+      if (exploreEditRow) return;
       var phrases = sessState.phrases || [];
       // 渲染签名去重：短语内容无变化则不重建 DOM（syncStash 高频调用会摧毁 tooltip 的显示状态/绑定 → 闪烁）
       var sig = phrases.length ? phrases.map(function (p) { return p.id + ':' + p.text; }).join('|') : 'empty';
@@ -11541,6 +11645,21 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '.wbs-explore-send-txt{font-size:12px;color:color-mix(in srgb,var(--wb-color-text-primary) 40%,transparent)}',
     '.wbs-explore-edit{font-size:12px;font-weight:500;color:var(--wb-icon-secondary,#666);text-decoration:none;cursor:pointer}',
     '.wbs-explore-edit:hover{color:var(--wb-color-text-primary,#1f1f1f)}',
+    /* 底部第 1 行：左侧「+ 添加」按钮，右侧保持原有的发送提示与「编辑 →」 */
+    '.wbs-explore-foot-right{display:inline-flex;align-items:center;gap:10px}',
+    '.wbs-explore-add{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border:1px solid color-mix(in srgb,var(--wb-border-subtle,#ececec) 80%,transparent);border-radius:999px;background:transparent;color:var(--wb-icon-secondary,#666);font-size:12px;font-weight:500;font-family:inherit;line-height:1.4;cursor:pointer}',
+    '.wbs-explore-add:hover{color:var(--wb-color-text-primary,#1f1f1f);background:color-mix(in srgb,var(--wb-bg-hover,#f3f3f3) 80%,transparent)}',
+    '.wbs-explore-add svg{flex:0 0 auto}',
+    /* 行内新增：面板平时靠 hover 显隐，鼠标移开就隐藏，而隐藏元素收不到键盘输入，
+       所以编辑期间强制展开（放在 wbs-menu-closed 规则之后，同权重后者生效）。 */
+    '.wbs-explore-inline.wbs-explore-editing .wbs-explore-pop,' +
+    '.wbs-explore-inline.wbs-explore-editing.wbs-menu-closed .wbs-explore-pop{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);pointer-events:auto}',
+    // display:block 覆盖 .wbs-explore-item 的 flex，让 textarea 按块级宽度铺满整行
+    '.wbs-explore-edit-row{display:block;padding:4px 2px;cursor:default}',
+    '.wbs-explore-edit-row:hover{background:transparent}',
+    '.wbs-explore-input{display:block;width:100%;box-sizing:border-box;min-height:30px;max-height:96px;resize:none;padding:6px 8px;border-radius:8px;border:1px solid var(--wb-border-default,#e5e5e5);background:var(--wb-bg-input,var(--wb-bg-primary,#fff));color:var(--wb-color-text-primary,#1f1f1f);font-size:12px;line-height:1.5;font-family:inherit;outline:none;overflow-y:auto}',
+    '.wbs-explore-input:focus{border-color:var(--wb-button-primary-bg,#1f1f1f);box-shadow:0 0 0 2px color-mix(in srgb,var(--wb-button-primary-bg,#1f1f1f) 12%,transparent)}',
+    '.wbs-explore-input::placeholder{color:color-mix(in srgb,var(--wb-color-text-primary) 38%,transparent)}',
     '.wbs-stash-inline:active{background:var(--wb-button-primary-bg)}',
     /* 队列消息「暂存提示词」标签：入队的暂存消息在操作按钮最左侧 */
     '.wbs-queue-tag{display:inline-flex;align-items:center;gap:4px;background:color-mix(in srgb,var(--wb-color-text-primary) 8%,transparent);color:var(--wb-color-text-secondary);border-radius:999px;font-size:11px;line-height:1;padding:5px 10px 5px 8px;margin-right:6px;font-weight:600;user-select:none;vertical-align:middle;white-space:nowrap}',

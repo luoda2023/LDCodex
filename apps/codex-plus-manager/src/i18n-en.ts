@@ -1126,9 +1126,8 @@ export const EN_PLAIN: Record<string, string> = {
     "Set an export password first: the file contains login credentials and cannot be imported without it.",
   "导出文件是加密的登录凭据，请保管好文件并记住密码：密码丢失后无法导入。":
     "The export file holds encrypted login credentials. Keep it safe and remember the password — it cannot be recovered.",
-  "已导出{0}个账号到：{1}": "Exported {0} account(s) to: {1}",
-  "已导入{0}个账号，现在可以一键切换。": "Imported {0} account(s); switch between them with one click.",
-  "有{0}个文件导入失败：{1}": "{0} file(s) failed to import: {1}",
+  "没有新的账号或常用语需要导入，已存在的都已跳过。":
+    "Nothing new to import — all accounts and quick phrases already exist.",
   "导出失败": "Export failed",
   "导入失败": "Import failed",
   "选择要导出的账号": "Select accounts to export",
@@ -1298,6 +1297,12 @@ export const EN_PLAIN: Record<string, string> = {
 
 // Interpolated strings: tf("前缀 {0}", [x]) -> EN_TEMPLATE["前缀 {0}"] with {0} filled.
 export const EN_TEMPLATE: Record<string, string> = {
+  "已导出{0}个账号到：{1}": "Exported {0} account(s) to: {1}",
+  "已导出{0}个账号、{1}条常用语到：{2}": "Exported {0} account(s) and {1} quick phrase(s) to: {2}",
+  "已导入{0}个账号，现在可以一键切换。": "Imported {0} account(s); switch between them with one click.",
+  "已导入{0}个账号、{1}条常用语，现在可以一键切换。":
+    "Imported {0} account(s) and {1} quick phrase(s); switch between them with one click.",
+  "有{0}个文件导入失败：{1}": "{0} file(s) failed to import: {1}",
   "另一版本：{0}": "Other build: {0}",
   "启动{0}增强": "Start {0} enhancements",
   "{0}增强服务已启动；两个版本现在可以同时运行，数据和端口互不影响。": "{0} enhancements started; both builds can now run together with isolated data and ports.",

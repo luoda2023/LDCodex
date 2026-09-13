@@ -1,7 +1,8 @@
 'use strict';
 /*
- * LDCodex daemon 1.2.10 功能测试
- * 覆盖：双开隔离自检 / 账号导出导入（含安全校验）/ 跨版本镜像收敛 / 抗崩溃 / 鉴权 / 回归
+ * LDCodex daemon 1.2.11 功能测试
+ * 覆盖：双开隔离自检 / 账号导出导入（含安全校验）/ 跨版本镜像收敛 / 抗崩溃 / 鉴权 /
+ *       弹窗自动点允许取样范围 / 快捷短语随账号导出导入去重 / 上弹面板行内新增入口 / 回归
  * 另见 verify-no-disturb.js：单独验证「弹窗自动点允许」的判定逻辑（1.2.10 修的积分误杀）
  * 运行方式：由 test-run.sh 在同一条命令内启动隔离 daemon 后调用，避免 Windows Job Object 连带杀进程。
  */
@@ -89,7 +90,7 @@ function extractFn(src, name) {
   rec('T2b 返回 sides 数组（本端在首位）', Array.isArray(b.sides) && b.sides.length >= 1 && b.sides[0] && b.sides[0].id === 'workbuddy-cn',
     'sides=' + JSON.stringify((b.sides || []).map((s) => s.id)));
   rec('T2c 含 isolated/conflicts/warnings/daemonVersion',
-    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '1.2.10',
+    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '1.2.11',
     'version=' + b.daemonVersion + ', isolated=' + b.isolated + ', conflicts=' + JSON.stringify(b.conflicts) + ', warnings=' + JSON.stringify(b.warnings));
   const s0 = (b.sides && b.sides[0]) || {};
   rec('T2d 本端字段完整（CDP/面板端口/目录/可执行文件）',
@@ -134,6 +135,8 @@ function extractFn(src, name) {
   let restored = '';
   try { restored = fs.readFileSync(path.join(accountsDir, uid + '.info'), 'utf8'); } catch (_) {}
   rec('T3e 往返内容完全一致', restored === acctInfo, restored ? 'len=' + restored.length : '文件未恢复');
+  rec('T3f 导出响应回传短语条数 phraseCount',
+    exp.body && typeof exp.body.phraseCount === 'number', 'phraseCount=' + (exp.body && exp.body.phraseCount));
 
   // ── T4 导出/导入的健壮性 ──
   section('T4 导出 / 导入健壮性');
@@ -253,6 +256,105 @@ function extractFn(src, name) {
     !!fnCtx && /if \(ndIsPageRoot\(box\)\) break;/.test(fnCtx), '已加页面根短路');
   rec('T10e 扣费取样上限常量存在',
     /var ND_CREDIT_SCOPE_MAX = 1200;/.test(injectSrc), 'ND_CREDIT_SCOPE_MAX=1200');
+
+  // ── T11 快捷短语随账号导出 / 导入去重（1.2.11）──
+  section('T11 快捷短语随账号导出 / 导入去重');
+  // 源码级：合并函数按 text 去重；导出 payload 带 phrases；导入走合并并回传计数
+  const fnMerge = extractFn(daemonSrc, 'mergeQuickPhrases');
+  rec('T11 提取到 mergeQuickPhrases 源码且按 text 去重',
+    !!fnMerge && fnMerge.includes('existing.has(text)'), fnMerge ? 'len=' + fnMerge.length : '未找到');
+  rec('T11b 账号导出 payload 带上 phrases 字段',
+    /exportType: 'LDCodex-accounts', version: 2, accounts: items, phrases/.test(daemonSrc), '导出 payload 已含 phrases');
+  rec('T11c 账号导入调用 mergeQuickPhrases 合并',
+    /const merged = mergeQuickPhrases\(incomingPhrases\)/.test(daemonSrc), '导入已走去重合并');
+  rec('T11d 账号导入响应回传 phrasesImported / phrasesSkipped',
+    /phrasesImported, phrasesSkipped/.test(daemonSrc), '响应字段已加');
+
+  // 行为级：真实 HTTP 走一遍（在隔离 daemon 的独立 data4 上，不影响用户数据）
+  const beforeQp = await api('/api/session-module');
+  const seedIds = (beforeQp.body && Array.isArray(beforeQp.body.phrases)) ? beforeQp.body.phrases.map((x) => x.id) : [];
+  if (seedIds.length) await api('/api/quick-phrase-delete', { method: 'POST', body: { ids: seedIds } });
+  for (const text of ['T11 常用语甲', 'T11 常用语乙', 'T11 常用语丙']) {
+    await api('/api/quick-phrase-add', { method: 'POST', body: { text } });
+  }
+  const afterAdd = await api('/api/session-module');
+  const curList = (afterAdd.body && Array.isArray(afterAdd.body.phrases)) ? afterAdd.body.phrases : [];
+  rec('T11e 通过接口写入 3 条常用语', curList.length === 3, 'phrases=' + JSON.stringify(curList.map((x) => x.text)));
+
+  // 导出：响应带 phraseCount，且文件解密后确实含 phrases 数组
+  const { openEncryptedExport } = require(path.join(RUNTIME, 'secure-transfer.js'));
+  const exportPath2 = path.join(TMP, 'export-phrases.json');
+  try { fs.rmSync(exportPath2, { force: true }); } catch (_) {}
+  const exp2 = await api('/api/accounts/export', { method: 'POST', body: { password: PW, saveTo: exportPath2 } });
+  rec('T11f 导出响应 phraseCount=3', exp2.body && exp2.body.phraseCount === 3, JSON.stringify(exp2.body));
+  let decoded = null;
+  try { decoded = openEncryptedExport(fs.readFileSync(exportPath2, 'utf8'), 'accounts', PW); } catch (e) { decoded = { error: e.message }; }
+  rec('T11g 导出文件解密后含 3 条 phrases（纯文本 + createdAt）',
+    !!(decoded && Array.isArray(decoded.phrases) && decoded.phrases.length === 3
+      && decoded.phrases.every((x) => typeof x.text === 'string' && Number.isFinite(Number(x.createdAt)))),
+    decoded && decoded.phrases ? JSON.stringify(decoded.phrases.map((x) => x.text)) : JSON.stringify(decoded));
+
+  // 造「2 条重复 + 1 条全新」的导入文件，验证先查重再追加
+  const dupPayload = {
+    exportType: 'LDCodex-accounts',
+    version: 2,
+    accounts: [{ uid, info: acctInfo }],
+    phrases: [
+      { text: 'T11 常用语甲', createdAt: Date.now() },
+      { text: 'T11 常用语乙', createdAt: Date.now() },
+      { text: 'T11 常用语丁', createdAt: Date.now() },
+    ],
+  };
+  const dupPath = path.join(TMP, 'dup-phrases.json');
+  fs.writeFileSync(dupPath, createEncryptedExport('accounts', dupPayload, PW));
+  const dupRes = await api('/api/accounts/import', { method: 'POST', body: { path: dupPath, password: PW } });
+  rec('T11h 导入时相同文案跳过、新文案追加（新增 1 / 跳过 2）',
+    !!(dupRes.body && dupRes.body.ok === true && dupRes.body.phrasesImported === 1 && dupRes.body.phrasesSkipped === 2),
+    JSON.stringify(dupRes.body));
+  const afterImp = await api('/api/session-module');
+  const finalTexts = (afterImp.body && Array.isArray(afterImp.body.phrases)) ? afterImp.body.phrases.map((x) => x.text) : [];
+  const textCount = {};
+  finalTexts.forEach((t) => { textCount[t] = (textCount[t] || 0) + 1; });
+  rec('T11i 最终列表 4 条、无重复且含新文案',
+    finalTexts.length === 4 && finalTexts.includes('T11 常用语丁') && Object.keys(textCount).every((k) => textCount[k] === 1),
+    JSON.stringify(finalTexts));
+
+  // 幂等：同一个文件再导一次，全部重复 → 新增 0
+  const dupRes2 = await api('/api/accounts/import', { method: 'POST', body: { path: dupPath, password: PW } });
+  rec('T11j 重复导入幂等（新增 0 / 跳过 3）',
+    !!(dupRes2.body && dupRes2.body.ok === true && dupRes2.body.phrasesImported === 0 && dupRes2.body.phrasesSkipped === 3),
+    JSON.stringify(dupRes2.body));
+
+  // 向后兼容：旧版导出文件没有 phrases 字段，导入不应报错、短语列表不变
+  const legacyPath = path.join(TMP, 'legacy-accounts.json');
+  fs.writeFileSync(legacyPath, createEncryptedExport('accounts',
+    { exportType: 'LDCodex-accounts', version: 2, accounts: [{ uid, info: acctInfo }] }, PW));
+  const legacyRes = await api('/api/accounts/import', { method: 'POST', body: { path: legacyPath, password: PW } });
+  const afterLegacy = await api('/api/session-module');
+  const legacyTexts = (afterLegacy.body && Array.isArray(afterLegacy.body.phrases)) ? afterLegacy.body.phrases.map((x) => x.text) : [];
+  rec('T11k 旧版导出文件（无 phrases）仍可导入，短语列表不变',
+    !!(legacyRes.body && legacyRes.body.ok === true && Number(legacyRes.body.phrasesImported || 0) === 0 && legacyTexts.length === 4),
+    JSON.stringify(legacyRes.body) + ' phrases=' + legacyTexts.length);
+
+  // ── T12 上弹面板「添加常用语」入口（inject.js 源码级）──
+  section('T12 上弹面板「添加」入口（inject.js）');
+  rec('T12 面板底部存在「添加」按钮 #wbs-explore-add',
+    /id="wbs-explore-add"/.test(injectSrc) && /wbs-explore-add/.test(injectSrc), '按钮已加入 explore 面板');
+  rec('T12b 存在行内新增流程 exploreAddRow / exploreSaveRow / exploreEndEdit',
+    /function exploreAddRow\(\)/.test(injectSrc) && /function exploreSaveRow\(row\)/.test(injectSrc) && /function exploreEndEdit\(\)/.test(injectSrc),
+    '三个函数均已定义');
+  rec('T12c Ctrl/Cmd+Enter 在捕获阶段保存（防客户端抢发送）',
+    /\(e\.ctrlKey \|\| e\.metaKey\) && e\.key === 'Enter'/.test(injectSrc) && /exploreSaveRow\(row\)/.test(injectSrc),
+    '键盘处理已加');
+  rec('T12d 编辑期间强制展开（wbs-explore-editing 覆盖 wbs-menu-closed）',
+    /\.wbs-explore-inline\.wbs-explore-editing\.wbs-menu-closed \.wbs-explore-pop/.test(injectSrc),
+    '编辑态样式已加');
+  const fnRender = extractFn(injectSrc, 'renderExploreOptions');
+  rec('T12e 编辑期间不重建列表（防草稿被 innerHTML 冲掉）',
+    !!fnRender && /if \(exploreEditRow\) return;/.test(fnRender), fnRender ? 'len=' + fnRender.length : '未提取到');
+  const fnMenuClose = extractFn(injectSrc, 'acMenuClose');
+  rec('T12f 关闭面板时收掉行内新增',
+    !!fnMenuClose && /exploreEndEdit\(\)/.test(fnMenuClose), fnMenuClose ? 'len=' + fnMenuClose.length : '未提取到');
 
   // ── T7 回归 ──
   section('T7 回归');
