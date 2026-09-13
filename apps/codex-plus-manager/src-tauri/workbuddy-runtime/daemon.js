@@ -347,8 +347,13 @@ const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.exis
 //         判定，客户端被手动起在默认端口 9222 时仍能正确认领、且不会连到对端客户端；
 //         回退端口按 profile 分段，双开同时启动不再抢同一端口；隔离自检区分「真冲突」
 //         与「客户端端口漂移」；修掉收件箱目录不可写导致 daemon 整体退出。
-const DAEMON_VERSION = '1.2.9';
-const DAEMON_BUILD_ID = 'release-1.2.9-20260913-cdp-isolation-hardening';
+// 1.2.10：修掉「弹窗自动点允许」长期不生效的缺陷——扣费（积分/付费）防护会从按钮一路
+//         探到 document.body，而首页常驻「邀请好友可获得 100 积分」横幅，整页文本必然命中
+//         「积分」，于是任何确认弹窗都被误判成扣费弹窗而永不点击。现改为只在弹窗自身容器
+//         内取样，页面根与超长页面级包裹层一律排除（实机复现：同一弹窗在旧逻辑下判定 null、
+//         新逻辑下判定 once）。
+const DAEMON_VERSION = '1.2.10';
+const DAEMON_BUILD_ID = 'release-1.2.10-20260913-no-disturb-credit-scope-fix';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）

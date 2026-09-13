@@ -1,7 +1,8 @@
 'use strict';
 /*
- * LDCodex daemon 1.2.9 功能测试
+ * LDCodex daemon 1.2.10 功能测试
  * 覆盖：双开隔离自检 / 账号导出导入（含安全校验）/ 跨版本镜像收敛 / 抗崩溃 / 鉴权 / 回归
+ * 另见 verify-no-disturb.js：单独验证「弹窗自动点允许」的判定逻辑（1.2.10 修的积分误杀）
  * 运行方式：由 test-run.sh 在同一条命令内启动隔离 daemon 后调用，避免 Windows Job Object 连带杀进程。
  */
 const fs = require('node:fs');
@@ -88,7 +89,7 @@ function extractFn(src, name) {
   rec('T2b 返回 sides 数组（本端在首位）', Array.isArray(b.sides) && b.sides.length >= 1 && b.sides[0] && b.sides[0].id === 'workbuddy-cn',
     'sides=' + JSON.stringify((b.sides || []).map((s) => s.id)));
   rec('T2c 含 isolated/conflicts/warnings/daemonVersion',
-    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '1.2.9',
+    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '1.2.10',
     'version=' + b.daemonVersion + ', isolated=' + b.isolated + ', conflicts=' + JSON.stringify(b.conflicts) + ', warnings=' + JSON.stringify(b.warnings));
   const s0 = (b.sides && b.sides[0]) || {};
   rec('T2d 本端字段完整（CDP/面板端口/目录/可执行文件）',
@@ -236,6 +237,22 @@ function extractFn(src, name) {
   rec('T9c cdpPortCandidates 里不再共用 9222-9232 / 9333 回退段',
     !!fnCandidates && !fnCandidates.includes('9222; port <= 9232') && !fnCandidates.includes('add(9333)'),
     fnCandidates ? 'len=' + fnCandidates.length : '未提取到');
+
+  // ── T10 弹窗自动点允许：扣费防护取样范围（1.2.10 修复）──
+  section('T10 弹窗自动点允许（1.2.10 修复）');
+  const injectSrc = fs.readFileSync(path.join(RUNTIME, 'inject.js'), 'utf8');
+  rec('T10 存在页面根判定 ndIsPageRoot',
+    /function ndIsPageRoot\(el\)/.test(injectSrc), '已定义 ndIsPageRoot');
+  const fnCreditText = extractFn(injectSrc, 'ndCreditText');
+  rec('T10b 扣费取样排除页面根',
+    !!fnCreditText && /ndIsPageRoot\(el\)/.test(fnCreditText), fnCreditText ? 'len=' + fnCreditText.length : '未提取到');
+  const fnCtx = extractFn(injectSrc, 'ndApprovalContext');
+  rec('T10c 扣费探测循环在页面根处中断',
+    !!fnCtx && /ndIsPageRoot\(creditBox\)\)\s*break/.test(fnCtx), fnCtx ? 'len=' + fnCtx.length : '未提取到');
+  rec('T10d 主循环不再把 body/html 当决策容器',
+    !!fnCtx && /if \(ndIsPageRoot\(box\)\) break;/.test(fnCtx), '已加页面根短路');
+  rec('T10e 扣费取样上限常量存在',
+    /var ND_CREDIT_SCOPE_MAX = 1200;/.test(injectSrc), 'ND_CREDIT_SCOPE_MAX=1200');
 
   // ── T7 回归 ──
   section('T7 回归');

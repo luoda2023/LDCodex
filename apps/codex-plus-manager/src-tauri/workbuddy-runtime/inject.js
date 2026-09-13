@@ -10075,6 +10075,22 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         return owner && (owner.getAttribute('data-conversation-id') || owner.getAttribute('data-root-id')) || '';
       } catch (_) { return ''; }
     }
+    // 扣费（积分/付费）防护的取样范围。必须是「弹窗自己的容器」，绝不能把 body/html
+    // 的整页文本算进来：WorkBuddy 首页常驻「邀请好友可获得 100 积分」横幅，一旦把页面根
+    // 纳入判定，整页文本必然命中「积分」，于是任何确认弹窗都被误判成扣费弹窗，
+    // 「弹窗自动点允许」永远不触发（实测复现：同一弹窗在含积分文案的页面上判定为 null，
+    // 去掉积分文案后判定为 once）。同理，文本很长的页面级包裹层也一并排除——真正的扣费
+    // 弹窗文案是紧凑的。
+    var ND_CREDIT_SCOPE_MAX = 1200;
+    function ndIsPageRoot(el) {
+      return !!el && (el === document.body || el === document.documentElement);
+    }
+    function ndCreditText(el) {
+      if (!el || ndIsPageRoot(el)) return '';
+      var full = String(el.textContent || '');
+      if (full.length > ND_CREDIT_SCOPE_MAX) return '';
+      return full.slice(0, 700);
+    }
     function ndApprovalContext(button) {
       var box = button;
       var text = '';
@@ -10084,7 +10100,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       var creditBox = button;
       for (var creditDepth = 0; creditDepth < 8 && creditBox; creditDepth++) {
         creditBox = creditBox.parentElement;
-        if (creditBox && ND_CREDIT_PATTERN.test(String(creditBox.textContent || '').slice(0, 700))) {
+        if (!creditBox || ndIsPageRoot(creditBox)) break;
+        var creditText = ndCreditText(creditBox);
+        if (creditText && ND_CREDIT_PATTERN.test(creditText)) {
           creditSeen = true;
           break;
         }
@@ -10092,10 +10110,13 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       for (var depth = 0; depth < 8 && box; depth++) {
         box = box.parentElement;
         if (!box) break;
+        // 页面根永远不是合法的决策容器：继续向上只会拿到整页文本（含首页积分横幅），
+        // 既可能被扣费防护误杀，也可能被「权限」等关键词误放行。
+        if (ndIsPageRoot(box)) break;
         var current = String(box.textContent || '');
         if (current.length > 700) current = current.slice(0, 700);
         text = current;
-        if (ND_CREDIT_PATTERN.test(current)) creditSeen = true;
+        if (ND_CREDIT_PATTERN.test(ndCreditText(box))) creditSeen = true;
         hasDeny = ND_DENY_WORD.test(current);
         var buttons = box.querySelectorAll('button');
         count = buttons ? buttons.length : 0;

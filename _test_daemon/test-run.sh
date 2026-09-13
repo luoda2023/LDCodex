@@ -43,5 +43,10 @@ done
 echo "=== 运行测试 ==="
 "$NODE" "$TMP/run-tests.js"
 RC=$?
+# 判定逻辑测试不依赖 daemon（纯函数 + DOM 桩），放在后面跑
+echo ""
+"$NODE" "$TMP/verify-no-disturb.js"
+RC2=$?
 kill "$DPID" 2>/dev/null
-exit $RC
+if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ]; then exit 1; fi
+exit 0

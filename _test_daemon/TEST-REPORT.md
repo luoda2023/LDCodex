@@ -1,8 +1,9 @@
-# LDCodex daemon 1.2.9 功能测试报告
+# LDCodex daemon 1.2.10 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；2026-09-13 14:20（1.2.10 复跑）
 - **被测代码**：
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **1.2.9**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **1.2.10**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**1.2.10：弹窗自动点允许扣费取样范围修复**）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/automation.js`（抗崩溃加固）
   - `apps/codex-plus-manager/src-tauri/src/workbuddy.rs`（「重启并启用」真正结束旧客户端）
 - **测试方式**：隔离实例（独立数据目录 `data4` + 独立端口 47999 + CDP 指向空端口 47998），**不影响正在运行的真实客户端**
@@ -11,9 +12,76 @@
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **35 / 35 全部通过** ✅ |
+| 功能接口测试（`run-tests.js`） | **40 / 40 全部通过** ✅ |
+| 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
+
+## 一之二、1.2.10 修掉的缺陷：「弹窗自动点允许」长期不生效
+
+### 现象
+
+免打扰里 5 个开关**全部处于开启状态**（`~/.workbuddy-ai/settings.json` 的 `wbs.noDisturb.state` 实测 `autoApprove: true`），面板里的复选框也是勾选态，但**弹窗出现时不会被自动点掉**。
+
+### 根因（实机复现）
+
+`inject.js` 的 `ndApprovalContext()` 带一道「扣费弹窗防护」：若弹窗附近出现积分/付费类文案，就不自动点，避免误点图片/视频生成的扣费确认。但它的取样循环**会从按钮一路向上探到 `document.body`**：
+
+```js
+for (var creditDepth = 0; creditDepth < 8 && creditBox; creditDepth++) {
+  creditBox = creditBox.parentElement;
+  if (creditBox && ND_CREDIT_PATTERN.test(String(creditBox.textContent || '').slice(0, 700))) {
+    creditSeen = true; break;
+  }
+}
+```
+
+而 WorkBuddy 首页常驻一条邀请横幅 —— 「好友加入，**积分**上涨邀请一位好友可获得 100 积分」。于是 `body.textContent` 必然命中 `ND_CREDIT_PATTERN`（含「积分」），`creditSeen` 恒为 `true`，分类器一律返回 `null` → **任何确认弹窗都不会被自动点允许**。
+
+CDP 实机对比（同一个合成「允许/拒绝」权限弹窗，真实页面上执行）：
+
+```json
+{ "旧逻辑": { "kind": null,  "creditSeen": true  },
+  "新逻辑": { "kind": "once", "creditSeen": false } }
+```
+
+纯判定逻辑侧同样复现：
+
+```json
+{ "前700字含积分类词": true,
+  "命中片段": "...好友加入，积分上涨邀请一位好友可获得 100 积分",
+  "分类结果_真实页面": null,
+  "分类结果_若页面无积分": "once" }
+```
+
+也解释了为什么审计日志里只留下寥寥 4 次成功记录（`audit-log/no-disturb.jsonl`，09-12 19:59 与 09-13 02:18）——那几次恰好是弹窗层级较深、或横幅尚未渲染的时刻。
+
+### 修复
+
+`inject.js` 新增取样范围约束，**页面根永不参与扣费判定，也不作为决策容器**：
+
+```js
+var ND_CREDIT_SCOPE_MAX = 1200;
+function ndIsPageRoot(el) {
+  return !!el && (el === document.body || el === document.documentElement);
+}
+function ndCreditText(el) {
+  if (!el || ndIsPageRoot(el)) return '';       // 页面根不取样
+  var full = String(el.textContent || '');
+  if (full.length > ND_CREDIT_SCOPE_MAX) return '';  // 页面级超长包裹层同样排除
+  return full.slice(0, 700);
+}
+```
+
+扣费探测循环与主循环都改用 `ndCreditText()`，并在主循环补 `if (ndIsPageRoot(box)) break;`。
+
+### 效果
+
+- 首页带「积分」横幅时，权限确认弹窗**恢复正常自动点允许**；
+- 真正的扣费弹窗（弹窗自身含「本次生成将消耗 30 积分」）**仍被拒绝**，防护没有被削弱；
+- 通用「确认 / 取消」弹窗依旧不被点（保持「宁可漏点也不错点」）。
+
+## 二、1.2.9 修掉的三个真实缺陷
 
 ## 二、1.2.9 修掉的三个真实缺陷
 
@@ -104,6 +172,27 @@ if (process.env.WBSWITCH_CDP_PORT) return false;   // 一旦设置，不排除�
 ### T9 CDP 隔离加固（1.2.9 修复）
 源码中已无 `if (process.env.WBSWITCH_CDP_PORT) return false` ✅；存在 `CDP_FALLBACK_BASE` ✅；`cdpPortCandidates` 不再共用 9222–9232 / 9333 回退段 ✅
 
+### T10 弹窗自动点允许（1.2.10 修复）
+源码级确认：`ndIsPageRoot` 已定义 ✅；`ndCreditText` 排除页面根 ✅；扣费探测循环在页面根处 `break` ✅；主循环不再把 `body/html` 当决策容器 ✅；`ND_CREDIT_SCOPE_MAX = 1200` 存在 ✅
+
+## 四之二、自动点允许判定测试明细（16/16 通过）
+
+从 `inject.js` 提取真实函数（`classifyNoDisturbApprovalCandidate` / `ndNormalizeLabel` / `ndIsDecisionGroup` / `ndIsPageRoot` / `ndCreditText` / `ndClassifyApprovalCandidate` / `ndApprovalContext`）注入最小 DOM 桩执行：
+
+| 断言 | 结果 |
+|---|---|
+| `ndIsPageRoot(body/html)` 为真、普通 div 为假 | ✅ |
+| `ndCreditText(body)` / 超长容器返回空（页面根不取样） | ✅ |
+| 紧凑容器原样返回（扣费判定仍有效） | ✅ |
+| 分类器：上下文含「积分」一律拒绝 | ✅ |
+| 分类器：「允许」+权限语境 ⇒ `once`；「1允许」规范化后 ⇒ `once` | ✅ |
+| 分类器：「始终允许」⇒ `session` | ✅ |
+| 分类器：通用「确认」/ 禁用按钮 不通过 | ✅ |
+| **回归：首页含积分横幅时，「允许」仍判定为 `once`** | ✅ |
+| 回归：判定上下文只取弹窗容器，不含首页积分文案 | ✅ |
+| 扣费弹窗（弹窗自身含积分）仍被拒绝 | ✅ |
+| 通用「确认/取消」弹窗不被自动点 | ✅ |
+
 ## 四、CDP 隔离逻辑测试明细（18/18 通过）
 
 从 `daemon.js` 提取真实函数源码（`validCdpPort` / `cdpPortOwnedByOtherProfile` / `ownCdpPorts` / `cdpPortCandidates` / `cdpTargetMatcher`）注入不同 profile 场景执行：
@@ -152,6 +241,8 @@ if (cdpPort && /^\d+$/.test(cdpPort)) {
 bash D:/LUODA/LDcodex/_test_daemon/test-run.sh
 # CDP 端口隔离逻辑（纯本地，无需 daemon）
 "C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_test_daemon/verify-cdp-isolation.js
+# 自动点允许判定逻辑（纯本地，无需 daemon）
+"C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_test_daemon/verify-no-disturb.js
 # 前端类型检查
 cd D:/LUODA/LDcodex/apps/codex-plus-manager && node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json
 ```
@@ -159,4 +250,6 @@ cd D:/LUODA/LDcodex/apps/codex-plus-manager && node node_modules/typescript/bin/
 ## 七、遗留事项
 
 - 用户级环境变量 `WORKBUDDY_REMOTE_DEBUGGING_PORT` 仍是全局单值。它是「手动双击启动也能用 CDP」的兜底，但双开时必然冲突。当前策略：保留它，靠管理器的「以正确端口重启客户端」纠正。
+- **daemon 单实例锁存在主/备双锁竞态**（本次实测到同 profile 同时跑了两个 daemon：pid 7872 与 pid 10720）。`acquireDaemonLock()` 的候选是 `[主锁, 备锁]`，两个进程可能各持一个都认为自己独占。未修：改动锁逻辑一旦出错会让 daemon 起不来，需单独设计后验证。
+- **daemon 会继承客户端注入的 `NODE_OPTIONS`**（实测：`--require .../WorkBuddyAI/resources/app.asar.unpacked/cli/vendor/shim/node-language-shim.cjs`）。该 shim 代理 fs 操作，会把部分操作拦成 `EPERM`（如 `mkdir .../automation-agent/inbox`、`watch .../CodeBuddyExtension/.../auth`）。1.2.9 的抗崩溃加固已让 daemon 不再因此退出；彻底规避可在 `spawn_daemon` 里 `env_remove("NODE_OPTIONS")`。
 - 安装包需重新构建才能带上 `windows/hooks.nsh`（安装时自动结束占用进程）与以上全部修复。
