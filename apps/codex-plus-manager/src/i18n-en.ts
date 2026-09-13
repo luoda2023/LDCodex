@@ -1111,6 +1111,13 @@ export const EN_PLAIN: Record<string, string> = {
   "导出账号": "Export accounts",
   "导入账号": "Import accounts",
   "尚未切换使用过": "Never switched",
+  // ── WorkBuddy 账号：切换流水 / 下次重置（88.8.4） ──
+  "下次重置": "Next reset",
+  "按本地自然日重置：到点后「今日切换次数」归零、当日额度恢复。":
+    "Resets on the local calendar day: at that moment today's switch count returns to 0 and the daily quota is restored.",
+  "正在重新计时…": "Recalculating…",
+  "最多保留 50 条，按时间倒序。新切一次立刻追加在最上面。":
+    "Keeps up to 50 entries, newest first. A new switch is added to the top right away.",
   "不勾选则导出全部账号": "All accounts are exported when none is selected",
   "已勾选 {0} 个账号": "{0} account(s) selected",
   "导出密码（必填）": "Export password (required)",
@@ -1441,6 +1448,12 @@ export const EN_TEMPLATE: Record<string, string> = {
   "模型配置文件：{0}": "Model configuration file: {0}",
   "自动化任务（{0}）": "Automation tasks ({0})",
   "触发方式：{0}": "Trigger: {0}",
+  // ── WorkBuddy 账号：切换流水 / 下次重置（88.8.4） ──
+  "最近切换（{0}）": "Recent switches ({0})",
+  "{0} → {1}": "{0} → {1}",
+  "距重置还有 {0}": "Resets in {0}",
+  "{0} 小时 {1} 分 {2} 秒": "{0}h {1}m {2}s",
+  "{0} 分 {1} 秒": "{0}m {1}s",
 };
 
 // Backend (Rust) messages returned via result.message. These are translated

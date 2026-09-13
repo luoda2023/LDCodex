@@ -72,6 +72,11 @@ RC4=$?
 echo ""
 "$NODE" "$TMP/verify-fill-panel.mjs"
 RC4b=$?
+# account-usage store 单测（切换流水 + 「下次重置」倒计时）。纯函数、临时目录，
+# 不依赖 daemon，所以在 daemon 起来之前/之后跑都行。
+echo ""
+"$NODE" --test "$TMP/account-usage.test.js"
+RC4c=$?
 # 结束隔离 daemon。⚠️ kill 有时不生效（MSYS pid 与 Windows pid 不是一回事，进程也可能忽略
 # 信号）：实测残留的 daemon 会一直 LISTEN 在 47999，下一轮的端口预检直接 exit 2，
 # 而且 Bash 任务会被这个子进程吊住不结束。所以再按「端口占用者」兜底强杀，最多等 10 秒。
@@ -82,5 +87,5 @@ for _ in $(seq 1 20); do
   MSYS_NO_PATHCONV=1 taskkill /F /PID "$OWNER" >/dev/null 2>&1
   sleep 0.5
 done
-if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ] || [ "$RC3" -ne 0 ] || [ "$RC4" -ne 0 ] || [ "$RC4b" -ne 0 ]; then exit 1; fi
+if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ] || [ "$RC3" -ne 0 ] || [ "$RC4" -ne 0 ] || [ "$RC4b" -ne 0 ] || [ "$RC4c" -ne 0 ]; then exit 1; fi
 exit 0

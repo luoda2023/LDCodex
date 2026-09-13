@@ -6,10 +6,15 @@
 // 用法：node _tmp/measure-pane.mjs
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
+import pathNode from 'node:path';
 
 const chrome = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const htmlPath = 'D:/LUODA/LDcodex/_test_daemon/fill-panel-harness.html';
-const profileDir = 'D:/LUODA/LDcodex/_test_daemon/_chrome-profile-fill-panel';
+// ⚠️ 必须用系统临时目录：原先放在 _test_daemon/ 下，一次跑 30 个 case 就在仓库里
+// 留下 30 个 `_chrome-profile-fill-panel-*` 未跟踪目录（git status 一堆 ??）。
+// os.tmpdir() 下用完即删，仓库保持干净。
+const profileDir = fs.mkdtempSync(pathNode.join(os.tmpdir(), 'chrome-profile-fill-panel-'));
 
 function dump(htmlPath, profileDir, w, h, query) {
   const dom = execFileSync(chrome, [
@@ -30,7 +35,8 @@ function dump(htmlPath, profileDir, w, h, query) {
 
 function runCase(tab, count, cardH, windowH, old) {
   const q = '?tab=' + tab + '&count=' + count + '&cardH=' + cardH + '&height=' + windowH + (old ? '&old=1' : '');
-  return dump(htmlPath, profileDir + '-' + tab + '-' + windowH + (old ? '-old' : ''), 1280, windowH, q);
+  // 子目录建在 profileDir **里面**，末尾统一 rmSync(profileDir) 就能清干净
+  return dump(htmlPath, pathNode.join(profileDir, tab + '-' + windowH + (old ? '-old' : '')), 1280, windowH, q);
 }
 
 function pass(name, ok, detail) {

@@ -190,9 +190,10 @@ const accountUsageStore = createAccountUsageStore(DATA_DIR);
 
 // 记录一次账号使用。切换成功后调用；任何异常只记日志，绝不影响切换主流程。
 // noteActive 内部按「活跃账号是否变化」去重，重复上报（含重启后账号未变）不会多计。
-function noteAccountUsage(uid) {
+// 88.8.4 起 options.fromUid 透传给 store，用于写 history 流水（A→B at 时间）。
+function noteAccountUsage(uid, options) {
   try {
-    const usage = accountUsageStore.noteActive(uid);
+    const usage = accountUsageStore.noteActive(uid, options || {});
     if (usage) log(`[account-usage] ${uid} 累计使用 ${usage.total} 次（今日 ${usage.today} 次）`);
     return usage;
   } catch (error) {
@@ -412,8 +413,8 @@ function noteAccountUsage(uid) {
 //         传本地化措辞（含 {version} 占位符），版本号统一由 Rust 侧从 CARGO_PKG_VERSION 注入
 //         （继承 Cargo.toml 的 workspace version），**不硬编码**，升级时不用回来改。
 //         详见 src-tauri/src/lib.rs 的 tray_tooltip_default / resolve_tray_tooltip。
-const DAEMON_VERSION = '88.8.4';
-const DAEMON_BUILD_ID = 'release-88.8.4-20260913-tray-tooltip';
+const DAEMON_VERSION = '88.8.5';
+const DAEMON_BUILD_ID = 'release-88.8.5-20260913-next-reset-countdown';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）
@@ -8168,6 +8169,21 @@ function handleApi(req, res) {
     });
   }
 
+  // 88.8.4 起：账号使用概览 —— 切换流水 + 「下次重置」倒计时，一个请求拿全。
+  //   ?uid=A  过滤流水：只返回 fromUid 或 toUid 等于 A 的项
+  // 流水里只有 uid 没有 nickname —— 前端拿到账号列表（/api/accounts）后用 decorate() 拼上 nickname。
+  //
+  // nextResetAt 是**服务端按本地时区算出的「明天 00:00」时间戳**，前端不要自己算：
+  // 前端本地时区与 daemon 可能不同（极少见但存在），而且自己算容易写成「此刻 +24h」——
+  // 那是「24 小时后」不是「自然日重置」，会跟 accounts 里 today 字段的归零时刻对不上。
+  if (req.method === 'GET' && p === '/api/account/usage/summary') {
+    const uid = (req.query && typeof req.query.uid === 'string') ? req.query.uid.trim() : '';
+    return json(res, 200, Object.assign(
+      { ok: true, history: accountUsageStore.history(uid) },
+      accountUsageStore.resetInfo(),
+    ));
+  }
+
   if (req.method === 'GET' && p === '/api/accounts') {
     const accounts = listAccounts(DATA_DIR);
     const cache = loadCheckinCache();
@@ -9634,7 +9650,8 @@ function handleApi(req, res) {
         const sourceUid = String((currentAccount() || {}).uid || '').trim();
         const acct = switchTo(DATA_DIR, uid, log);
         // 切换成功后记一次使用次数（供账号列表展示「用过几次」；失败不影响切换）
-        noteAccountUsage(acct.uid);
+        // 88.8.4 起把 sourceUid 传进去，account-usage 顺手把这次切换记进 history 流水
+        noteAccountUsage(acct.uid, { fromUid: sourceUid });
         const hint = '登录文件已切换，请重启 WorkBuddy 使新账号生效';
         let reloaded = false;
         if (body.reload) {

@@ -12511,6 +12511,17 @@ function workBuddyFormatTime(value: unknown): string {
   return date.toLocaleString();
 }
 
+/** 「距下次重置还有多久」：毫秒 → `X 小时 Y 分 Z 秒`（不足 1 小时省略小时位）。 */
+function workBuddyFormatCountdown(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return t("正在重新计时…");
+  const total = Math.floor(ms / 1000);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  if (hours > 0) return tf("{0} 小时 {1} 分 {2} 秒", [String(hours), String(minutes), String(seconds)]);
+  return tf("{0} 分 {1} 秒", [String(minutes), String(seconds)]);
+}
+
 function workBuddyFormatExpiry(value: unknown): string {
   const raw = Number(value);
   if (!Number.isFinite(raw) || raw <= 0) return "—";
@@ -12582,6 +12593,54 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
   const [exportUids, setExportUids] = useState<string[]>([]);
   const [importPaths, setImportPaths] = useState<string[]>([]);
   const oauthPollingRef = useRef(false);
+  // 88.8.4：账号切换流水（最近 50 条，最新在前）—— 切完账号后立刻显示「刚刚从 A 切到 B」，
+  // 让用户能立刻看到「这次切换何时发生」。空时不显示卡片。
+  const [switchHistory, setSwitchHistory] = useState<Array<{ fromUid: string; toUid: string; at: string }>>([]);
+  // 88.8.4：「下次生效（重置）是什么时候」—— nextResetAt 由守护进程按本地时区算好（明天 00:00），
+  // 前端只负责按秒倒数，绝不自己推算重置点（「此刻 +24h」与自然日归零不是一回事）。
+  const [resetInfo, setResetInfo] = useState<{ nextResetAt: number; msToReset: number } | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  // 倒计时归零后自动重新拉一次（跨过 00:00 后重置点会顺延到后天 00:00）。
+  // 用 ref 兜一次，避免每秒 tick 都触发请求。
+  const [usageNonce, setUsageNonce] = useState(0);
+  const resetFiredRef = useRef(false);
+  useEffect(() => {
+    if (tab !== "account") {
+      setSwitchHistory([]);
+      setResetInfo(null);
+      return;
+    }
+    if (!status?.running) { setSwitchHistory([]); setResetInfo(null); return; }
+    let cancelled = false;
+    call("/api/account/usage/summary", undefined, status?.apiToken)
+      .then((res: unknown) => {
+        if (cancelled) return;
+        const obj = res && typeof res === "object" ? (res as Record<string, unknown>) : {};
+        const list = Array.isArray(obj.history)
+          ? (obj.history as Array<{ fromUid: string; toUid: string; at: string }>)
+          : [];
+        setSwitchHistory(list);
+        const at = Number(obj.nextResetAt);
+        setResetInfo(Number.isFinite(at) && at > 0 ? { nextResetAt: at, msToReset: Number(obj.msToReset) || 0 } : null);
+        resetFiredRef.current = false;
+      })
+      .catch(() => { if (!cancelled) { setSwitchHistory([]); setResetInfo(null); } });
+    return () => { cancelled = true; };
+  }, [tab, status?.running, status?.apiToken, usageNonce]);
+  // 只在账号页且拿到重置点时按秒 tick —— 离开页签/没数据时不起定时器（省电、不打断别的页面）。
+  useEffect(() => {
+    if (tab !== "account" || !resetInfo) return;
+    const timer = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [tab, resetInfo]);
+  // 跨过重置点后重拉一次：nextResetAt 会顺延到「明天 00:00」，倒计时不会停在 0。
+  useEffect(() => {
+    if (!resetInfo) return;
+    if (resetFiredRef.current) return;
+    if (resetInfo.nextResetAt - Date.now() > 0) return;
+    resetFiredRef.current = true;
+    setUsageNonce((n) => n + 1);
+  }, [resetInfo, nowTick]);
 
   // 两个档案的守护进程监听不同端口（国内版 47832 / 国际版 47833）。
   // 状态还没读回来时先用本档案的固定端口兜底，避免第一次请求打错端口。
@@ -13301,11 +13360,11 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
                       <input
                         aria-label={t("选择要导出的账号")}
                         checked={exportUids.includes(uid)}
-                        onChange={(event) =>
-                          setExportUids((prev) =>
-                            event.target.checked ? [...prev, uid] : prev.filter((item) => item !== uid),
-                          )
-                        }
+onChange={(event) =>
+                            setExportUids((prev) =>
+                              event.target.checked ? [...prev, uid] : prev.filter((item) => item !== uid),
+                            )
+                          }
                         type="checkbox"
                       />
                     ) : null}
@@ -13341,6 +13400,53 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
             <p className="muted-text">{t("还没有备份账号。WorkBuddy 登录后会自动备份，之后就能一键切换。")}</p>
           )}
         </div>
+        {/* 88.8.4 「下次生效是什么时候」：重置点由守护进程按本地时区算好（明天 00:00），
+            这里只按秒倒数。用户原话「因为现在一天后会重置」—— 自然日跨到 00:00 即重置。 */}
+        {resetInfo ? (
+          <div className="workbuddy-card">
+            <div className="workbuddy-card-head">
+              <strong>{t("下次重置")}</strong>
+              <small className="muted-text">{t("按本地自然日重置：到点后「今日切换次数」归零、当日额度恢复。")}</small>
+            </div>
+            <div className="workbuddy-list">
+              <div className="workbuddy-row">
+                <div className="workbuddy-row-main">
+                  <strong className="workbuddy-mono">{workBuddyFormatTime(resetInfo.nextResetAt)}</strong>
+                  <small className="workbuddy-usage">
+                    {tf("距重置还有 {0}", [workBuddyFormatCountdown(resetInfo.nextResetAt - nowTick)])}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {/* 88.8.4 切换流水：最近 5 条 A→B 记录，让用户立刻看到「上次切换是什么时候」。 */}
+        {switchHistory.length ? (
+          <div className="workbuddy-card">
+            <div className="workbuddy-card-head">
+              <strong>{tf("最近切换（{0}）", [String(switchHistory.length)])}</strong>
+              <small className="muted-text">{t("最多保留 50 条，按时间倒序。新切一次立刻追加在最上面。")}</small>
+            </div>
+            <div className="workbuddy-list">
+              {switchHistory.slice(0, 5).map((h, idx) => {
+                const fromNickname = String(accounts.find((a) => String(a.uid || a.id || "") === h.fromUid)?.nickname || h.fromUid || "—");
+                const toNickname = String(accounts.find((a) => String(a.uid || a.id || "") === h.toUid)?.nickname || h.toUid || "—");
+                return (
+                  <div className="workbuddy-row" key={`${h.at}-${idx}`}>
+                    <div className="workbuddy-row-main">
+                      <small className="muted-text">
+                        {tf("{0} → {1}", [fromNickname, toNickname])}
+                      </small>
+                      <small className="workbuddy-mono">
+                        {workBuddyFormatTime(h.at)}
+                      </small>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   };

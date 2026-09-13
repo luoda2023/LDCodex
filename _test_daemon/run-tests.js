@@ -1,6 +1,6 @@
 'use strict';
 /*
- * LDCodex daemon 88.8.4 功能测试
+ * LDCodex daemon 88.8.5 功能测试
  * 覆盖：双开隔离自检 / 账号导出导入（含安全校验）/ 跨版本镜像收敛 / 抗崩溃 / 鉴权 /
  *       弹窗自动点允许取样范围 / 快捷短语随账号导出导入去重 / 上弹面板行内新增入口 / 回归
  * 另见 verify-no-disturb.js：单独验证「弹窗自动点允许」的判定逻辑（1.2.10 修的积分误杀）
@@ -125,7 +125,7 @@ function extractRustFn(src, name) {
   rec('T2b 返回 sides 数组（本端在首位）', Array.isArray(b.sides) && b.sides.length >= 1 && b.sides[0] && b.sides[0].id === 'workbuddy-cn',
     'sides=' + JSON.stringify((b.sides || []).map((s) => s.id)));
   rec('T2c 含 isolated/conflicts/warnings/daemonVersion',
-    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '88.8.4',
+    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '88.8.5',
     'version=' + b.daemonVersion + ', isolated=' + b.isolated + ', conflicts=' + JSON.stringify(b.conflicts) + ', warnings=' + JSON.stringify(b.warnings));
   const s0 = (b.sides && b.sides[0]) || {};
   rec('T2d 本端字段完整（CDP/面板端口/目录/可执行文件）',
@@ -478,16 +478,16 @@ function extractRustFn(src, name) {
     !!fnRestore && /if \(found == IntPtr\.Zero\) return false;/.test(fnRestore)
       && !/if \(owner == targetPid\) \{ ShowWindowAsync\(hWnd, 9\);/.test(fnRestore),
     '已改为先筛选候选再恢复');
-  rec('T13i daemon 版本已统一为 88.8.4',
-    /const DAEMON_VERSION = '88\.8\.4';/.test(daemonSrc), 'DAEMON_VERSION=88.8.4');
+  rec('T13i daemon 版本已统一为 88.8.5',
+    /const DAEMON_VERSION = '88\.8\.5';/.test(daemonSrc), 'DAEMON_VERSION=88.8.5');
 
-  // ── T14 版本号统一（约定：当前基线 88.8.4，以后每升级一次加 1）──
+  // ── T14 版本号统一（约定：当前基线 88.8.5，以后每升级一次加 1）──
   // 背景：用户要求「软件的版本号统一为 88.8.1，以后每升级一次升一个」。此前各生态版本号各自为政
   // （安装包 1.2.56 / 运行时 package.json 1.2.11 / daemon 1.2.12）。这里做源码级
   // 断言，守住「所有版本号来源必须完全一致」这条约定，防止后续升级只改一半。
   // 升级步骤：改下方 UNIFIED_VERSION + 6 处版本号来源，本系列会逐条校验是否漏改。
-  section('T14 版本号统一为 88.8.4');
-  const UNIFIED_VERSION = '88.8.4';
+  section('T14 版本号统一为 88.8.5');
+  const UNIFIED_VERSION = '88.8.5';
   const readJsonVersion = (rel) => {
     try {
       return JSON.parse(fs.readFileSync(path.join(RUNTIME, rel), 'utf8')).version || null;
@@ -840,6 +840,44 @@ function extractRustFn(src, name) {
   rec('T22c .fill 仍保留 min-height: calc(100vh - 150px)（视觉上仍占满可视区）',
     /min-height\s*:\s*calc\(\s*100vh\s*-\s*150px\s*\)/.test(fillBlock),
     '内容少时仍要至少撑到「视口高 - 标题栏/顶栏/页签/状态区」的高度，别因为修 overflow 把这个下限也丢了');
+
+  // ── T23 账号切换流水 +「下次重置」倒计时（88.8.5，用户诉求：想知道下次什么时候生效）──
+  // 用户原话：「我要你记录每次切换的时间，到时候就可以知道下一次生效是什么时候」
+  //        「我的目的很简单：就是想知道下次生效是什么时候？因为现在一天后会重置。」
+  // 两条硬语义，写错了功能直接失效，所以各用源码级断言钉住：
+  //   ① 重置点 = 本地自然日次日 00:00，不是「此刻 +24h」—— 用 new Date(y,m,d+1,…)
+  //      表达，不允许出现 86400000 / 24 * 3600 * 1000 这类滚动写法；
+  //   ② account-usage 的 localDay 必须与 daemon 的 todayStr **逐字符同格式** ——
+  //      2026-09-13 真实事故：漏了 '-' 拼成 "2026-0913"，自写自读看不出来，
+  //      但 daemon 是 store.all(todayStr()) 调用的 → today 恒为 0。
+  section('T23 账号切换流水 / 下次重置倒计时（88.8.5）');
+  const accountUsageSrc = fs.readFileSync(path.join(RUNTIME, 'account-usage.js'), 'utf8');
+  const daemonSrcT23 = fs.readFileSync(path.join(RUNTIME, 'daemon.js'), 'utf8');
+  const appSrcT23 = fs.readFileSync(path.join(RUNTIME, '..', '..', 'src', 'App.tsx'), 'utf8');
+
+  rec('T23a daemon 必须提供 /api/account/usage/summary 且下发 nextResetAt',
+    /p === '\/api\/account\/usage\/summary'/.test(daemonSrcT23) && /accountUsageStore\.resetInfo\(/.test(daemonSrcT23),
+    '前端倒计时全靠这个端点；少了它「下次重置」卡片直接不显示');
+  // ⚠️ 剥注释再断言（第三次踩这个坑）：account-usage.js 的注释里**特意写了**
+  // "+86400000" 来说明「为什么不这么写」，不剥注释会被自己的否定断言命中。
+  const accountUsageCode = accountUsageSrc.split(/\r?\n/).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+  rec('T23b 重置点必须按「次日 00:00」算（new Date(y, m, d + 1, …)），不能是 +24h',
+    /new Date\(\s*d\.getFullYear\(\)\s*,\s*d\.getMonth\(\)\s*,\s*d\.getDate\(\)\s*\+\s*1\s*,/.test(accountUsageCode)
+      && !/86400000|24\s*\*\s*3600\s*\*\s*1000/.test(accountUsageCode),
+    '"一天后重置"指的是自然日跨到 00:00，不是此刻 +24 小时；写成 +24h 会跟 today 归零时刻对不上');
+  rec('T23c account-usage 的 localDay 必须与 daemon todayStr 同格式（YYYY-MM-DD 两个连字符）',
+    /d\.getFullYear\(\)\s*\+\s*'-'\s*\+\s*z\(d\.getMonth\(\)\s*\+\s*1\)\s*\+\s*'-'\s*\+\s*z\(d\.getDate\(\)\)/.test(accountUsageSrc)
+      && /d\.getFullYear\(\)\s*\+\s*'-'\s*\+\s*z\(d\.getMonth\(\)\s*\+\s*1\)\s*\+\s*'-'\s*\+\s*z\(d\.getDate\(\)\)/.test(daemonSrcT23),
+    '两边格式一旦漂移，/api/accounts 的 today 恒为 0、「今日切换 N 次」永远显示 0 次（已发生过一次）');
+  rec('T23d nextLocalMidnight 必须从模块导出（单测要能直接测跨天边界）',
+    /module\.exports\s*=\s*\{[^}]*nextLocalMidnight/.test(accountUsageSrc),
+    '不导出就只能靠 store 间接测，23:59:59.999 这种边界测不到');
+  rec('T23e 前端必须拉 summary 端点并用 nextResetAt 做倒计时（不是自己本地算）',
+    /"\/api\/account\/usage\/summary"/.test(appSrcT23) && /nextResetAt/.test(appSrcT23),
+    '前端自己算容易写成「此刻 +24h」，且与 daemon 时区可能不一致');
+  rec('T23f 前端倒计时必须按秒 tick 并在离开账号页时停掉定时器',
+    /setInterval\(/.test(appSrcT23) && /clearInterval\(/.test(appSrcT23),
+    '不 tick 就是死数字；不停定时器会在别的页签持续空转');
 
   // ── T20 安装版本核验脚本的不变量（verify-installed-version.mjs）──
   // 用户两次质问「你怎么回事？你没有构建出来新版本吗还是原来的那一版」，
