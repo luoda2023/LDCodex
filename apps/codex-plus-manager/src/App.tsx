@@ -12516,6 +12516,29 @@ function workBuddyFormatExpiry(value: unknown): string {
   return tf("{0} 天后过期", [String(days)]);
 }
 
+/** 账号「最后使用」时间：ISO 字符串 → 本地 `MM-DD HH:mm`（跨年才补年份）。 */
+function workBuddyFormatLastUsed(value: unknown): string {
+  const raw = String(value || "");
+  if (!raw) return "—";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "—";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const md = `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const hm = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return sameYear ? `${md} ${hm}` : `${date.getFullYear()}-${md} ${hm}`;
+}
+
+/** 读取账号使用次数（守护进程 /api/accounts 的 usage 字段），字段缺失一律当 0。 */
+function workBuddyAccountUsage(account: Record<string, unknown>): { total: number; today: number; lastAt: string } {
+  const raw = account && typeof account.usage === "object" && account.usage ? (account.usage as Record<string, unknown>) : {};
+  return {
+    total: Number(raw.total) || 0,
+    today: Number(raw.today) || 0,
+    lastAt: typeof raw.lastAt === "string" ? raw.lastAt : "",
+  };
+}
+
 function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profile: WorkBuddyProfileId }) {
   void actions;
   const isIntl = profile === "workbuddy-ai";
@@ -13266,6 +13289,8 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
                 const uid = String(account.uid || account.id || account.accountId || index);
                 const nickname = String(account.nickname || account.name || account.email || uid);
                 const isCurrent = uid === String(current.uid || "");
+                const usage = workBuddyAccountUsage(account);
+                const used = usage.total > 0;
                 return (
                   <div className="workbuddy-row" key={uid}>
                     {transferMode === "export" ? (
@@ -13284,8 +13309,14 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
                       <strong>
                         {nickname}
                         {isCurrent ? <em className="workbuddy-badge">{t("当前")}</em> : null}
+                        {used ? <em className="workbuddy-badge is-usage">{tf("用过 {0} 次", [String(usage.total)])}</em> : null}
                       </strong>
                       <small className="workbuddy-mono">{uid}</small>
+                      <small className={used ? "workbuddy-usage" : "workbuddy-usage is-idle"}>
+                        {used
+                          ? tf("今日切换 {0} 次 · 最后使用 {1}", [String(usage.today), workBuddyFormatLastUsed(usage.lastAt)])
+                          : t("尚未切换使用过")}
+                      </small>
                     </div>
                     <Button
                       disabled={busy || isCurrent}

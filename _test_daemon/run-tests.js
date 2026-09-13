@@ -491,6 +491,83 @@ function extractRustFn(src, name) {
     new RegExp("const DAEMON_BUILD_ID = 'release-" + UNIFIED_VERSION.replace(/\./g, '\\.') + "-").test(daemonSrc),
     'buildId 前缀已对齐');
 
+  // ── T15 账号使用次数统计（「哪个账号被用过、切换了几次」）──
+  // 需求：「如果我今天哪一个被切换了几个，做个记数，我就知道哪个帐号是被用过了」。
+  // 注意：这里**不做**真实的 /api/switch 端到端调用 —— switchTo 会写客户端**真实**的
+  // 登录文件（隔离实例只隔离数据目录，不隔离 auth 目录），会把用户当前登录顶掉。
+  // 因此覆盖方式：① 存储模块直接单测；② daemon 源码级接线断言；③ 只读的 /api/accounts 断言。
+  section('T15 账号使用次数统计');
+  const { createAccountUsageStore } = require(path.join(RUNTIME, 'account-usage.js'));
+  const usageDir = path.join(TMP, 'usage-test');
+  try { fs.rmSync(usageDir, { recursive: true, force: true }); } catch (_) {
+    try { fs.writeFileSync(path.join(usageDir, 'account-usage.json'), ''); } catch (_) {}
+  }
+  const usageStore = createAccountUsageStore(usageDir);
+  const D1 = '2026-09-13';
+  const D2 = '2026-09-14';
+
+  let ur = usageStore.noteActive('99001777', { day: D1 });
+  rec('T15 首次观察活跃账号即计 1 次', ur && ur.total === 1 && ur.today === 1, JSON.stringify(ur));
+  ur = usageStore.noteActive('99001777', { day: D1 });
+  rec('T15b 同一账号重复上报不重复计数（去重，防轮询/重启虚增）', ur.total === 1 && ur.today === 1, JSON.stringify(ur));
+  ur = usageStore.noteActive('88008800', { day: D1 });
+  rec('T15c 切到另一个账号各自计数', ur.total === 1 && ur.today === 1, JSON.stringify(ur));
+  ur = usageStore.noteActive('99001777', { day: D1 });
+  rec('T15d A→B→A 回切 A 再 +1（today=2）', ur.total === 2 && ur.today === 2, JSON.stringify(ur));
+  ur = usageStore.noteActive('99001777', { day: D2 });
+  rec('T15e 同一账号跨天未切换 → 不计数（只统计「切换」）', ur.total === 2 && ur.today === 0, JSON.stringify(ur));
+  ur = usageStore.noteActive('88008800', { day: D2 });
+  rec('T15f 新一天真实切换 → 该账号 today 从 1 重新起算、total 累加', ur.total === 2 && ur.today === 1, JSON.stringify(ur));
+  const usageAll = usageStore.all(D1);
+  const usageAll2 = usageStore.all(D2);
+  // 只保留「当天」计数（不存历史日历）：账号的存储日一旦推进到 D2，
+  // 它在 D1 视图里的 today 自然为 0。A 的存储日仍是 D1，故 D1 视图保留 2。
+  rec('T15g all(day) 的 today 只反映该日切换次数（跨天后旧日视图归 0）',
+    usageAll['99001777'].today === 2 && usageAll['88008800'].today === 0
+      && usageAll2['99001777'].today === 0 && usageAll2['88008800'].today === 1,
+    'd1=' + JSON.stringify(usageAll) + ' d2=' + JSON.stringify(usageAll2));
+  rec('T15h 非法 uid 不计数（拒绝路径穿越等）',
+    usageStore.noteActive('') === null && usageStore.noteActive('../evil') === null, 'null');
+  rec('T15i 统计落盘为合法 JSON 且带 lastActiveUid',
+    (() => {
+      try {
+        const raw = JSON.parse(fs.readFileSync(path.join(usageDir, 'account-usage.json'), 'utf8'));
+        return raw.lastActiveUid === '88008800' && !!raw.accounts['99001777'];
+      } catch (_) { return false; }
+    })(), 'account-usage.json');
+  rec('T15j 文件损坏时退化为空统计、不抛错（不影响切换主流程）',
+    (() => {
+      try { fs.writeFileSync(path.join(usageDir, 'account-usage.json'), '{ 坏文件'); } catch (_) {}
+      return usageStore.get('99001777').total === 0 && usageStore.all()['99001777'] === undefined;
+    })(), 'graceful');
+
+  // daemon 接线：两个切换入口都要记账
+  rec('T15k daemon 引入并实例化 accountUsageStore',
+    /require\('\.\/account-usage\.js'\)/.test(daemonSrc) && /const accountUsageStore = createAccountUsageStore\(DATA_DIR\)/.test(daemonSrc),
+    'account-usage.js 已接入');
+  rec('T15l /api/switch 切换成功后记账',
+    /const acct = switchTo\(DATA_DIR, uid, log\);[\s\S]{0,400}?noteAccountUsage\(acct\.uid\)/.test(daemonSrc),
+    '显式切换已记账');
+  const fnAutoSwitch = extractFn(daemonSrc, 'automationSwitchAccount');
+  rec('T15m 自动化切换账号也记账',
+    !!fnAutoSwitch && /switchTo\(DATA_DIR, uid, log\);[\s\S]{0,200}?noteAccountUsage\(acct\.uid\)/.test(fnAutoSwitch),
+    fnAutoSwitch ? 'len=' + fnAutoSwitch.length : '未提取到 automationSwitchAccount');
+  rec('T15n /api/accounts 顺带观察活跃账号（客户端里直接换号也能记上）',
+    /const activeAccount = currentAccount\(\);[\s\S]{0,200}?noteAccountUsage\(activeAccount\.uid\)/.test(daemonSrc),
+    '观察点已加');
+  rec('T15o /api/accounts 每个账号返回 usage 字段',
+    /usage: usageByUid\[a\.uid\] \|\| emptyUsage/.test(daemonSrc), 'usage 已随账号下发');
+
+  // 只读接口断言：真实隔离 daemon 返回的账号对象必须带 usage
+  const accRes = await api('/api/accounts');
+  const accList = Array.isArray(accRes.body && accRes.body.accounts) ? accRes.body.accounts : [];
+  rec('T15p /api/accounts 每个账号都带合法 usage 结构',
+    accRes.status === 200 && accList.length > 0 && accList.every((a) =>
+      a.usage && typeof a.usage === 'object'
+      && Number.isFinite(Number(a.usage.total)) && Number.isFinite(Number(a.usage.today))
+      && typeof a.usage.lastAt === 'string'),
+    'accounts=' + accList.length + ', sample=' + JSON.stringify(accList[0] && accList[0].usage));
+
   // ── T7 回归 ──
   section('T7 回归');
   const sess = await api('/api/sessions');

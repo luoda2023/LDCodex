@@ -13,14 +13,50 @@
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **79 / 79 全部通过** ✅ |
+| 功能接口测试（`run-tests.js`） | **95 / 95 全部通过** ✅ |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
 | Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
 | 真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
+| i18n 词典校验（`tools/i18n-verify.mjs`） | 与基线持平（未新增缺失词条）✅ |
 
-## 一之零、88.8.1 版本号统一
+## 一之零A、88.8.1 新增：账号使用次数统计（「哪个账号被用过」）
+
+### 需求（用户原话）
+
+> 如果我今天哪一个被切换了几个，做个记数，我就知道哪个帐号是被用过了。
+
+### 实现
+
+新增运行时模块 `apps/codex-plus-manager/src-tauri/workbuddy-runtime/account-usage.js`，在 profile 数据目录下维护 `account-usage.json`：
+
+```json
+{ "version": 1, "lastActiveUid": "99001777",
+  "accounts": { "99001777": { "total": 12, "today": 3, "day": "2026-09-13",
+                              "firstAt": "…", "lastAt": "…" } } }
+```
+
+- **计数入口只有一个** `noteActive(uid)`，内部按 `lastActiveUid` 去重 —— 这解决三个问题：
+  1. 显式切换（管理器点「切换」）与「观察到活跃账号变化」两条路径不会对同一次切换**重复计数**；
+  2. 重启管理器/daemon 后当前账号没变 → **不会平白 +1**；
+  3. 用户 A→B→A 来回切 → A **每次都算**（确实切过）。
+- **只统计「切换」**：同一账号保持活跃、跨天未切换时 `today` 仍为 0，不虚增。
+- **记账点**：`/api/switch` 成功后、`automationSwitchAccount` 成功后，各调一次 `noteAccountUsage`；`/api/accounts` 顺带观察一次活跃账号（客户端里直接换号登录也能被记上）。
+- **不下发新接口**：`usage` 随 `/api/accounts` 的每个账号对象一起返回，前端零额外请求。
+- **不随账号导出/导入迁移**：使用历史属于「这台机器上的使用记录」，导出账号时不带走。
+
+前端账号行新增：昵称后 `用过 N 次` 徽标 + 第三行 `今日切换 N 次 · 最后使用 MM-DD HH:mm`；从未切换过的账号显示 `尚未切换使用过`（弱化色）。
+
+### 测试方式（重要取舍）
+
+⚠️ **不做真实的 `/api/switch` 端到端调用** —— `switchTo()` 会写客户端**真实**的登录文件（隔离实例只隔离数据目录，**不隔离 auth 目录**），真调会把用户当前登录顶掉。因此覆盖方式改为三层：
+
+1. **存储模块直接单测**（T15 ~ T15j，10 项）：首次计数、去重、A→B→A 回切、跨天不虚增、新一天真实切换重算、`all(day)` 视图、非法 uid 拒绝、落盘 JSON、损坏文件优雅退化；
+2. **daemon 源码级接线断言**（T15k ~ T15o，5 项）：模块已接入、两个切换入口都记账、`/api/accounts` 观察点存在、`usage` 随账号下发；
+3. **只读接口断言**（T15p）：真实隔离 daemon 返回的每个账号都带合法 `usage` 结构。
+
+## 一之零B、88.8.1 版本号统一
 
 ### 需求（用户原话）
 
@@ -537,5 +573,6 @@ cd D:/LUODA/LDcodex/apps/codex-plus-manager && node node_modules/typescript/bin/
 - **daemon 单实例锁存在主/备双锁竞态**（本次实测到同 profile 同时跑了两个 daemon：pid 7872 与 pid 10720）。`acquireDaemonLock()` 的候选是 `[主锁, 备锁]`，两个进程可能各持一个都认为自己独占。未修：改动锁逻辑一旦出错会让 daemon 起不来，需单独设计后验证。
 - **daemon 会继承客户端注入的 `NODE_OPTIONS`**（实测：`--require .../WorkBuddyAI/resources/app.asar.unpacked/cli/vendor/shim/node-language-shim.cjs`）。该 shim 代理 fs 操作，会把部分操作拦成 `EPERM`（如 `mkdir .../automation-agent/inbox`、`watch .../CodeBuddyExtension/.../auth`）。1.2.9 的抗崩溃加固已让 daemon 不再因此退出；彻底规避可在 `spawn_daemon` 里 `env_remove("NODE_OPTIONS")`。
 - **前端 i18n 技术债**：`tools/i18n-verify.mjs` 目前仍报 `plain` 143 MISSING / 156 STALE、`template` 27 MISSING / 24 STALE。成因是「模板键被放进 `EN_PLAIN`」与「字典条目无人引用」两类，属**既有**问题（本轮只归位了账号导出/导入这一区块的 5 条）。建议后续单独跑一轮 `tools/wb-i18n-fill.mjs` + `tools/i18n-codemod.mjs` 统一清理。
-- **安装包需重新构建才能生效**：当前已安装版本是 **1.2.8**，而源码里的版本号已统一为 **88.8.1**。1.2.9 / 1.2.10 / 1.2.11 / 1.2.12 的全部改动（CDP 隔离、弹窗自动点允许修复、上弹面板行内新增常用语、短语随账号同步、任务栏幽灵图标修复）都在源码里，需要 `npm run build` 重新出包并安装后才会生效（出包后文件名形如 `LDCodex_88.8.1_x64-setup.exe`）。安装包还需带上 `windows/hooks.nsh`（安装时自动结束占用进程）。
+- **安装包需重新构建才能生效**：当前已安装版本是 **1.2.8**，而源码里的版本号已统一为 **88.8.1**。1.2.9 / 1.2.10 / 1.2.11 / 1.2.12 的全部改动（CDP 隔离、弹窗自动点允许修复、上弹面板行内新增常用语、短语随账号同步、任务栏幽灵图标修复）**加上 88.8.1 新增的账号使用次数统计**都在源码里，需要 `npm run build` 重新出包并安装后才会生效（出包后文件名形如 `LDCodex_88.8.1_x64-setup.exe`）。安装包还需带上 `windows/hooks.nsh`（安装时自动结束占用进程）。
+- **账号使用次数的两点边界**（有意为之，非缺陷）：① 只保留**当天**计数，不存历史日历 —— 跨天后 `today` 归 0，但 `total` 永久累加；② 使用历史**不随账号导出/导入迁移**，换台机器从 0 开始（它是「本机使用记录」，不是账号属性）。
 - **任务栏图标若仍复现**：在出现图标的现场运行 `_test_daemon/diagnose-taskbar.js`，把 `taskbar-diagnose-report.txt` 发回。报告「一」里若出现同一 `WorkBuddyAI.exe` PID 的**多个** no-owner 可见窗口，说明还有别的路径在显示隐藏窗口；若只有一个窗口但任务栏仍有两个图标，则是任务栏身份问题（可试 `LDCODEX_REBRAND_TASKBAR=1` 反向确认）。

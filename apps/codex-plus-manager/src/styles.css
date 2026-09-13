@@ -9031,6 +9031,22 @@ select {
   color: hsl(var(--status-success, 142 71% 45%));
 }
 
+/* 账号「用过 N 次」徽标：比「当前」更弱一档，方便扫视哪些账号被用过 */
+.workbuddy-badge.is-usage {
+  border-color: hsl(var(--primary) / 0.35);
+  color: hsl(var(--primary));
+}
+
+/* 账号使用次数行：今日切换 N 次 · 最后使用 … */
+.workbuddy-usage {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+.workbuddy-usage.is-idle {
+  opacity: 0.7;
+}
+
 .workbuddy-empty {
   display: grid;
   justify-items: center;

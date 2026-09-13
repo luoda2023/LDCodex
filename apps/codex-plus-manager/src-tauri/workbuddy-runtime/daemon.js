@@ -181,9 +181,25 @@ const { exportTasks, previewImport, importTasks, readTransferBody } = require('.
 const { createAutomationNotifier } = require('./toast-options.js');
 const { runCompletionReport, probeAccountCompletion } = require('./completion-report.js');
 const { createPrimaryAccountStore } = require('./primary-account.js');
+const { createAccountUsageStore } = require('./account-usage.js');
 const PROFILE = getProfile();
 const DATA_DIR = defaultDataDir();
 const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.existsSync(accountBackupFile(uid)));
+// 账号使用次数统计（本机历史，供账号列表展示「用过几次」）
+const accountUsageStore = createAccountUsageStore(DATA_DIR);
+
+// 记录一次账号使用。切换成功后调用；任何异常只记日志，绝不影响切换主流程。
+// noteActive 内部按「活跃账号是否变化」去重，重复上报（含重启后账号未变）不会多计。
+function noteAccountUsage(uid) {
+  try {
+    const usage = accountUsageStore.noteActive(uid);
+    if (usage) log(`[account-usage] ${uid} 累计使用 ${usage.total} 次（今日 ${usage.today} 次）`);
+    return usage;
+  } catch (error) {
+    log(`[account-usage] 记录 ${uid} 使用次数失败: ${error.message}`);
+    return null;
+  }
+}
 // 版本号：改动 daemon/inject/theme-patches/builtin 资产后递增，launcher 检测到运行中版本不一致会强制用 app 内置代码重启
 // 0.6.6：品牌 LDLegacy→LDCodex 期间版本号未递增，旧 LDLegacy daemon 会被 launcher 误判为"同版本"而不重启，导致旧代码继续注入；递增后强制升级
 // 0.6.7：新增「关于」tab（/api/about + __WBS_VERSION__ 注入）；必须递增，否则旧 daemon 不重启、面板看不到关于页
@@ -365,8 +381,10 @@ const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.exis
 //         src-tauri/tauri.conf.json、src-tauri/workbuddy-runtime/package.json 保持一致。
 //         本版同时包含此前已开发但尚未随安装包发布的 1.2.9–1.2.12 全部修复（CDP 双开隔离、
 //         弹窗自动点允许、上弹面板行内新增常用语 + 短语随账号同步、任务栏幽灵图标）。
+//         新增「账号使用次数」统计（account-usage.js）：每个账号被切换/使用过几次，
+//         账号列表直接显示「用过 N 次 · 今日切换 N 次 · 最后使用 …」，一眼看出哪些账号用过。
 const DAEMON_VERSION = '88.8.1';
-const DAEMON_BUILD_ID = 'release-88.8.1-20260913-unified-version-and-no-phantom-taskbar-icon';
+const DAEMON_BUILD_ID = 'release-88.8.1-20260913-unified-version-taskbar-and-account-usage';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）
@@ -3114,6 +3132,7 @@ function automationSwitchAccount(account) {
     const releaseRendererReload = beginRendererReloadPriority();
     try {
       const acct = switchTo(DATA_DIR, uid, log);
+      noteAccountUsage(acct.uid);
       pendingAutomationAccountSwitch = { account: { uid: acct.uid, nickname: acct.nickname } };
       await reloadWorkBuddyPage();
       if (pendingAutomationAccountSwitch) {
@@ -8124,6 +8143,12 @@ function handleApi(req, res) {
     const accounts = listAccounts(DATA_DIR);
     const cache = loadCheckinCache();
     const today = todayStr();
+    // 顺带观察一次活跃账号：用户在客户端里直接换号登录也能被记进使用次数。
+    // noteActive 内部按「活跃账号是否变化」去重，面板反复轮询不会重复计数。
+    const activeAccount = currentAccount();
+    if (activeAccount && activeAccount.uid) noteAccountUsage(activeAccount.uid);
+    const usageByUid = accountUsageStore.all(today);
+    const emptyUsage = { total: 0, today: 0, day: '', firstAt: '', lastAt: '' };
     return CREDIT_USAGE_STORE.listDailyCheckins(accounts.map((a) => a.uid), today)
       .catch((error) => {
         log('[checkin] 读取 SQLite 标记失败: ' + error.message);
@@ -8138,6 +8163,7 @@ function handleApi(req, res) {
           return Object.assign({}, a, {
             checkin: checkinDisplayValue(checked, today),
             activityStreak: growthStreakCache.peek(a.uid),
+            usage: usageByUid[a.uid] || emptyUsage,
           });
         });
         return listDailyUsage(enriched, today)
@@ -8145,11 +8171,11 @@ function handleApi(req, res) {
             const withUsage = enriched.map((account) => summaries[account.uid]
               ? Object.assign({}, account, { todayUsage: summaries[account.uid] })
               : account);
-            return json(res, 200, { ok: true, current: currentAccount(), primaryUid: primaryAccountStore.get(), accounts: withUsage });
+            return json(res, 200, { ok: true, current: activeAccount, primaryUid: primaryAccountStore.get(), accounts: withUsage });
           })
           .catch((error) => {
             log('[credits-usage] 读取本地今日用量失败: ' + error.message);
-            return json(res, 200, { ok: true, current: currentAccount(), primaryUid: primaryAccountStore.get(), accounts: enriched });
+            return json(res, 200, { ok: true, current: activeAccount, primaryUid: primaryAccountStore.get(), accounts: enriched });
           });
       });
   }
@@ -9578,6 +9604,8 @@ function handleApi(req, res) {
         // 不在这里预规划，否则大量会话的同步 SQLite/文件扫描会让切换界面长时间无响应。
         const sourceUid = String((currentAccount() || {}).uid || '').trim();
         const acct = switchTo(DATA_DIR, uid, log);
+        // 切换成功后记一次使用次数（供账号列表展示「用过几次」；失败不影响切换）
+        noteAccountUsage(acct.uid);
         const hint = '登录文件已切换，请重启 WorkBuddy 使新账号生效';
         let reloaded = false;
         if (body.reload) {
