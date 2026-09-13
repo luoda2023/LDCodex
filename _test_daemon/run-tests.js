@@ -568,6 +568,62 @@ function extractRustFn(src, name) {
       && typeof a.usage.lastAt === 'string'),
     'accounts=' + accList.length + ', sample=' + JSON.stringify(accList[0] && accList[0].usage));
 
+  // ── T16 插件（inject.js）账号使用次数徽标 ──
+  section('T16 插件侧账号使用次数（inject.js）');
+  rec('T16a 定义了 accountUsageBadgeHtml',
+    /function accountUsageBadgeHtml\(a\)/.test(injectSrc), '函数已定义');
+  rec('T16b 账号卡片拼接包含 usageBadge（紧跟签到徽标之后）',
+    /\+ primaryBadge \+ badge \+ checkinBadge \+ usageBadge \+/.test(injectSrc)
+      && /var usageBadge = accountUsageBadgeHtml\(a\);/.test(injectSrc),
+    '卡片已接入徽标');
+  const fnLayoutKey = extractFn(injectSrc, 'accountCardLayoutKey');
+  rec('T16c 布局指纹纳入 usage.total / usage.today（否则次数变化不重建卡片）',
+    !!fnLayoutKey && /a\.usage && a\.usage\.total\) \|\| 0/.test(fnLayoutKey) && /a\.usage && a\.usage\.today\) \|\| 0/.test(fnLayoutKey),
+    fnLayoutKey ? 'len=' + fnLayoutKey.length : '未提取到');
+  rec('T16d 徽标样式已定义（ok / pending / 暗色）',
+    /\.wbs-usage-count\.ok\{/.test(injectSrc) && /\.wbs-usage-count\.pending\{/.test(injectSrc)
+      && /data-theme="dark"\] \.wbs-usage-count\.ok/.test(injectSrc),
+    '样式已加');
+  rec('T16e 英文词条齐全（含命名占位符）',
+    /'用过 \{n\} 次 · 今日 \{m\} 次': 'Used \{n\}× · \{m\} today'/.test(injectSrc)
+      && /'尚未用过': 'Never used'/.test(injectSrc)
+      && /'尚未切换使用过': 'Never switched'/.test(injectSrc)
+      && /'最后使用 \{t\}': 'Last used \{t\}'/.test(injectSrc)
+      && /'切换使用次数': 'Switch count'/.test(injectSrc),
+    '5 条词条已加');
+
+  // 功能级：把 accountUsageBadgeHtml 抽出来在 stub 环境里真跑一遍
+  const fnUsage = extractFn(injectSrc, 'accountUsageBadgeHtml');
+  let renderUsage = null;
+  if (fnUsage) {
+    const stubFmt = (ts) => {
+      const d = new Date(ts);
+      const p = (n) => String(n).padStart(2, '0');
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    };
+    const stubEscAttr = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    try {
+      renderUsage = new Function('fmtDateTime', 'escAttr', fnUsage + '\nreturn accountUsageBadgeHtml;')(stubFmt, stubEscAttr);
+    } catch (e) { renderUsage = null; }
+  }
+  const htmlUsed = renderUsage ? renderUsage({ usage: { total: 3, today: 1, lastAt: '2026-09-13T05:20:00.000Z' } }) : '';
+  rec('T16f 用过 N 次 → 输出「用过 3 次 · 今日 1 次」+ ok 态 + 最后使用时间',
+    !!htmlUsed && htmlUsed.indexOf('用过 3 次 · 今日 1 次') >= 0
+      && /class="wbs-ck wbs-checkin-tag wbs-usage-count ok"/.test(htmlUsed)
+      && /title="最后使用 \d{4}-\d{2}-\d{2} \d{2}:\d{2}"/.test(htmlUsed),
+    htmlUsed || '未提取到函数');
+  const htmlIdle = renderUsage ? renderUsage({ usage: { total: 0, today: 0, lastAt: '' } }) : '';
+  rec('T16g 从未切换过 → 输出「尚未用过」+ pending 态',
+    !!htmlIdle && htmlIdle.indexOf('尚未用过') >= 0
+      && /wbs-usage-count pending/.test(htmlIdle)
+      && /title="尚未切换使用过"/.test(htmlIdle),
+    htmlIdle || '未提取到函数');
+  let htmlNull = '';
+  try { htmlNull = renderUsage ? renderUsage(null) : ''; } catch (e) { htmlNull = 'THREW:' + e.message; }
+  rec('T16h 账号无 usage 字段 / 传 null → 退化为「尚未用过」，不抛错',
+    htmlNull.indexOf('尚未用过') >= 0 && htmlNull.indexOf('THREW') < 0,
+    htmlNull || '未提取到函数');
+
   // ── T7 回归 ──
   section('T7 回归');
   const sess = await api('/api/sessions');

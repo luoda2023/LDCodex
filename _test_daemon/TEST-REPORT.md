@@ -1,9 +1,10 @@
 # LDCodex daemon 88.8.1 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（**88.8.1 版本号统一后全量复跑**）
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；**17:05（88.8.1 账号使用次数统计 + 插件侧徽标全量复跑，103 项）**
 - **被测代码**：
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.1**）
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（1.2.11：上弹面板行内新增常用语；含 1.2.10 的扣费取样范围修复）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/account-usage.js`（**88.8.1：账号使用次数统计**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**88.8.1：账号卡片「用过 N 次 · 今日 N 次」徽标**；1.2.11 上弹面板行内新增常用语；1.2.10 扣费取样范围修复）
   - `crates/codex-plus-core/src/windows_integration.rs`（**1.2.12：窗口激活不再制造幽灵窗口 + 任务栏身份改写默认关闭**）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/automation.js`（抗崩溃加固）
   - `apps/codex-plus-manager/src-tauri/src/workbuddy.rs`（「重启并启用」真正结束旧客户端）
@@ -13,7 +14,7 @@
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **95 / 95 全部通过** ✅ |
+| 功能接口测试（`run-tests.js`） | **103 / 103 全部通过** ✅ |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
 | Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
@@ -48,6 +49,18 @@
 
 前端账号行新增：昵称后 `用过 N 次` 徽标 + 第三行 `今日切换 N 次 · 最后使用 MM-DD HH:mm`；从未切换过的账号显示 `尚未切换使用过`（弱化色）。
 
+### 插件侧（注入面板）同步
+
+> 用户原话：插件里面和这个软件里面都要加入这个切换次数的记录。
+
+`inject.js` 的账号卡片（`.wbs-name-group`）里，紧跟签到徽标之后加了一个使用次数徽标：
+
+- 用过 → `用过 N 次 · 今日 M 次`（蓝底 `ok` 态，与绿色签到徽标区分；数字用 `tabular-nums` 防跳动），鼠标悬停显示 `最后使用 YYYY-MM-DD HH:mm`；
+- 从未切换过 → `尚未用过`（虚线灰底 `pending` 态）；
+- **布局指纹必须带上 usage**：`accountCardLayoutKey()` 原本只取 uid/昵称/手机/uin/type/企业名/有效期/过期态，不加 usage 的话「次数变了但指纹没变」→ 卡片不重建 → 徽标停在旧值。这是本次最容易漏的一处。
+- 数据来源零新增接口：`usage` 随 `/api/accounts` 下发，`mergeAccountSnapshot` 的 `Object.assign({}, account)` 原样透传。
+- 英文词条 5 条（含命名占位符）：`用过 {n} 次 · 今日 {m} 次` / `尚未用过` / `尚未切换使用过` / `最后使用 {t}` / `切换使用次数`。
+
 ### 测试方式（重要取舍）
 
 ⚠️ **不做真实的 `/api/switch` 端到端调用** —— `switchTo()` 会写客户端**真实**的登录文件（隔离实例只隔离数据目录，**不隔离 auth 目录**），真调会把用户当前登录顶掉。因此覆盖方式改为三层：
@@ -55,6 +68,8 @@
 1. **存储模块直接单测**（T15 ~ T15j，10 项）：首次计数、去重、A→B→A 回切、跨天不虚增、新一天真实切换重算、`all(day)` 视图、非法 uid 拒绝、落盘 JSON、损坏文件优雅退化；
 2. **daemon 源码级接线断言**（T15k ~ T15o，5 项）：模块已接入、两个切换入口都记账、`/api/accounts` 观察点存在、`usage` 随账号下发；
 3. **只读接口断言**（T15p）：真实隔离 daemon 返回的每个账号都带合法 `usage` 结构。
+
+插件侧另有 **T16 系列 8 项**：函数已定义、卡片已接入、布局指纹纳入 usage、样式齐备、英文词条齐备（前 5 项为源码级断言）；后 3 项（T16f ~ T16h）把 `accountUsageBadgeHtml` 抽出来在 stub 环境里**真跑一遍**，覆盖「用过 / 从未用过 / 传 null」三种输入，验证输出的 HTML、态与悬停文案都正确且不抛错。
 
 ## 一之零B、88.8.1 版本号统一
 

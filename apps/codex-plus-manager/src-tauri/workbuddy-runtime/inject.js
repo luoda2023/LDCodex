@@ -874,6 +874,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '正在发起授权…': 'Starting authorization…', '再想想': 'Not now',
     '如果未完成，继续执行；已完成则回复"已完成"': 'If unfinished, continue; if finished, reply “Finished”.',
     '暂无可用积分': 'No credits available', '今日已使用': 'Used today', '不限量': 'Unlimited',
+    '用过 {n} 次 · 今日 {m} 次': 'Used {n}× · {m} today', '尚未用过': 'Never used', '尚未切换使用过': 'Never switched', '最后使用 {t}': 'Last used {t}', '切换使用次数': 'Switch count',
     '正在': '', '安装包': 'installer package', '归档': 'archive', '重复': 'duplicate', '选择': 'selection', '读取': 'read', '尚未': 'not yet',
     '已就绪': 'ready', '完整性': 'integrity', '落盘': 'write to disk', '校验安装包…': 'Verifying installer package…', '正在下载安装包…': 'Downloading installer package…',
     '下载安装包失败': 'Downloading the installer package failed', '安装包校验失败，已删除损坏包': 'Installer package verification failed; the damaged package was deleted',
@@ -10524,6 +10525,20 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       return tags ? '<span class="wbs-account-tags">' + tags + '</span>' : '';
     }
 
+    // 账号使用次数（与管理器同源）：daemon 的 /api/accounts 为每个账号下发 usage{total,today,lastAt}。
+    // 只统计「切换」：同一账号连续使用不重复计数；跨天未切换则今日次数为 0。
+    function accountUsageBadgeHtml(a) {
+      var usage = a && a.usage;
+      var total = Math.max(0, Number(usage && usage.total) || 0);
+      var today = Math.max(0, Number(usage && usage.today) || 0);
+      if (total <= 0) {
+        return '<span class="wbs-ck wbs-checkin-tag wbs-usage-count pending" title="尚未切换使用过">尚未用过</span>';
+      }
+      var lastAt = usage && usage.lastAt ? new Date(usage.lastAt).getTime() : NaN;
+      var title = isFinite(lastAt) && lastAt > 0 ? ('最后使用 ' + fmtDateTime(lastAt)) : '切换使用次数';
+      return '<span class="wbs-ck wbs-checkin-tag wbs-usage-count ok" title="' + escAttr(title) + '">用过 ' + total + ' 次 · 今日 ' + today + ' 次</span>';
+    }
+
     function checkinBadgeHtml(a) {
       var tag = checkinHtml(a) + activityStreakHtml(a);
       return tag ? '<span class="wbs-checkin-slot">' + tag + '</span>' : '';
@@ -10612,8 +10627,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
     function accountCardLayoutKey() {
       // 积分/签到刷新不应重建切换按钮，保留焦点和两击确认状态。
+      // 使用次数（usage）必须进指纹：否则切换后次数变化不会触发卡片重建，徽标会停留在旧值。
       var rows = state.accounts.map(function (a) {
-        return [a.uid, a.nickname, a.phone, a.uin, a.type, a.enterpriseName, a.tokenExpiresAt, isIdentityExpired(a)];
+        return [a.uid, a.nickname, a.phone, a.uin, a.type, a.enterpriseName, a.tokenExpiresAt, isIdentityExpired(a), (a.usage && a.usage.total) || 0, (a.usage && a.usage.today) || 0];
       }).sort(function (a, b) { return String(a[0]).localeCompare(String(b[0])); });
       return JSON.stringify([state.current && state.current.uid, state.primaryUid, rows]);
     }
@@ -10691,6 +10707,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         var primaryBadge = isPrimary ? '<span class="wbs-primary-mark" role="img" aria-label="主账号" title="主账号">' + PRIMARY_ACCOUNT_SVG + '</span>' : '';
         var primaryAction = '<button class="wbs-icon-btn wbs-set-primary" type="button" data-primary-uid="' + escAttr(a.uid) + '" title="设为主账号" aria-label="设为主账号"' + (isPrimary ? ' hidden' : '') + '>' + PRIMARY_ACCOUNT_SVG + '</button>';
         var checkinBadge = checkinBadgeHtml(a);
+        var usageBadge = accountUsageBadgeHtml(a);
         // 当前登录账号隐藏操作；认证已过期的账号保留删除，但隐藏切换，避免进入登录页。
         var expired = isIdentityExpired(a);
         var ops = primaryAction + (isCur
@@ -10708,7 +10725,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         var idVal = state.mask ? maskAccountId(rawId) : rawId;
         card.innerHTML =
           '<div class="wbs-info">' +
-          '<div class="wbs-row1"><div class="wbs-name-group"><span class="wbs-name">' + esc(nameVal) + '</span>' + primaryBadge + badge + checkinBadge + '</div>' + ops + '</div>' +
+          '<div class="wbs-row1"><div class="wbs-name-group"><span class="wbs-name">' + esc(nameVal) + '</span>' + primaryBadge + badge + checkinBadge + usageBadge + '</div>' + ops + '</div>' +
           '<div class="wbs-meta wbs-secondary-row">' +
           '<div class="wbs-mi wbs-phone-cell' + (isUinMode ? ' wbs-uin-cell' : '') + '"><span class="wbs-lbl">' + idLbl + '</span><span class="wbs-val">' + esc(idVal) + '</span></div>' +
           '<div class="wbs-mi wbs-token-cell"><span class="wbs-lbl">有效期至</span><span class="wbs-val' + (ts.warn ? ' wbs-warn' : '') + '">' + esc(ts.label) + '</span></div>' +
@@ -11540,6 +11557,11 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '.wbs-checkin-tag.ok{background:#edf9ef;border:1px solid #b9e8c0;color:#28753a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}',
     'html.cb-dark .wbs-checkin-tag.ok,html[data-theme="dark"] .wbs-checkin-tag.ok{background:rgba(19,24,33,.78);border-color:rgba(214,220,232,.24);color:#f3f5fa;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}',
     '.wbs-checkin-tag.fail{background:rgba(239,68,68,.1);color:#dc2626}',
+    /* 账号使用次数徽标：与签到徽标同尺寸同圆角，改用蓝色调区分（避免与绿色签到混淆） */
+    '.wbs-usage-count{font-variant-numeric:tabular-nums}',
+    '.wbs-usage-count.ok{background:#eef3ff;border:1px solid #c7d7f5;color:#2b56a8}',
+    'html.cb-dark .wbs-usage-count.ok,html[data-theme="dark"] .wbs-usage-count.ok{background:rgba(30,41,59,.78);border-color:rgba(120,150,210,.34);color:#dbe6fb}',
+    '.wbs-usage-count.pending{background:var(--wb-bg-tertiary,#f0f0f0);border:1px dashed var(--wb-border-secondary,#e5e6eb);color:var(--wb-icon-tertiary,#999)}',
     '.wbs-ck.ok{color:var(--wb-color-text-primary,#1f1f1f)}',
     '.wbs-ck.pending{color:var(--wb-icon-tertiary,#999)}',
     '.wbs-ck.fail{color:#f53f3f}',
