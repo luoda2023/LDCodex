@@ -295,6 +295,38 @@ Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
 > 选「请勿卸载」时会留在原地（覆盖安装不会清理孤儿文件）。
 > 想要完全干净的目录，就走上面的「先卸载再装」。
 
+#### ⑦ 怎么确认「你手上的安装包」确实是新构建的（**别用哈希**）
+
+**先说结论：文件哈希比对不能用来判断安装包新旧。** 这一条是被误导过之后实测出来的。
+
+- **makensis 是确定性的** —— 同一份 `installer.nsi` 连续编译两次，产物 sha256 **完全相同**；
+  换 Tauri 用的 `-V3` 再编一次，也和 `-V2` 的产物**一模一样**
+  （`tauri-bundler-2.9.4/src/bundle/windows/nsis/mod.rs:695-700` 按日志级别选 `-V1`..`-V4`，
+  只影响控制台输出，**不影响产物字节**）。
+- **但重新编译的产物仍会和出包产物不同**（实测差 669 字节），原因不是「时间戳」，
+  而是 **`npm run build` 打完包之后 cargo 又重链接了一次 `target/release/LDCodexManager.exe`**
+  （实测 exe mtime `19:12:54` **晚于**安装包 `19:12:50`；全盘只有这一份 exe，且与
+  `target/release/deps/LDCodexManager.exe` 是同一 inode 的硬链接）。
+  包内嵌的是重链接**前**的 exe，你现在重编用的是重链接**后**的 exe → LZMA 整体重压 → 大小差几百字节。
+  **功能上无影响**：两次都是同一份源码（18:35–19:00，全早于 `installer.nsi` 生成的 19:10:07）编出来的。
+
+**可靠的三层判据**：
+
+| # | 判据 | 命令 / 位置 |
+|---|---|---|
+| 1 | **PE 版本资源**（明文，LZMA 压不到） | `(Get-Item $exe).VersionInfo` → `FileVersion` / `ProductVersion` |
+| 2 | **安装器脚本引用源码绝对路径**，makensis 编译期同步读盘、无缓存 | `target/release/nsis/x64/installer.nsi` 里 `File /a "/oname=…" "D:\LUODA\LDcodex\…"`；再加 `:34 !define VERSION "88.8.3"` |
+| 3 | **直接量构建产物内容** | 管理器：`apps/codex-plus-manager/dist/assets/index-*.css`；插件：`_test_daemon/verify-plugin-layout.mjs`（从 `inject.js` 现抽） |
+
+用判据 2 时，只要「源码 mtime < 产物 mtime」就说明打进去的是当前源码。
+
+> ⚠️ 别用 `grep -c "height:100vh"` 这种粗判据 —— 根容器 `body` / `.shell` 本来就该有，
+> 必须定位到**具体选择器**（`.workspace` 不该有）。
+>
+> ⚠️ 界面那页的版本号是「**旧的**」，不是数字：`installer.nsi:217 StrCpy $R4 "$(older)"`，
+> `SimpChinese.nsh:14 LangString older "旧的"`，所以原文是「系统中已存在版本为 **旧的** 的 LDCodex」。
+> **界面上不会出现「88.8.1」这种数字**，别把注册表里读到的版本号当成界面文案。
+
 ---
 
 ## 附录、88.8.3 这个包里还包含什么（此前已开发但你没装到的）
