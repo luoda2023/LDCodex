@@ -937,6 +937,17 @@ function extractRustFn(src, name) {
   });
   rec('T24g 对已删除卡片元素的每处引用都必须判空（否则关于页会抛 TypeError 白屏）',
     unguarded.length === 0, unguarded.join(', ') || '4 处引用全部判空');
+  // 布局夹具 plugin-panel-harness.html 里也复刻了「关于」页，否则那 12 项实测会量空气。
+  // 而且它必须复刻**删卡之后**的结构 —— 留着旧的两张调试卡，量到的高度就不是用户会看到的。
+  let harnessRaw = '';
+  try { harnessRaw = fs.readFileSync(path.join(TMP, 'plugin-panel-harness.html'), 'utf8'); } catch (_) { harnessRaw = ''; }
+  // ⚠️ 又是同一个坑（第 5 次）：夹具的注释里写了「已删除发送错误诊断卡与会话监听日志卡」
+  // 来说明 why，不剥注释就会被自己的否定断言命中。凡是**否定断言一律先剥注释**。
+  const harnessSrc = harnessRaw.split(/\r?\n/).filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  rec('T24h 布局夹具必须复刻「关于」页且是删卡后的结构（wbs-about-meta，无诊断卡）',
+    /function aboutPane\(\)/.test(harnessSrc) && /wbs-about-meta-row/.test(harnessSrc)
+      && !/发送错误诊断|会话监听日志/.test(harnessSrc),
+    '夹具不复刻关于页 → 12 项布局实测形同虚设；复刻成旧结构 → 量到的高度不是用户看到的');
 
   // ── T20 安装版本核验脚本的不变量（verify-installed-version.mjs）──
   // 用户两次质问「你怎么回事？你没有构建出来新版本吗还是原来的那一版」，

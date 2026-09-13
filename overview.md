@@ -25,7 +25,7 @@
 > `DisplayVersion = 88.8.4`、核验 **7/7 ✅**、测试 **127/127 ✅**。
 
 > 本轮改动：`workbuddy-runtime/account-usage.js`（升 v2：切换流水 + 下次重置；修 `localDay` 格式 bug）｜ `workbuddy-runtime/daemon.js`（新增 `/api/account/usage/summary`）｜ `src/App.tsx`（「下次重置」倒计时卡 + 「最近切换」流水卡）｜ `src/styles.css`（`.fill` 加 `align-self: start`）｜ `src-tauri/src/lib.rs`（托盘悬停提示）｜ `workbuddy-runtime/inject.js`（插件面板布局）｜ `src-tauri/windows/hooks.nsh`（安装器钩子重写）｜ 版本号 6 处来源统一升到 `88.8.5` ｜ `_test_daemon/*`（新增 T22/T23 + 三个布局实测脚本 + `account-usage.test.js`）
-> 测试：**136/136 + account-usage 17/17 + 16/16 + 布局实测 14/14 + 插件面板实测 47/47 + .fill 实测 30/30 + tsc 全绿**
+> 测试：**145/145 + account-usage 16/16 + 16/16 + 布局实测 14/14 + 插件面板实测 60/60（含关于页）+ .fill 实测 30/30 + 前端 159/159 + Rust 70/70 + 2/2 + tsc 全绿**
 
 ## 一句话结论
 
@@ -115,9 +115,19 @@ const usageByUid = accountUsageStore.all(today);   // 内部比 e.day === day
 ⚠️ 删卡后要确认三处都判空：`wireTelemetrySettings()`、`acRenderMonitorLogModal()`、
 隐藏工具入口的 `#wbs-monitor-log-card` —— 它们都是 `querySelector` + 判空，取不到直接 `return`，安全。
 
-守卫：`run-tests.js` T24 系列 6 项。其中 T24b/c 的断言范围**限定在 `buildAboutPane()` 区块内** ——
+守卫：`run-tests.js` T24 系列 8 项。其中 T24b/c 的断言范围**限定在 `buildAboutPane()` 区块内** ——
 `inject.js` 的 i18n 词典里仍保留「发送错误诊断 / 推荐开启」词条（那是英文映射表，不是页面结构），
 全文件搜会一直命中、断言形同虚设。
+
+另外补了两条「防止以后退化」的守卫：
+- **T24g**：删卡后代码里还有 4 处 `querySelector` 去取这些元素，逐条扫描要求都有判空 ——
+  否则谁加一句没判空的 `el.textContent = …`，打开「关于」页就抛 TypeError、整个面板白屏。
+- **T24h**：布局夹具 `plugin-panel-harness.html` 必须复刻「关于」页，且是**删卡后**的结构
+  （有 `wbs-about-meta`、无诊断卡）—— 不复刻那 12 项实测就是量空气。
+
+**实测**：「关于」页已加进插件面板布局实测（无头 Chrome 量真实样式表），
+900 / 760 / 620 / 520 四种窗口高度下**面板顶边不被裁、内容不溢出**（520px 时内容底边 401 vs 面板底边 403），
+**60/60 全部通过**（原 47 项 + 关于页 12 项 + 1 项反向自检）。
 
 ---
 

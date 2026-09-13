@@ -22,7 +22,7 @@
 | account-usage 存储单测（`account-usage.test.js`） | **16 / 16 全部通过** ✅（88.8.5 新增：切换流水 + 「下次生效」24 小时滚动窗口边界） |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | 布局滚动实测（`verify-layout-scroll.mjs`，无头 Chrome 量真实产物） | **14 / 14 全部通过** ✅ |
-| 插件面板布局实测（`verify-plugin-layout.mjs`，账号 / 会话 / 增强 三页签） | **47 / 47 全部通过** ✅ |
+| 插件面板布局实测（`verify-plugin-layout.mjs`，账号 / 会话 / 增强 / 关于 四页签） | **60 / 60 全部通过** ✅（88.8.5 新增「关于」页 12 项 + 1 项反向自检） |
 | 本机安装版本核验（`verify-installed-version.mjs`） | **7 / 7 ✅ 全部通过**（88.8.4 已装上，见「一之零F」） |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
 | 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅（88.8.5 复跑） |
@@ -84,7 +84,7 @@
 ### 结果
 
 `run-tests.js` **144/144**、`account-usage.test.js` **16/16**、no-disturb 16/16、
-布局实测 14/14、插件面板实测 47/47、`.fill` 实测 30/30、`tsc --noEmit` 全绿。
+布局实测 14/14、插件面板实测 60/60、`.fill` 实测 30/30、`tsc --noEmit` 全绿。
 
 ---
 

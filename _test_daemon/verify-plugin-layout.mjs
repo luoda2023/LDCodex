@@ -192,6 +192,9 @@ const PANES = [
   { id: 'account', label: '账号' },
   { id: 'sessions', label: '会话' },
   { id: 'enhance', label: '增强' },
+  // 88.8.5：用户要求重整「关于」页（删诊断卡 + 改元数据行排版），所以这里也要量，
+  // 确认矮窗口下面板不会顶出客户端窗口上沿 / 内容溢出面板。
+  { id: 'about', label: '关于' },
 ];
 
 const SIZES = [

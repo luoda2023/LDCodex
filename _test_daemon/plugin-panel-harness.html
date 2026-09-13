@@ -12,7 +12,7 @@
   （注意：占位符全文件只能出现一次 —— 注释里再写一遍会让 replace 只替换注释那处。）
 
   查询参数：
-    ?pane=account|sessions|enhance   要测量的页签（对应用户点名的「账号 / 会话 / 增强」）
+    ?pane=account|sessions|enhance|about   要测量的页签（「关于」为 88.8.5 重整后新增）
     ?count=N                         列表项数量，用来制造长列表
     ?old=1                           反向自检：注入修复前的旧规则，必须判 FAIL
 -->
@@ -119,7 +119,35 @@
     return html;
   }
 
-  var PANES = { account: accountPane, sessions: sessionsPane, enhance: enhancePane };
+  // 88.8.5 重整后的「关于」页：更新卡（隐藏）+ hero + 元数据行 + 语言。
+  // ⚠️ 已按用户要求删除「发送错误诊断」卡与「会话监听日志」卡 —— 这里复刻的必须是
+  //    **删后**的结构，否则量到的是旧版高度，验证没有意义。
+  function aboutPane() {
+    return (
+      '<div class="wbs-pcard wbs-about-update" id="wbs-update-card" style="display:none"></div>' +
+      '<div class="wbs-pcard wbs-about-hero">' +
+        '<div class="wbs-about-name-row"><div class="wbs-about-name" id="wbs-about-name">LDCodex</div>' +
+        '<span class="wbs-about-ver" id="wbs-about-ver">v88.8.5</span></div>' +
+        '<span class="wbs-about-badge" id="wbs-about-badge">本机回环 CDP 注入 · 不改官方安装包</span>' +
+        '<div class="wbs-about-desc">一个基于 <b>Chrome DevTools Protocol (CDP)</b> 的 WorkBuddy 桌面端增强工具。零侵入、零重签名——只把界面组件注入到正在运行的 WorkBuddy 渲染进程里。</div>' +
+      '</div>' +
+      '<div class="wbs-pcard wbs-about-meta" id="wbs-about-meta">' +
+        '<div class="wbs-about-meta-row"><span class="wbs-about-meta-k">插件版本</span><span class="wbs-about-meta-v" id="wbs-about-meta-ver">v88.8.5</span></div>' +
+        '<div class="wbs-about-meta-row"><span class="wbs-about-meta-k">注入方式</span><span class="wbs-about-meta-v">本机回环 CDP</span></div>' +
+      '</div>' +
+      '<div class="wbs-pcard wbs-settings-card wbs-language-card">' +
+        '<div class="wbs-settings-row">' +
+          '<span class="wbs-pcard-title">语言</span>' +
+          '<div class="wbs-theme-seg wbs-lang-seg" role="group">' +
+            '<button type="button" class="wbs-sess-seg-btn active">中文</button>' +
+            '<button type="button" class="wbs-sess-seg-btn">English</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  var PANES = { account: accountPane, sessions: sessionsPane, enhance: enhancePane, about: aboutPane };
 
   var paneHtml = {};
   TABS.forEach(function (t) {
