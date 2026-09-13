@@ -916,6 +916,27 @@ function extractRustFn(src, name) {
     'wbsClientVersion 已从 UA 抠 WorkBuddy 客户端版本的 helper，整函数删除；左上角不能再混客户端版本');
   rec('T24f 版本号必须过滤 __WBS_VERSION__ 占位符（未注入时不能显示 v__WBS_VERSION__）',
     /WBS_VERSION\.indexOf\('__WBS_'\)/.test(injectSrcT24), '占位符没过滤会直接把模板串显示给用户');
+  // 卡片删了，但代码里还有 4 处 querySelector 会去取它们（wireTelemetrySettings、
+  // acRenderMonitorLogModal、隐藏工具入口）。现在都判空了能安全 return，
+  // 但以后谁加一句没判空的 `el.textContent = ...` 就会在打开「关于」页时抛 TypeError、
+  // 整个插件面板白屏。所以逐条扫：每处取用后面 8 行内必须有 if (!x) / if (x) 判空。
+  const removedIds = ['wbs-telemetry-switch', 'wbs-telemetry-status', 'wbs-monitor-log-inline', 'wbs-monitor-log-card'];
+  const t24Lines = injectCodeT24.split('\n');
+  const unguarded = [];
+  removedIds.forEach((id) => {
+    t24Lines.forEach((line, i) => {
+      if (line.indexOf("'#" + id + "'") === -1) return;
+      const varName = (line.match(/var\s+(\w+)\s*=/) || [])[1] || '';
+      if (!varName) return;
+      const near = t24Lines.slice(i, i + 8).join('\n');
+      // ⚠️ 写法：判空常常是**多条件**的（`if (!toggle || !status) return;`），
+      // 只匹配 `if (!x` 会漏掉第二个操作数 —— 第一次跑就被这个坑误报了一次。
+      // 改成「同一条 if (…) 里出现过这个变量名即可」（不跨右括号）。
+      if (!new RegExp('if\\s*\\([^)]*\\b' + varName + '\\b').test(near)) unguarded.push(id + '→' + varName);
+    });
+  });
+  rec('T24g 对已删除卡片元素的每处引用都必须判空（否则关于页会抛 TypeError 白屏）',
+    unguarded.length === 0, unguarded.join(', ') || '4 处引用全部判空');
 
   // ── T20 安装版本核验脚本的不变量（verify-installed-version.mjs）──
   // 用户两次质问「你怎么回事？你没有构建出来新版本吗还是原来的那一版」，
