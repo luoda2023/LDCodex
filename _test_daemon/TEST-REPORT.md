@@ -1,29 +1,120 @@
-# LDCodex daemon 88.8.2 功能测试报告
+# LDCodex daemon 88.8.3 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；**17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）**
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）；**18:45（88.8.3 插件面板布局 + 安装器钩子，118 项 + 布局实测 14 项 + 插件面板实测 47 项）**
 - **被测代码**：
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.2**）
-  - `apps/codex-plus-manager/src/styles.css`（**88.8.2：列表不再掉出窗口下边框 + 滚动条可见**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.3**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**88.8.3：插件面板高度受视口约束 + 三处列表滚动条可见**；88.8.1：账号卡片「用过 N 次 · 今日 N 次」徽标；1.2.11 上弹面板行内新增常用语；1.2.10 扣费取样范围修复）
+  - `apps/codex-plus-manager/src-tauri/windows/hooks.nsh`（**88.8.3：新增 .onGUIInit 回调，抢在「已安装」页面之前关掉程序**）
+  - `apps/codex-plus-manager/src/styles.css`（88.8.2：列表不再掉出窗口下边框 + 滚动条可见）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/account-usage.js`（88.8.1：账号使用次数统计）
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（88.8.1：账号卡片「用过 N 次 · 今日 N 次」徽标；1.2.11 上弹面板行内新增常用语；1.2.10 扣费取样范围修复）
   - `crates/codex-plus-core/src/windows_integration.rs`（1.2.12：窗口激活不再制造幽灵窗口 + 任务栏身份改写默认关闭）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/automation.js`（抗崩溃加固）
   - `apps/codex-plus-manager/src-tauri/src/workbuddy.rs`（「重启并启用」真正结束旧客户端）
-- **测试方式**：隔离实例（独立数据目录 `data4` + 独立端口 47999 + CDP 指向空端口 47998），**不影响正在运行的真实客户端**；布局实测用无头 Chrome 量真实构建产物，不碰任何运行中的进程
+- **测试方式**：隔离实例（独立数据目录 `data4` + 独立端口 47999 + CDP 指向空端口 47998），**不影响正在运行的真实客户端**；两套布局实测用无头 Chrome 量真实构建产物 / 从 `inject.js` 现抽的真实样式表，不碰任何运行中的进程
 
 ## 一、总体结果
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **107 / 107 全部通过** ✅ |
+| 功能接口测试（`run-tests.js`） | **118 / 118 全部通过** ✅ |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | 布局滚动实测（`verify-layout-scroll.mjs`，无头 Chrome 量真实产物） | **14 / 14 全部通过** ✅ |
+| 插件面板布局实测（`verify-plugin-layout.mjs`，账号 / 会话 / 增强 三页签） | **47 / 47 全部通过** ✅ |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
 | 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅ |
 | Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
+| 安装器脚本编译（`makensis installer.nsi`） | 通过（仅 1 个模板自带的无关 warning）✅ |
 | 真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
 | i18n 词典校验（`tools/i18n-verify.mjs`） | 与基线持平（未新增缺失词条）✅ |
+
+## 一之零D、88.8.3 修复：插件面板顶出窗口 + 安装器「无法卸载」
+
+### 需求（用户原话）
+
+> 现在主要是：帐号，会话，增强菜单 这些都超出了软件底边框，这个软件和 插件内的 窗口都要重新修复。
+
+「帐号 / 会话 / 增强」正是插件面板（注入到 WorkBuddy 客户端里的 `.wbs-*` UI）的页签。
+
+### 先定位到的一件大事：88.8.2 根本没装上
+
+| 证据 | 结果 |
+|---|---|
+| `C:\Program Files\LDCodex\workbuddy-runtime\daemon.js` | `DAEMON_VERSION = '88.8.1'` |
+| `C:\Program Files\LDCodex\` 目录时间 | `2026-09-13 17:15`（88.8.1 的包 17:07 出的） |
+| 88.8.2 出包时间 | `17:48:52` —— 安装目录**从未**被更新 |
+| 正在运行的进程 | `LDCodexManager.exe` PID 5008 → `C:\Program Files\LDCodex\LDCodexManager.exe` |
+
+失败链路：「已安装」页选「安装前卸载」→ 安装器 `ExecWait` 调**旧版**卸载器 → 旧卸载器删不掉正在运行的 `LDCodexManager.exe`（NSIS 的 `Delete` 静默失败）→ 卸载器正常退出（`$0 = 0`）但文件还在 → `installer.nsi:360` 的 `${OrIf} ${FileExists} "$INSTDIR\LDCodexManager.exe"` 命中 → `MessageBox "$(unableToUninstall)"`（「无法卸载！」）→ `Abort`。
+
+### 安装器改法（`windows/hooks.nsh` 重写）
+
+| 改动 | 说明 |
+|---|---|
+| 注册 `!define MUI_CUSTOMFUNCTION_GUIINIT LDCodexOnGuiInit` | MUI2 在「第一个 `MUI_LANGUAGE` 被 include 时」才展开 `MUI_FUNCTION_GUIINIT`；`hooks.nsh` 在 `installer.nsi` 第 28 行被 include，早于语言文件（第 464 行）→ define 有效。`.onGUIInit` 在 `.onInit` 之后、**任何页面显示之前**执行，正好赶在「已安装」页面之前 |
+| 弹窗询问（`/S` 静默安装不弹） | 检测到 `LDCodexManager.exe` 在跑时告知用户：点「确定」自动关闭并继续；点「取消」退出安装程序自己处理。`IfSilent` 保证无人值守安装不会卡死 |
+| 停进程改为**轮询等待** | 最多 12 轮 × 500ms，最后再等 800ms 释放文件句柄。只发一次 `taskkill` 就往下走是不够的 —— 句柄没释放，紧接着写文件照样失败 |
+| 三种手段叠加 | `taskkill /IM … /F /T` ＋ PowerShell 兜底按「命令行含 `workbuddy-runtime`」精确杀掉独立跑的 daemon（`resources\node\node.exe daemon.js`），绝不误杀用户其它 `node.exe` |
+
+### 插件面板根因（两处硬编码 + 一处看不见）
+
+| # | 位置 | 问题 |
+|---|---|---|
+| 1 | `inject.js` 的 `lockPanelHeight()`：`panel.style.height/maxHeight = '650px'` | **JS 内联样式，优先级高于样式表** —— 「只改 CSS」是没用的，`max-height:650px` 直接绕过了视口约束 |
+| 2 | `.wbs-body { height: calc(650px - 170px); max-height: calc(min(78vh,660px) - 118px) }` | 两条互相打架的估值。`78vh` 是视口高度的比例，跟面板真正剩下多少空间毫无关系 |
+| 3 | `.wbs-sess-list` / `.wbs-model-list` 的 `scrollbar-color: transparent transparent` | 滑块完全透明（计算值 `rgba(0,0,0,0)`），看不出能滚 |
+
+### 插件面板改法
+
+| 位置 | 改动 |
+|---|---|
+| `.wbs-panel` | `max-height: 650px` → **`max-height: calc(100vh - 44px)`**（44 = 上下各留 22px；`.wbs-root` 是 `position:fixed;bottom:22px`，面板底边固定在其上） |
+| `.wbs-body` | 删掉 `height: calc(650px - 170px)` 与 `max-height: calc(min(78vh,660px) - 118px)`，改为 **`flex: 1 1 auto; min-height: 0`** |
+| `lockPanelHeight()` | 内联 `panel.style.maxHeight` 从 `'650px'` → **`'calc(100vh - 44px)'`**，与 CSS 保持一致 |
+| 三处列表滚动条 | `transparent` → **`rgba(128,128,128,.42)`**，悬停 `.62` |
+
+### 实测复现 / 验证数据
+
+| 窗口高 | 修复前面板位置 | 修复后面板位置 |
+|---|---|---|
+| 900 | `131 → 783`（高 652） | `131 → 783`（高 652）—— 窗口够高时不改变观感 |
+| 760 | **`-9 → 643`**（顶边被切） | `20 → 643`（高 623）✅ |
+| 620 | **`-149 → 503`**（标题栏 + ✕ 全看不见） | `20 → 503`（高 483）✅ |
+| 520 | **`-249 → 403`** | `20 → 403`（高 383）✅ |
+
+会话列表 `scrollbar-color`：修复前 `rgba(0, 0, 0, 0)`（完全透明）→ 修复后 `rgba(128, 128, 128, 0.42)` ✅
+
+### 测试方式
+
+- `_test_daemon/plugin-panel-harness.html`：复刻插件真实 DOM（`.wbs-root > .wbs-fab + .wbs-panel > .wbs-head + .wbs-tabs + .wbs-body > .wbs-pane`），**样式表直接从 `inject.js` 的样式数组里抽出来**（`css.textContent = [ … ].join('')`），量到的是真实规则；
+- `_test_daemon/verify-plugin-layout.mjs`：无头 Chrome 覆盖用户点名的三个页签（`?pane=account|sessions|enhance`）× 四种窗口高度，断言 ① 面板顶边不被裁 ② 面板底边不超出窗口 ③ 滚到底最后一项在面板内可见 ④ 能滚时滑块不得透明；
+- **自检**：注入修复前的旧规则（`?old=1`）后必须判定为「装不进窗口」（实测 `panel.top = -149`）；
+- 源码级另有 **T18 系列 5 项**（`.wbs-panel` 必须受视口约束 / `.wbs-body` 不得有估值 / JS 内联 `maxHeight` 不得钉 650px / 三处滚动条不得透明）与 **T19 系列 6 项**（安装器钩子）静态守卫。
+
+### 安装器脚本的验证与踩坑
+
+**正向验证**：单独跑 makensis 即可确认回调真的接上了 ——
+
+```bash
+cd target/release/nsis/x64
+env -u NSISDIR -u NSISCONFDIR /e/devtools/tauri-cache/NSIS/makensis \
+  -INPUTCHARSET UTF8 -OUTPUTCHARSET UTF8 -V2 installer.nsi
+# → MAKENSIS_EXIT=0，且只报 1 个 warning 6010（模板自带的 "Skip" not referenced）
+```
+
+判据：makensis 对「定义了但没人调用」的函数会报 `warning 6010: install function "X" not referenced`。这次它**只**报了 `Skip`，**没有**报 `LDCodexOnGuiInit` —— 说明 `.onGUIInit` 里确实生成了 `Call "LDCodexOnGuiInit"`。
+另有 **T19f** 盯住生成出来的 `installer.nsi` 里 `!include hooks.nsh` 是否仍在第一个 `!insertmacro MUI_LANGUAGE` 之前（Tauri 若调整模板顺序，这条会直接失败，而不是静默失效）。
+
+| 坑 | 现象 | 解法 |
+|---|---|---|
+| `nsis_tauri_utils::` 用不了 | 编译失败：`Plugin not found, cannot call nsis_tauri_utils::FindProcess` | 该插件的 `!addplugindir` 在 `installer.nsi` 第 89 行，而 `hooks.nsh` 第 28 行就被 include。只能用**默认插件目录**里的 `nsExec` |
+| `${StrLoc}` / `${StrCase}` 用不了 | 编译失败：`Call must be used with function names starting with "un." in the uninstall section` | 这些宏展开成 `Call StrLoc`，卸载区要求 `un.` 前缀。本文件的宏同时被插进安装/卸载两处 → 进程探测改用 `cmd /c tasklist … \| find <镜像名>` 的**退出码**（0=找到，1=没找到） |
+| 手写 label 会撞名 | 宏插入多次 → 标签重复定义 | 用 LogicLib 的 `${If}` / `${Do}` / `${Loop}` / `${Break}` |
+
+> 夹具踩坑：`plugin-panel-harness.html` 第一版里 `__PLUGIN_CSS__` 占位符**在注释里也出现了一次**，`String.replace` 只替换第一处 → CSS 根本没注入，量出来「面板高 1816px」。现在脚本会先数占位符出现次数，不等于 1 就 SKIP 并提示。
+
+> 断言踩坑（同一个坑踩了两次）：**断言前必须先剥注释**。T17 是 CSS 注释里提到了旧写法被误判成「还在用旧写法」；T19 是钩子文件里我**特意**写的注释提到了 `nsis_tauri_utils::` 和 `${StrLoc}` 来说明「为什么不能用」，结果被判成违规用法。T19 现在按「整行以 `;` 开头」剥掉再断言。
+
 
 ## 一之零C、88.8.2 修复：列表掉出窗口下边框 / 滚动条看不见
 

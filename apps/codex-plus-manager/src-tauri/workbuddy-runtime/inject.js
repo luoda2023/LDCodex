@@ -7054,10 +7054,15 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     // 官方壁纸网格：加载 /api/wallpapers，渲染缩略图，点击切换背景图
     // file:// 页面无法直接 <img src="http://...">（Electron 拦截），改为 fetch → blob → objectURL 预览
     // 面板高度固定为主题页高度：防止切 tab 时高度忽高忽低（首次主题页壁纸渲染后锁定一次）
+    //
+    // ⚠️ 这里是 JS 内联样式，优先级高于样式表 —— 所以它必须和 .wbs-panel 的 CSS 保持一致，
+    //    否则改了 CSS 也不生效。之前这里把 maxHeight 也钉成 650px，等于绕过了 CSS 里的
+    //    max-height:calc(100vh - 44px)，窗口一矮面板就顶出窗口上沿。
+    //    现在只锁「基准高度」，上限交给 calc(100vh - 44px)（44 = 上下各留 22px）。
     function lockPanelHeight() {
       if (!panel || panel.dataset.hLocked) return;
       panel.style.height = '650px';
-      panel.style.maxHeight = '650px';
+      panel.style.maxHeight = 'calc(100vh - 44px)';
       panel.dataset.hLocked = '1';
       var bodyEl = panel.querySelector('.wbs-body');
       if (bodyEl) bodyEl.style.overflowY = 'auto';
@@ -11462,7 +11467,13 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '.wbs-fab.is-dragging .button{cursor:grabbing}',
     '.wbs-fab.is-snapping{transition:right .56s cubic-bezier(.22,1.35,.36,1),bottom .56s cubic-bezier(.22,1.35,.36,1)}',
     /* 面板：毛玻璃主题（半透明 + 模糊，背景图透出） */
-    '.wbs-panel{position:absolute;right:0;bottom:0;width:720px;max-width:94vw;height:650px;max-height:650px;background:color-mix(in srgb,var(--wb-bg-popover,#fff) 72%,transparent);border:1px solid var(--wb-border-subtle,#f0f0f0);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.28);display:none;flex-direction:column;overflow:hidden;backdrop-filter:blur(28px) saturate(1.25);-webkit-backdrop-filter:blur(28px) saturate(1.25)}',
+    // 面板高度：基准 650px，但**必须受视口约束**。
+    // .wbs-root 是 position:fixed;bottom:22px，面板 position:absolute;bottom:0 贴着它，
+    // 所以面板底边固定在「窗口底往上 22px」；若还硬写 max-height:650px，窗口一矮
+    // （≤700px，笔记本/拖小的窗口）面板顶边就会顶到窗口上沿之外 —— 标题栏和 ✕ 关闭按钮
+    // 整条看不见，页签也被切掉。改成 max-height:calc(100vh - 44px)（44 = 上下各留 22px），
+    // 面板永远装得进窗口；窗口够高时仍然是 650px，切页签不会忽高忽低。
+    '.wbs-panel{position:absolute;right:0;bottom:0;width:720px;max-width:94vw;height:650px;max-height:calc(100vh - 44px);background:color-mix(in srgb,var(--wb-bg-popover,#fff) 72%,transparent);border:1px solid var(--wb-border-subtle,#f0f0f0);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.28);display:none;flex-direction:column;overflow:hidden;backdrop-filter:blur(28px) saturate(1.25);-webkit-backdrop-filter:blur(28px) saturate(1.25)}',
     '.wbs-panel.show{display:flex}',
     // 英文文案更长：英文面板额外加宽，配合 label 自适应避免挤压
     'html[data-wbs-language="en"] .wbs-panel{width:880px}',
@@ -11488,7 +11499,11 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '.wbs-ghbtn svg{display:block}',
     '.wbs-btn-close{border:none;background:none;color:var(--wb-icon-tertiary,#999);font-size:16px;cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1}',
     '.wbs-btn-close:hover{color:var(--wb-color-text-primary,#1f1f1f);background:var(--wb-bg-hover,#f5f5f5)}',
-    '.wbs-body{overflow-y:auto;padding:10px 10px 6px;flex:1;min-height:0;height:calc(650px - 170px);max-height:none}',
+    // 面板主体：高度只由 flex 分配（= 面板高度 − 标题栏 − 页签），**不写任何估值**。
+    // 曾经这里挂着 height:calc(650px - 170px)，末尾又补了一条
+    // max-height:calc(min(78vh,660px) - 118px) —— 两条都是拍脑袋的数：78vh 是视口高度的比例，
+    // 跟面板真正剩下多少空间毫无关系，窗口一矮就把列表压扁、还留一大片空白。
+    '.wbs-body{overflow-y:auto;padding:10px 10px 6px;flex:1 1 auto;min-height:0}',
     /* 账号卡片：头像 + 信息 + 右侧操作 */
     '.wbs-card{display:block;position:relative;padding:10px 12px;border-radius:12px;margin-bottom:4px;transition:background .12s}',
     '.wbs-card:hover{background:var(--wb-bg-hover,#f7f8fa)}',
@@ -11845,8 +11860,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '.wbs-model-batch-action:disabled{opacity:.45;cursor:not-allowed}',
     '.wbs-model-toolbar .wbs-sess-bbtn,#wbs-model-batchbar .wbs-sess-bbtn{height:30px;padding:0 12px}',
     '.wbs-sess-batch-count{font-size:11px;color:var(--wb-icon-tertiary,#999);white-space:nowrap}',
-    '.wbs-model-list{display:flex;flex:1;min-height:0;flex-direction:column;gap:6px;max-height:none;overflow-y:auto;scrollbar-width:thin;scrollbar-color:transparent transparent}',
-    '.wbs-model-list:hover{scrollbar-color:rgba(128,128,128,.45) transparent}',
+    '.wbs-model-list{display:flex;flex:1;min-height:0;flex-direction:column;gap:6px;max-height:none;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(128,128,128,.42) transparent}',
+    '.wbs-model-list:hover{scrollbar-color:rgba(128,128,128,.62) transparent}',
     '.wbs-model-list::-webkit-scrollbar{width:6px}',
     '.wbs-model-list::-webkit-scrollbar-thumb{background:transparent;border-radius:3px}',
     '.wbs-model-list:hover::-webkit-scrollbar-thumb{background:rgba(128,128,128,.45)}',
@@ -11902,8 +11917,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '.wbs-model-eye{position:absolute;right:4px;top:3px;width:27px;height:27px;display:flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:var(--wb-icon-tertiary,#888);cursor:pointer}',
     '.wbs-model-eye:hover{background:var(--wb-bg-hover,#f5f5f5);color:var(--wb-color-text-primary,#1f1f1f)}',
     '.wbs-model-edit-field small{font-size:10px;color:var(--wb-icon-tertiary,#999)}',
-    '.wbs-sess-list{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px;scrollbar-width:thin;scrollbar-color:transparent transparent}',
-    '.wbs-sess-list:hover{scrollbar-color:rgba(128,128,128,.45) transparent}',
+    '.wbs-sess-list{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px;scrollbar-width:thin;scrollbar-color:rgba(128,128,128,.42) transparent}',
+    '.wbs-sess-list:hover{scrollbar-color:rgba(128,128,128,.62) transparent}',
     '.wbs-sess-list::-webkit-scrollbar{width:6px}',
     '.wbs-sess-list::-webkit-scrollbar-thumb{background:transparent;border-radius:3px}',
     '.wbs-sess-list:hover::-webkit-scrollbar-thumb{background:rgba(128,128,128,.45)}',
@@ -12100,7 +12115,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '.wbs-acct-io:hover{background:var(--wb-bg-hover,#f0f0f0);border-color:var(--wb-border-default,#d5d5d5)}',
     '.wbs-acct-io svg{flex-shrink:0}',
     '.wbs-acct-io span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-    '.wbs-acct-list{flex:1;min-height:0;overflow-y:auto;padding-right:2px}',
+    '.wbs-acct-list{flex:1;min-height:0;overflow-y:auto;padding-right:2px;scrollbar-width:thin;scrollbar-color:rgba(128,128,128,.42) transparent}',
     '.wbs-logout-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;padding:10px 0;border:1px solid var(--wb-border-default,#e5e5e5);border-radius:12px;background:transparent;color:var(--wb-icon-secondary,#666);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;flex-shrink:0}',
     '.wbs-logout-btn:hover{background:var(--wb-bg-hover,#f5f5f5);color:var(--wb-color-text-primary,#1f1f1f);border-color:var(--wb-border-default,#d5d5d5)}',
     '.wbs-logout-btn.armed{background:#f53f3f;color:#fff;border-color:#f53f3f}',
@@ -12144,8 +12159,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '.wbs-login-link{color:var(--wb-accent-blue,#4f86ff);text-decoration:none;font-weight:600}',
     '.wbs-login-link:hover{text-decoration:underline}',
     '.wbs-empty{text-align:center;color:var(--wb-icon-tertiary,#999);padding:28px 10px;font-size:12px}',
-    /* body 高度：无底部功能区后最大化 */
-    '.wbs-body{max-height:calc(min(78vh,660px) - 118px)}',
+    // 注：.wbs-body 的高度统一在上面那条规则里由 flex 决定（曾经这里又补了一份
+    // max-height:calc(min(78vh,660px) - 118px) 的估值，窗口一矮就把列表压扁，已删除）。
   ].join('');
   (document.head || document.documentElement).appendChild(css);
   start();

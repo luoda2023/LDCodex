@@ -53,6 +53,11 @@ RC2=$?
 echo ""
 "$NODE" "$TMP/verify-layout-scroll.mjs"
 RC3=$?
+# 插件面板布局实测：从 inject.js 抽出真实样式表，复刻 .wbs-* DOM，
+# 验证「账号 / 会话 / 增强」三个页签在矮窗口下面板不会顶出客户端窗口上沿。
+echo ""
+"$NODE" "$TMP/verify-plugin-layout.mjs"
+RC4=$?
 kill "$DPID" 2>/dev/null
-if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ] || [ "$RC3" -ne 0 ]; then exit 1; fi
+if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ] || [ "$RC3" -ne 0 ] || [ "$RC4" -ne 0 ]; then exit 1; fi
 exit 0

@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>LDCodex 插件面板布局夹具</title>
+<!--
+  复刻 inject.js 注入到 WorkBuddy 客户端里的那套 DOM：
+    body > .wbs-root > (.wbs-fab + .wbs-panel.show > .wbs-head + .wbs-tabs + .wbs-body > .wbs-pane.active)
+
+  下面那个空 style 标签里的占位符由 verify-plugin-layout.mjs 在运行时替换成
+  「从 inject.js 里抽出来的真实 CSS」，所以这里量到的是真实规则，不是手抄的近似值。
+  （注意：占位符全文件只能出现一次 —— 注释里再写一遍会让 replace 只替换注释那处。）
+
+  查询参数：
+    ?pane=account|sessions|enhance   要测量的页签（对应用户点名的「账号 / 会话 / 增强」）
+    ?count=N                         列表项数量，用来制造长列表
+    ?old=1                           反向自检：注入修复前的旧规则，必须判 FAIL
+-->
+<style>__PLUGIN_CSS__</style>
+<style>
+  /* 夹具自身样式：模拟 WorkBuddy 客户端的页面底色，不参与被测规则 */
+  html, body { margin: 0; padding: 0; height: 100%; background: #f2f3f5; }
+  #out { display: none; }
+</style>
+</head>
+<body>
+<pre id="out"></pre>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var pane = params.get("pane") || "account";
+  var count = Math.max(1, Number(params.get("count") || 14));
+  var old = params.get("old") || "";
+
+  // ── 反向自检：把修复前的旧规则注回去，夹具必须能判 FAIL ──────────────
+  if (old === "1") {
+    var bad = document.createElement("style");
+    bad.textContent = [
+      ".wbs-panel{height:650px!important;max-height:650px!important}",
+      ".wbs-body{height:calc(650px - 170px)!important;max-height:calc(min(78vh,660px) - 118px)!important}",
+    ].join("");
+    document.head.appendChild(bad);
+  }
+
+  var TABS = [
+    ["account", "账号"], ["theme", "主题"], ["sessions", "会话"], ["models", "模型"],
+    ["enhance", "增强"], ["automations", "自动化"], ["pc", "电脑"], ["about", "关于"],
+  ];
+
+  function tabsHtml() {
+    return TABS.map(function (t) {
+      return '<button class="wbs-tab' + (t[0] === pane ? " active" : "") +
+        '" type="button" data-tab="' + t[0] + '"><span>' + t[1] + "</span></button>";
+    }).join("");
+  }
+
+  function accountPane() {
+    var card = function (i) {
+      return '<div class="wbs-card' + (i === 0 ? " cur" : "") + '" data-uid="u' + i + '">' +
+        '<div class="wbs-info">' +
+        '<div class="wbs-row1"><div class="wbs-name-group">' +
+        '<span class="wbs-name">账号 ' + i + "</span>" +
+        '<span class="wbs-badge">个人版</span>' +
+        '<span class="wbs-ck wbs-checkin-tag ok">已签到</span>' +
+        '<span class="wbs-ck wbs-checkin-tag wbs-usage-count ok">用过 ' + i + " 次 · 今日 " + (i % 3) + " 次</span>" +
+        '</div><div class="wbs-ops"><button class="wbs-icon-btn" type="button" title="切换">⇄</button>' +
+        '<button class="wbs-icon-btn" type="button" title="删除">🗑</button></div></div>' +
+        '<div class="wbs-meta wbs-secondary-row">' +
+        '<div class="wbs-mi wbs-phone-cell"><span class="wbs-lbl">手机</span><span class="wbs-val">138****000' + i + "</span></div>" +
+        '<div class="wbs-mi wbs-token-cell"><span class="wbs-lbl">有效期至</span><span class="wbs-val">2026-12-31</span></div>' +
+        "</div>" +
+        '<div class="wbs-credit-cell"><span class="wbs-lbl">剩余</span><span class="wbs-val">1200</span></div>' +
+        "</div></div>";
+    };
+    var html = "";
+    for (var i = 0; i < count; i++) html += card(i);
+    return '<div class="wbs-acct-list" id="wbs-acct-list">' + html + "</div>";
+  }
+
+  function sessionsPane() {
+    var row = function (i) {
+      return '<div class="wbs-sess-row" data-id="s' + i + '">' +
+        '<label class="wbs-sess-check"><input type="checkbox"></label>' +
+        '<div class="wbs-sess-main"><div class="wbs-sess-title">会话标题 ' + i + " —— 一个稍微长一点的名字</div>" +
+        '<div class="wbs-sess-sub">账号 ' + (i % 5) + " · 2026-09-13 1" + (i % 10) + ":2" + (i % 10) + " · 12 条消息</div></div>" +
+        '<div class="wbs-sess-ops"><button class="wbs-sess-bbtn" type="button">复制</button></div></div>';
+    };
+    var html = "";
+    for (var i = 0; i < count; i++) html += row(i);
+    return '<div class="wbs-pcard">' +
+      '<div class="wbs-sess-filters">' +
+      '<div class="wbs-sess-filter-row"><span class="wbs-sess-flabel">账号</span><select class="wbs-sess-select"><option>全部账号</option></select></div>' +
+      '<div class="wbs-sess-filter-row"><span class="wbs-sess-flabel">时间</span><div class="wbs-sess-seg">' +
+      '<button class="wbs-sess-seg-btn" type="button">今天</button>' +
+      '<button class="wbs-sess-seg-btn" type="button">近 7 天</button>' +
+      '<button class="wbs-sess-seg-btn active" type="button">全部</button></div></div>' +
+      "</div>" +
+      '<div class="wbs-sess-toolbar">' +
+      '<button class="wbs-sess-bbtn" type="button">批量操作</button>' +
+      '<button class="wbs-sess-bbtn" type="button">导入</button>' +
+      '<span class="wbs-sess-count">共 ' + count + " 个会话</span>" +
+      "</div>" +
+      '<div class="wbs-sess-list" id="wbs-sess-list">' + html + "</div>" +
+      "</div>";
+  }
+
+  function enhancePane() {
+    var card = function (i) {
+      var rows = "";
+      for (var r = 0; r < 4; r++) {
+        rows += '<div class="wbs-nd-row"><span class="wbs-nd-title">免打扰开关 ' + r + "</span>" +
+          '<span class="wbs-nd-hint">开关说明文字</span>' +
+          '<label class="wbs-switch"><input type="checkbox"><span class="wbs-switch-slider"></span></label></div>';
+      }
+      return '<div class="wbs-pcard"><div class="wbs-pcard-title">分组 ' + i + '</div>' + rows + "</div>";
+    };
+    var html = "";
+    for (var i = 0; i < Math.max(3, Math.round(count / 3)); i++) html += card(i);
+    return html;
+  }
+
+  var PANES = { account: accountPane, sessions: sessionsPane, enhance: enhancePane };
+
+  var paneHtml = {};
+  TABS.forEach(function (t) {
+    paneHtml[t[0]] = t[0] === pane ? PANES[pane]() : "";
+  });
+
+  var root = document.createElement("div");
+  root.className = "wbs-root";
+  root.setAttribute("data-wbs-profile", "harness");
+  root.innerHTML =
+    '<div class="wbs-fab" style="display:none"></div>' +
+    '<div class="wbs-panel show">' +
+    '<div class="wbs-head"><div class="wbs-head-left"><div class="wbs-title-wrap">' +
+    '<div class="wbs-title-row"><div class="wbs-title" id="wbs-title">LDCodex</div>' +
+    '<span class="wbs-health-status" id="wbs-health-status"></span></div>' +
+    '<div class="wbs-version-line" id="wbs-version-line">harness</div>' +
+    '</div></div><button class="wbs-btn-close" type="button" data-act="close">✕</button></div>' +
+    '<div class="wbs-tabs">' + tabsHtml() + "</div>" +
+    '<div class="wbs-body">' +
+    TABS.map(function (t) {
+      return '<div class="wbs-pane' + (t[0] === pane ? " active" : "") + '" data-pane="' + t[0] + '">' + paneHtml[t[0]] + "</div>";
+    }).join("") +
+    "</div></div>";
+  document.body.appendChild(root);
+
+  // ── 测量 ────────────────────────────────────────────────────────────
+  function rectOf(el) {
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    return { top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height), left: Math.round(r.left), right: Math.round(r.right) };
+  }
+
+  // 把「最后一个列表项」到 .wbs-panel 之间所有可滚动祖先都滚到底，
+  // 然后看这一项是否真的落在面板可视区内 —— 这才是用户说的「看得到 / 看不到」。
+  function scrollAllToBottom(el) {
+    var hops = 0;
+    for (var node = el; node && node !== document.body; node = node.parentElement) {
+      if (node.scrollHeight > node.clientHeight + 1) node.scrollTop = node.scrollHeight;
+      hops++;
+    }
+    return hops;
+  }
+
+  function measure() {
+    var panel = document.querySelector(".wbs-panel");
+    var body = document.querySelector(".wbs-body");
+    var paneEl = document.querySelector(".wbs-pane.active");
+    var list = paneEl ? paneEl.querySelector(".wbs-acct-list, .wbs-sess-list") : null;
+    var items = list ? list.children : (paneEl ? paneEl.children : []);
+    var last = items.length ? items[items.length - 1] : null;
+
+    scrollAllToBottom(last);
+    var lastRect = rectOf(last);
+    var panelRect = rectOf(panel);
+    var bodyRect = rectOf(body);
+    var paneRect = rectOf(paneEl);
+    var listRect = rectOf(list);
+
+    var listStyle = list ? getComputedStyle(list) : null;
+    var bodyStyle = getComputedStyle(body);
+
+    var lines = [];
+    lines.push("pane=" + pane);
+    lines.push("count=" + count);
+    lines.push("old=" + (old || "0"));
+    lines.push("viewportW=" + window.innerWidth);
+    lines.push("viewportH=" + window.innerHeight);
+    lines.push("panel.top=" + panelRect.top);
+    lines.push("panel.bottom=" + panelRect.bottom);
+    lines.push("panel.height=" + panelRect.height);
+    lines.push("head.height=" + (rectOf(document.querySelector(".wbs-head")) || {}).height);
+    lines.push("tabs.height=" + (rectOf(document.querySelector(".wbs-tabs")) || {}).height);
+    lines.push("body.top=" + bodyRect.top);
+    lines.push("body.bottom=" + bodyRect.bottom);
+    lines.push("body.clientH=" + body.clientHeight);
+    lines.push("body.scrollH=" + body.scrollHeight);
+    lines.push("body.overflowY=" + bodyStyle.overflowY);
+    lines.push("pane.height=" + (paneRect ? paneRect.height : -1));
+    lines.push("pane.clientH=" + (paneEl ? paneEl.clientHeight : -1));
+    lines.push("pane.scrollH=" + (paneEl ? paneEl.scrollHeight : -1));
+    lines.push("list.clientH=" + (list ? list.clientHeight : -1));
+    lines.push("list.scrollH=" + (list ? list.scrollHeight : -1));
+    lines.push("list.scrollbarColor=" + (listStyle ? listStyle.scrollbarColor : ""));
+    lines.push("lastItem.top=" + (lastRect ? lastRect.top : -1));
+    lines.push("lastItem.bottom=" + (lastRect ? lastRect.bottom : -1));
+    lines.push("lastItemVisible=" + (lastRect && panelRect
+      ? (lastRect.bottom <= panelRect.bottom + 1 && lastRect.top >= panelRect.top - 1 ? 1 : 0)
+      : -1));
+    lines.push("itemCount=" + items.length);
+    return lines.join("\n");
+  }
+
+  var out = document.getElementById("out");
+  out.textContent = measure();
+})();
+</script>
+</body>
+</html>

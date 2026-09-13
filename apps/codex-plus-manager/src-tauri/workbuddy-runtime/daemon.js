@@ -391,8 +391,23 @@ function noteAccountUsage(uid) {
 //         并去掉面板内部的估值 max-height，统一交给 .screen 滚动。
 //         同时把滚动条滑块从「--hairline + 0.16 透明度」（几乎与背景同色、看不见）换成
 //         --muted-foreground + 0.42，浅色/深色主题下都清晰可见。
-const DAEMON_VERSION = '88.8.2';
-const DAEMON_BUILD_ID = 'release-88.8.2-20260913-scrollable-lists';
+// 88.8.3：两头一起收口 ——
+//         ① 插件面板（注入到 WorkBuddy 客户端里的 .wbs-* UI）不再顶出客户端窗口上沿：
+//            .wbs-panel 被 JS 内联钉死 height/max-height:650px（内联优先级高于样式表，
+//            改 CSS 没用），窗口一矮（≤700px）面板顶边就跑到窗口外面，标题栏和 ✕ 全看不见；
+//            .wbs-body 上还挂着 height:calc(650px - 170px) 与 max-height:calc(min(78vh,660px) - 118px)
+//            两条互相打架的估值。现在上限统一为 calc(100vh - 44px)（44 = 上下各留 22px），
+//            body 只靠 flex 分配剩余空间；账号/会话/模型三个列表的滚动条滑块也从
+//            transparent（完全看不见）改成 rgba(128,128,128,.42)。
+//         ② 安装器不再因为「程序正在运行」而升级失败：88.8.1 → 88.8.2 就是卡在这里 ——
+//            「已安装」页选「安装前卸载」会去调**旧版**卸载器，而旧卸载器删不掉正在运行的
+//            LDCodexManager.exe，删完文件还在原地，installer.nsi 的
+//            ${FileExists "$INSTDIR\LDCodexManager.exe"} 命中 → 弹「无法卸载！」并 Abort。
+//            现在 windows/hooks.nsh 通过 MUI_CUSTOMFUNCTION_GUIINIT 注册 .onGUIInit 回调，
+//            抢在「已安装」页面出现**之前**就把程序关干净（含 resources\node\node.exe 这个
+//            daemon 子进程），旧卸载器于是「无文件可锁」。
+const DAEMON_VERSION = '88.8.3';
+const DAEMON_BUILD_ID = 'release-88.8.3-20260913-plugin-panel-and-installer';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）

@@ -1,6 +1,6 @@
 'use strict';
 /*
- * LDCodex daemon 88.8.2 功能测试
+ * LDCodex daemon 88.8.3 功能测试
  * 覆盖：双开隔离自检 / 账号导出导入（含安全校验）/ 跨版本镜像收敛 / 抗崩溃 / 鉴权 /
  *       弹窗自动点允许取样范围 / 快捷短语随账号导出导入去重 / 上弹面板行内新增入口 / 回归
  * 另见 verify-no-disturb.js：单独验证「弹窗自动点允许」的判定逻辑（1.2.10 修的积分误杀）
@@ -108,7 +108,7 @@ function extractRustFn(src, name) {
   rec('T2b 返回 sides 数组（本端在首位）', Array.isArray(b.sides) && b.sides.length >= 1 && b.sides[0] && b.sides[0].id === 'workbuddy-cn',
     'sides=' + JSON.stringify((b.sides || []).map((s) => s.id)));
   rec('T2c 含 isolated/conflicts/warnings/daemonVersion',
-    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '88.8.2',
+    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '88.8.3',
     'version=' + b.daemonVersion + ', isolated=' + b.isolated + ', conflicts=' + JSON.stringify(b.conflicts) + ', warnings=' + JSON.stringify(b.warnings));
   const s0 = (b.sides && b.sides[0]) || {};
   rec('T2d 本端字段完整（CDP/面板端口/目录/可执行文件）',
@@ -453,16 +453,16 @@ function extractRustFn(src, name) {
     !!fnRestore && /if \(found == IntPtr\.Zero\) return false;/.test(fnRestore)
       && !/if \(owner == targetPid\) \{ ShowWindowAsync\(hWnd, 9\);/.test(fnRestore),
     '已改为先筛选候选再恢复');
-  rec('T13i daemon 版本已统一为 88.8.2',
-    /const DAEMON_VERSION = '88\.8\.2';/.test(daemonSrc), 'DAEMON_VERSION=88.8.2');
+  rec('T13i daemon 版本已统一为 88.8.3',
+    /const DAEMON_VERSION = '88\.8\.3';/.test(daemonSrc), 'DAEMON_VERSION=88.8.3');
 
-  // ── T14 版本号统一（约定：当前基线 88.8.2，以后每升级一次加 1）──
+  // ── T14 版本号统一（约定：当前基线 88.8.3，以后每升级一次加 1）──
   // 背景：用户要求「软件的版本号统一为 88.8.1，以后每升级一次升一个」。此前各生态版本号各自为政
   // （安装包 1.2.56 / 运行时 package.json 1.2.11 / daemon 1.2.12）。这里做源码级
   // 断言，守住「所有版本号来源必须完全一致」这条约定，防止后续升级只改一半。
   // 升级步骤：改下方 UNIFIED_VERSION + 6 处版本号来源，本系列会逐条校验是否漏改。
-  section('T14 版本号统一为 88.8.2');
-  const UNIFIED_VERSION = '88.8.2';
+  section('T14 版本号统一为 88.8.3');
+  const UNIFIED_VERSION = '88.8.3';
   const readJsonVersion = (rel) => {
     try {
       return JSON.parse(fs.readFileSync(path.join(RUNTIME, rel), 'utf8')).version || null;
@@ -658,6 +658,104 @@ function extractRustFn(src, name) {
   rec('T17d .fill 的 min-height 只保留一处定义（曾有两处 188px / 132px 互相覆盖）',
     fillRules.length === 1,
     '含 min-height 的 .fill 规则数 = ' + fillRules.length);
+
+  // ── T18 插件面板布局（源码级静态守卫；行为级实测见 verify-plugin-layout.mjs）──
+  // 用户反馈：「账号，会话，增强菜单 这些都超出了软件底边框，这个软件和 插件内的 窗口都要重新修复」。
+  // 插件面板（注入到 WorkBuddy 客户端里的 .wbs-* UI，页签就是 账号/主题/会话/模型/增强/自动化/电脑/关于）
+  // 之前被两处硬编码 / 估值撑爆：
+  //   · inject.js 的 lockPanelHeight() 用 **JS 内联样式**把 panel 钉成 height/max-height:650px
+  //     —— 内联优先级高于样式表，所以「只改 CSS」是没用的；
+  //   · .wbs-body 上同时挂着 height:calc(650px - 170px) 与 max-height:calc(min(78vh,660px) - 118px)。
+  // 客户端窗口一矮（≤700px），650px 的面板就装不进窗口，顶边（标题栏 + ✕ 关闭按钮）被裁到窗口外面。
+  section('T18 插件面板布局不变量（inject.js）');
+  const injectLayoutSrc = fs.readFileSync(path.join(RUNTIME, 'inject.js'), 'utf8');
+  // 抽注入用的样式表：形如 css.textContent = [ ... ].join('');
+  let pluginCss = '';
+  {
+    const lines = injectLayoutSrc.split(/\r?\n/);
+    let s = -1;
+    let e = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (s < 0 && /css\.textContent\s*=\s*\[\s*$/.test(lines[i])) s = i;
+      if (s >= 0 && /^\s*\]\.join\(''\);\s*$/.test(lines[i])) { e = i; break; }
+    }
+    if (s >= 0 && e > s) {
+      const chunk = lines.slice(s, e + 1).join('\n').replace(/css\.textContent\s*=\s*/, 'var __css = ');
+      try { pluginCss = new Function(chunk + '\nreturn __css;')(); } catch (_) { pluginCss = ''; }
+    }
+  }
+  rec('T18 能从 inject.js 抽出注入样式表', pluginCss.length > 10000, '长度 ' + pluginCss.length);
+  const pluginCode = pluginCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  const pluginRuleOf = (selector) => {
+    const out = [];
+    const re = new RegExp('(^|\\})\\s*' + selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'g');
+    let m;
+    while ((m = re.exec(pluginCode)) !== null) out.push(m[2]);
+    return out;
+  };
+  const panelRule = pluginRuleOf('.wbs-panel').join(' ');
+  rec('T18a .wbs-panel 的高度上限必须受视口约束（不得写死 650px）',
+    panelRule.length > 0 && /max-height\s*:\s*calc\(100vh/.test(panelRule) && !/max-height\s*:\s*650px/.test(panelRule),
+    'max-height 约束=' + (/max-height\s*:\s*([^;]+)/.exec(panelRule) || [, '未找到'])[1]);
+  rec('T18b .wbs-body 不得再写 height / max-height 估值（calc(650px…) 与 calc(min(78vh…))）',
+    !/calc\(\s*650px/.test(pluginCode) && !/calc\(min\(78vh/.test(pluginCode),
+    /calc\(\s*650px/.test(pluginCode) ? '仍存在 calc(650px…)' : (/calc\(min\(78vh/.test(pluginCode) ? '仍存在 calc(min(78vh…))' : '两处估值均已移除'));
+  rec('T18c JS lockPanelHeight 不得把 maxHeight 钉成 650px（内联样式会盖掉 CSS）',
+    !/panel\.style\.maxHeight\s*=\s*'650px'/.test(injectLayoutSrc)
+      && /panel\.style\.maxHeight\s*=\s*'calc\(100vh/.test(injectLayoutSrc),
+    '内联 maxHeight 已改为 calc(100vh - …)');
+  const sbBad = ['.wbs-acct-list', '.wbs-sess-list', '.wbs-model-list']
+    .filter((sel) => pluginRuleOf(sel).some((body) => /scrollbar-color\s*:\s*transparent/.test(body)));
+  rec('T18d 账号 / 会话 / 模型列表的滚动条滑块不得是透明的（transparent 等于看不见）',
+    sbBad.length === 0,
+    sbBad.length ? '仍透明的选择器：' + sbBad.join(', ') : '三处都显式给了可见滑块色');
+
+  // ── T19 安装器钩子不变量（windows/hooks.nsh）──
+  // 用户反馈：装 88.8.2 时弹「无法卸载！」→ 升级中断，装完还是 88.8.1。
+  // 根因：「已安装」页选「安装前卸载」会去调**旧版**卸载器，而旧卸载器删不掉正在运行的
+  // LDCodexManager.exe，删完文件还在原地 → installer.nsi 的
+  // ${FileExists "$INSTDIR\LDCodexManager.exe"} 命中 → MessageBox + Abort。
+  // 解法：在 hooks.nsh 里注册 MUI_CUSTOMFUNCTION_GUIINIT，抢在「已安装」页面出现**之前**
+  // 就把程序关干净。这一节守住这个机制，以及两条「会让 NSIS 直接编译失败」的禁令。
+  section('T19 安装器钩子不变量（windows/hooks.nsh）');
+  const hooksSrc = fs.readFileSync(path.join(RUNTIME, '..', 'windows', 'hooks.nsh'), 'utf8');
+  // ⚠️ 先剥掉整行注释再断言：本文件的注释里**特意写了** nsis_tauri_utils:: 和 ${StrLoc}
+  // 来说明「为什么不能用」，不剥的话会把注释本身当成违规用法（T17 踩过同一个坑）。
+  const hooksCode = hooksSrc.split(/\r?\n/).filter((l) => !/^\s*;/.test(l)).join('\n');
+  rec('T19a 必须注册 MUI_CUSTOMFUNCTION_GUIINIT 并实现 .onGUIInit 回调',
+    /!define\s+MUI_CUSTOMFUNCTION_GUIINIT\s+\w+/.test(hooksCode) && /Function\s+LDCodexOnGuiInit/.test(hooksCode),
+    '抢在「已安装」页面之前关掉程序，旧卸载器才无文件可锁');
+  rec('T19b 不得使用 nsis_tauri_utils::（它的 !addplugindir 在 hooks.nsh 之后，会编译失败）',
+    !/nsis_tauri_utils::/.test(hooksCode),
+    '只使用默认插件目录里的 nsExec');
+  rec('T19c 不得使用 ${StrLoc}/${StrCase}/${StrRep}（卸载区要求 un. 前缀，会编译失败）',
+    !/\$\{(Un)?(StrLoc|StrCase|StrRep|StrStr|StrTrim)\}/.test(hooksCode),
+    '改用 cmd /c tasklist … | find 的退出码做进程探测');
+  rec('T19d 停进程必须轮询等待 + 兜底杀 daemon（不能只发一次 taskkill 就走）',
+    /workbuddy-runtime/.test(hooksCode) && /\$\{Do\}/.test(hooksCode) && /taskkill \/IM LDCodexManager\.exe/.test(hooksCode),
+    '轮询 + taskkill + PowerShell 兜底 daemon');
+  rec('T19e 静默安装（/S）不得弹窗（否则无人值守安装会卡死）',
+    /IfSilent/.test(hooksCode),
+    'GUIINIT 里有 IfSilent 分支');
+
+  // T19f：上面那个技巧**依赖一个顺序** —— hooks.nsh 必须在「第一个 MUI_LANGUAGE」之前被 include。
+  // 因为 MUI2 是在第一个 MUI_LANGUAGE 时才展开 MUI_FUNCTION_GUIINIT（也就是 .onGUIInit），
+  // 而 MUI_FUNCTION_GUIINIT 里才有 !ifdef MUI_CUSTOMFUNCTION_GUIINIT 那一段。
+  // Tauri 哪天调整了模板里 !include 的位置，这个技巧就会静默失效（退化成只靠 PREINSTALL 兜底），
+  // 所以这里直接盯住生成出来的 installer.nsi 的行号顺序。
+  const genNsiPath = path.join(RUNTIME, '..', '..', '..', '..', 'target', 'release', 'nsis', 'x64', 'installer.nsi');
+  let genNsi = '';
+  try { genNsi = fs.readFileSync(genNsiPath, 'utf8'); } catch (_) { genNsi = ''; }
+  if (!genNsi) {
+    rec('T19f 生成的 installer.nsi 里 hooks.nsh 必须先于第一个 MUI_LANGUAGE 被 include',
+      true, '未找到生成产物（未打包过），跳过');
+  } else {
+    const hooksLine = genNsi.split(/\r?\n/).findIndex((l) => /hooks\.nsh/.test(l) && /^\s*!include/.test(l));
+    const langLine = genNsi.split(/\r?\n/).findIndex((l) => /!insertmacro\s+MUI_LANGUAGE/.test(l));
+    rec('T19f 生成的 installer.nsi 里 hooks.nsh 必须先于第一个 MUI_LANGUAGE 被 include',
+      hooksLine > 0 && langLine > 0 && hooksLine < langLine,
+      'hooks.nsh 第 ' + (hooksLine + 1) + ' 行，MUI_LANGUAGE 第 ' + (langLine + 1) + ' 行');
+  }
 
   // ── T7 回归 ──
   section('T7 回归');

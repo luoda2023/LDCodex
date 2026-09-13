@@ -210,7 +210,7 @@ END
         )
     }
 
-    /// `88.8.2` → `[88, 8, 2, 0]`，供 VERSIONINFO 的四段数字字段使用。
+    /// `88.8.3` → `[88, 8, 3, 0]`，供 VERSIONINFO 的四段数字字段使用。
     fn version_quad(version: &str) -> [u32; 4] {
         let mut quad = [0u32; 4];
         for (slot, part) in quad.iter_mut().zip(version.split(['.', '-'])) {
