@@ -1,9 +1,10 @@
-# LDCodex daemon 1.2.11 功能测试报告
+# LDCodex daemon 1.2.12 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）
 - **被测代码**：
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **1.2.11**）
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**1.2.11：上弹面板行内新增常用语**；含 1.2.10 的扣费取样范围修复）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **1.2.12**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（1.2.11：上弹面板行内新增常用语；含 1.2.10 的扣费取样范围修复）
+  - `crates/codex-plus-core/src/windows_integration.rs`（**1.2.12：窗口激活不再制造幽灵窗口 + 任务栏身份改写默认关闭**）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/automation.js`（抗崩溃加固）
   - `apps/codex-plus-manager/src-tauri/src/workbuddy.rs`（「重启并启用」真正结束旧客户端）
 - **测试方式**：隔离实例（独立数据目录 `data4` + 独立端口 47999 + CDP 指向空端口 47998），**不影响正在运行的真实客户端**
@@ -12,11 +13,151 @@
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **58 / 58 全部通过** ✅ |
+| 功能接口测试（`run-tests.js`） | **73 / 73 全部通过** ✅ |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
+| Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
 | 真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
+
+## 一之四、1.2.12 修掉的缺陷：任务栏多出一个「国内版/国际版」图标
+
+### 需求（用户原话）
+
+> 还有一个功能：为什么有些电脑的任务栏，只要用了这个软件增加功能，在任务栏上会多出一个国内版和国际版的图标。这个图标可以隐藏，不要出现。
+
+### 排查过程（先证伪，再定位）
+
+| 假设 | 结论 | 依据 |
+|---|---|---|
+| daemon 带了控制台窗口 | ❌ 排除 | 实机 `Get-Process`：4 个 `node.exe`（含两个 daemon）`MainWindowHandle` 全为 0，所有 `conhost.exe` 同样为 0 |
+| 某个子进程漏了隐藏标志 | ❌ 排除 | JS 侧 26 处子进程调用、Rust 侧 Windows 关键 spawn 全部带 `windowsHide` / `CREATE_NO_WINDOW`（唯一例外是安装器启动器，它本来就要弹 UAC 与安装向导） |
+| daemon 设置了 `process.title` 覆盖控制台标题 | ❌ 排除 | 全仓库（除 `node_modules` 类型定义）**没有任何一处** `process.title` / `SetConsoleTitle` |
+| **窗口激活逻辑强行显示隐藏窗口** | ✅ **根因之一** | 见下 |
+| **任务栏身份（AppUserModelID）被改写** | ✅ **根因之二** | 见下 |
+
+### 根因一：`activate_process_window` 会把客户端进程里的隐藏辅助窗口「显示出来」
+
+`apps/codex-plus-launcher/src/main.rs:231-236`：
+
+```rust
+let process_ids = codex_plus_core::watcher::find_codex_processes();
+let activated = process_ids.iter().copied().any(codex_plus_core::windows_activate_process_window);
+```
+
+`find_codex_processes()` 返回的是**所有 exe 名为 `workbuddy.exe`/`workbuddyai.exe` 的进程** —— 包括渲染进程、GPU 进程、utility 进程、crashpad-handler。而 `activate_process_window` 内部：
+
+```rust
+let Some(hwnd) = process_window(process_id, false) else { return false; };  // visible_only = false
+if IsIconic(hwnd) { ShowWindow(hwnd, SW_RESTORE); }
+else if !IsWindowVisible(hwnd) { ShowWindow(hwnd, SW_SHOW); }   // ← 把隐藏窗口强行变可见
+```
+
+诊断报告实机抓到的证据：`WorkBuddyAI.exe pid=2992`（`--type=utility`）带着一个隐藏的顶层窗口，标题 `OleMainThreadWndName`。它有标题 → 打分是 `Titled`，是该 PID 里得分最高的窗口 → 被选中 → `SW_SHOW` 之后**变成可见窗口** → 任务栏凭空多出一个图标。
+
+`SetForegroundWindow` 对这类窗口通常返回 `false`，于是 `.any()` **不会短路**，会沿着进程列表继续显示下一个 —— 所以是「多出一个（或几个）图标」，且**只出现在部分机器上**（取决于客户端有几个这类辅助窗口、以及任务栏是否合并按钮）。
+
+### 根因二：改写窗口的 `AppUserModelID` 会让任务栏分成两个按钮
+
+`windows_integration.rs` 的 `apply_taskbar_properties` 会把客户端主窗口的：
+
+| 属性 | 值 |
+|---|---|
+| `PKEY_AppUserModel_ID` | `cn.dicad.ldcodex.codex` |
+| `PKEY_AppUserModel_RelaunchDisplayNameResource` | `LDCodex` |
+| `PKEY_AppUserModel_RelaunchCommand` | `ldcodex.exe` |
+
+`AppUserModelID` 决定 Windows 任务栏如何给窗口分组。客户端自己有身份，用户如果把客户端**固定到任务栏**，那个固定按钮用的也是客户端身份；我们再改运行中窗口的身份 → 两者不再合并 → 任务栏出现**两个**按钮：一个是固定的、一个是正在运行的。这正好解释「有些电脑」（只有固定了客户端的机器才明显）。
+
+### 修复
+
+**（1）窗口激活：只碰「本来就该显示」的窗口**（`windows_integration.rs`）
+
+```rust
+pub fn activate_process_window(process_id: u32) -> bool {
+    // 先只在「已经可见」的窗口里挑（被最小化的窗口依然算可见）。
+    // 把这个集合里的窗口置前，不会改变任务栏里的图标数量，永远是安全的。
+    if let Some(hwnd) = process_window(process_id, true) {
+        return bring_window_to_front(hwnd);
+    }
+    // 兜底恢复「被最小化到托盘」的主窗口 —— 但必须过 is_genuine_app_window 校验，
+    // 否则 utility 进程里的隐藏 OLE 消息窗口会被显示出来。
+    let Some(hwnd) = process_window(process_id, false) else { return false; };
+    if !is_genuine_app_window(hwnd) { return false; }
+    bring_window_to_front(hwnd)
+}
+```
+
+`is_genuine_app_window` 的判据**来自实机抓到的窗口清单**，而不是猜的：
+
+| 条件 | 理由 |
+|---|---|
+| 有非空标题 | 辅助窗口常无标题 |
+| 非 `WS_EX_TOOLWINDOW` | 工具窗口本就不进任务栏 |
+| 类名不在辅助类黑名单 | 新增 `OleMainThreadWndName` / `OleMainThreadWndClass` / `Chrome_MessageWindow` / `Chrome_WidgetWin_0`（实机抓到） |
+| **无 owner** | 附属窗口（OLE 消息窗口、弹出层）都有 owner |
+
+> **特别注意**：这里**刻意不要求** `WS_EX_APPWINDOW`。实机抓到客户端主窗口 `class=Chrome_WidgetWin_1 ex=0x100` —— 并没有这个样式位。若把它当必要条件，「客户端被最小化到托盘后恢复主窗口」这个正常功能会一起失效。
+
+**（2）任务栏身份改写默认关闭**（`windows_integration.rs`）
+
+新增开关 `LDCODEX_REBRAND_TASKBAR`，**默认关闭**任务栏身份改写；窗口图标仍由 `WM_SETICON` 换成 LDCodex 图标，品牌效果保留。需要恢复旧行为时设 `LDCODEX_REBRAND_TASKBAR=1`。
+
+**（3）daemon 侧同样的问题**（`daemon.js` 的 `restoreWorkBuddyWindow`）
+
+原 C# 对目标 PID 枚举到的**第一个**顶层窗口无脑 `ShowWindowAsync(hWnd, 9)`。现改为先筛选：只恢复「已可见 / 已最小化」或「有标题 + `WS_EX_APPWINDOW` + 非 `WS_EX_TOOLWINDOW`」的候选，找不到就返回 `false` 什么都不做。
+
+### 配套：把诊断脚本修成可信的
+
+`_test_daemon/diagnose-taskbar.js` 早期版本有两个实测缺陷：① 依赖 `tasklist /V` 的中文「暂缺」判断有无窗口，UTF-8 下变乱码导致过滤失效（把系统进程全列了出来）；② 优先走 `wmic`，而该机器安全策略直接拦截 `wmic.exe`。
+
+现在改为：
+
+- 统一走 PowerShell，并强制 `[Console]::OutputEncoding=UTF8`，报告写 UTF-8；
+- 用 `EnumWindows` 直接列出**所有可见顶层窗口**（pid / owner / exstyle / 类名 / 标题）—— 这才是任务栏图标的真正来源（`MainWindowHandle` 会漏掉同一进程的第二个窗口，正是本 bug 的形态）；
+- 交叉输出 `Get-Process MainWindowHandle != 0` 与进程树、`conhost` 及其可见性；
+- 修掉 C# 里 `'no-owner'` 单引号导致的多字符字符字面量编译错误（`Add-Type` 会直接失败）。
+
+实机结果（本机当前状态）：`WorkBuddyAI.exe pid=9772` 只有 **1** 个可见顶层窗口（`Chrome_WidgetWin_1`，标题 `WorkBuddy AI`），**没有任何辅助进程带可见窗口** —— 与「部分机器才复现」的描述一致。
+
+
+## 一之五、顺带修掉：隔离测试会把用语写进用户**真实**的 `settings.json`
+
+排查 T11 用例随机失败时发现的**真问题**（非本轮引入，但本轮修掉）。
+
+`settings.json` 是**客户端自己的**配置文件，位置由 profile 决定（国内版 `~/.workbuddy`、国际版 `~/.workbuddy-ai`），**不跟随 `WBSWITCH_DATA_DIR`**：
+
+```js
+function workbuddySettingsPath() {
+  return path.join(PROFILE.dataRoot, 'settings.json');
+}
+```
+
+于是隔离测试实例（`WBSWITCH_DATA_DIR=data4`）在跑「快捷短语增删」用例时，实际写的是 `C:\Users\Administrator\.workbuddy\settings.json`。两个后果：
+
+1. **污染用户真实配置** —— 实测该文件里躺着 `T11 常用语甲/乙/丙/丁`，用户原本的默认短语「继续执行」被测试的「先清空再写入」逻辑删掉了；
+2. **用例受上一轮残留影响而随机失败** —— 上一轮结束时留下 4 条，下一轮 `T11e` 期望 3 条却拿到 4 条（`T11e/T11f/T11g/T11h` 四项连带失败）。
+
+**修复**：新增一个**仅供测试**的显式覆盖开关（生产环境不设置该变量，行为完全不变）：
+
+```js
+function workbuddySettingsPath() {
+  // 测试隔离开关：WBSWITCH_SETTINGS_FILE 显式指定 settings.json 位置。
+  const override = String(process.env.WBSWITCH_SETTINGS_FILE || '').trim();
+  if (override) return override;
+  return path.join(PROFILE.dataRoot, 'settings.json');
+}
+```
+
+`test-run.sh` 里补上 `WBSWITCH_SETTINGS_FILE="$DATADIR/settings.json"`，并新增回归用例：
+
+| 断言 | 含义 |
+|---|---|
+| `T11l 测试用语只写入隔离 settings.json，不污染用户真实配置` | 隔离文件里有测试用语 **且** 用户真实文件里没有 |
+
+同时把用户真实配置里被写入的 4 条测试用语清理掉、恢复默认短语「继续执行」（原文件已备份到 `_tmp/settings-cn.before-cleanup.json`）。
+
+> 另：`run-tests.js` 里 `fs.rmSync` 会被 WorkBuddy 的 safe-delete shim 接管（走回收站二进制），实测偶发 `ETIMEDOUT` 会把整个套件打挂。现已改为「删不掉就退化成清空内容」，对往返校验同样有效且不再中断。
 
 ## 一之三、1.2.11 新增：上弹面板行内新增常用语 + 短语随账号同步
 
@@ -358,6 +499,10 @@ bash D:/LUODA/LDcodex/_test_daemon/test-run.sh
 "C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_test_daemon/verify-no-disturb.js
 # 真实页面 UI 只读验证（需客户端已开 CDP；参数为 CDP 端口，默认 9222）
 "C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_test_daemon/cdp-qp-ui-verify.mjs 9222
+# 任务栏图标诊断（只读；在"任务栏出现多余图标"的现场跑，结果见 taskbar-diagnose-report.txt）
+"C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_test_daemon/diagnose-taskbar.js
+# Rust 单元测试（窗口打分 / 辅助窗口黑名单）
+cd D:/LUODA/LDcodex && cargo test -p codex-plus-core --lib windows_integration
 # 前端类型检查
 cd D:/LUODA/LDcodex/apps/codex-plus-manager && node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json
 ```
@@ -368,4 +513,5 @@ cd D:/LUODA/LDcodex/apps/codex-plus-manager && node node_modules/typescript/bin/
 - **daemon 单实例锁存在主/备双锁竞态**（本次实测到同 profile 同时跑了两个 daemon：pid 7872 与 pid 10720）。`acquireDaemonLock()` 的候选是 `[主锁, 备锁]`，两个进程可能各持一个都认为自己独占。未修：改动锁逻辑一旦出错会让 daemon 起不来，需单独设计后验证。
 - **daemon 会继承客户端注入的 `NODE_OPTIONS`**（实测：`--require .../WorkBuddyAI/resources/app.asar.unpacked/cli/vendor/shim/node-language-shim.cjs`）。该 shim 代理 fs 操作，会把部分操作拦成 `EPERM`（如 `mkdir .../automation-agent/inbox`、`watch .../CodeBuddyExtension/.../auth`）。1.2.9 的抗崩溃加固已让 daemon 不再因此退出；彻底规避可在 `spawn_daemon` 里 `env_remove("NODE_OPTIONS")`。
 - **前端 i18n 技术债**：`tools/i18n-verify.mjs` 目前仍报 `plain` 143 MISSING / 156 STALE、`template` 27 MISSING / 24 STALE。成因是「模板键被放进 `EN_PLAIN`」与「字典条目无人引用」两类，属**既有**问题（本轮只归位了账号导出/导入这一区块的 5 条）。建议后续单独跑一轮 `tools/wb-i18n-fill.mjs` + `tools/i18n-codemod.mjs` 统一清理。
-- **安装包需重新构建才能生效**：当前已安装版本是 **1.2.8**，1.2.9 / 1.2.10 / 1.2.11 的全部改动（CDP 隔离、弹窗自动点允许修复、上弹面板行内新增常用语、短语随账号同步）都在源码里，需要 `npm run build` 重新出包并安装后才会生效。安装包还需带上 `windows/hooks.nsh`（安装时自动结束占用进程）。
+- **安装包需重新构建才能生效**：当前已安装版本是 **1.2.8**，1.2.9 / 1.2.10 / 1.2.11 / 1.2.12 的全部改动（CDP 隔离、弹窗自动点允许修复、上弹面板行内新增常用语、短语随账号同步、任务栏幽灵图标修复）都在源码里，需要 `npm run build` 重新出包并安装后才会生效。安装包还需带上 `windows/hooks.nsh`（安装时自动结束占用进程）。
+- **任务栏图标若仍复现**：在出现图标的现场运行 `_test_daemon/diagnose-taskbar.js`，把 `taskbar-diagnose-report.txt` 发回。报告「一」里若出现同一 `WorkBuddyAI.exe` PID 的**多个** no-owner 可见窗口，说明还有别的路径在显示隐藏窗口；若只有一个窗口但任务栏仍有两个图标，则是任务栏身份问题（可试 `LDCODEX_REBRAND_TASKBAR=1` 反向确认）。

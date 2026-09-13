@@ -1,0 +1,290 @@
+===== LDCodex 任务栏图标诊断 =====
+时间: 2026-09-13T07:39:13.906Z
+主机: ?  用户: Administrator
+
+===== 一、所有可见顶层窗口（任务栏图标的唯一来源）=====
+    格式: pid  进程名  [owner]  exstyle 类名  ←  标题
+    owner=owned 的窗口通常不在任务栏占位；no-owner 的可见顶层窗口才会。
+    exstyle 含 0x40000=APPWINDOW / 0x80=TOOLWINDOW（TOOLWINDOW 不进任务栏）。
+
+  1420    dwm.exe                [no-owner]  ex=0x0        Dwm                          ←  DWM Notification Window
+  2608    LDCodexManager.exe     [no-owner]  ex=0x40110    Tauri Window                 ←  LDCodex 管理工具
+  2608    LDCodexManager.exe     [no-owner]  ex=0x80800a0  Tao Thread Event Target      ←  
+  3628    TextInputHost.exe      [no-owner]  ex=0x200000   Windows.UI.Core.CoreWindow   ←  Windows 输入体验
+  4888    explorer.exe           [no-owner]  ex=0x8280088  ThumbnailDeviceHelperWnd     ←  
+  4888    explorer.exe           [no-owner]  ex=0x88       Shell_TrayWnd                ←  
+  4888    explorer.exe           [no-owner]  ex=0x8200080  DummyDWMListenerWindow       ←  
+  4888    explorer.exe           [no-owner]  ex=0x8200080  EdgeUiInputTopWndClass       ←  
+  4888    explorer.exe           [no-owner]  ex=0x180      WorkerW                      ←  
+  4888    explorer.exe           [no-owner]  ex=0x8200080  DummyDWMListenerWindow       ←  
+  4888    explorer.exe           [no-owner]  ex=0x8200080  DummyDWMListenerWindow       ←  
+  4888    explorer.exe           [no-owner]  ex=0x8200080  DummyDWMListenerWindow       ←  
+  4888    explorer.exe           [no-owner]  ex=0x8200080  DummyDWMListenerWindow       ←  
+  4888    explorer.exe           [no-owner]  ex=0x80       WorkerW                      ←  
+  4888    explorer.exe           [owned]  ex=0x80000a0  WorkerW                      ←  
+  4888    explorer.exe           [no-owner]  ex=0x80       Progman                      ←  Program Manager
+  6984    FSCapture.exe          [owned]  ex=0x88       FastStoneScreenCapturePanel  ←  FastStone Capture
+  7108    ldchat.exe             [no-owner]  ex=0x80800a0  com.ldfile.desktop-sic       ←  com.ldfile.desktop-siw
+  7108    ldchat.exe             [no-owner]  ex=0x80800a0  Tao Thread Event Target      ←  
+  7520    explorer.exe           [no-owner]  ex=0x100      CabinetWClass                ←  文档
+  7716    LDesk.exe              [no-owner]  ex=0x80800a0  Tao Thread Event Target      ←  
+  9344    explorer.exe           [no-owner]  ex=0x100      CabinetWClass                ←  D:\LUODA
+  9772    WorkBuddyAI.exe        [no-owner]  ex=0x100      Chrome_WidgetWin_1           ←  WorkBuddy AI
+  10780   Notepad.exe            [no-owner]  ex=0x110      Notepad                      ←  文本AI.txt - 记事本
+  10972   Notepad.exe            [no-owner]  ex=0x110      Notepad                      ←  0726GITHUB 专用TOKEN.txt - 记事本
+
+小计: 25 个可见顶层窗口
+
+===== 二、持有可见主窗口的进程（Get-Process MainWindowHandle != 0）=====
+
+  9344    explorer               ←  D:\LUODA
+  7520    explorer               ←  文档
+  4888    explorer               ←  
+  7108    ldchat                 ←  com.ldfile.desktop-siw
+  2608    LDCodexManager         ←  LDCodex 管理工具
+  7716    LDesk                  ←  
+  10972   Notepad                ←  0726GITHUB 专用TOKEN.txt - 记事本
+  10780   Notepad                ←  文本AI.txt - 记事本
+  3628    TextInputHost          ←  Windows 输入体验
+  9772    WorkBuddyAI            ←  WorkBuddy AI
+
+===== 三、LDCodex / node / WorkBuddy 相关进程（含父进程与完整命令行）=====
+
+  conhost.exe            pid=3104    ppid=2280      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: wlanext.exe pid=2280
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  WorkBuddyAI.exe        pid=9772    ppid=8132    ★有可见窗口(1)
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+      父进程: (已退出)
+      窗口: class=Chrome_WidgetWin_1 ex=0x100 [no-owner] 标题="WorkBuddy AI"
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+
+  WorkBuddyAI.exe        pid=5132    ppid=9772      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+      父进程: WorkBuddyAI.exe pid=9772
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe --type=gpu-process --no-sandbox --user-data-dir=C:\Users\Administrator\.workbuddy-ai\app --gpu-preferences=UAAAAAAAAADgAAAEAAAAAAAAAAAAAAAAAABgAAEAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAIAAAAAAAAAAg
+
+  WorkBuddyAI.exe        pid=2992    ppid=9772      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+      父进程: WorkBuddyAI.exe pid=9772
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --no-sandbox --user-data-dir=C:\Users\Administrator\.workbuddy-ai\app --standard-schemes=wb-cover,vscode-file,wb-extension
+
+  WorkBuddyAI.exe        pid=10152   ppid=9772      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+      父进程: WorkBuddyAI.exe pid=9772
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe --type=renderer --user-data-dir=C:\Users\Administrator\.workbuddy-ai\app --standard-schemes=wb-cover,vscode-file,wb-extension --secure-schemes=wb-cover,vscode-file,wb-extension --cors-schemes=vscode-file,wb-extension --fetch-s
+
+  WorkBuddyAI.exe        pid=5092    ppid=9772      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+      父进程: WorkBuddyAI.exe pid=9772
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar\main\daemon-app-server-entry.js --stdio
+
+  editor_sdk.exe         pid=3204    ppid=5092      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\node_modules\@tencent\tencent-docs-ai-engine\bin\win32-x64\editor_sdk.exe
+      父进程: WorkBuddyAI.exe pid=5092
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\node_modules\@tencent\tencent-docs-ai-engine\bin\win32-x64\editor_sdk.exe --port 39099 --log_dir C:\Users\Administrator\.workbuddy-ai\logs\editor_sdk
+
+  WorkBuddyAI.exe        pid=3308    ppid=9772      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+      父进程: WorkBuddyAI.exe pid=9772
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe --type=crashpad-handler --user-data-dir=C:\Users\Administrator\.workbuddy-ai\app /prefetch:4 --no-rate-limit --no-upload-gzip --monitor-self-annotation=ptype=crashpad-handler --database=C:\Users\Administrator\.workbuddy-ai\app
+
+  conhost.exe            pid=2104    ppid=3204      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: editor_sdk.exe pid=3204
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  WorkBuddyAI.exe        pid=2584    ppid=5092      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+      父进程: WorkBuddyAI.exe pid=5092
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar\main\sidecar-entry.js --token 53dd3393-580a-43da-a5a9-4441d9e6c210 --control-pipe-uuid 621aa000
+
+  WorkBuddyAI.exe        pid=8232    ppid=5092      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+      父进程: WorkBuddyAI.exe pid=5092
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\resources\extensions\edge-sync\server\index.cjs
+
+  LDCodexManager.exe     pid=2608    ppid=5640    ★有可见窗口(2)
+      路径: C:\Program Files\LDCodex\LDCodexManager.exe
+      父进程: (已退出)
+      窗口: class=Tauri Window ex=0x40110 [no-owner] 标题="LDCodex 管理工具"
+      窗口: class=Tao Thread Event Target ex=0x80800a0 [no-owner] 标题=""
+      命令行: C:\Program Files\LDCodex\LDCodexManager.exe
+
+  msedgewebview2.exe     pid=10536   ppid=2608      无可见窗口
+      路径: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe
+      父进程: LDCodexManager.exe pid=2608
+      命令行: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe --embedded-browser-webview=1 --webview-exe-name=LDCodexManager.exe --webview-exe-version=1.2.56 --user-data-dir=C:\Users\Administrator\AppData\Local\cn.dicad.ldcodex.manager\EBWebView --noerrdialogs --embedded-
+
+  msedgewebview2.exe     pid=2120    ppid=10536     无可见窗口
+      路径: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe
+      父进程: msedgewebview2.exe pid=10536
+      命令行: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe --type=crashpad-handler --user-data-dir=C:\Users\Administrator\AppData\Local\cn.dicad.ldcodex.manager\EBWebView /prefetch:4 /pfhostedapp:021dba72a8cbec3f6829a0638d02f7db1342abb4 --monitor-self-annotation=ptype=
+
+  msedgewebview2.exe     pid=8388    ppid=10536     无可见窗口
+      路径: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe
+      父进程: msedgewebview2.exe pid=10536
+      命令行: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe --type=gpu-process --string-annotations=is-enterprise-managed=no --noerrdialogs --user-data-dir=C:\Users\Administrator\AppData\Local\cn.dicad.ldcodex.manager\EBWebView --webview-exe-name=LDCodexManager.exe --we
+
+  msedgewebview2.exe     pid=3688    ppid=10536     无可见窗口
+      路径: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe
+      父进程: msedgewebview2.exe pid=10536
+      命令行: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --string-annotations=is-enterprise-managed=no --noerrdialogs --user-data-dir=C:\Users\Administrator\AppDat
+
+  msedgewebview2.exe     pid=4960    ppid=10536     无可见窗口
+      路径: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe
+      父进程: msedgewebview2.exe pid=10536
+      命令行: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --string-annotations=is-enterprise-managed=no --noerrdialogs --user-data-dir=C:\Users\Administrator\App
+
+  msedgewebview2.exe     pid=7824    ppid=10536     无可见窗口
+      路径: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe
+      父进程: msedgewebview2.exe pid=10536
+      命令行: C:\Program Files (x86)\Microsoft\EdgeWebView\Application\131.0.2903.86\msedgewebview2.exe --type=renderer --string-annotations=is-enterprise-managed=no --noerrdialogs --user-data-dir=C:\Users\Administrator\AppData\Local\cn.dicad.ldcodex.manager\EBWebView --webview-exe-name=LDCodexManager.exe --webvi
+
+  node.exe               pid=7872    ppid=2608      无可见窗口
+      路径: C:\Program Files\LDCodex\resources\node\node.exe
+      父进程: LDCodexManager.exe pid=2608
+      命令行: \\?\C:\Program Files\LDCodex\resources\node\node.exe daemon.js
+
+  conhost.exe            pid=4068    ppid=7872      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: node.exe pid=7872
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  node.exe               pid=7736    ppid=2608      无可见窗口
+      路径: C:\Program Files\LDCodex\resources\node\node.exe
+      父进程: LDCodexManager.exe pid=2608
+      命令行: \\?\C:\Program Files\LDCodex\resources\node\node.exe daemon.js
+
+  conhost.exe            pid=4828    ppid=7736      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: node.exe pid=7736
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  sandbox-center.exe     pid=1788    ppid=9772      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\cli\vendor\sandbox\5.5.5\sandbox-center.exe
+      父进程: WorkBuddyAI.exe pid=9772
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\cli\vendor\sandbox\5.5.5\sandbox-center.exe --config {\appHome\:\C:\\Users\\Administrator\\.workbuddy-ai\,\cipher\:{\detectionEnabled\:true,\detectMaxFileSizeBytes\:1048576},\approval\:{\callbackAddress\:\\\\\.\\pi
+
+  conhost.exe            pid=10764   ppid=1788      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: sandbox-center.exe pid=1788
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  WorkBuddyAI.exe        pid=10488   ppid=5092      无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe
+      父进程: WorkBuddyAI.exe pid=5092
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\WorkBuddyAI.exe C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\cli\bin\codebuddy --prewarm --prewarm-id wb-pool-1789283873466-4e6ca9
+
+  cmd.exe                pid=8440    ppid=10488     无可见窗口
+      路径: C:\Windows\system32\cmd.exe
+      父进程: WorkBuddyAI.exe pid=10488
+      命令行: C:\Windows\system32\cmd.exe /d /s /c C:\Users\Administrator\.workbuddy-ai\plugins\cache\workbuddy-builtin\weixinpay\1.6.109\bin\run-node ^C:\Users\Administrator\.workbuddy-ai\plugins\cache\workbuddy-builtin\weixinpay\1.6.109/dist/mcp-server.mjs^
+
+  node.exe               pid=9580    ppid=10488     无可见窗口
+      路径: C:\Users\Administrator\.workbuddy-ai\binaries\node\versions\22.22.2-2\node.exe
+      父进程: WorkBuddyAI.exe pid=10488
+      命令行: node C:\Users\Administrator\.workbuddy-ai\plugins\cache\workbuddy-builtin\sheetagent\5.5.2-wb.37849279.g910352f0.h1a8f7c37fe76/mcp/start.mjs
+
+  conhost.exe            pid=9568    ppid=8440      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: cmd.exe pid=8440
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  conhost.exe            pid=1328    ppid=9580      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: node.exe pid=9580
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  node.exe               pid=7512    ppid=8440      无可见窗口
+      路径: C:\Users\Administrator\.workbuddy-ai\binaries\node\versions\22.22.2-2\node.exe
+      父进程: cmd.exe pid=8440
+      命令行: C:\Users\Administrator\.workbuddy-ai\binaries\node\versions\22.22.2-2\node.exe  C:\Users\Administrator\.workbuddy-ai\plugins\cache\workbuddy-builtin\weixinpay\1.6.109/dist/mcp-server.mjs
+
+  sandbox-cli.exe        pid=10700   ppid=10488     无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\cli\vendor\sandbox\5.5.5\sandbox-cli.exe
+      父进程: WorkBuddyAI.exe pid=10488
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\cli\vendor\sandbox\5.5.5\sandbox-cli.exe --config {\extraPath\:[\C:\\Users\\Administrator\\AppData\\Local\\Programs\\WorkBuddyAI\\resources\\app.asar.unpacked\\cli\\bin\\runtime\\git\\bin\,\C:\\Users\\Administrator
+
+  conhost.exe            pid=4004    ppid=10700     无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: sandbox-cli.exe pid=10700
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  sandbox-cli-gc.exe     pid=11016   ppid=10700     无可见窗口
+      路径: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\cli\vendor\sandbox\5.5.5\sandbox-cli-gc.exe
+      父进程: sandbox-cli.exe pid=10700
+      命令行: C:\Users\Administrator\AppData\Local\Programs\WorkBuddyAI\resources\app.asar.unpacked\cli\vendor\sandbox\5.5.5\sandbox-cli-gc --workspace C:\Users\Administrator\.workbuddy-ai\workspace --retain-sec 600
+
+  conhost.exe            pid=6624    ppid=8736      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: xray.exe pid=8736
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  bash.exe               pid=8788    ppid=10700     无可见窗口
+      路径: C:\Users\Administrator\.workbuddy-ai\binaries\PortableGit\versions\1.2.0\bin\bash.exe
+      父进程: sandbox-cli.exe pid=10700
+      命令行: C:\Users\Administrator\.workbuddy-ai\binaries\PortableGit\versions\1.2.0\bin\bash.exe -c __codebuddy_payload=$1; shift; __codebuddy_script=$(<\$__codebuddy_payload\) || exit 125; unset __codebuddy_payload; eval \$__codebuddy_script\ C:\Users\Administrator\.workbuddy-ai\binaries\PortableGit\versions\
+
+  conhost.exe            pid=8116    ppid=8788      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: bash.exe pid=8788
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  bash.exe               pid=8552    ppid=8788      无可见窗口
+      路径: C:\Users\Administrator\.workbuddy-ai\binaries\PortableGit\versions\1.2.0\bin\..\usr\bin\bash.exe
+      父进程: bash.exe pid=8788
+      命令行: C:\Users\Administrator\.workbuddy-ai\binaries\PortableGit\versions\1.2.0\bin\..\usr\bin\bash.exe -c __codebuddy_payload=$1; shift; __codebuddy_script=$(<\$__codebuddy_payload\) || exit 125; unset __codebuddy_payload; eval \$__codebuddy_script\ C:\Users\Administrator\.workbuddy-ai\binaries\PortableGi
+
+  bash.exe               pid=5156    ppid=8552      无可见窗口
+      路径: C:\Users\Administrator\.workbuddy-ai\binaries\PortableGit\versions\1.2.0\bin\..\usr\bin\bash.exe
+      父进程: bash.exe pid=8552
+      命令行: C:\Users\Administrator\.workbuddy-ai\binaries\PortableGit\versions\1.2.0\bin\..\usr\bin\bash.exe -c __codebuddy_payload=$1; shift; __codebuddy_script=$(<\$__codebuddy_payload\) || exit 125; unset __codebuddy_payload; eval \$__codebuddy_script\ C:\Users\Administrator\.workbuddy-ai\binaries\PortableGi
+
+  node.exe               pid=9284    ppid=5156      无可见窗口
+      路径: C:\Users\Administrator\.workbuddy-ai\binaries\node\versions\22.22.2-2\node.exe
+      父进程: bash.exe pid=5156
+      命令行: C:\Users\Administrator\.workbuddy-ai\binaries\node\versions\22.22.2-2\node.exe _test_daemon/diagnose-taskbar.js
+
+  conhost.exe            pid=1972    ppid=6732      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: powershell.exe pid=6732
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+  conhost.exe            pid=9484    ppid=8088      无可见窗口
+      路径: C:\Windows\system32\conhost.exe
+      父进程: cmd.exe pid=8088
+      命令行: \??\C:\Windows\system32\conhost.exe 0x4
+
+===== 四、conhost.exe（控制台宿主）=====
+
+  conhost pid=3104    父进程=wlanext.exe pid=2280               窗口不可见
+  conhost pid=2104    父进程=editor_sdk.exe pid=3204            窗口不可见
+  conhost pid=4068    父进程=node.exe pid=7872                  窗口不可见
+  conhost pid=4828    父进程=node.exe pid=7736                  窗口不可见
+  conhost pid=10764   父进程=sandbox-center.exe pid=1788        窗口不可见
+  conhost pid=9568    父进程=cmd.exe pid=8440                   窗口不可见
+  conhost pid=1328    父进程=node.exe pid=9580                  窗口不可见
+  conhost pid=4004    父进程=sandbox-cli.exe pid=10700          窗口不可见
+  conhost pid=6624    父进程=xray.exe pid=8736                  窗口不可见
+  conhost pid=8116    父进程=bash.exe pid=8788                  窗口不可见
+  conhost pid=1972    父进程=powershell.exe pid=6732            窗口不可见
+  conhost pid=9484    父进程=cmd.exe pid=8088                   窗口不可见
+
+  说明：conhost 的存在**不能**证明有可见控制台窗口 —— 用 CREATE_NO_WINDOW 启动的
+        控制台进程同样会带一个 conhost，但窗口不显示。只有上面标了「★该控制台窗口
+        可见」的才真正会在任务栏出现图标。
+
+===== 五、怎么读这份报告 =====
+
+  A. 「一」里出现 node.exe / powershell.exe / cmd.exe 的可见窗口
+     → 某个子进程带着控制台窗口在跑，说明启动路径漏了隐藏标志。
+  B. 「一」里同一个 WorkBuddy/WorkBuddyAI pid 出现**两个以上** no-owner 可见窗口
+     → 客户端进程里的辅助窗口被强行显示出来了（1.2.12 修的就是这个）。
+       典型特征：标题是 "OleMainThreadWndName"、类名是 Chrome_WidgetWin_* 等。
+  C. 「一」里只有一个 WorkBuddy/WorkBuddyAI 窗口，但任务栏有两个图标
+     → 任务栏身份被改写、与固定的快捷方式分成了两个按钮（LDCODEX_REBRAND_TASKBAR 相关）。
+  D. 「一」里完全没有多余窗口、任务栏却仍有图标
+     → 图标来自系统托盘区或第三方工具，请截图确认。

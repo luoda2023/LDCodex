@@ -7,6 +7,7 @@
  * 运行方式：由 test-run.sh 在同一条命令内启动隔离 daemon 后调用，避免 Windows Job Object 连带杀进程。
  */
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const DATA_DIR = 'D:/LUODA/LDcodex/_test_daemon/data4';
@@ -66,6 +67,23 @@ function extractFn(src, name) {
   return src.slice(start, i);
 }
 
+/** 从 Rust 源码里按 `fn 名字(` 提取完整函数体（大括号配平） */
+function extractRustFn(src, name) {
+  const re = new RegExp('fn\\s+' + name + '\\s*(?:<[^>]*>)?\\s*\\(');
+  const m = re.exec(src);
+  if (!m) return null;
+  let i = src.indexOf('{', m.index);
+  if (i < 0) return null;
+  const start = m.index;
+  let depth = 0;
+  for (; i < src.length; i++) {
+    const c = src[i];
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) { i++; break; } }
+  }
+  return src.slice(start, i);
+}
+
 (async () => {
   // ── T0 就绪 ──
   section('T0 环境就绪');
@@ -90,7 +108,7 @@ function extractFn(src, name) {
   rec('T2b 返回 sides 数组（本端在首位）', Array.isArray(b.sides) && b.sides.length >= 1 && b.sides[0] && b.sides[0].id === 'workbuddy-cn',
     'sides=' + JSON.stringify((b.sides || []).map((s) => s.id)));
   rec('T2c 含 isolated/conflicts/warnings/daemonVersion',
-    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '1.2.11',
+    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '1.2.12',
     'version=' + b.daemonVersion + ', isolated=' + b.isolated + ', conflicts=' + JSON.stringify(b.conflicts) + ', warnings=' + JSON.stringify(b.warnings));
   const s0 = (b.sides && b.sides[0]) || {};
   rec('T2d 本端字段完整（CDP/面板端口/目录/可执行文件）',
@@ -129,7 +147,14 @@ function extractFn(src, name) {
   rec('T3c 导出内容已加密（不含明文 uid、含 wbsExport 标记）', raw.includes('wbsExport') && !raw.includes(uid), 'len=' + raw.length);
 
   // 往返：先删本地备份，再导入还原
-  fs.rmSync(path.join(accountsDir, uid + '.info'), { force: true });
+  // 注意：本机 fs.rmSync 会被 WorkBuddy 的 safe-delete shim 接管（走回收站二进制），偶发
+  // 超时（实测 ETIMEDOUT 会直接把整个套件打挂）。删不掉就退化成"清空内容"——对往返校验
+  // 同样有效（导入必须把内容写回来），且不会让套件崩掉。
+  try {
+    fs.rmSync(path.join(accountsDir, uid + '.info'), { force: true });
+  } catch (_) {
+    try { fs.writeFileSync(path.join(accountsDir, uid + '.info'), ''); } catch (_) {}
+  }
   const imp = await api('/api/accounts/import', { method: 'POST', body: { path: exportPath, password: PW } });
   rec('T3d 导入成功且含该 uid', imp.status === 200 && imp.body && imp.body.ok === true && Array.isArray(imp.body.imported) && imp.body.imported.includes(uid), JSON.stringify(imp.body));
   let restored = '';
@@ -281,6 +306,18 @@ function extractFn(src, name) {
   const curList = (afterAdd.body && Array.isArray(afterAdd.body.phrases)) ? afterAdd.body.phrases : [];
   rec('T11e 通过接口写入 3 条常用语', curList.length === 3, 'phrases=' + JSON.stringify(curList.map((x) => x.text)));
 
+  // 隔离回归：settings.json 是「客户端自己的」配置文件，位置由 profile 决定，不跟随
+  // WBSWITCH_DATA_DIR。若不加隔离开关，测试用语会写进用户真实的 ~/.workbuddy/settings.json
+  // ——既污染用户配置，又让本用例受上一轮残留影响而随机失败（实测：T11e 期望 3 条却拿到 4 条）。
+  const isoSettings = path.join(DATA_DIR, 'settings.json');
+  const realSettings = path.join(os.homedir(), '.workbuddy', 'settings.json');
+  let isoHas = false;
+  let realLeak = false;
+  try { isoHas = /T11 常用语甲/.test(fs.readFileSync(isoSettings, 'utf8')); } catch (_) {}
+  try { realLeak = /T11 常用语甲/.test(fs.readFileSync(realSettings, 'utf8')); } catch (_) {}
+  rec('T11l 测试用语只写入隔离 settings.json，不污染用户真实配置',
+    isoHas && !realLeak, 'isolatedSettings=' + isoHas + ', leakedToUserConfig=' + realLeak);
+
   // 导出：响应带 phraseCount，且文件解密后确实含 phrases 数组
   const { openEncryptedExport } = require(path.join(RUNTIME, 'secure-transfer.js'));
   const exportPath2 = path.join(TMP, 'export-phrases.json');
@@ -362,6 +399,62 @@ function extractFn(src, name) {
     /'进入插件设置': 'Open plugin settings'/.test(injectSrc), '英文词条已加');
   rec('T12i 该链接设了 white-space:nowrap（防中文折行）',
     /\.wbs-explore-edit\{[^}]*white-space:nowrap/.test(injectSrc), 'nowrap 已加');
+
+  // ── T13 任务栏不产生幽灵图标（1.2.12）──
+  // 背景：用户反馈「只要用了这个软件增加功能，任务栏上会多出一个国内版和国际版的图标」。
+  // 根因是窗口激活逻辑会强行 SW_SHOW 客户端进程里隐藏的辅助窗口（OLE 消息窗口等）。
+  // 这里做源码级断言：修复必须长期在位，不能被后续改动回退掉。
+  section('T13 任务栏不产生幽灵图标');
+  const WIN_INTEG = 'D:/LUODA/LDcodex/crates/codex-plus-core/src/windows_integration.rs';
+  const winSrc = fs.readFileSync(WIN_INTEG, 'utf8');
+  const fnActivate = extractRustFn(winSrc, 'activate_process_window');
+  const fnFront = extractRustFn(winSrc, 'bring_window_to_front');
+  const fnGenuine = extractRustFn(winSrc, 'is_genuine_app_window');
+
+  rec('T13 窗口激活优先只在"已可见"集合里挑（visible_only=true）',
+    !!fnActivate && /process_window\(process_id, true\)/.test(fnActivate),
+    fnActivate ? 'len=' + fnActivate.length : '未提取到 activate_process_window');
+  rec('T13b 兜底恢复隐藏窗口前必须过 is_genuine_app_window 校验',
+    !!fnActivate && /if !is_genuine_app_window\(hwnd\) \{\s*return false;\s*\}/.test(fnActivate),
+    '隐藏窗口不再被无条件显示');
+  rec('T13c 「真·应用窗口」判定：有标题 + 非工具窗口 + 非辅助类 + 无 owner',
+    !!fnGenuine && /GetWindowTextLengthW\(hwnd\)\s*\}\s*<=\s*0/.test(fnGenuine)
+      && /WS_EX_TOOLWINDOW\.0 != 0/.test(fnGenuine)
+      && /is_auxiliary_window_class\(&class_name\)/.test(fnGenuine)
+      && /GetWindow\(hwnd, GW_OWNER\)/.test(fnGenuine) && /owner\.is_invalid\(\)/.test(fnGenuine),
+    fnGenuine ? 'len=' + fnGenuine.length : '未提取到 is_genuine_app_window');
+  rec('T13c2 不依赖 WS_EX_APPWINDOW（实机主窗口没有该样式位，要求它会弄坏托盘恢复）',
+    !!fnGenuine && !/WS_EX_APPWINDOW\.0 != 0/.test(fnGenuine),
+    '未把 WS_EX_APPWINDOW 当必要条件');
+  rec('T13c3 辅助窗口类黑名单含实机抓到的 OLE 消息窗口',
+    /"olemainthreadwndname"/.test(winSrc) && /"olemainthreadwndclass"/.test(winSrc)
+      && /"chrome_messagewindow"/.test(winSrc),
+    '已收录 OleMainThreadWndName / OleMainThreadWndClass / Chrome_MessageWindow');
+  rec('T13d 唯一的 ShowWindow 调用集中在 bring_window_to_front',
+    !!fnFront && (winSrc.match(/ShowWindow\(/g) || []).length === 2
+      && /ShowWindow\(hwnd, SW_RESTORE\)/.test(fnFront) && /ShowWindow\(hwnd, SW_SHOW\)/.test(fnFront),
+    'ShowWindow 出现次数=' + (winSrc.match(/ShowWindow\(/g) || []).length + '（应为 2，全在 bring_window_to_front）');
+  rec('T13e 任务栏身份改写默认关闭（避免与固定图标分成两个按钮）',
+    /fn rebrand_taskbar_identity_enabled\(\) -> bool/.test(winSrc)
+      && /if rebrand_taskbar_identity_enabled\(\) && apply_taskbar_properties/.test(winSrc)
+      && !/if apply_taskbar_properties\(hwnd, &icon_resource_path\)\.is_ok\(\)/.test(winSrc),
+    'AppUserModelID 改写已改为 LDCODEX_REBRAND_TASKBAR 门控，默认不动任务栏身份');
+  rec('T13f 窗口图标品牌化保留（WM_SETICON 仍在）',
+    /apply_window_icons\(hwnd, &icon_resource_path\)/.test(winSrc), '图标仍会换成 LDCodex');
+
+  // daemon 侧：restoreWorkBuddyWindow 的 C# 也必须做同样的过滤
+  const fnRestore = extractFn(daemonSrc, 'restoreWorkBuddyWindow');
+  rec('T13g daemon 恢复窗口时跳过工具窗口/无标题窗口',
+    !!fnRestore && /WS_EX_TOOLWINDOW = 0x00000080/.test(fnRestore)
+      && /WS_EX_APPWINDOW = 0x00040000/.test(fnRestore)
+      && /GetWindowTextLength\(hWnd\) <= 0\) return true;/.test(fnRestore),
+    fnRestore ? 'len=' + fnRestore.length : '未提取到 restoreWorkBuddyWindow');
+  rec('T13h daemon 不再对枚举到的第一个窗口无脑 SW_RESTORE',
+    !!fnRestore && /if \(found == IntPtr\.Zero\) return false;/.test(fnRestore)
+      && !/if \(owner == targetPid\) \{ ShowWindowAsync\(hWnd, 9\);/.test(fnRestore),
+    '已改为先筛选候选再恢复');
+  rec('T13i daemon 版本已推进到 1.2.12',
+    /const DAEMON_VERSION = '1\.2\.12';/.test(daemonSrc), 'DAEMON_VERSION=1.2.12');
 
   // ── T7 回归 ──
   section('T7 回归');

@@ -30,6 +30,7 @@ WBSWITCH_DATA_DIR="$DATADIR" \
 WBSWITCH_PORT="$PORT" \
 WBSWITCH_CDP_PORT=47998 \
 WBSWITCH_PROFILE=workbuddy-cn \
+WBSWITCH_SETTINGS_FILE="$DATADIR/settings.json" \
 "$NODE" daemon.js > "$TMP/daemon-stdout.log" 2>&1 &
 DPID=$!
 echo "daemon pid=$DPID, 轮询等待就绪..."

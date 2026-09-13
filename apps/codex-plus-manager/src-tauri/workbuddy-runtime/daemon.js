@@ -355,8 +355,12 @@ const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.exis
 // 1.2.11：输入框旁的上弹面板支持直接新增常用语（底部第 1 行「添加」→ 列表顶部插入空白行 →
 //         Ctrl+Enter 保存）；自定义常用语随账号备份一起导出，导入时按文案查重、只追加缺的，
 //         换机器来回导入不会产生重复项（旧版导出文件无 phrases 字段，照常导入）。
-const DAEMON_VERSION = '1.2.11';
-const DAEMON_BUILD_ID = 'release-1.2.11-20260913-quick-phrase-inline-add-and-sync';
+// 1.2.12：修掉「用了增强功能后任务栏多出一个国内版/国际版图标」——restoreWorkBuddyWindow
+//         原先对目标进程枚举到的**第一个**顶层窗口无脑 SW_RESTORE，客户端进程里那些隐藏的
+//         辅助窗口（OLE 消息窗口 "OleMainThreadWndName"、Chromium 工具窗口）会被强行显示，
+//         任务栏随之凭空多出图标。现在只恢复「已可见/最小化」或「确认是应用主窗口」的候选。
+const DAEMON_VERSION = '1.2.12';
+const DAEMON_BUILD_ID = 'release-1.2.12-20260913-no-phantom-taskbar-icon';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）
@@ -2510,10 +2514,37 @@ async function restoreWorkBuddyWindow(pid) {
     '  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);',
     '  [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr hWnd, int command);',
     '  [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);',
-    '  public static void Restore(uint targetPid) {',
-    '    EnumWindows((hWnd, lParam) => { uint owner; GetWindowThreadProcessId(hWnd, out owner);',
-    '      if (owner == targetPid) { ShowWindowAsync(hWnd, 9); SetForegroundWindow(hWnd); return false; }',
-    '      return true; }, IntPtr.Zero);',
+    '  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);',
+    '  [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);',
+    '  [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int index);',
+    '  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowTextLength(IntPtr hWnd);',
+    '  const int GWL_EXSTYLE = -20;',
+    '  const int WS_EX_TOOLWINDOW = 0x00000080;',
+    '  const int WS_EX_APPWINDOW = 0x00040000;',
+    '  // 只恢复「本来就该显示」的窗口：',
+    '  //   * 已经可见，或处于最小化（WS_VISIBLE 仍在）—— 直接还原/置前，安全；',
+    '  //   * 完全隐藏的窗口，仅当它看起来就是应用主窗口（有标题 + WS_EX_APPWINDOW',
+    '  //     且不是 WS_EX_TOOLWINDOW）时才允许恢复，这对应「客户端被最小化到托盘」。',
+    '  // 客户端进程里还有大量隐藏的辅助窗口（OLE 消息窗口、Chromium 工具窗口），',
+    '  // 一旦被强行显示，任务栏就会凭空多出图标 —— 那正是要避免的。',
+    '  public static bool Restore(uint targetPid) {',
+    '    IntPtr found = IntPtr.Zero;',
+    '    EnumWindows((hWnd, lParam) => {',
+    '      uint owner; GetWindowThreadProcessId(hWnd, out owner);',
+    '      if (owner != targetPid) return true;',
+    '      bool alreadyShown = IsWindowVisible(hWnd) || IsIconic(hWnd);',
+    '      if (!alreadyShown) {',
+    '        int style = GetWindowLong(hWnd, GWL_EXSTYLE);',
+    '        bool appWindow = (style & WS_EX_APPWINDOW) != 0 && (style & WS_EX_TOOLWINDOW) == 0;',
+    '        if (!appWindow || GetWindowTextLength(hWnd) <= 0) return true;',
+    '      }',
+    '      found = hWnd;',
+    '      return false;',
+    '    }, IntPtr.Zero);',
+    '    if (found == IntPtr.Zero) return false;',
+    '    ShowWindowAsync(found, 9);',
+    '    SetForegroundWindow(found);',
+    '    return true;',
     '  }',
     '}',
   ].join('\n');
@@ -5263,6 +5294,15 @@ const ASK_MODE_RULE = [
 ].join('\n');
 
 function workbuddySettingsPath() {
+  // 测试隔离开关：允许用 WBSWITCH_SETTINGS_FILE 显式指定 settings.json 的位置。
+  //
+  // 为什么需要它：settings.json 是**客户端自己的**配置文件，位置由 profile 决定
+  // （国内版 ~/.workbuddy、国际版 ~/.workbuddy-ai），并不跟随 WBSWITCH_DATA_DIR。
+  // 于是隔离测试实例（WBSWITCH_DATA_DIR=data4）在跑「快捷短语增删」用例时，会把测试
+  // 用语写进用户**真实**的 settings.json —— 既污染用户配置，又让用例受上一轮残留影响
+  // 而随机失败。生产环境不会设置这个变量，行为完全不变。
+  const override = String(process.env.WBSWITCH_SETTINGS_FILE || '').trim();
+  if (override) return override;
   return path.join(PROFILE.dataRoot, 'settings.json');
 }
 
@@ -7989,7 +8029,9 @@ function handleApi(req, res) {
       if (!/^https?:\/\//i.test(u)) return json(res, 400, { ok: false, error: '仅支持 http(s) 链接' });
       try {
         if (IS_WIN) {
-          spawn('rundll32', ['url.dll,FileProtocolHandler', u], { detached: true, stdio: 'ignore' }).unref();
+          // 显式 windowsHide：detached 子进程在部分 Node/系统组合下仍可能分配控制台窗口，
+          // 那会在任务栏多出一个图标。这里把隐藏标志写死，不依赖默认值。
+          spawn('rundll32', ['url.dll,FileProtocolHandler', u], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
         } else {
           spawn('open', [u], { detached: true, stdio: 'ignore' }).unref();
         }
@@ -9495,7 +9537,9 @@ function handleApi(req, res) {
   if (req.method === 'GET' && p === '/api/open-dir') {
     try {
       if (IS_WIN) {
-        require('child_process').execFile('explorer.exe', [DATA_DIR]);
+        // explorer.exe 本身是 GUI 进程、不会开控制台，但统一带上隐藏标志，
+        // 避免不同系统策略下弹出窗口在任务栏留下图标。
+        require('child_process').execFile('explorer.exe', [DATA_DIR], { windowsHide: true });
       } else {
         require('child_process').execFile('/usr/bin/open', [DATA_DIR]);
       }

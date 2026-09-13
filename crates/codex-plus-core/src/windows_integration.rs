@@ -46,9 +46,9 @@ use windows::Win32::UI::Shell::{
 use windows::Win32::UI::WindowsAndMessaging::SW_SHOWMINNOACTIVE;
 #[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GWL_EXSTYLE, GetClassNameW, GetWindowLongPtrW, GetWindowTextLengthW,
-    GetWindowThreadProcessId, IsIconic, IsWindowVisible, SW_RESTORE, SW_SHOW, SetForegroundWindow,
-    ShowWindow, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+    EnumWindows, GWL_EXSTYLE, GW_OWNER, GetClassNameW, GetWindow, GetWindowLongPtrW,
+    GetWindowTextLengthW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SW_RESTORE, SW_SHOW,
+    SetForegroundWindow, ShowWindow, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
 };
 #[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -416,9 +416,35 @@ pub fn process_started_at_secs_from_birth_id(birth_id: u64) -> Option<u64> {
 
 #[cfg(windows)]
 pub fn activate_process_window(process_id: u32) -> bool {
+    // 第一步：只在「已经可见」的窗口里挑（被最小化的窗口依然算可见，WS_VISIBLE 还在）。
+    // 把这个集合里的窗口置前，不会改变任务栏里的图标数量，永远是安全的。
+    if let Some(hwnd) = process_window(process_id, true) {
+        return bring_window_to_front(hwnd);
+    }
+    // 第二步：兜底恢复「被最小化到托盘」的客户端主窗口——这类窗口被隐藏，只有
+    // 通过 SW_SHOW 才能拉回来，是用户点「打开」时期望的行为。
+    //
+    // 但必须严格校验候选：调用方（launcher）会把同一个 exe 的**所有**进程都传进来，
+    // 包括渲染进程 / GPU 进程 / utility 进程，这些进程各自带着隐藏的辅助窗口
+    // （OLE 消息窗口 "OleMainThreadWndName"、Chromium 工具窗口等）。它们有标题，
+    // 因此在打分时会被选中；一旦对它们调用 SW_SHOW，就会在任务栏凭空多出一个图标
+    // ——这正是用户反馈的「用了增强功能后任务栏多出一个国内版/国际版图标」。
+    // 所以这里只接受「看起来就是应用主窗口」的候选，其余一律不动。
     let Some(hwnd) = process_window(process_id, false) else {
         return false;
     };
+    if !is_genuine_app_window(hwnd) {
+        return false;
+    }
+    bring_window_to_front(hwnd)
+}
+
+/// 把窗口拉到前台：最小化的还原，已可见的置前。
+///
+/// 注意这里只处理「已经可见（含最小化）」的窗口，绝不把一个隐藏窗口变成可见 ——
+/// 调用方必须先自行确认该窗口本来就该显示。
+#[cfg(windows)]
+fn bring_window_to_front(hwnd: HWND) -> bool {
     unsafe {
         if IsIconic(hwnd).as_bool() {
             let _ = ShowWindow(hwnd, SW_RESTORE);
@@ -427,6 +453,41 @@ pub fn activate_process_window(process_id: u32) -> bool {
         }
         SetForegroundWindow(hwnd).as_bool()
     }
+}
+
+/// 判断窗口是否「像应用主窗口」。
+///
+/// 只有这类窗口才允许从隐藏状态被恢复显示。判定依据来自实机抓到的窗口清单
+/// （`_test_daemon/diagnose-taskbar.js`）：
+///   * 应用主窗口：有标题、无 owner、非工具窗口、类名不是辅助类
+///     （实机：客户端主窗口 class=Chrome_WidgetWin_1 ex=0x100 title="WorkBuddy AI"）
+///   * 辅助窗口：OLE 消息窗口（class=OleMainThreadWndName）、事件目标窗口
+///     （class=Tao Thread Event Target）、IME 窗口等 —— 它们被强行显示就会在任务栏多出图标
+///
+/// 注意这里**不**要求 `WS_EX_APPWINDOW`：实机抓到的客户端主窗口并没有这个样式位，
+/// 要求它会连带把「客户端被最小化到托盘后恢复主窗口」这个正常功能一起弄坏。
+#[cfg(windows)]
+fn is_genuine_app_window(hwnd: HWND) -> bool {
+    if unsafe { GetWindowTextLengthW(hwnd) } <= 0 {
+        return false;
+    }
+    let extended_style = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) } as u32;
+    if extended_style & WS_EX_TOOLWINDOW.0 != 0 {
+        return false;
+    }
+    let mut class_name = [0u16; 256];
+    let class_name_length = unsafe { GetClassNameW(hwnd, &mut class_name) }.max(0) as usize;
+    let class_name = String::from_utf16_lossy(&class_name[..class_name_length]);
+    if is_auxiliary_window_class(&class_name) {
+        return false;
+    }
+    // 有 owner 的窗口是附属窗口（OLE 消息窗口、弹出层等），不占任务栏，也不是主窗口。
+    // GetWindow 失败时保守地当作「有 owner」：宁可不恢复，也不制造幽灵窗口。
+    match unsafe { GetWindow(hwnd, GW_OWNER) } {
+        Ok(owner) if owner.is_invalid() => {}
+        _ => return false,
+    }
+    true
 }
 
 #[cfg(windows)]
@@ -441,10 +502,33 @@ pub fn apply_codexplusplus_icon_to_process_window(
     if apply_window_icons(hwnd, &icon_resource_path) {
         applied = true;
     }
-    if apply_taskbar_properties(hwnd, &icon_resource_path).is_ok() {
+    // 改写「任务栏身份」默认关闭，理由见 rebrand_taskbar_identity_enabled()。
+    if rebrand_taskbar_identity_enabled() && apply_taskbar_properties(hwnd, &icon_resource_path).is_ok()
+    {
         applied = true;
     }
     applied
+}
+
+/// 是否把客户端窗口的「任务栏身份」改写成 LDCodex。
+///
+/// **默认关闭。** 原因：`AppUserModelID` 决定 Windows 任务栏如何给窗口分组。客户端
+/// （国内版 / 国际版）自己有一个身份，用户如果把客户端固定到了任务栏，那个固定按钮用的
+/// 也是客户端自己的身份。我们再把运行中的窗口改成 `cn.dicad.ldcodex.codex`，它就和固定
+/// 按钮分属两个身份、不再合并 —— 任务栏于是出现**两个**按钮：一个是固定的、一个是正在
+/// 运行的。这正是用户反馈的「只要用了这个软件增加功能，任务栏就多出一个国内版/国际版
+/// 图标」。
+///
+/// 图标品牌化不受影响：窗口图标由 `WM_SETICON` 单独替换，与任务栏身份无关。
+///
+/// 需要恢复旧行为（任务栏按钮显示成 LDCodex）时，设置环境变量
+/// `LDCODEX_REBRAND_TASKBAR=1`。
+#[cfg(windows)]
+fn rebrand_taskbar_identity_enabled() -> bool {
+    matches!(
+        std::env::var("LDCODEX_REBRAND_TASKBAR").as_deref(),
+        Ok("1") | Ok("true") | Ok("TRUE") | Ok("yes")
+    )
 }
 
 #[cfg(windows)]
@@ -561,11 +645,23 @@ fn process_window_score(
     }
 }
 
+/// 这些窗口类是「辅助窗口」：它们不占任务栏、也不该被当作应用主窗口显示出来。
+///
+/// `OleMainThreadWndName` / `OleMainThreadWndClass` 是实机抓到的关键项 —— 客户端的
+/// utility 进程带着这样一个隐藏的 OLE 消息窗口，标题非空，旧逻辑会把它当成最佳候选
+/// 并 `SW_SHOW` 出来，任务栏于是凭空多出一个图标。
 #[cfg(windows)]
 fn is_auxiliary_window_class(class_name: &str) -> bool {
     matches!(
         class_name.to_ascii_lowercase().as_str(),
-        "ime" | "msctfime ui" | "tray_icon_app" | "tao thread event target"
+        "ime"
+            | "msctfime ui"
+            | "tray_icon_app"
+            | "tao thread event target"
+            | "olemainthreadwndname"
+            | "olemainthreadwndclass"
+            | "chrome_messagewindow"
+            | "chrome_widgetwin_0"
     )
 }
 
@@ -748,5 +844,32 @@ mod tests {
         assert!(app_score > ime_score);
         assert_eq!(ime_score, tool_score);
         assert_eq!(auxiliary_app_score, ProcessWindowScore::Fallback);
+    }
+
+    /// 回归：客户端的 utility 进程带着隐藏的 OLE 消息窗口（标题非空），
+    /// 旧逻辑会把它选为最佳候选并 SW_SHOW 出来 → 任务栏多出一个图标。
+    /// 这些辅助窗口类必须被打成 Fallback，不能再被当成"应用窗口"。
+    #[test]
+    fn auxiliary_message_windows_are_not_treated_as_app_windows() {
+        for class_name in [
+            "OleMainThreadWndName",
+            "OleMainThreadWndClass",
+            "Chrome_MessageWindow",
+            "Chrome_WidgetWin_0",
+            "Tao Thread Event Target",
+        ] {
+            assert!(
+                is_auxiliary_window_class(class_name),
+                "{class_name} 应被识别为辅助窗口"
+            );
+            assert_eq!(
+                process_window_score(true, WS_EX_APPWINDOW.0, class_name),
+                ProcessWindowScore::Fallback,
+                "{class_name} 即使带 WS_EX_APPWINDOW 也不该被当成应用窗口"
+            );
+        }
+        // 客户端主窗口类不能被误伤，否则"从托盘恢复主窗口"会失效。
+        assert!(!is_auxiliary_window_class("Chrome_WidgetWin_1"));
+        assert!(!is_auxiliary_window_class("Tauri Window"));
     }
 }
