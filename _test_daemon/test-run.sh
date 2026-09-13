@@ -25,6 +25,14 @@ if netstat -ano 2>/dev/null | grep ":$PORT" | grep -qi listening; then
 fi
 echo "端口 $PORT 空闲 ✅"
 
+# 本机安装状态（信息性，**不参与**下面的成败判定，所以 `|| true`）：
+# 回答「用户机器上跑的到底是哪一版」。历史教训 —— 两次「改了没用」的真实原因
+# 都是「根本没装上」，所以每次跑测试都顺手报一次，别再靠肉眼猜。
+# 脚本内部对 reg.exe 被沙箱拦截做了降级（改走 PowerShell），读不到就记 SKIP，不会误报。
+echo ""
+"$NODE" "$TMP/verify-installed-version.mjs" || true
+echo ""
+
 cd "$RUNTIME" || exit 1
 WBSWITCH_DATA_DIR="$DATADIR" \
 WBSWITCH_PORT="$PORT" \

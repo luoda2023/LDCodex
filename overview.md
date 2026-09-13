@@ -1,7 +1,7 @@
 # LDCodex 88.8.3：插件面板不再顶出窗口 + 安装器不再卡在「无法卸载」
 
-> 本轮改动：`workbuddy-runtime/inject.js`（插件面板布局 6 处）｜ `src-tauri/windows/hooks.nsh`（安装器钩子重写）｜ 版本号 6 处来源统一升到 `88.8.3` ｜ `_test_daemon/*`（新增 T18/T19 + 插件面板布局实测脚本与夹具）
-> 测试：**118/118 + 16/16 + 布局实测 14/14 + 插件面板实测 47/47 + 前端 159/159 + Rust 2/2 + tsc 全绿**
+> 本轮改动：`workbuddy-runtime/inject.js`（插件面板布局 6 处）｜ `src-tauri/windows/hooks.nsh`（安装器钩子重写）｜ 版本号 6 处来源统一升到 `88.8.3` ｜ `_test_daemon/*`（新增 T18/T19/T20 + 插件面板布局实测脚本与夹具 + 本机安装版本核验脚本）
+> 测试：**123/123 + 16/16 + 布局实测 14/14 + 插件面板实测 47/47 + 前端 159/159 + Rust 2/2 + tsc 全绿**
 
 ## 一句话结论
 
@@ -142,10 +142,11 @@ env -u NSISDIR -u NSISCONFDIR /e/devtools/tauri-cache/NSIS/makensis \
 
 > 踩坑记录：夹具第一版里 `__PLUGIN_CSS__` 这个占位符**在注释里也出现了一次**，`String.replace` 只替换第一处 → CSS 根本没注入，量出来「面板高 1816px」。现在脚本会先数占位符出现次数，不等于 1 就 SKIP 并提示。
 
-### 源码级静态守卫（新增 T18 系列 5 项 + T19 系列 6 项）
+### 源码级静态守卫（新增 T18 系列 5 项 + T19 系列 6 项 + T20 系列 5 项）
 
 - **T18**：`.wbs-panel` 的 `max-height` 必须受视口约束；`.wbs-body` 不得再出现 `calc(650px…)` / `calc(min(78vh…))`；JS 内联 `maxHeight` 不得钉成 `'650px'`；三处列表滚动条不得是 `transparent`。
 - **T19**：必须注册 `MUI_CUSTOMFUNCTION_GUIINIT`；**不得**用 `nsis_tauri_utils::`；**不得**用 `${StrLoc}` 系列；停进程必须轮询 + 兜底杀 daemon；静默安装不得弹窗；`hooks.nsh` 必须仍早于第一个 `MUI_LANGUAGE` 被 include。
+- **T20**：`verify-installed-version.mjs` 必须存在；`test-run.sh` 必须调用它且用 `|| true` 保持信息性；脚本必须**保持只读**（不得出现任何写文件 API）；读注册表必须带 PowerShell 降级；不得用 `toISOString()` 打时间。
 
 > 踩坑记录（同一个坑踩了两次）：断言前**必须先剥注释**。T17 是 CSS 注释里提到了旧写法被误判；T19 是我自己写的注释里**特意**提到了 `nsis_tauri_utils::` 和 `${StrLoc}` 来说明「为什么不能用」，结果被判成违规用法。T19 现在按「整行以 `;` 开头」剥掉再断言。
 
@@ -162,8 +163,9 @@ env -u NSISDIR -u NSISCONFDIR /e/devtools/tauri-cache/NSIS/makensis \
 | `apps/codex-plus-launcher/build.rs` | 注释里的版本示例同步 |
 | **`_test_daemon/plugin-panel-harness.html`（新增）** | 插件面板 DOM 复刻夹具，样式表从 `inject.js` 现抽 |
 | **`_test_daemon/verify-plugin-layout.mjs`（新增）** | 三个页签 × 四种窗口高度的布局实测 + 反向自检 |
+| **`_test_daemon/verify-installed-version.mjs`（新增）** | 把安装目录 `workbuddy-runtime\` 与源码**逐文件比 sha256**，加读 `daemon.js` 版本与注册表 `DisplayVersion` —— 一条命令回答「用户机器上跑的到底是哪一版」 |
 | `_test_daemon/run-tests.js` | 新增 T18（5 项）/ T19（6 项）；T2c / T13i / T14 断言同步到 `88.8.3` |
-| `_test_daemon/test-run.sh` | 接入插件面板实测脚本 |
+| `_test_daemon/test-run.sh` | 接入插件面板实测脚本；开头跑一次安装版本核验（信息性，不参与成败判定） |
 | `_test_daemon/TEST-REPORT.md` / `overview.md` | 同步版本号、总数、新增章节 |
 
 ---
@@ -326,6 +328,25 @@ Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
 > ⚠️ 界面那页的版本号是「**旧的**」，不是数字：`installer.nsi:217 StrCpy $R4 "$(older)"`，
 > `SimpChinese.nsh:14 LangString older "旧的"`，所以原文是「系统中已存在版本为 **旧的** 的 LDCodex」。
 > **界面上不会出现「88.8.1」这种数字**，别把注册表里读到的版本号当成界面文案。
+
+**装完怎么核验？一条命令**（只读，不改任何文件）：
+
+```bash
+node _test_daemon/verify-installed-version.mjs            # 诊断模式，永远 exit 0
+node _test_daemon/verify-installed-version.mjs --strict   # 不匹配则 exit 1
+```
+
+它把**安装目录 `workbuddy-runtime\` 下的文件与源码里的同名文件逐个比 sha256**，
+再读安装目录 `daemon.js` 的 `DAEMON_VERSION` / `DAEMON_BUILD_ID` 与注册表 `DisplayVersion`，
+最后检查安装的 `inject.js` 是否含 88.8.3 的面板高度修复标记。**源码是唯一权威** ——
+哈希全等就说明运行时确实吃到了当前源码。
+
+`_test_daemon/test-run.sh` 也会在开头跑一次它（信息性，**不参与**成败判定），
+这样每次跑测试都会顺手报一次本机装的是哪版 —— 历史上两次「改了没用」的真实原因都是「根本没装上」。
+
+> ⚠️ 本机 `reg.exe` 在沙箱程序黑名单里（Node 侧报 `spawnSync reg EPERM`），
+> 脚本会自动降级到 PowerShell `Get-ItemProperty`（实测可行）；两条路都被拦时记 **SKIP 而不是 FAIL**，
+> 避免把「读不到」误报成「版本不对」。运行时终端多出一行沙箱拦截提示属正常。
 
 ---
 

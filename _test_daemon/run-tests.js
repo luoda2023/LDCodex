@@ -782,6 +782,43 @@ function extractRustFn(src, name) {
       'hooks.nsh 第 ' + (hooksLine + 1) + ' 行，MUI_LANGUAGE 第 ' + (langLine + 1) + ' 行');
   }
 
+  // ── T20 安装版本核验脚本的不变量（verify-installed-version.mjs）──
+  // 用户两次质问「你怎么回事？你没有构建出来新版本吗还是原来的那一版」，
+  // 真实原因都是**根本没装上**（88.8.2 那次也是）。所以有了这个「源码 vs 安装目录
+  // 逐文件比 sha256」的核验脚本。这一节守三件事：
+  //   ① 它必须仍从 test-run.sh 被调用（否则下次没人会想起它）；
+  //   ② 它必须保持**只读** —— 它跑在用户真实的安装目录上，写一下就是事故；
+  //   ③ 读注册表必须带降级 —— 本机 reg.exe 在沙箱程序黑名单里（Node 侧只报
+  //      `spawnSync reg EPERM`），直接判 FAIL 会把「读不到」误报成「版本不对」。
+  section('T20 安装版本核验脚本不变量（verify-installed-version.mjs）');
+  let ivSrc = '';
+  try { ivSrc = fs.readFileSync(path.join(TMP, 'verify-installed-version.mjs'), 'utf8'); } catch (_) { ivSrc = ''; }
+  rec('T20a verify-installed-version.mjs 存在', ivSrc.length > 1000, '长度 ' + ivSrc.length);
+
+  let shSrc = '';
+  try { shSrc = fs.readFileSync(path.join(TMP, 'test-run.sh'), 'utf8'); } catch (_) { shSrc = ''; }
+  rec('T20b test-run.sh 必须调用它（并用 || true 保持信息性、不参与成败判定）',
+    /verify-installed-version\.mjs/.test(shSrc) && /\|\|\s*true/.test(shSrc),
+    '否则「本机装的是哪版」又只能靠肉眼猜');
+
+  // 断言前先剥注释：脚本头部**特意写了** toISOString() 来说明「为什么不能用」，
+  // 不剥的话会把注释本身当成违规用法（T17 / T19 踩过同一个坑）。
+  const ivCode = ivSrc
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split(/\r?\n/).filter((l) => !/^\s*\/\//.test(l)).join('\n');
+
+  rec('T20c 必须保持只读（不得出现任何写文件 API）',
+    !/(writeFileSync|appendFileSync|unlinkSync|rmSync|rmdirSync|mkdirSync|renameSync|copyFileSync|createWriteStream|writeFile\()/.test(ivCode),
+    '它跑在用户的真实安装目录上，写一下就是事故');
+
+  rec('T20d 读注册表必须带降级（reg.exe 被沙箱拦截时要降级 PowerShell，而不是判 FAIL）',
+    /\breg\b/.test(ivCode) && /Get-ItemProperty/.test(ivCode) && /status: 'blocked'/.test(ivCode),
+    '否则 spawnSync reg EPERM 会被误报成「版本不对」');
+
+  rec('T20e 打时间戳不得用 toISOString()（UTC 比北京时间少 8 小时，17:15 会显示成 09:15）',
+    !/toISOString\(\)/.test(ivCode),
+    '要手工拼本地时间');
+
   // ── T7 回归 ──
   section('T7 回归');
   const sess = await api('/api/sessions');
