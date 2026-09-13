@@ -384,12 +384,60 @@ Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
   换 Tauri 用的 `-V3` 再编一次，也和 `-V2` 的产物**一模一样**
   （`tauri-bundler-2.9.4/src/bundle/windows/nsis/mod.rs:695-700` 按日志级别选 `-V1`..`-V4`，
   只影响控制台输出，**不影响产物字节**）。
-- **但重新编译的产物仍会和出包产物不同**（实测差 669 字节），原因不是「时间戳」，
-  而是 **`npm run build` 打完包之后 cargo 又重链接了一次 `target/release/LDCodexManager.exe`**
-  （实测 exe mtime `19:12:54` **晚于**安装包 `19:12:50`；全盘只有这一份 exe，且与
-  `target/release/deps/LDCodexManager.exe` 是同一 inode 的硬链接）。
-  包内嵌的是重链接**前**的 exe，你现在重编用的是重链接**后**的 exe → LZMA 整体重压 → 大小差几百字节。
-  **功能上无影响**：两次都是同一份源码（18:35–19:00，全早于 `installer.nsi` 生成的 19:10:07）编出来的。
+- **但重新编译的产物仍会和出包产物不同**（88.8.3 实测差 669 字节），原因**不是**「时间戳」，
+  也**不是**「cargo 又重链接了一次」—— 那两个说法我都写过，**都是错的**。真正原因是
+  **Tauri 打包完会把 exe 还原成「未打标」状态**（见下）。
+
+##### 为什么 `target/release/LDCodexManager.exe` 总是比安装包「新」
+
+`tauri-bundler-2.9.4/src/bundle.rs` 的打包主循环（`:128`、`:148`、`:197-203`）是这样的：
+
+```rust
+// :128  “We make a copy of the unsigned main_binary so that we can restore it after each package_type step.”
+let mut main_binary_copy = tempfile::tempfile()?;
+let mut main_binary_orignal = std::fs::File::open(&main_binary_path)?;
+std::io::copy(&mut main_binary_orignal, &mut main_binary_copy)?;      // ① 备份原文件
+
+for package_type in &package_types {
+    patch_binary(&main_binary_path, package_type)?;                  // ② 打标：UNK → NSS(NSIS)
+    … 构建安装包（makensis 此时读的是【已打标】的 exe）…
+    // :197  “Restore unsigned and unpatched binary”
+    let mut modified_main_binary = std::fs::OpenOptions::new()
+        .write(true).truncate(true).open(&main_binary_path)?;
+    main_binary_copy.seek(SeekFrom::Start(0))?;
+    std::io::copy(&mut main_binary_copy, &mut modified_main_binary)?; // ③ 把原文件覆盖回去
+}
+```
+
+即：**cargo 编出的是 `UNK`（未打标）版 → Tauri 打标成 `NSS`（NSIS）→ makensis 打进去的是 `NSS` 版
+→ 打完 Tauri 又把 `UNK` 版覆盖回磁盘**。所以磁盘上那份 exe 的 mtime 必然**晚于**安装包
+（88.8.4 实测 exe `21:34:11` vs 包 `21:34:09`），而**包里的才是正确打标的那份**。
+
+**这两份 exe 差多少？实测只差 3 个字节**，就是那个标记本身：
+
+| | 偏移 `0x17b69a2` 处的字节 | 含义 |
+|---|---|---|
+| 安装包内嵌的 | `__TAURI_BUNDLE_TYPE_VAR_`**`NSS`** | NSIS（正确） |
+| 磁盘 `target/release/` 里的 | `__TAURI_BUNDLE_TYPE_VAR_`**`UNK`** | 未知（被还原） |
+
+> 两个文件的 `TimeDateStamp`、`CheckSum`、大小（46,021,632 字节）**完全一致** ——
+> 所以「PE 时间戳变了导致产物不同」这个说法可以彻底排除。
+> 那 3 个字节经 LZMA 整体重压后，就让整个安装包差了 669 字节。
+
+**结论：exe 比安装包新 ≠ 包是旧的。** 这是 Tauri 的正常行为，不是构建问题。
+
+##### 判据 4（最硬）：直接把安装包拆开看
+
+前面的判据只能证明「打进去的是当前源码」。要**直接证明包里的 exe 是什么样**，就把包拆开：
+
+```bash
+# 7-Zip 完整版的 7z.exe 支持 Nsis 格式（7za 独立版【不支持】）
+7z.exe l target/release/bundle/nsis/LDCodex_88.8.4_x64-setup.exe   # 列内容
+7z.exe x  <安装包> -o<目录> -y "LDCodexManager.exe"                 # 抽出管理器
+```
+
+88.8.4 实测结果：包内 exe 里能搜到 `LDCodex 管理工具 v`、`左键显示窗口，右键打开菜单`、
+`{version}`、`88.8.4`，且**搜不到** `88.8.1` —— 即托盘 tooltip 确实在包里。
 
 **可靠的三层判据**：
 
@@ -398,6 +446,7 @@ Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
 | 1 | **PE 版本资源**（明文，LZMA 压不到） | `(Get-Item $exe).VersionInfo` → `FileVersion` / `ProductVersion` |
 | 2 | **安装器脚本引用源码绝对路径**，makensis 编译期同步读盘、无缓存 | `target/release/nsis/x64/installer.nsi` 里 `File /a "/oname=…" "D:\LUODA\LDcodex\…"`；再加 `:34 !define VERSION "88.8.4"` |
 | 3 | **直接量构建产物内容** | 管理器：`apps/codex-plus-manager/dist/assets/index-*.css`；插件：`_test_daemon/verify-plugin-layout.mjs`（从 `inject.js` 现抽） |
+| 4 | **拆包看内嵌文件**（最硬） | `7z.exe x <安装包> -y "LDCodexManager.exe"` 后搜字面量 / 读 PE 版本资源 |
 
 用判据 2 时，只要「源码 mtime < 产物 mtime」就说明打进去的是当前源码。
 

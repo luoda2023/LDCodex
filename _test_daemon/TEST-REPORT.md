@@ -125,9 +125,57 @@ FOUND    "88.8.4"                   @byte 12195131
 
 即：tooltip 的中文字面量与 `{version}` 占位符**确实在编译产物里**，不是只躺在源码里。
 
-> 注：`LDCodexManager.exe` 的 mtime（21:34:11）比安装包（21:34:09）晚 2 秒，是 Tauri
-> 「Patching … with bundle type information」那一步写入造成的 —— 与 88.8.3 那次观察到的
-> 「出包后 exe 被重写」是同一现象，**不影响功能**，也**不能**据此认为包是旧的。
+### 更硬的一步：把安装包拆开，看**包内**的 exe
+
+上面搜的是磁盘上的 exe。为排除「包里的其实是另一份」的可能，用 7-Zip 完整版（`7z.exe`，**独立版 `7za.exe`
+不支持 Nsis 格式**）把安装包拆开：
+
+```
+7z.exe l target/release/bundle/nsis/LDCodex_88.8.4_x64-setup.exe
+  → 67 files，其中 LDCodexManager.exe 46,021,632 字节（时间戳 2026-09-13 21:32:44）
+7z.exe x <安装包> -o_tmp/extracted -y "LDCodexManager.exe"
+```
+
+在**包内**的 exe 里搜：
+
+```
+FOUND    "LDCodex 管理工具 v"          @18076929
+FOUND    "左键显示窗口，右键打开菜单"     @18076961
+FOUND    "{version}"                   @18076920
+FOUND    "88.8.4"                      @12195131
+MISSING  "88.8.1"
+```
+
+→ **托盘 tooltip 确实在安装包里**，且包内不含任何 88.8.1 的痕迹。✅
+
+### 顺带彻底查清了「磁盘 exe 比安装包新」这件事（更正旧结论）
+
+包内 exe 与磁盘 exe 的 sha256 不同，但逐字节比对后：
+
+```
+总字节数   : 46,021,632（两者相同）
+不同字节数 : 3（0.0000%）
+差异位置   : 0x17b69a2..0x17b69a4（同一 4KB 页内）
+PE TimeDateStamp : 包内 = 2026-09-13T13:32:40Z   磁盘 = 2026-09-13T13:32:40Z（相同）
+PE CheckSum      : 包内 = 0x0                    磁盘 = 0x0（相同）
+```
+
+那 3 个字节是：
+
+| | 字节 | 含义 |
+|---|---|---|
+| 包内 | `__TAURI_BUNDLE_TYPE_VAR_`**`NSS`** | NSIS，**正确打标** |
+| 磁盘 | `__TAURI_BUNDLE_TYPE_VAR_`**`UNK`** | 未知，被还原 |
+
+原因在 `tauri-bundler-2.9.4/src/bundle.rs`：`:128` 备份原 exe → `:148 patch_binary()` 打标 →
+makensis 打包 → `:197-203` **把原文件覆盖回磁盘**（源码注释 “Restore unsigned and unpatched binary”）。
+
+> **这推翻了「一之零D-补二」里写的「cargo 又重链接了一次 exe、PE 时间戳变了」** ——
+> 实测时间戳完全一致。正确说法是 **Tauri 打包后会主动还原 exe**，
+> 所以磁盘上的那份永远是 `UNK`、永远比安装包新，**而包里的才是正确打标的那份**。
+
+> 注：`LDCodexManager.exe` 的 mtime（21:34:11）比安装包（21:34:09）晚 2 秒，就是上面第 ③ 步
+> 还原写入造成的 —— **不影响功能**，也**不能**据此认为包是旧的。
 
 
 
@@ -317,9 +365,17 @@ HTTP 状态码照常返回给调用方断言。
    按日志级别选 `-V1`..`-V4`，只影响控制台输出，**不影响产物字节**）。
    真正原因是**排除法**查出来的：`installer.nsi` 里所有被打包的输入中，只有
    `target/release/LDCodexManager.exe` 的 mtime（**19:12:54**）晚于安装包（**19:12:50**）——
-   出包之后 cargo 又重链接了一次管理器 exe（PE 时间戳变了）→ LZMA 整体重压 → 差 669 字节。
+   出包之后管理器 exe 又被写了一次 → LZMA 整体重压 → 差 669 字节。
    **功能无影响**（两次同源码、同版本），但「哈希比对」这条路彻底不能用。
    可用的三层判据见 `overview.md` 第七节 ⑦。
+   > **⚠️ 更正（88.8.4 拆包实测）**：当时把原因写成「cargo 又重链接了一次 exe（PE 时间戳变了）」，
+   > **这是错的**。用 7-Zip 把 88.8.4 安装包拆开逐字节比对后确认：
+   > ① 两个 exe 的 `TimeDateStamp`、`CheckSum`、大小**完全相同**；
+   > ② 真正的差异**只有 3 个字节**，是 Tauri 的安装包类型标记 —— 包内是
+   > `__TAURI_BUNDLE_TYPE_VAR_NSS`（NSIS，正确打标），磁盘上是 `__TAURI_BUNDLE_TYPE_VAR_UNK`（被还原）；
+   > ③ 原因是 `tauri-bundler-2.9.4/src/bundle.rs:128,148,197-203`：打包前备份原 exe → 打标 → makensis 打进去
+   > → **打完把原文件覆盖回磁盘**（源码注释原文 “Restore unsigned and unpatched binary”）。
+   > 所以「磁盘 exe 比安装包新」是 **Tauri 的正常设计**，包里的才是正确的那份。详见 `overview.md` 第七节 ⑦。
 2. **「改了没用」的真实原因往往不是「没改对」，而是「根本没装上」** —— 88.8.2 那次就是这样。
    注册表 `DisplayVersion` 只反映安装器**写入过**什么，目录 mtime 会被别的操作带偏，
    所以需要一个「源码 vs 安装目录」的硬比对。
