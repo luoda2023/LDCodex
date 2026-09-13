@@ -823,6 +823,24 @@ function extractRustFn(src, name) {
     (psKillLine.match(/-notlike/g) || []).length >= 2,
     '只排一个：卸载器里的 $EXEPATH 保护不到父安装器，覆盖安装仍会自杀');
 
+  // ── T22 .fill Panel 不能被 .screen 的 grid stretch 钉死（2026-09-13 真实事故）──
+  // 用户反馈「WorkBuddy 国际版/国内版各页签外框没跟着内容变长，内部超出」——
+  // 根因：.screen 是 display:grid，Card 是 grid item；Card 用 .fill 标识（min-height
+  // calc(100vh-150px)），但 grid item 默认 align-self: stretch，会被拉到 grid track
+  // 高度（= .screen 可视区）。CardContent 内容超过可视区就被钉死，溢出 Card 边框。
+  // 修法：.fill 加 align-self: start —— Card 高度按内容自然撑开，超出时由 .screen
+  // 滚动。影响 WorkBuddy 国际/国内版 8 个 tab + MCP&插件页面（都用了 <Panel fill>）。
+  const fillBlock = stylesCode.match(/\.fill\s*\{[^{}]*\}/g)?.find((b) => /min-height/.test(b)) || '';
+  rec('T22a .fill 必须含 align-self: start（不让 grid stretch 把 Panel 钉死）',
+    /align-self\s*:\s*start/.test(fillBlock),
+    '否则 .screen grid align-self: stretch 默认值会把 Card 拉到 track 高度、内容溢出 Panel —— WorkBuddy 国际/国内版所有页签都会受影响');
+  rec('T22b .fill 不能被改回 align-self: stretch',
+    !/align-self\s*:\s*stretch/.test(fillBlock),
+    '故意反着改的也要拦下：这是修过一次的真实事故，别再回退');
+  rec('T22c .fill 仍保留 min-height: calc(100vh - 150px)（视觉上仍占满可视区）',
+    /min-height\s*:\s*calc\(\s*100vh\s*-\s*150px\s*\)/.test(fillBlock),
+    '内容少时仍要至少撑到「视口高 - 标题栏/顶栏/页签/状态区」的高度，别因为修 overflow 把这个下限也丢了');
+
   // ── T20 安装版本核验脚本的不变量（verify-installed-version.mjs）──
   // 用户两次质问「你怎么回事？你没有构建出来新版本吗还是原来的那一版」，
   // 真实原因都是**根本没装上**（88.8.2 那次也是）。所以有了这个「源码 vs 安装目录

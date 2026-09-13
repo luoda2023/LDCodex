@@ -595,8 +595,16 @@ body {
    150px = 38 标题栏 + 60 顶栏 + 20 屏内上边距 + 32 屏内下边距。
    这里只是 min-height（内容更高时以内容为准），所以即便断点下内边距略有出入，
    最多是面板矮一点点，绝不会把内容顶出窗口。 */
+/* fill 用来让面板至少占满「视口高 - 标题栏/顶栏/PanelHead/页签/状态区」的高度。
+   ⚠️ 88.8.4 修：必须 align-self: start —— .screen 是 display:grid，Card 是 grid item
+   默认 align-self: stretch，会被拉到 grid track 高度（= .screen 可视区），
+   于是 CardContent 一旦超过可视区就被钉死、溢出 Card 边框 —— WorkBuddy 国际版/国内版
+   所有 8 个页签（账号/主题/会话/模型/增强/自动化/电脑/设置）以及 MCP&插件页面
+   都被这个坑害过。align-self: start 让 Card 高度 = 内容自然高度，
+   内容超出时由 .screen（唯一滚动容器）接管滚动。 */
 .fill {
   min-height: calc(100vh - 150px);
+  align-self: start;
 }
 
 .panel-head {

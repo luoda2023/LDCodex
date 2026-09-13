@@ -66,6 +66,12 @@ RC3=$?
 echo ""
 "$NODE" "$TMP/verify-plugin-layout.mjs"
 RC4=$?
+# 管理器 .fill Panel 高度跟随（WorkBuddy 国际/国内版 8 个 tab + MCP&插件）：
+# 验证 Card 不被 .screen 的 grid stretch 钉死、内容能自然撑开 Panel。
+# 同样无头 Chrome，harness 在 fill-panel-harness.html。
+echo ""
+"$NODE" "$TMP/verify-fill-panel.mjs"
+RC4b=$?
 # 结束隔离 daemon。⚠️ kill 有时不生效（MSYS pid 与 Windows pid 不是一回事，进程也可能忽略
 # 信号）：实测残留的 daemon 会一直 LISTEN 在 47999，下一轮的端口预检直接 exit 2，
 # 而且 Bash 任务会被这个子进程吊住不结束。所以再按「端口占用者」兜底强杀，最多等 10 秒。
@@ -76,5 +82,5 @@ for _ in $(seq 1 20); do
   MSYS_NO_PATHCONV=1 taskkill /F /PID "$OWNER" >/dev/null 2>&1
   sleep 0.5
 done
-if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ] || [ "$RC3" -ne 0 ] || [ "$RC4" -ne 0 ]; then exit 1; fi
+if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ] || [ "$RC3" -ne 0 ] || [ "$RC4" -ne 0 ] || [ "$RC4b" -ne 0 ]; then exit 1; fi
 exit 0

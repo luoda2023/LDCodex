@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>.fill Panel 高度跟随验证（覆盖 WorkBuddy 国际/国内版 8 个页签 + MCP&插件）</title>
+<link rel="stylesheet" href="D:/LUODA/LDcodex/apps/codex-plus-manager/src/styles.css" />
+<style>
+  html, body { margin: 0; padding: 0; background: #f2f3f5; font: 13px/1.4 -apple-system, sans-serif; }
+  /* 夹具自身的状态区/页签高度参数化，由 JS 改写；其它样式都来自真实 styles.css */
+  .workbuddy-card { box-sizing: border-box; }
+  #out { display: none; }
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+  <div class="sidebar" id="sidebar">侧栏</div>
+  <div class="workspace">
+    <div class="topbar" id="topbar">Topbar</div>
+    <div class="screen" id="screen">
+      <div class="card panel fill" id="panel">
+        <div class="p-4 pt-0" id="cc">
+          <div class="workbuddy-status" id="status">状态</div>
+          <div class="workbuddy-peer-status" id="peer">对等</div>
+          <div class="workbuddy-tabs" id="tabs">
+            <button class="workbuddy-tab is-active">账号</button>
+            <button class="workbuddy-tab">主题</button>
+            <button class="workbuddy-tab">会话</button>
+            <button class="workbuddy-tab">模型</button>
+            <button class="workbuddy-tab">增强</button>
+            <button class="workbuddy-tab">自动化</button>
+            <button class="workbuddy-tab">电脑</button>
+            <button class="workbuddy-tab">设置</button>
+          </div>
+          <div class="workbuddy-pane" id="pane">
+            <div class="workbuddy-section" id="section"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<pre id="out"></pre>
+<script>
+(function () {
+  // ── 参数（由 query string 控制，便于一份 harness 跑全部 tab × 多窗口高度）──
+  var p = new URLSearchParams(location.search);
+  var count   = Math.max(1, Number(p.get('count')   || 3));     // 卡片数（近似 tab 内容多少）
+  var cardH   = Math.max(40,   Number(p.get('cardH')  || 200));  // 每张卡片的 min-height（近似单卡内容多少）
+  var height  = Math.max(300,  Number(p.get('height') || 760));  // 窗口高度
+  var tab     = (p.get('tab')  || 'sessions');                  // 当前测的 tab（仅在报告里显示）
+  var old     = p.get('old') || '';                              // '1' = 反向自检
+
+  // 调整 shell 高度 = window.innerHeight（headless 下 innerHeight 与 --window-size 接近）
+  document.getElementById('shell').style.height = height + 'px';
+
+  // 反向自检：注入修复前的旧规则（align-self: stretch + max-height 把 Card 钉死）
+  if (old === '1') {
+    var bad = document.createElement('style');
+    bad.textContent = '.panel.fill{align-self:stretch!important;height:calc(100vh - 150px)!important}';
+    document.head.appendChild(bad);
+  }
+
+  // 生成 N 张卡片
+  var section = document.getElementById('section');
+  for (var i = 0; i < count; i++) {
+    var card = document.createElement('div');
+    card.className = 'workbuddy-card';
+    card.style.minHeight = cardH + 'px';
+    card.textContent = 'card #' + (i + 1) + '（' + tab + '）';
+    section.appendChild(card);
+  }
+
+  // ── 量 ──
+  var panel = document.getElementById('panel');
+  var pane  = document.getElementById('pane');
+  var cards = [...document.querySelectorAll('.workbuddy-card')];
+  var screen = document.getElementById('screen');
+  var cc = document.getElementById('cc');
+  var panelRect = panel.getBoundingClientRect();
+  var paneRect  = pane.getBoundingClientRect();
+  var lastRect  = cards[cards.length - 1].getBoundingClientRect();
+  var screenRect = screen.getBoundingClientRect();
+  var ccRect = cc.getBoundingClientRect();
+  var panelCS = getComputedStyle(panel);
+
+  document.getElementById('out').textContent =
+    `tab=${tab} count=${count} cardH=${cardH} height=${height} old=${old || '0'}\n` +
+    `panelTop=${panelRect.top.toFixed(0)} panelBottom=${panelRect.bottom.toFixed(0)} panelH=${panelRect.height.toFixed(0)}\n` +
+    `panelComputedHeight=${panelCS.height} panelAlignSelf=${panelCS.alignSelf}\n` +
+    `ccTop=${ccRect.top.toFixed(0)} ccBottom=${ccRect.bottom.toFixed(0)} ccH=${ccRect.height.toFixed(0)}\n` +
+    `paneTop=${paneRect.top.toFixed(0)} paneBottom=${paneRect.bottom.toFixed(0)} paneH=${paneRect.height.toFixed(0)}\n` +
+    `lastCardTop=${lastRect.top.toFixed(0)} lastCardBottom=${lastRect.bottom.toFixed(0)}\n` +
+    `lastOutsidePanel=${lastRect.bottom > panelRect.bottom}\n` +
+    `lastOutsidePanelDelta=${(lastRect.bottom - panelRect.bottom).toFixed(1)}\n` +
+    `screenNeedsScroll=${screen.scrollHeight > screen.clientHeight}\n` +
+    `windowH=${window.innerHeight}\n`;
+})();
+</script>
+</body>
+</html>
