@@ -39,6 +39,23 @@ function rec(name, pass, detail) {
   console.log((pass ? 'PASS ' : 'FAIL ') + name + (detail ? '  ::  ' + detail : ''));
 }
 
+/**
+ * 删除 Chrome 临时 profile 目录。
+ *
+ * ⚠️ 绝对不要用 fs.rmSync —— 本机 fs.rmSync 被 WorkBuddy 的 safe-delete shim 接管（走回收站
+ * 二进制），而 Chrome 的 profile 目录有成百上千个小文件，删除会长时间阻塞甚至 ETIMEDOUT。
+ * 关键点：try/catch 只能接住「抛异常」，接不住「卡住」—— 脚本会停在最后一步永不退出：
+ * 所有断言都 PASS 了，但汇总行永远不刷进日志，整个 test-run.sh 被无限拖住。
+ * 所以改用**独立进程 + 硬超时**；删不掉就留着（它在系统临时区，Chrome 下次会复用）。
+ */
+function bestEffortRmDir(dir) {
+  try {
+    execFileSync(process.env.ComSpec || 'cmd.exe', ['/c', 'rmdir', '/s', '/q', dir], {
+      stdio: 'ignore', timeout: 30000,
+    });
+  } catch (_) { /* 删不掉不阻塞 */ }
+}
+
 const CHROME_CANDIDATES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
   'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
@@ -123,8 +140,9 @@ const tmpHarness = path.join(HERE, '.layout-harness.tmp.html');
 fs.writeFileSync(tmpHarness, harnessSrc.replace('__CSS_HREF__', cssHref), 'utf8');
 
 const profileDir = path.join(os.tmpdir(), 'ldcodex-layout-profile');
-// 本机 fs.rmSync 被 safe-delete shim 接管，偶发 ETIMEDOUT —— 清不掉也无所谓，Chrome 会复用
-try { fs.rmSync(profileDir, { recursive: true, force: true }); } catch (_) { /* ignore */ }
+// 清掉上一轮的残留（Chrome 会复用同名 profile）。用 bestEffortRmDir 而不是 fs.rmSync：
+// 见函数注释 —— fs.rmSync 走 safe-delete shim，可能卡住不返回。
+bestEffortRmDir(profileDir);
 
 const SIZES = [
   { w: 1280, h: 900 },
@@ -174,9 +192,6 @@ for (const { flag, label } of [
     'workspace bottom=' + wsBottom + ' (视口 ' + vh + ')，最后一张卡片 bottom=' + cardBottom);
 }
 
-try { fs.rmSync(tmpHarness, { force: true }); } catch (_) { /* ignore */ }
-try { fs.rmSync(profileDir, { recursive: true, force: true }); } catch (_) { /* ignore */ }
-
 const pass = results.filter((r) => r.pass).length;
 const fail = results.length - pass;
 console.log('\n=== 布局滚动实测：' + pass + '/' + results.length + ' ' + (fail ? '❌ 失败 ' + fail : '✅ 全部通过') + ' ===');
@@ -184,4 +199,7 @@ if (fail) {
   console.log('\n失败项：');
   results.filter((r) => !r.pass).forEach((r) => console.log('  - ' + r.name + '  ::  ' + r.detail));
 }
+// 汇总先输出、再清理：万一清理出意外，日志里也一定有完整结论
+try { fs.rmSync(tmpHarness, { force: true }); } catch (_) { /* ignore */ }
+bestEffortRmDir(profileDir);
 process.exitCode = fail ? 1 : 0;

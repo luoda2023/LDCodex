@@ -43,7 +43,24 @@ async function api(p, opts = {}) {
   if (useToken) headers['x-ldcodex-token'] = TOKEN;
   const init = { method, headers };
   if (body !== undefined) init.body = JSON.stringify(body);
-  const res = await fetch(BASE + p, init);
+  // ⚠️ 必须容忍「连接复用失败」并重试。
+  //    原因：本机 fs.rmSync 被 safe-delete shim 接管（走回收站二进制），一次删除可能阻塞
+  //    数秒；这期间 daemon 的 HTTP keep-alive（默认 5s）会把空闲连接关掉，undici 连接池
+  //    随后复用到这条已死的 socket → 抛 TypeError: fetch failed，整个套件随之崩掉
+  //    （表现就是「跑到一半只剩十几条结果」）。重试即会拿到新连接。
+  //    注意：这里只重试「连接层失败」；HTTP 状态码（4xx/5xx）照常返回给调用方断言。
+  let res = null;
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      res = await fetch(BASE + p, init);
+      break;
+    } catch (e) {
+      lastErr = e;
+      await sleep(300);
+    }
+  }
+  if (!res) throw lastErr;
   const text = await res.text();
   let parsed = text;
   try { parsed = JSON.parse(text); } catch (_) { /* 非 JSON */ }
@@ -140,7 +157,15 @@ function extractRustFn(src, name) {
   try { fs.rmSync(exportPath, { force: true }); } catch (_) {}
 
   const exp = await api('/api/accounts/export', { method: 'POST', body: { password: PW, saveTo: exportPath } });
-  rec('T3 导出成功（count=1）', exp.status === 200 && exp.body && exp.body.ok === true && exp.body.count === 1, JSON.stringify(exp.body));
+  // ⚠️ 不要断言 count === 1。隔离实例**只隔离数据目录，不隔离 auth 目录**（见 lib.js 的
+  //    AUTH_FILE / listAuthRecords）：daemon 启动后会把用户真实的已登录账号**异步**备份进
+  //    data4/accounts/，同步早于或晚于这次导出都可能发生 —— 写死 1 会在用户有账号时随机
+  //    失败（实测 count=3：2 个真实账号 + 本测试写入的 99001777）。
+  //    「导出确实含我们刚写入的账号」由 T3c（密文）+ T3d/T3e（删除后往返还原）保证。
+  const infoCount = fs.readdirSync(accountsDir).filter((f) => f.endsWith('.info')).length;
+  rec('T3 导出成功（count>=1，目录内 ' + infoCount + ' 个 .info）',
+    exp.status === 200 && exp.body && exp.body.ok === true && Number(exp.body.count) >= 1,
+    JSON.stringify(exp.body));
   rec('T3b 导出文件落盘', fs.existsSync(exportPath), exportPath);
   let raw = '';
   try { raw = fs.readFileSync(exportPath, 'utf8'); } catch (_) {}

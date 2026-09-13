@@ -1,6 +1,6 @@
 # LDCodex daemon 88.8.3 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）；**18:45（88.8.3 插件面板布局 + 安装器钩子，118 项 + 布局实测 14 项 + 插件面板实测 47 项）**
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）；18:45（88.8.3 插件面板布局 + 安装器钩子，118 项 + 布局实测 14 项 + 插件面板实测 47 项）；**19:55（88.8.3 出包后复跑，并修掉测试脚手架自身的 3 个 bug，见「一之零D-补」；118 项 + 16 项 + 14 项 + 47 项，3m39s 干净退出）**
 - **被测代码**：
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.3**）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**88.8.3：插件面板高度受视口约束 + 三处列表滚动条可见**；88.8.1：账号卡片「用过 N 次 · 今日 N 次」徽标；1.2.11 上弹面板行内新增常用语；1.2.10 扣费取样范围修复）
@@ -114,6 +114,91 @@ env -u NSISDIR -u NSISCONFDIR /e/devtools/tauri-cache/NSIS/makensis \
 > 夹具踩坑：`plugin-panel-harness.html` 第一版里 `__PLUGIN_CSS__` 占位符**在注释里也出现了一次**，`String.replace` 只替换第一处 → CSS 根本没注入，量出来「面板高 1816px」。现在脚本会先数占位符出现次数，不等于 1 就 SKIP 并提示。
 
 > 断言踩坑（同一个坑踩了两次）：**断言前必须先剥注释**。T17 是 CSS 注释里提到了旧写法被误判成「还在用旧写法」；T19 是钩子文件里我**特意**写的注释提到了 `nsis_tauri_utils::` 和 `${StrLoc}` 来说明「为什么不能用」，结果被判成违规用法。T19 现在按「整行以 `;` 开头」剥掉再断言。
+
+
+## 一之零D-补、出包后复跑暴露的 3 个**测试脚手架** bug（已修）
+
+88.8.3 出包后复跑 `test-run.sh`，第一次 `TESTRUN_EXIT=1`、第二次直接**卡死 27 分钟**。
+查下来**全不是产品 bug**，但危害一样大 —— 它让「118/118」这个结论变得不可信。三条都要记住。
+
+### ① `fs.rmSync` 删大目录会「卡住」而不是「抛异常」
+
+`verify-plugin-layout.mjs` / `verify-layout-scroll.mjs` 末尾都有
+`fs.rmSync(profileDir, { recursive: true, force: true })`，删的是 Chrome 临时 profile
+（成千上万个小文件）→ 走 safe-delete shim → 长时间阻塞。
+
+**关键认知：`try/catch` 只能接住「抛异常」，接不住「卡住」。** 症状极具迷惑性：
+
+- 日志里**所有断言都 PASS**，只差最后一行汇总；
+- 日志文件停止增长（stdout 缓冲没刷），进程**永不退出**；
+- `test-run.sh` 被吊住，后台任务永远 Running。
+
+修法：改用**独立进程 + 硬超时**，删不掉就留着（在系统临时区，Chrome 下次复用）：
+
+```js
+function bestEffortRmDir(dir) {
+  try {
+    execFileSync(process.env.ComSpec || 'cmd.exe', ['/c', 'rmdir', '/s', '/q', dir],
+      { stdio: 'ignore', timeout: 30000 });
+  } catch (_) { /* 删不掉不阻塞 */ }
+}
+```
+
+并把**汇总行挪到清理之前输出** —— 万一清理再出意外，日志里也一定有完整结论。
+
+### ② `kill "$DPID"` 杀不掉隔离 daemon → 残留进程占着 47999
+
+实测：脚本跑完 47999 仍被 pid 1352 LISTEN（`data4/.daemon.lock` 可查证）。
+后果：① 后台任务被这个子进程吊住不结束；② **下一轮的端口预检直接 `exit 2`**。
+
+修法（`test-run.sh`）：`kill` 之后再按「端口占用者」兜底强杀，最多等 10 秒：
+
+```bash
+kill "$DPID" 2>/dev/null
+for _ in $(seq 1 20); do
+  OWNER=$(netstat -ano 2>/dev/null | grep ":$PORT" | grep -i listening | awk '{print $NF}' | head -1)
+  [ -z "$OWNER" ] && break
+  MSYS_NO_PATHCONV=1 taskkill /F /PID "$OWNER" >/dev/null 2>&1
+  sleep 0.5
+done
+```
+
+⚠️ Git Bash 里必须写 `MSYS_NO_PATHCONV=1 taskkill /F /PID <pid>`；直接写 `taskkill /F` 会被
+路径转换吃掉（报「无效参数/选项 - `//F`」）。已用一次性监听进程实测：`成功: 已终止 PID 为 12424 的进程。`
+
+### ③ T3 断言 `count===1` 与「隔离实例不隔离 auth 目录」冲突（会随机失败）
+
+`daemon.log` 显示启动约 6 秒后有 `[sync] 已备份账号 LUODA / 媒介视界 -> data4\accounts\*.info`
+—— **隔离实例只隔离数据目录，不隔离 auth 目录**（`lib.js` 的 `AUTH_FILE` / `listAuthRecords`），
+daemon 会把用户**真实**的已登录账号异步备份进来。同步早于或晚于这次导出都可能发生
+→ 实测 `count=3`（2 个真实账号 + 测试写入的 `99001777`）。
+
+⚠️ 而 T15p 又要求 `/api/accounts` **至少返回 1 个账号** —— 两处断言的设计互相矛盾，以前只是靠运气过。
+修法：T3 改成 `count >= 1`，「导出确实含测试账号」交给 T3c（密文）+ T3d/T3e（删除后往返还原）保证。
+
+### ④ `TypeError: fetch failed` 打挂整个套件（只跑出 15 条结果）
+
+T3c 之后有一句 `fs.rmSync(accountsDir/99001777.info)`（走 shim，阻塞数秒）→ 这期间 daemon 的
+HTTP keep-alive（默认 5s）把空闲连接关掉 → undici 连接池复用到已死 socket → `fetch failed`
+→ `.catch()` → `finish()` → **只写了 15 条结果就退出**。
+
+⚠️ 症状极易误读：`test-report.json` 里 `total=15`（正常 118）、`fail=0`（那 15 条确实全过）
+→ 看上去像「全过」，实际是**崩在半路**。修法：`api()` 对「连接层失败」重试（3 次 × 300ms），
+HTTP 状态码照常返回给调用方断言。
+
+### 修完后的复跑结果
+
+`bash _test_daemon/test-run.sh` → `TESTRUN_EXIT=0`，**耗时 3m39s**（卡死时 27 分钟）：
+
+| 测试集 | 结果 |
+|---|---|
+| 功能接口测试（`run-tests.js`） | **118 / 118 全部通过** ✅ |
+| 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
+| 布局滚动实测（`verify-layout-scroll.mjs`） | **14 / 14 全部通过** ✅ |
+| 插件面板布局实测（`verify-plugin-layout.mjs`） | **47 / 47 全部通过** ✅（汇总行终于正常输出） |
+
+47999 端口已释放；`data4/daemon.log` 全程**没有** `/api/switch` 调用（只有启动横幅），
+用户真实 auth 文件未被触碰 —— 符合「测试禁区」要求。
 
 
 ## 一之零C、88.8.2 修复：列表掉出窗口下边框 / 滚动条看不见

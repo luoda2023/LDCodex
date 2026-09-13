@@ -40,6 +40,24 @@ function rec(name, pass, detail) {
   console.log((pass ? 'PASS ' : 'FAIL ') + name + (detail ? '  ::  ' + detail : ''));
 }
 
+/**
+ * 删除 Chrome 临时 profile 目录。
+ *
+ * ⚠️ 绝对不要用 fs.rmSync —— 本机 fs.rmSync 被 WorkBuddy 的 safe-delete shim 接管（走回收站
+ * 二进制），而 Chrome 的 profile 目录有成百上千个小文件，删除会长时间阻塞甚至 ETIMEDOUT。
+ * 关键点：try/catch 只能接住「抛异常」，接不住「卡住」—— 脚本会停在最后一步永不退出：
+ * 所有断言都 PASS 了，但汇总行永远不刷进日志，整个 test-run.sh 被无限拖住
+ * （实测卡了 27 分钟，日志停在最后一条自检，最后只能人工杀进程）。
+ * 所以改用**独立进程 + 硬超时**；删不掉就留着（它在系统临时区，Chrome 下次会复用）。
+ */
+function bestEffortRmDir(dir) {
+  try {
+    execFileSync(process.env.ComSpec || 'cmd.exe', ['/c', 'rmdir', '/s', '/q', dir], {
+      stdio: 'ignore', timeout: 30000,
+    });
+  } catch (_) { /* 删不掉不阻塞 */ }
+}
+
 const CHROME_CANDIDATES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
   'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
@@ -168,7 +186,7 @@ const tmpHarness = path.join(HERE, '.plugin-panel-harness.tmp.html');
 fs.writeFileSync(tmpHarness, harnessSrc.replace(TOKEN, () => pluginCss), 'utf8');
 
 const profileDir = path.join(os.tmpdir(), 'ldcodex-plugin-layout-profile');
-try { fs.rmSync(profileDir, { recursive: true, force: true }); } catch (_) { /* ignore */ }
+bestEffortRmDir(profileDir);
 
 const PANES = [
   { id: 'account', label: '账号' },
@@ -229,9 +247,6 @@ for (const pane of PANES) {
     'panel.top=' + panelTop + ' 高=' + panelHeight + '（视口高 ' + vh + '）');
 }
 
-try { fs.rmSync(tmpHarness, { force: true }); } catch (_) { /* ignore */ }
-try { fs.rmSync(profileDir, { recursive: true, force: true }); } catch (_) { /* ignore */ }
-
 const pass = results.filter((r) => r.pass).length;
 const fail = results.length - pass;
 console.log('\n=== 插件面板布局实测：' + pass + '/' + results.length + ' ' + (fail ? '❌ 失败 ' + fail : '✅ 全部通过') + ' ===');
@@ -239,4 +254,7 @@ if (fail) {
   console.log('\n失败项：');
   results.filter((r) => !r.pass).forEach((r) => console.log('  - ' + r.name + '  ::  ' + r.detail));
 }
+// 汇总先输出、再清理：万一清理出意外，日志里也一定有完整结论
+try { fs.rmSync(tmpHarness, { force: true }); } catch (_) { /* ignore */ }
+bestEffortRmDir(profileDir);
 process.exitCode = fail ? 1 : 0;
