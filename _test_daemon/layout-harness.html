@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>LDCodex 布局滚动夹具</title>
+<!-- 由 verify-layout-scroll.mjs 替换为当前构建产物里真实的那份 CSS -->
+<link rel="stylesheet" href="__CSS_HREF__" />
+<style>
+  /* 只用于把测量结果输出到 DOM，供 chrome --dump-dom 抓取 */
+  #out { position: fixed; left: 0; top: 0; z-index: 9999; margin: 0; }
+</style>
+<script>
+  // 反向验证用：把修复前的规则注入回去，确认夹具能复现「列表超出窗口下边框」
+  //   ?old=1 → .workspace 用 100vh（修复前）
+  //   ?old=2 → .workbuddy-pane 用 max-height: calc(100vh - 330px)（修复前）
+  (function () {
+    var q = location.search;
+    var css = '';
+    if (q.indexOf('old=1') >= 0) css += '.workspace{height:100vh!important}';
+    if (q.indexOf('old=2') >= 0) css += '.workbuddy-pane{max-height:calc(100vh - 330px)!important;overflow-y:auto!important}';
+    if (css) {
+      var s = document.createElement('style');
+      s.textContent = css;
+      document.head.appendChild(s);
+    }
+  })();
+</script>
+</head>
+<body>
+<!--
+  复刻管理器真实外壳结构（App.tsx）：
+    .shell > .ld-titlebar（网格第 1 行 38px）
+           > .sidebar（第 2 行第 1 列）
+           > .workspace（第 2 行第 2 列）> .topbar + .screen
+  .screen 里的 .panel.fill 复刻 WorkBuddy 屏（状态区 + 对等状态区 + 页签 + 长列表）。
+  只要 CSS 里出现「算错高度」的规则，列表底部就会掉到窗口下边框之外，脚本会断言失败。
+-->
+<div class="shell light">
+  <div class="ld-titlebar"><div class="ld-titlebar-brand"><span class="ld-titlebar-name">LDCodex</span></div></div>
+
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-copy"><div class="brand-title-row"><div class="brand-title">LDCodex</div></div><div class="brand-subtitle">管理器</div></div></div>
+    <nav class="nav" aria-label="主导航">
+      <div class="nav-section"><div class="nav-section-label">主要</div>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">概览</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">AI模型配置</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">会话管理</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">MCP&amp;插件</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">微信连接</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">Codex增强</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">freebuff增强</span></button>
+      </div>
+      <div class="nav-section"><div class="nav-section-label">WorkBuddy</div>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">WorkBuddy 国内版</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">WorkBuddy 国际版</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">皮肤管理</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">Zed 远程项目</span></button>
+      </div>
+      <div class="nav-section nav-section-bottom"><div class="nav-section-label">其它</div>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">脚本市场</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">安装维护</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">关于</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">设置</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"></span><span class="nav-label">中转站环境配置检测</span></button>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div><h1>WorkBuddy 国内版</h1><p>管理 WorkBuddy 国内版桌面端的账号、主题、会话、模型、免打扰与自动化；数据全部留在本机。</p></div>
+      <div class="topbar-actions"><button class="nav-item" type="button">刷新当前页面</button></div>
+    </header>
+
+    <section class="screen">
+      <div class="panel fill">
+        <div class="panel-head"><h3>WorkBuddy 国内版</h3><p>管理账号、主题、会话、模型</p></div>
+        <div class="p-4 pt-0">
+          <div class="workbuddy-status"><span class="workbuddy-dot is-on"></span><div class="workbuddy-status-copy"><strong>增强服务运行中 · 全部能力已就绪</strong><small>CDP 9222 · API 47832</small></div><div class="workbuddy-actions"><button class="nav-item" type="button">刷新</button></div></div>
+          <div class="workbuddy-peer-status"><div><strong>另一版本：国际版</strong><small>增强服务未启动；启动后可进行双向会话同步。</small></div><div class="workbuddy-actions"><button class="nav-item" type="button">刷新</button></div></div>
+          <div class="workbuddy-tabs" role="tablist">
+            <button class="workbuddy-tab is-active" type="button">账号</button>
+            <button class="workbuddy-tab" type="button">主题</button>
+            <button class="workbuddy-tab" type="button">会话</button>
+            <button class="workbuddy-tab" type="button">模型</button>
+            <button class="workbuddy-tab" type="button">增强</button>
+            <button class="workbuddy-tab" type="button">自动化</button>
+            <button class="workbuddy-tab" type="button">电脑</button>
+            <button class="workbuddy-tab" type="button">设置</button>
+          </div>
+          <div class="workbuddy-pane">
+            <div class="workbuddy-section" id="list"><!-- 由脚本灌入 12 张卡片 --></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<pre id="out">pending</pre>
+
+<script>
+  var list = document.getElementById('list');
+  for (var i = 1; i <= 12; i++) {
+    var card = document.createElement('div');
+    card.className = 'workbuddy-card';
+    card.innerHTML = '<div class="workbuddy-card-head"><strong>账号 ' + i + ' · 1380013800' + i + '</strong><span class="muted-text">用过 ' + i + ' 次 · 今日 ' + (i % 3) + ' 次</span></div>'
+      + '<div class="workbuddy-list"><div class="workbuddy-row"><div class="workbuddy-row-main"><strong>账号 ' + i + '</strong><small>有效期至 2027-01-0' + (i % 9 + 1) + '</small></div></div></div>';
+    list.appendChild(card);
+  }
+
+  function rect(sel) { var e = document.querySelector(sel); return e ? e.getBoundingClientRect() : null; }
+  function r1(n) { return Math.round(n); }
+  var out = [];
+  var vh = window.innerHeight;
+  var vw = window.innerWidth;
+
+  var shell = document.querySelector('.shell');
+  var ws = document.querySelector('.workspace');
+  var sc = document.querySelector('.screen');
+  var nav = document.querySelector('.nav');
+
+  out.push('viewport            = ' + vw + ' x ' + vh);
+  out.push('shell.height        = ' + r1(shell.getBoundingClientRect().height) + '   (期望 = ' + vh + ')');
+  out.push('titlebar.bottom     = ' + r1(rect('.ld-titlebar').bottom) + '   (期望 = 38)');
+  out.push('workspace.top/bottom= ' + r1(ws.getBoundingClientRect().top) + ' / ' + r1(ws.getBoundingClientRect().bottom) + '   (期望 bottom <= ' + vh + ')');
+  out.push('workspace.height    = ' + r1(ws.getBoundingClientRect().height) + '   (期望 = ' + (vh - 38) + ')');
+  out.push('screen.clientHeight = ' + sc.clientHeight + '  scrollHeight = ' + sc.scrollHeight + '  可滚动=' + (sc.scrollHeight > sc.clientHeight));
+  out.push('sidebar.bottom      = ' + r1(rect('.sidebar').bottom) + '   (期望 <= ' + vh + ')');
+  out.push('nav.clientHeight    = ' + nav.clientHeight + '  scrollHeight = ' + nav.scrollHeight + '  可滚动=' + (nav.scrollHeight > nav.clientHeight));
+
+  sc.scrollTop = sc.scrollHeight;
+  void sc.offsetHeight; // 强制重排
+  var cards = document.querySelectorAll('#list .workbuddy-card');
+  var lastCard = cards[cards.length - 1];
+  var lastBottom = lastCard.getBoundingClientRect().bottom;
+  out.push('scrollTop 到底后：');
+  out.push('  最后一张卡片 bottom = ' + r1(lastBottom) + '   (期望 <= ' + vh + ' 且 >= 0)');
+  out.push('  判定：' + (lastBottom <= vh + 1 && lastBottom > 0 ? 'PASS 可见' : 'FAIL 被窗口裁掉'));
+
+  var navItems = nav.querySelectorAll('.nav-item');
+  var lastNav = navItems[navItems.length - 1];
+  nav.scrollTop = nav.scrollHeight;
+  void nav.offsetHeight;
+  var navBottom = lastNav.getBoundingClientRect().bottom;
+  out.push('  最后一个导航项 bottom = ' + r1(navBottom) + '   (期望 <= ' + vh + ')');
+  out.push('  判定：' + (navBottom <= vh + 1 && navBottom > 0 ? 'PASS 可见' : 'FAIL 被窗口裁掉'));
+
+  var panel = document.querySelector('.panel.fill');
+  out.push('panel.fill.height   = ' + r1(panel.getBoundingClientRect().height) + '  min-height 计算值 = ' + (vh - 150));
+
+  document.getElementById('out').textContent = out.join('\n');
+</script>
+</body>
+</html>

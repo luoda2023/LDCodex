@@ -383,8 +383,16 @@ function noteAccountUsage(uid) {
 //         弹窗自动点允许、上弹面板行内新增常用语 + 短语随账号同步、任务栏幽灵图标）。
 //         新增「账号使用次数」统计（account-usage.js）：每个账号被切换/使用过几次，
 //         账号列表直接显示「用过 N 次 · 今日切换 N 次 · 最后使用 …」，一眼看出哪些账号用过。
-const DAEMON_VERSION = '88.8.1';
-const DAEMON_BUILD_ID = 'release-88.8.1-20260913-unified-version-taskbar-and-account-usage';
+// 88.8.2：修掉「账号列表 / 会话列表等长内容掉到窗口下边框之外、看不到也滚不到」——
+//         根因是管理器外壳的 .workspace 写了 height:100vh，而它位于 .shell 网格的第 2 行
+//         （该行已是「100vh − 38px 标题栏」），于是整体高出网格区域 38px，被 .shell 的
+//         overflow:hidden 裁掉；再叠加 .workbuddy-pane 上拍脑袋的 max-height:calc(100vh - 330px)
+//         （比真实可用高度大），列表底部就被顶出窗口。改为严格贴合网格行的 100%，
+//         并去掉面板内部的估值 max-height，统一交给 .screen 滚动。
+//         同时把滚动条滑块从「--hairline + 0.16 透明度」（几乎与背景同色、看不见）换成
+//         --muted-foreground + 0.42，浅色/深色主题下都清晰可见。
+const DAEMON_VERSION = '88.8.2';
+const DAEMON_BUILD_ID = 'release-88.8.2-20260913-scrollable-lists';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）

@@ -9,11 +9,11 @@ members = [
 
 [workspace.package]
 # 统一版本号（唯一权威来源）：所有 Rust crate 通过 `version.workspace = true` 继承此值。
-# 版本基线 88.8.1，以后每升级一次加 1（88.8.2、88.8.3 ……）。
+# 版本基线 88.8.2，以后每升级一次加 1（88.8.3、88.8.4 ……）。
 # 必须与以下文件保持一致：apps/codex-plus-manager/package.json、
 # src-tauri/tauri.conf.json、src-tauri/workbuddy-runtime/package.json、
 # src-tauri/workbuddy-runtime/daemon.js（DAEMON_VERSION / DAEMON_BUILD_ID）。
-version = "88.8.1"
+version = "88.8.2"
 edition = "2024"
 license = "AGPL-3.0-only"
 repository = "https://github.com/luoda2023/LDCodex"

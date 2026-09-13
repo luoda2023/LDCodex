@@ -48,6 +48,11 @@ RC=$?
 echo ""
 "$NODE" "$TMP/verify-no-disturb.js"
 RC2=$?
+# 布局滚动实测：用无头 Chrome 量真实构建产物，验证长列表不会掉出窗口下边框。
+# 找不到 Chrome 时脚本自己 SKIP 并以 0 退出，不会阻塞其它测试。
+echo ""
+"$NODE" "$TMP/verify-layout-scroll.mjs"
+RC3=$?
 kill "$DPID" 2>/dev/null
-if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ]; then exit 1; fi
+if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ] || [ "$RC3" -ne 0 ]; then exit 1; fi
 exit 0

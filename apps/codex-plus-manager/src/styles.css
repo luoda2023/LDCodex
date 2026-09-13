@@ -393,7 +393,11 @@ body {
 
 .workspace {
   display: flex;
-  height: 100vh;
+  /* 必须用 100% 而不是 100vh：.workspace 位于 .shell 网格的第 2 行，
+     该行高度已经是「100vh − 38px 标题栏」。写 100vh 会让它比网格区域高出 38px，
+     被 .shell 的 overflow:hidden 裁掉 —— 表现为每个列表底部都掉到窗口边框之外、
+     滚动也够不到。用 100% 让它严格贴合自己的网格行。 */
+  height: 100%;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
@@ -587,8 +591,12 @@ body {
   padding: 6px 8px;
 }
 
+/* 让单面板页面（MCP&插件 / WorkBuddy）的面板铺满可视高度，视觉上不「半截」。
+   150px = 38 标题栏 + 60 顶栏 + 20 屏内上边距 + 32 屏内下边距。
+   这里只是 min-height（内容更高时以内容为准），所以即便断点下内边距略有出入，
+   最多是面板矮一点点，绝不会把内容顶出窗口。 */
 .fill {
-  min-height: calc(100vh - 188px);
+  min-height: calc(100vh - 150px);
 }
 
 .panel-head {
@@ -5161,7 +5169,11 @@ input[type="range"]:disabled {
 }
 
 * {
-  scrollbar-color: hsl(var(--hairline) / 0.16) transparent;
+  /* 滚动条要看得见：--hairline 在浅色主题是 96% 亮度、深色主题是 14% 亮度，
+     再乘 0.16 透明度后基本等于背景色 —— 用户完全看不出「这里还能滚」。
+     改用 --muted-foreground（浅色 44% / 深色 66% 灰），保证两种主题下都清晰可见。
+     轨道保持透明，避免满屏灰条显得脏。 */
+  scrollbar-color: hsl(var(--muted-foreground) / 0.42) transparent;
   scrollbar-width: thin;
 }
 
@@ -5173,12 +5185,12 @@ input[type="range"]:disabled {
 *::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
   border-radius: 999px;
-  background: hsl(var(--hairline) / 0.16);
+  background: hsl(var(--muted-foreground) / 0.42);
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--hairline) / 0.28);
+  background: hsl(var(--muted-foreground) / 0.62);
   background-clip: padding-box;
 }
 
@@ -5469,9 +5481,8 @@ select {
   text-align: right;
 }
 
-.fill {
-  min-height: calc(100vh - 132px);
-}
+/* 注：.fill 的 min-height 统一在上面 604 行定义（曾经这里又写了一份 132px，
+   两份互相覆盖、谁生效看顺序，且都没算标题栏的 38px，已合并）。 */
 
 .hero-content {
   padding: 18px;
@@ -8843,10 +8854,11 @@ select {
 
 .workbuddy-pane {
   min-height: 180px;
-  /* 页签内容超出可视高度时在面板内滚动，保证「增强」等长页面所有开关都能看到、点到。 */
-  max-height: calc(100vh - 330px);
-  overflow-y: auto;
-  scrollbar-gutter: stable;
+  /* 面板内部不再自己滚 —— 由 .screen 统一滚动。
+     原因：可用高度取决于状态区 / 对等状态区 / 页签等上方内容的实际高度，
+     而原来的 max-height: calc(100vh - 330px) 是个拍脑袋的估值，比真实可用高度大，
+     于是面板底部连同长列表一起掉到窗口边框外，滚也滚不到。
+     交给外层统一滚动后，无论上方内容多高，长列表都一定够得着。 */
   padding: 12px;
   border: 1px solid hsl(var(--border));
   border-radius: 10px;

@@ -1,26 +1,67 @@
-# LDCodex daemon 88.8.1 功能测试报告
+# LDCodex daemon 88.8.2 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；**17:05（88.8.1 账号使用次数统计 + 插件侧徽标全量复跑，103 项）**
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；**17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）**
 - **被测代码**：
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.1**）
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/account-usage.js`（**88.8.1：账号使用次数统计**）
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**88.8.1：账号卡片「用过 N 次 · 今日 N 次」徽标**；1.2.11 上弹面板行内新增常用语；1.2.10 扣费取样范围修复）
-  - `crates/codex-plus-core/src/windows_integration.rs`（**1.2.12：窗口激活不再制造幽灵窗口 + 任务栏身份改写默认关闭**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.2**）
+  - `apps/codex-plus-manager/src/styles.css`（**88.8.2：列表不再掉出窗口下边框 + 滚动条可见**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/account-usage.js`（88.8.1：账号使用次数统计）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（88.8.1：账号卡片「用过 N 次 · 今日 N 次」徽标；1.2.11 上弹面板行内新增常用语；1.2.10 扣费取样范围修复）
+  - `crates/codex-plus-core/src/windows_integration.rs`（1.2.12：窗口激活不再制造幽灵窗口 + 任务栏身份改写默认关闭）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/automation.js`（抗崩溃加固）
   - `apps/codex-plus-manager/src-tauri/src/workbuddy.rs`（「重启并启用」真正结束旧客户端）
-- **测试方式**：隔离实例（独立数据目录 `data4` + 独立端口 47999 + CDP 指向空端口 47998），**不影响正在运行的真实客户端**
+- **测试方式**：隔离实例（独立数据目录 `data4` + 独立端口 47999 + CDP 指向空端口 47998），**不影响正在运行的真实客户端**；布局实测用无头 Chrome 量真实构建产物，不碰任何运行中的进程
 
 ## 一、总体结果
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **103 / 103 全部通过** ✅ |
+| 功能接口测试（`run-tests.js`） | **107 / 107 全部通过** ✅ |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
+| 布局滚动实测（`verify-layout-scroll.mjs`，无头 Chrome 量真实产物） | **14 / 14 全部通过** ✅ |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
+| 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅ |
 | Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
 | 真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
 | i18n 词典校验（`tools/i18n-verify.mjs`） | 与基线持平（未新增缺失词条）✅ |
+
+## 一之零C、88.8.2 修复：列表掉出窗口下边框 / 滚动条看不见
+
+### 需求（用户原话）
+
+> 还不行，你这里面帐号列表，会话列表等，都要检查好，加上滚动条，不然 都超出软件窗口下部边框了，看不到了。
+
+### 根因（两个叠加，外加一个「看不见」）
+
+| # | 位置 | 问题 |
+|---|---|---|
+| 1 | `.workspace { height: 100vh }` | 它位于 `.shell` 网格的**第 2 行**，而该行高度已经是「100vh − 38px 标题栏」。写 `100vh` 让它比自己的网格区域**高出整整 38px**，被 `.shell { overflow: hidden }` 裁掉 → 每个列表的底部 38px 落在窗口之外，滚动也够不到 |
+| 2 | `.workbuddy-pane { max-height: calc(100vh - 330px) }` | 330px 是拍脑袋的估值。真实可用高度取决于状态区 / 对等状态区 / 页签的实际高度，比 330px 算出来的**更小** → 面板底部连同长列表一起被顶出窗口 |
+| 3 | 滚动条滑块 `hsl(var(--hairline) / 0.16)` | `--hairline` 浅色主题是 **96% 亮度**、深色主题是 **14% 亮度**，再乘 0.16 透明度后基本等于背景色 → 用户完全看不出「这里还能滚」，主观感受就是「看不到了」 |
+
+### 改法
+
+| 位置 | 改动 |
+|---|---|
+| `.workspace` | `height: 100vh` → **`height: 100%`**（严格贴合网格行，不再高出 38px） |
+| `.workbuddy-pane` | 删掉 `max-height: calc(100vh - 330px)` + `overflow-y: auto`，**统一交给 `.screen` 滚动** —— 无论上方内容多高，长列表都一定够得着 |
+| `.fill` | 两处互相覆盖的 `min-height`（188px / 132px）**合并为一处 `calc(100vh - 150px)`**（150 = 38 标题栏 + 60 顶栏 + 20 + 32 屏内边距） |
+| 滚动条 | `scrollbar-color` / `-webkit-scrollbar-thumb` 从 `--hairline + 0.16` 换成 **`--muted-foreground + 0.42`**（悬停 0.62），浅色/深色主题下都清晰可见；轨道保持透明 |
+
+**设计取舍**：没有给每个列表再加一层内部滚动条。`.screen` 已经是唯一的滚动容器，再套一层会出现「滚动条里还有滚动条」的嵌套滚动 —— 那正是这次 bug 的成因之一。单滚动容器 + 可见滑块是更干净的解法。
+
+### 测试方式（关键：文本断言抓不到这类 bug）
+
+纯 CSS 布局问题，源码级 grep 只能证明「写了某条规则」，**证明不了「算出来的高度真的没超出窗口」** —— 这正是历史上漏掉它的原因。所以新增了**行为级实测**：
+
+- `_test_daemon/layout-harness.html`：复刻管理器真实外壳结构（`.shell` / `.ld-titlebar` / `.sidebar` / `.workspace` / `.topbar` / `.screen` / `.panel.fill` / `.workbuddy-tabs` / `.workbuddy-pane`），直接引用**构建产物里那份真实 CSS**，灌入 12 张卡片制造「列表比窗口高」的场景；
+- `_test_daemon/verify-layout-scroll.mjs`：用无头 Chrome 在 **4 种窗口高度**（900 / 760 / 620 / 520）下实测，断言 ① 工作区底边不超出视口 ② 滚到底后最后一张卡片可见 ③ 侧栏最后一个导航项可见；
+- **自检**：把修复前的规则注入回去（`?old=1` / `?old=2`），夹具必须判定为「被裁掉」—— 否则说明夹具本身失效，「通过」不可信。实测复现结果：`old=1` → workspace 底边 **703 > 视口 665**（正好多 38px）、最后一张卡片 bottom **676**（被裁）；`old=2` → 最后一张卡片 bottom **2159**（严重超出）。
+- 找不到 Chrome 时脚本打印 SKIP 并以 0 退出，不阻塞其它测试。
+
+源码级另有 **T17 系列 4 项**静态守卫（`.workspace` 不得再用 `100vh`、`.workbuddy-pane` 不得再用估值 `max-height`、滚动条不得再用 `--hairline`、`.fill` 的 `min-height` 只能有一处），防止后续再写回去。
+
+> 注：T17 的断言 helper 会**先剥离 CSS 注释再匹配规则** —— 第一版没剥注释，结果「注释里提到的旧写法」被误判成「还在用旧写法」，T17b/T17d 假性失败。
 
 ## 一之零A、88.8.1 新增：账号使用次数统计（「哪个账号被用过」）
 
