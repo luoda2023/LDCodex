@@ -342,8 +342,13 @@ const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.exis
 // 1.2.8：跨版本复制保留消息文件时间戳并只按「文件」比较新旧，修掉自动镜像两端每轮
 //         来回互相回写的 ping-pong（同步完即收敛）；新增 /api/profile/isolation
 //         双开隔离自检，面板可直观看清两版的端口/目录/程序两两不冲突。
-const DAEMON_VERSION = '1.2.8';
-const DAEMON_BUILD_ID = 'release-1.2.8-20260913-cross-profile-mirror-converge-and-isolation-check';
+// 1.2.9：修掉 WBSWITCH_CDP_PORT 一票否决 CDP 端口隔离的缺陷（管理器每次拉起 daemon
+//         都会下发该变量，等于生产环境里隔离保护全线失效）；CDP 归属改由页面强信号
+//         判定，客户端被手动起在默认端口 9222 时仍能正确认领、且不会连到对端客户端；
+//         回退端口按 profile 分段，双开同时启动不再抢同一端口；隔离自检区分「真冲突」
+//         与「客户端端口漂移」；修掉收件箱目录不可写导致 daemon 整体退出。
+const DAEMON_VERSION = '1.2.9';
+const DAEMON_BUILD_ID = 'release-1.2.9-20260913-cdp-isolation-hardening';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）
@@ -473,11 +478,15 @@ function writeUiPortFile(port, logFn = log) {
 }
 
 // 双开隔离：每个 profile 有固定保留端口（国内 9222 / 国际 9223 / CodeBuddy 9224、9225）。
-// 任何情况下都不要把兄弟 profile 的保留端口当成自己的回退端口——那会让本端 daemon
+// 兄弟 profile 的保留端口在任何情况下都不当作自己的端口——那会让本端 daemon
 // 在对端客户端上注入组件、改写对端的面板与主题。
-// 例外：用户用 WBSWITCH_CDP_PORT 显式指定时完全听用户的。
+// 关键：这里刻意不看 WBSWITCH_CDP_PORT。管理器每次拉起 daemon 都会下发该变量
+// （用于声明"本档案首选端口"），若让它一票否决隔离判断，等于生产环境里这道保护
+// 全线失效——重启客户端时会挑到兄弟的保留端口；ownCdpPorts() 也会把对端端口
+// 算成自己的，cdpTargetMatcher 随之退化成宽松匹配，最终连到对端客户端。
+// 显式端口若正好落在兄弟保留端口上，同样按"兄弟端口"处理；客户端被用户手动起在
+// 默认端口上时仍能连上——findCdpEndpoint 会再用页面归属强信号（classifyTarget）确认。
 function cdpPortOwnedByOtherProfile(port) {
-  if (process.env.WBSWITCH_CDP_PORT) return false;
   const value = Number(port);
   if (!validCdpPort(value)) return false;
   return Object.keys(PROFILE_CDP_PORT).some((id) => id !== PROFILE.id && Number(PROFILE_CDP_PORT[id]) === value);
@@ -485,11 +494,27 @@ function cdpPortOwnedByOtherProfile(port) {
 
 function ownCdpPorts() {
   const set = new Set();
-  if (validCdpPort(CDP_PORT_HINT)) set.add(Number(CDP_PORT_HINT));
   const reserved = Number(PROFILE_CDP_PORT[PROFILE.id]);
   if (validCdpPort(reserved)) set.add(reserved);
+  // CDP_PORT_HINT 可能来自显式 WBSWITCH_CDP_PORT；落在兄弟保留端口上时不能算"自己的"，
+  // 否则 cdpTargetMatcher 会走宽松匹配，把对端客户端页面也认下来。
+  if (validCdpPort(CDP_PORT_HINT) && !cdpPortOwnedByOtherProfile(CDP_PORT_HINT)) {
+    set.add(Number(CDP_PORT_HINT));
+  }
   return set;
 }
+
+// 回退端口按 profile 分段：四个档案各占 10 个连续端口，互不重叠。
+// 早期实现让所有 profile 共用 9226-9232 + 9333，双开同时启动时存在竞态窗口
+// （两端都探测到端口空闲 → 抢同一个），分段后从设计上不可能撞。
+// 注意：不再保留 9333 这种"全体共用兜底"——客户端真跑在 9333 时，
+// cdp-port.json 里已经记着它，readCdpPortFile() 会把它带进候选。
+const CDP_FALLBACK_BASE = {
+  'workbuddy-cn': 9236,
+  'workbuddy-ai': 9246,
+  'codebuddy-cn': 9256,
+  'codebuddy-intl': 9266,
+};
 
 function cdpPortCandidates() {
   const ports = [];
@@ -499,9 +524,13 @@ function cdpPortCandidates() {
     ports.push(port);
   };
   add(CDP_PORT_HINT);
+  // 本档案保留端口永远参与候选。显式 WBSWITCH_CDP_PORT 若落在兄弟保留端口上会被
+  // 上面的 add() 挡掉，此时必须回落到自己的保留端口，而不是直接跳到回退段
+  // （否则重启客户端会把端口选到 9246+ 这种没人预期的位置上）。
+  add(PROFILE_CDP_PORT[PROFILE.id]);
   add(readCdpPortFile());
-  for (let port = 9222; port <= 9232; port++) add(port);
-  add(9333);
+  const base = CDP_FALLBACK_BASE[PROFILE.id] || 9236;
+  for (let offset = 0; offset < 10; offset++) add(base + offset);
   return ports;
 }
 
@@ -528,7 +557,7 @@ async function findAvailableCdpPort() {
   for (const port of cdpPortCandidates()) {
     if (await isLocalPortAvailable(port)) return port;
   }
-  throw new Error('9222-9232、9333 均被占用，无法为 WorkBuddy 分配 CDP 端口');
+  throw new Error(`本档案可用 CDP 端口（${cdpPortCandidates().join('、')}）均被占用，无法为 WorkBuddy 分配 CDP 端口`);
 }
 
 async function selectCdpPort(logFn = log) {
@@ -1755,8 +1784,14 @@ function isWorkBuddyCdpTarget(target) {
  * 扫描到别的端口时（历史残留配置、手动指定）必须要求"页面属于本 profile"的强信号，
  * 否则国内版与国际版标题相同，会把增强注入到另一个客户端。 */
 function cdpTargetMatcher(port) {
-  if (ownCdpPorts().has(Number(port))) return isWorkBuddyCdpTarget;
-  return (target) => classifyTarget(target && target.url, target && target.title, target && target.description) === PROFILE.id;
+  // 页面归属强信号优先：只要 classifyTarget 能从 URL/标题判定出具体 profile，就以它为准。
+  // 强信号不可得时才退到"本端保留端口 = 宽松匹配"的历史兜底。这样即便本端 daemon 未绑定
+  // profile（手工启动）而客户端又跑在本端保留端口上，也不会把对端客户端页面认成自己的。
+  return (target) => {
+    const classified = classifyTarget(target && target.url, target && target.title, target && target.description);
+    if (classified) return classified === PROFILE.id;
+    return ownCdpPorts().has(Number(port)) && isWorkBuddyCdpTarget(target);
+  };
 }
 
 async function findCdpEndpoint() {
@@ -1766,8 +1801,6 @@ async function findCdpEndpoint() {
     ? [CDP_PORT_HINT, readCdpPortFile()].filter((p, i, a) => validCdpPort(p) && a.indexOf(p) === i)
     : cdpPortCandidates();
   for (const p of ports) {
-    // 兄弟 profile 的保留端口一律跳过：双开时它上面跑的是另一个客户端。
-    if (cdpPortOwnedByOtherProfile(p)) continue;
     try {
       const [versionRes, listRes] = await Promise.all([
         fetch(`http://127.0.0.1:${p}/json/version`, { signal: AbortSignal.timeout(1500) }),
@@ -1777,11 +1810,22 @@ async function findCdpEndpoint() {
       const list = await listRes.json();
       const targets = Array.isArray(list) ? list : [];
       const browserInfo = [version.Browser, version['User-Agent']].filter(Boolean).join(' ');
-      const belongsToWorkBuddy = /workbuddy|codebuddy/i.test(browserInfo);
-      if (belongsToWorkBuddy && targets.some(cdpTargetMatcher(p))) {
+      if (!/workbuddy|codebuddy/i.test(browserInfo)) continue;
+      // 端口号本身不作判据：用户手动双击启动客户端时，两个版本都会落在 Electron
+      // 默认端口 9222 上，若按端口号硬跳过兄弟保留端口，本端就永远连不上自己的客户端。
+      // 归属判定统一交给 cdpTargetMatcher——非本端保留端口一律要求页面归属强信号
+      // （classifyTarget === PROFILE.id），对端客户端页面不会被误连。
+      if (targets.some(cdpTargetMatcher(p))) {
         if (readCdpPortFile() !== p) writeCdpPortFile(p);
+        if (cdpPortOwnedByOtherProfile(p)) {
+          log(`[cdp] 客户端监听在兄弟档案保留端口 ${p}（本档案保留端口 ${PROFILE_CDP_PORT[PROFILE.id]}）；`
+            + '已按页面归属确认属于本档案后连接，建议在管理器里以正确端口重启客户端');
+        }
         return p;
       }
+      // 该端口上没有本档案页面。兄弟保留端口上的内容归对端 daemon 管辖，
+      // 本端既不注入也不清理，避免误删对端注入的组件。
+      if (cdpPortOwnedByOtherProfile(p)) continue;
       // 旧逻辑会把任意 Chromium（常见为 Antigravity）当成 WorkBuddy。
       // 扫描到历史误注入标记时仅做清理，不对该应用执行任何新注入。
       await cleanupForeignInjectedTargets(targets);
@@ -4111,7 +4155,7 @@ async function copyCrossProfileSessions(sourceProfileId, ids, targetUid, options
  * 逐项判断是否重叠，让用户/客服能一眼确认"增强为什么不会互相干扰"。
  * 纯只读：不写文件、不起进程、不碰对端数据库。
  */
-function isolationSide(id, definition) {
+async function isolationSide(id, definition) {
   const base = PROFILES[id] || null;
   const dataDir = profileDataDir(base || definition || { id });
   let actualCdp = 0;
@@ -4122,7 +4166,7 @@ function isolationSide(id, definition) {
   try {
     persistedUi = parseUiPortState(fs.readFileSync(path.join(dataDir, 'ui-port.json'), 'utf8'), id);
   } catch (_) { /* 未写入时用默认候选 */ }
-  return {
+  const side = {
     id,
     name: (definition && definition.name) || (base && base.name) || id,
     kind: (definition && definition.kind) || (base && base.kind) || '',
@@ -4132,29 +4176,96 @@ function isolationSide(id, definition) {
     dataDir,
     dataRoot: (definition && definition.dataRoot) || (base && base.dataRoot) || '',
     binary: (definition && definition.appPath) || (base && base.appPath) || '',
+    cdpListening: [],
   };
+  // 实际监听探测：候选端口 = 本档案保留端口 + cdp-port.json 记录值。
+  const probePorts = [side.cdpReservedPort, side.cdpActualPort]
+    .filter((port, index, list) => validCdpPort(port) && list.indexOf(port) === index);
+  for (const port of probePorts) {
+    const probe = await probeCdpEndpoint(port);
+    if (probe) side.cdpListening.push(probe);
+  }
+  return side;
 }
 
-function buildProfileIsolationReport() {
+/**
+ * 探测某个端口上是否真跑着 LDCodex 支持的客户端，并判定页面归属。
+ * 自检只报"实际监听"的事实：cdp-port.json 是历史记录，客户端被手动重启后会过期，
+ * 拿它当结论会得出"看起来冲突其实没事"或反之的误判。
+ */
+async function probeCdpEndpoint(port) {
+  if (!validCdpPort(port)) return null;
+  try {
+    const [versionRes, listRes] = await Promise.all([
+      fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(900) }),
+      fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(900) }),
+    ]);
+    const version = await versionRes.json();
+    const list = await listRes.json();
+    const targets = Array.isArray(list) ? list : [];
+    const browserInfo = [version.Browser, version['User-Agent']].filter(Boolean).join(' ');
+    if (!/workbuddy|codebuddy/i.test(browserInfo)) return null;
+    let owner = null;
+    for (const target of targets) {
+      if (!target || target.type !== 'page') continue;
+      const classified = classifyTarget(target.url, target.title, target.description);
+      if (classified) { owner = classified; break; }
+    }
+    return { port, owner };
+  } catch (_) {
+    return null;
+  }
+}
+
+async function buildProfileIsolationReport() {
   const peerId = crossProfilePeerId();
-  const sides = [isolationSide(PROFILE.id, PROFILE)];
+  const sides = [await isolationSide(PROFILE.id, PROFILE)];
   if (peerId) {
     let peerDefinition = null;
     try { peerDefinition = crossProfileDefinition(peerId); } catch (_) { peerDefinition = null; }
-    sides.push(isolationSide(peerId, peerDefinition));
+    sides.push(await isolationSide(peerId, peerDefinition));
   }
   const conflicts = [];
+  const warnings = [];
   const samePath = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
-  const overlap = (listA, listB) => (listA || []).filter((port) => (listB || []).includes(port));
+  const overlap = (listA, listB) => (listA || []).filter((value) => (listB || []).includes(value));
+
+  // 结构面：静态保留端口表必须互斥（防止将来加 profile 时手滑写成同一个）。
+  const reservedOwner = new Map();
+  for (const side of sides) {
+    if (!validCdpPort(side.cdpReservedPort)) continue;
+    if (reservedOwner.has(side.cdpReservedPort)) {
+      conflicts.push(`CDP 保留端口冲突：${reservedOwner.get(side.cdpReservedPort)} 与 ${side.name} 都保留 ${side.cdpReservedPort}`);
+    } else {
+      reservedOwner.set(side.cdpReservedPort, side.name);
+    }
+  }
+
+  // 运行面：以"实际监听到的客户端"为准，cdp-port.json 只作为探测候选。
+  // 客户端认的是环境变量 WORKBUDDY_REMOTE_DEBUGGING_PORT，而用户级变量是全局单值，
+  // 两个版本读同一个值 → 必然有一个抢不到；把漂移明确报出来用户才知道该重启谁。
+  for (const side of sides) {
+    const listening = side.cdpListening || [];
+    const own = listening.filter((item) => item.owner === side.id);
+    const foreign = listening.filter((item) => item.owner && item.owner !== side.id);
+    side.cdpLivePort = own.length ? own[0].port : 0;
+    if (own.length) {
+      if (own[0].port !== side.cdpReservedPort) {
+        warnings.push(`${side.name} 客户端当前监听 CDP ${own[0].port}，本档案保留 ${side.cdpReservedPort}；建议在管理器里以正确端口重启客户端`);
+      }
+    } else if (foreign.length) {
+      conflicts.push(`${side.name} 保留的 CDP 端口 ${foreign.map((item) => item.port).join('、')} 上跑的是其它版本的客户端；请用管理器以正确端口重启 ${side.name} 客户端`);
+    } else {
+      warnings.push(`${side.name} 客户端当前未以调试模式运行`);
+    }
+  }
+
   for (let i = 0; i < sides.length; i++) {
     for (let j = i + 1; j < sides.length; j++) {
       const a = sides[i];
       const b = sides[j];
-      const cdpOverlap = overlap(
-        [a.cdpReservedPort, a.cdpActualPort].filter(Boolean),
-        [b.cdpReservedPort, b.cdpActualPort].filter(Boolean),
-      );
-      if (cdpOverlap.length) conflicts.push(`CDP 端口重叠：${cdpOverlap.join('、')}`);
+      const liveOverlap = overlap([a.cdpLivePort].filter(Boolean), [b.cdpLivePort].filter(Boolean));
+      if (liveOverlap.length) conflicts.push(`两端客户端同时占用 CDP 端口 ${liveOverlap.join('、')}，增强会互相注入`);
       const uiOverlap = overlap(a.uiPorts, b.uiPorts);
       if (uiOverlap.length) conflicts.push(`面板端口重叠：${uiOverlap.join('、')}`);
       if (a.dataDir && samePath(a.dataDir, b.dataDir)) conflicts.push(`守护进程数据目录共用：${a.dataDir}`);
@@ -4170,6 +4281,7 @@ function buildProfileIsolationReport() {
     sides,
     isolated: conflicts.length === 0,
     conflicts,
+    warnings,
     daemonVersion: DAEMON_VERSION,
     checkedAt: Date.now(),
   };
@@ -8515,12 +8627,11 @@ function handleApi(req, res) {
 
   // 双开隔离自检：GET /api/profile/isolation
   // 只读返回本 profile 与对端 profile 的端口/目录/可执行文件，并给出是否互不冲突的结论。
+  // 需要探测两端实际监听的 CDP 端口，所以是异步的。
   if (req.method === 'GET' && p === '/api/profile/isolation') {
-    try {
-      return json(res, 200, buildProfileIsolationReport());
-    } catch (error) {
-      return json(res, 400, { ok: false, error: error.message });
-    }
+    return buildProfileIsolationReport()
+      .then((report) => json(res, 200, report))
+      .catch((error) => json(res, 400, { ok: false, error: error.message }));
   }
 
   // 会话空间列表：GET /api/sessions/workspaces
@@ -9733,9 +9844,19 @@ process.on('unhandledRejection', (reason) => {
 
 ensureDirs(DATA_DIR, log);
 if (!acquireDaemonLock()) process.exit(0);
-ensureAgentBridge(DATA_DIR, { profileId: PROFILE.id });
+// Agent 收件箱只是可选增强；建目录/写协议文件失败（杀软拦截、权限、磁盘满）时
+// 必须降级放行，否则 daemon 在启动阶段就被未捕获异常带走，客户端面板全线 Failed to fetch。
+try {
+  ensureAgentBridge(DATA_DIR, { profileId: PROFILE.id });
+} catch (error) {
+  log(`[automation-agent] 初始化收件箱失败，已跳过（不影响其它功能）: ${error && error.message}`);
+}
 const automationAgentInboxTimer = setInterval(() => {
-  const imported = importAgentInbox(DATA_DIR, { profileId: PROFILE.id });
+  const imported = importAgentInbox(DATA_DIR, {
+    profileId: PROFILE.id,
+    // 收件箱目录建不出来时只记一行日志，不能让 1 秒一次的定时器把 daemon 打崩。
+    onError: (error) => log(`[automation-agent] 收件箱目录不可用，跳过本轮: ${error && error.message}`),
+  });
   imported.forEach((item) => log(`[automation-agent] request=${item.requestId} ${item.ok ? 'imported=' + item.taskId : 'rejected=' + item.error}`));
 }, 1000);
 automationAgentInboxTimer.unref && automationAgentInboxTimer.unref();

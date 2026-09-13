@@ -13374,6 +13374,30 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     void loadIsolation();
   }, [tab, connected, loadCrossMirror, loadIsolation]);
 
+  /** 以本档案的 CDP 端口重启客户端。
+   *  客户端只在启动时读 WORKBUDDY_REMOTE_DEBUGGING_PORT，事后无法补开；用户级环境变量
+   *  又是全局单值，手动双击启动的客户端会落到 Electron 默认端口（9222）从而与另一版本撞车。
+   *  这里让管理器先真正结束客户端再带正确端口拉起，是「双开互不影响」的修复入口。 */
+  const relaunchClient = async (targetProfile: string) => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await invoke<WorkBuddyActionResult>("workbuddy_launch_client", {
+        profile: targetProfile,
+        force: true,
+      });
+      if (result.status === "ok") setNotice(result.message);
+      else setError(result.message);
+      setStatus(result.statusDetail);
+      await loadIsolation();
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const toggleCrossMirror = async () => {
     const next = !crossMirror.enabled;
     setBusy(true);
@@ -13552,6 +13576,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
       ? (isolation?.sides as Array<Record<string, unknown>>)
       : [];
     const isolationConflicts = Array.isArray(isolation?.conflicts) ? (isolation?.conflicts as string[]) : [];
+    const isolationWarnings = Array.isArray(isolation?.warnings) ? (isolation?.warnings as string[]) : [];
     return (
       <div className="workbuddy-section">
         {isolation ? (
@@ -13576,7 +13601,7 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
             <div className="workbuddy-list">
               {isolationSides.map((side) => {
                 const sideId = String(side.id || "");
-                const cdpPort = Number(side.cdpActualPort || side.cdpReservedPort || 0);
+                const cdpPort = Number(side.cdpLivePort || side.cdpActualPort || side.cdpReservedPort || 0);
                 const uiPorts = Array.isArray(side.uiPorts) ? (side.uiPorts as number[]) : [];
                 return (
                   <div className="workbuddy-row" key={sideId}>
@@ -13600,6 +13625,21 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
                         {String(side.binary || "—")}
                       </small>
                     </div>
+                    {sideId === "workbuddy-cn" || sideId === "workbuddy-ai" ? (
+                      <div className="workbuddy-actions">
+                        <Button
+                          disabled={busy}
+                          onClick={() => void relaunchClient(sideId)}
+                          size="sm"
+                          title={t("先退出该版本客户端，再以它自己的 CDP 端口重新启动")}
+                          type="button"
+                          variant="ghost"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          {t("以正确端口重启客户端")}
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -13611,6 +13651,9 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
                 {t("以上端口与目录两两不重叠，所以增强/注入/主题只会作用于本版本客户端，不会影响另一个版本。")}
               </p>
             )}
+            {isolationWarnings.length ? (
+              <p className="field-hint">{tf("提示：{0}", [isolationWarnings.join("；")])}</p>
+            ) : null}
           </div>
         ) : null}
         <div className="workbuddy-card">

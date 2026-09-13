@@ -1146,6 +1146,10 @@ export const EN_PLAIN: Record<string, string> = {
   "检测到资源冲突：{0}": "Resource conflict detected: {0}",
   "以上端口与目录两两不重叠，所以增强/注入/主题只会作用于本版本客户端，不会影响另一个版本。":
     "None of the ports or directories above overlap, so enhancement/injection/themes only affect this edition's client and never the other one.",
+  "提示：{0}": "Note: {0}",
+  "以正确端口重启客户端": "Restart client on the correct port",
+  "先退出该版本客户端，再以它自己的 CDP 端口重新启动":
+    "Quit this edition's client first, then relaunch it with its own CDP port",
   "与增强服务的连接短暂中断，正在重试…": "Briefly lost connection to the enhancement service; retrying…",
   "请选择图片文件。": "Please choose an image file.",
   "图片预览": "Image preview",

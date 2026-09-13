@@ -557,8 +557,16 @@ function createAgentRequest(dataDir, options = {}) {
 
 function importAgentInbox(dataDir, options = {}) {
   const paths = agentBridgePaths(dataDir);
-  fs.mkdirSync(paths.inboxDir, { recursive: true, mode: 0o700 });
-  fs.mkdirSync(paths.resultsDir, { recursive: true, mode: 0o700 });
+  // 目录不可写（杀软拦截、权限不足、磁盘满）时绝不能让异常冒泡：daemon 顶层的
+  // uncaughtException 处理器会在 5.5 秒后退出进程，客户端面板随即全线 Failed to fetch。
+  // 这里降级为"本轮没有可导入的任务"，下一轮轮询（1s）会自然重试。
+  try {
+    fs.mkdirSync(paths.inboxDir, { recursive: true, mode: 0o700 });
+    fs.mkdirSync(paths.resultsDir, { recursive: true, mode: 0o700 });
+  } catch (error) {
+    try { if (typeof options.onError === 'function') options.onError(error); } catch (_) {}
+    return [];
+  }
   const now = Number(options.now) || Date.now();
   const settleMs = options.settleMs == null ? 750 : Math.max(0, Number(options.settleMs) || 0);
   const outcomes = [];

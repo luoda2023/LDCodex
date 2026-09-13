@@ -660,6 +660,40 @@ pub fn workbuddy_stop_runtime<R: Runtime>(
     }
 }
 
+/// 结束正在运行的客户端进程（按该 profile 的可执行名精确匹配），并等待进程消失。
+///
+/// 为什么必须真的结束：WorkBuddy / WorkBuddy AI 是 Electron 应用，有单实例锁。
+/// 客户端已经在跑时再 spawn 一个，新进程会立刻退出、旧进程继续用它启动时的端口，
+/// 用户看到"重启成功了"但 CDP 还是连不上（或连到对端端口）。
+fn stop_client_processes(profile: WorkBuddyProfile, timeout: Duration) -> bool {
+    #[cfg(windows)]
+    {
+        let names = profile.process_names();
+        let targets: Vec<u32> = codex_plus_core::windows_enumerate_processes()
+            .iter()
+            .filter(|process| {
+                let exe = process.exe_file.to_ascii_lowercase();
+                names.iter().any(|name| exe == *name)
+            })
+            .map(|process| process.process_id)
+            .collect();
+        for pid in &targets {
+            let _ = kill_process_tree(*pid, true);
+        }
+        let deadline = Instant::now() + timeout;
+        while Instant::now() < deadline && is_client_running(profile) {
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        return !is_client_running(profile);
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = (profile, timeout);
+        false
+    }
+}
+
 /// 让 WorkBuddy 以调试模式重启，从而打开 CDP 通道（主题 / 免打扰 / 自动化等能力需要它）。
 #[tauri::command]
 pub fn workbuddy_launch_client<R: Runtime>(
@@ -676,11 +710,26 @@ pub fn workbuddy_launch_client<R: Runtime>(
         );
     };
     let force = force.unwrap_or(false);
-    if !force && is_client_running(profile) {
+    let was_running = is_client_running(profile);
+    if !force && was_running {
         return fail(
             &format!("{name} 正在运行，需要重启一次才能打开调试通道。请确认后选择「重启并启用」。"),
             build_status(&app, profile),
         );
+    }
+
+    // 已运行时先真正结束它：否则 Electron 单实例锁会让新进程直接退出，
+    // 旧进程继续持有旧端口，表现为"重启了但调试通道还是没开"。
+    if was_running && !stop_client_processes(profile, Duration::from_secs(12)) {
+        return fail(
+            &format!("{name} 正在运行且无法自动关闭，请手动退出它后再点一次「重启并启用」。"),
+            build_status(&app, profile),
+        );
+    }
+    // 等调试端口释放，避免新实例起来时端口还被旧进程占着。
+    let release_deadline = Instant::now() + Duration::from_secs(6);
+    while is_port_listening(profile.cdp_port()) && Instant::now() < release_deadline {
+        std::thread::sleep(Duration::from_millis(200));
     }
 
     let mut command = Command::new(&binary);
@@ -697,13 +746,28 @@ pub fn workbuddy_launch_client<R: Runtime>(
         command.creation_flags(codex_plus_core::windows_create_no_window());
     }
     match command.spawn() {
-        Ok(_) => ok(
-            &format!(
-                "已用调试模式启动 {name}（端口 {}），增强功能会自动接上。",
-                profile.cdp_port()
-            ),
-            build_status(&app, profile),
-        ),
+        Ok(_) => {
+            // 确认调试端口真的开起来了：这一步是「双开互不影响」的验收点——
+            // 端口没开说明有别的版本占着同一个端口，必须让用户看到，而不是假成功。
+            let opened = wait_for_port(profile.cdp_port(), Duration::from_secs(15));
+            if opened {
+                ok(
+                    &format!(
+                        "已用调试模式启动 {name}（端口 {}），增强功能会自动接上。",
+                        profile.cdp_port()
+                    ),
+                    build_status(&app, profile),
+                )
+            } else {
+                fail(
+                    &format!(
+                        "{name} 已启动，但调试端口 {} 没有就绪。通常是有另一个版本占用了同一端口，请先在管理器里重启那个版本的客户端。",
+                        profile.cdp_port()
+                    ),
+                    build_status(&app, profile),
+                )
+            }
+        }
         Err(error) => fail(
             &format!("启动 {name} 失败：{error}"),
             build_status(&app, profile),
