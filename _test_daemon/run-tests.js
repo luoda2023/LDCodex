@@ -782,24 +782,46 @@ function extractRustFn(src, name) {
       'hooks.nsh 第 ' + (hooksLine + 1) + ' 行，MUI_LANGUAGE 第 ' + (langLine + 1) + ' 行');
   }
 
-  // ── T21 安装器钩子不得把「安装程序自己」杀掉（2026-09-13 真实事故）──
-  // 事故经过：PowerShell 兜底用 `-like '*LDCodex*'` 匹配要结束的进程，
-  // 而安装程序本身就叫 LDCodex_88.8.4_x64-setup.exe、放在 D:\LUODA\LDcodex\… 下，
-  // 路径里必然带 LDCodex → Stop-Process -Force 把**自己**结束了。
-  // 表现极具迷惑性：/S 与 /P 都是 3~5 秒后静默退出、退出码 -1、**不弹任何错误**、
-  // 一个文件都没写、注册表也没动；而非静默时因为停在欢迎页没走到 Section Install，
-  // 看起来「完全正常」。从 88.8.3（引入 hooks.nsh）起就再也装不上。
+  // ── T21 安装器钩子不得把「安装程序 / 卸载程序自己」杀掉（2026-09-13 连撞两次真实事故）──
+  // 【血案 1】安装器把自己杀了。
+  //   PowerShell 兜底用 `-like '*LDCodex*'` 匹配要结束的进程，
+  //   而安装程序本身就叫 LDCodex_88.8.4_x64-setup.exe、放在 D:\LUODA\LDcodex\… 下，
+  //   路径里必然带 LDCodex → Stop-Process -Force 把**自己**结束了。
+  //   表现极具迷惑性：/S 与 /P 都是 3~5 秒后静默退出、退出码 -1、**不弹任何错误**、
+  //   一个文件都没写、注册表也没动；而非静默时因为停在欢迎页没走到 Section Install，
+  //   看起来「完全正常」。从 88.8.3（引入 hooks.nsh）起就再也装不上。
+  // 【血案 2】卸载器把「正在等它的安装器」杀了。
+  //   第一版只加 `-and $_.ExecutablePath -ne '$EXEPATH'`，但 **$EXEPATH 只等于当前这个
+  //   exe 自己** —— 在卸载器里它 = uninstall.exe 的路径，**保护不到父进程安装器**。
+  //   installer.nsi 的 reinst_uninstall 分支是 `ExecWait '$R1'` 同步等卸载器跑完，
+  //   卸载器一启动就执行本宏 → 把还活着的 LDCodex_*_x64-setup.exe 杀掉
+  //   → 安装器 ExitCode -1、7 秒退出，而且旧版已经被删干净（主程序没了、注册表键也没了）。
+  // ✅ 正确修法是**按进程名排除**：`*setup*.exe` 覆盖安装器（无论它是自己还是父进程）、
+  //   `*uninstall*.exe` 覆盖卸载器自己（它的路径 C:\Program Files\LDCodex\uninstall.exe
+  //   同样含 LDCodex）。$EXEPATH 那条保留作双保险。
+  //   设计取向：漏杀只是「文件被占用」这种看得见的报错，误杀是「静默退出 -1」，
+  //   所以宁可漏杀 —— 这也是用 -notlike 排除、而不是把过滤器收得更紧的原因。
   const psKillLine = hooksCode.split(/\r?\n/).find((l) => /Get-CimInstance Win32_Process/.test(l)) || '';
   // ⚠️ 用 includes 而不是正则：这行里 $ \ ' * 全是要转义的元字符，正则极易写错还不报错。
-  rec('T21a PowerShell 兜底杀进程必须在 *LDCodex* 之外额外排除安装程序自己（$EXEPATH）',
-    psKillLine.includes("*LDCodex*") && psKillLine.includes("$EXEPATH") && psKillLine.includes("-ne"),
-    '否则安装程序会把自己 Stop-Process 掉 → 静默退出 -1，什么都装不上');
+  rec('T21a PowerShell 兜底杀进程必须在 *LDCodex* 之外排除安装器与卸载器（进程名 + $EXEPATH 双保险）',
+    psKillLine.includes("*LDCodex*") &&
+      psKillLine.includes("*setup*.exe") &&
+      psKillLine.includes("*uninstall*.exe") &&
+      psKillLine.includes("$EXEPATH") &&
+      psKillLine.includes("-ne") &&
+      psKillLine.includes("-notlike"),
+    '否则安装器会把自己 / 卸载器会把父安装器 Stop-Process 掉 → 静默退出 -1，什么都装不上');
   rec('T21b 排除条件必须紧贴 *LDCodex* 那个判断（不是写在别处糊弄）',
-    psKillLine.includes("$\\'*LDCodex*$\\' -and $$_.ExecutablePath -ne $\\'$EXEPATH$\\'"),
+    psKillLine.includes(
+      "$\\'*LDCodex*$\\' -and $$_.Name -notlike $\\'*setup*.exe$\\' -and $$_.Name -notlike $\\'*uninstall*.exe$\\' -and $$_.ExecutablePath -ne $\\'$EXEPATH$\\'"
+    ),
     '校验过滤器的确切形态，防止只加了个无关的 -ne');
   rec('T21c 守护进程那条 *workbuddy-runtime* 仍在（不能因为修事故就顺手删掉）',
     psKillLine.includes("*workbuddy-runtime*"),
     'daemon 是独立 node.exe，必须靠命令行精确匹配，否则安装时文件被占');
+  rec('T21d 必须同时排除「安装器」与「卸载器」两类进程名（即至少两个 -notlike）',
+    (psKillLine.match(/-notlike/g) || []).length >= 2,
+    '只排一个：卸载器里的 $EXEPATH 保护不到父安装器，覆盖安装仍会自杀');
 
   // ── T20 安装版本核验脚本的不变量（verify-installed-version.mjs）──
   // 用户两次质问「你怎么回事？你没有构建出来新版本吗还是原来的那一版」，

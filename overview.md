@@ -12,14 +12,20 @@
 >
 > 这个钩子是 **88.8.3 才引入**的，所以 88.8.1 能装、之后全装不上。
 > 用户反复报的「卸载不了 / 装不了」根源就在这里（旧卸载器那条只是障眼法）。
-> **修法**：过滤条件加上 `-and $_.ExecutablePath -ne '$EXEPATH'`。
+> **修法**：过滤条件排除「安装器 / 卸载器自己」—— 按进程名加
+> `-notlike '*setup*.exe'` 与 `-notlike '*uninstall*.exe'`（`$EXEPATH` 只保护自己，不够）。
 > 详见 [第七节 ⑧](#八-88_8_3--88_8_4-装不上的真凶安装器把自己杀了)。
 >
-> 当前 `target/release/bundle/nsis/LDCodex_88.8.4_x64-setup.exe`（22:48 重编）已修复，实测
-> `/P /UPDATE` **19.4 秒装完、ExitCode 0**、`DisplayVersion = 88.8.4`、核验 **7/7 ✅**。
+> 修完上面这条又暴露了**第二个自杀路径**：卸载器会把「正在 `ExecWait` 等它的安装器」一起杀掉
+> （`$EXEPATH` 只等于自己，保护不到父进程）。已改为**按进程名排除** `*setup*.exe` / `*uninstall*.exe`。
+> 详见 [第七节 ⑨](#九-修完自杀后-p-仍然失败卸载器把正在等它的安装器杀了)。
+>
+> 当前 `target/release/bundle/nsis/LDCodex_88.8.4_x64-setup.exe`（23:07 重编）两处都已修复，实测
+> `/S /UPDATE` **16.3 秒装完、ExitCode 0**、`/P` 覆盖安装 **22.5 秒、ExitCode 0**、
+> `DisplayVersion = 88.8.4`、核验 **7/7 ✅**、测试 **127/127 ✅**。
 
 > 本轮改动：`src-tauri/src/lib.rs`（托盘图标补**悬停提示 tooltip**）｜ `src/App.tsx`（英文环境传本地化 tooltip）｜ 版本号 6 处来源统一升到 `88.8.4` ｜ `workbuddy-runtime/inject.js`（插件面板布局 6 处）｜ `src-tauri/windows/hooks.nsh`（安装器钩子重写）｜ `_test_daemon/*`（新增 T18/T19/T20 + 插件面板布局实测脚本与夹具 + 本机安装版本核验脚本）
-> 测试：**123/123 + 16/16 + 布局实测 14/14 + 插件面板实测 47/47 + 前端 159/159 + Rust 单测 + tsc 全绿**
+> 测试：**127/127 + 16/16 + 布局实测 14/14 + 插件面板实测 47/47 + 前端 159/159 + Rust 单测 + tsc 全绿**
 
 ## 一句话结论
 
@@ -592,6 +598,69 @@ Get-CimInstance Win32_Process | Where-Object {
 > 安装程序几乎必然落在自己的匹配里。以后做安装包体检，第一件事就是跑
 > `installer.exe /S /UPDATE`：**几秒出结果、还不用点按钮**；
 > 而非静默会停在欢迎页，掩盖后续一切故障。
+
+#### ⑨ 修完自杀后 `/P` 仍然失败：**卸载器把「正在等它的安装器」杀了**
+
+修好 ⑧ 之后 `/S /UPDATE` 正常了（15~18 秒、ExitCode 0），但换 `/P`（＝模拟用户一路下一步）
+**又是 6.8 秒 ExitCode -1**，而且**旧版本已经被删掉了**（主程序没了、注册表键也没了）——
+比 ⑧ 更糟，现场被破坏过。
+
+根因是**两层**叠加：
+
+**第一层（Tauri 官方模板的缺陷）**：`PageReinstall` 在 `$PassiveMode = 1` 时**不创建单选按钮**，
+直接 `Call PageLeaveReinstall`；而 `PageLeaveReinstall` 第一句是 `${NSD_GetState} $R2 $R1` ——
+`$R2` 此时还是上一句赋的**文案字符串**（`添加/重新安装组件`），不是窗口句柄 → 返回 `0`
+→ 同版本分支 `$R0 = 0 / $R1 = 0` → 走 `${Else}` = **`Goto reinst_uninstall`**（卸载）。
+也就是说：**被动模式下默认就是「先卸载」，跟交互模式下默认选中第一项的行为相反。**
+
+**第二层（我们的 bug）**：`reinst_uninstall` 是 `ExecWait '$R1' $0` —— 安装器**同步等**卸载器跑完。
+卸载器一启动就执行 `NSIS_HOOK_PREUNINSTALL` → `LDCodexKillOnce`。而 ⑧ 那版修法用的是
+`$_.ExecutablePath -ne '$EXEPATH'` —— **`$EXEPATH` 只等于「当前这个 exe 自己」**：
+在卸载器里它 = `C:\Program Files\LDCodex\uninstall.exe`，**保护不到父进程安装器**。
+于是卸载器把还活着的 `LDCodex_*_x64-setup.exe` 一起 `Stop-Process -Force` 了。
+
+打点日志（最后一条是 `before-ExecWait`，`after-ExecWait` 再也没写出来）实锤了这一点：
+
+```
+[PageLeaveReinstall-begin] R0=0 R1=0 R2=添加/重新安装组件 被动=1 更新= Wix=
+[reinst_uninstall] 决定走「先卸载」
+[before-ExecWait] 即将执行卸载命令: "C:\Program Files\LDCodex\uninstall.exe" /P _?=C:\Program Files\LDCodex
+   ← 到此为止，进程没了
+```
+
+**修法 —— 改成按「进程名」排除**（PowerShell 的 `-notlike` 不区分大小写）：
+
+```
+-or ($$_.ExecutablePath -like $\'*LDCodex*$\'
+     -and $$_.Name -notlike $\'*setup*.exe$\'      ; 安装器（自己是它，父进程也是它）
+     -and $$_.Name -notlike $\'*uninstall*.exe$\'  ; 卸载器自己（它的路径同样含 LDCodex）
+     -and $$_.ExecutablePath -ne $\'$EXEPATH$\')   ; 双保险：万一安装包被改名
+```
+
+设计取向：**漏杀只是「文件被占用」这种看得见的报错；误杀是「静默退出 -1」** —— 所以宁可漏杀，
+用 `-notlike` 排除，而不是把 `*LDCodex*` 收得更紧。
+
+> ⚠️ **改完必须先用新版装一次，把安装目录里的 `uninstall.exe` 也换成新版**，否则
+> 安装器调用的仍是**上一次装进去的旧卸载器**（旧版只排除自己、不排除父安装器），照样被杀。
+> 这正是「23:07 重编了包、`/P` 却还是 -1」的原因 —— 包是新的，`C:\Program Files\LDCodex\uninstall.exe` 还是旧的。
+
+**修复后实测**（打点版，OutFile 刻意用正式命名 `LDCodex_88.8.4_x64-setup-log.exe`）：
+
+```
+/P  → 22.5 秒装完，ExitCode = 0
+      日志走完 PageLeaveReinstall → reinst_uninstall → ExecWait 卸载 → PREINSTALL 钩子
+      → [post-PREINSTALL] 没被自己杀掉 → [MainBinary-written]
+      最后核验 7/7 ✅，DisplayVersion = 88.8.4
+```
+
+**回归守卫**：T21 扩成 **T21a/b/c/d** 四条 —— 必须同时含 `*setup*.exe` 与 `*uninstall*.exe`
+两个 `-notlike`（只排一个不够：卸载器里的 `$EXEPATH` 保护不到父安装器）。
+
+> ⚠️ **给用户的一条实用建议**：**安装包的存放路径最好不要含 `LDCodex`。**
+> 旧版卸载器（用户机器上可能还有 88.8.1 的）是按 `ExecutablePath -like '*LDCodex*'` 杀进程的，
+> 只要安装包放在 `D:\LUODA\LDcodex\…` 这类路径下，它就一定在命中列表里。
+> 新版卸载器已经按进程名排除了安装器，但**旧版我们改不到** ——
+> 所以从很旧的版本升级时，把安装包拷到桌面或 `D:\发布\` 再双击，是最省事的解法。
 
 ---
 
