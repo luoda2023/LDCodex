@@ -1108,14 +1108,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   // 当前注入的 daemon 版本号（由 daemon.js 注入时把 __WBS_VERSION__ 替换为 DAEMON_VERSION）
   // 「关于」tab 直接展示，升级 daemon 后这里自动同步
   var WBS_VERSION = '__WBS_VERSION__';
-  function wbsClientVersion(userAgent) {
-    // Electron UA 带宿主版本；不能把 Chrome/Electron 版本当作 WorkBuddy 版本。
-    var product = WBS_PROFILE_IS_AI ? /(?:^|\s)WorkBuddy(?:AI|[- ]AI)\/(\d+(?:\.\d+){1,3})(?=\s|$)/i : /(?:^|\s)WorkBuddy\/(\d+(?:\.\d+){1,3})(?=\s|$)/i;
-    var match = product.exec(String(userAgent || ''));
-    // 一些国际版仍使用 WorkBuddy 作为 UA 产品名。
-    if (!match && WBS_PROFILE_IS_AI) match = /(?:^|\s)WorkBuddy\/(\d+(?:\.\d+){1,3})(?=\s|$)/i.exec(String(userAgent || ''));
-    return match ? match[1] : '';
-  }
+  // 88.8.5：删掉了 wbsClientVersion()（从 UA 里抠 WorkBuddy 客户端版本）。
+  // 用户明确要求「插件左上角版本号只写自己 88 开头的版本号」，不再显示客户端版本，
+  // 这个 helper 就没调用方了。留着只会误导后来者以为版本号还会混着显示。
   var WBS_LANGUAGE = (function () {
     try {
       var saved = localStorage.getItem(WBS_LANGUAGE_KEY);
@@ -1944,9 +1939,11 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     document.body.appendChild(root);
     var versionLine = root.querySelector('#wbs-version-line');
     if (versionLine) {
-      var wbVersion = wbsClientVersion(navigator.userAgent);
+      // 88.8.5 用户要求：左上角**只写 LDCodex 自己的版本号**（88 开头）。
+      // 以前是「WorkBuddy 客户端版本 (88.8.x)」，用户根本不关心前者，而且两个版本号
+      // 挨在一起很容易看错。WBS_VERSION 未注入时是 '__WBS_VERSION__' 占位符，要过滤。
       var pluginVersion = WBS_VERSION && WBS_VERSION.indexOf('__WBS_') !== 0 ? WBS_VERSION : '';
-      versionLine.textContent = wbVersion ? wbVersion + (pluginVersion ? ' (' + pluginVersion + ')' : '') : (pluginVersion ? '(' + pluginVersion + ')' : '');
+      versionLine.textContent = pluginVersion ? 'v' + pluginVersion : '';
     }
     listen(window, 'ldcodex:automation-toast', function (event) {
       var detail = event && event.detail && typeof event.detail === 'object' ? event.detail : {};
@@ -6419,7 +6416,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       syncSleepState();
     }
 
-      // 关于 pane：项目信息卡 + 简洁的错误诊断开关 + 版本
+      // 关于 pane：项目信息卡 + 语言（88.8.5 重整版）
+      //
+      // ⚠️ 88.8.5 用户要求删掉「发送错误诊断」卡（连带左侧那句「推荐开启」）和
+      // 「会话监听日志」卡 —— 这两块是开发期调试用的，放在「关于」页里对用户是噪音。
+      // 删掉后仍要能安全运行：wireTelemetrySettings() / acRenderMonitorLogModal() /
+      // 隐藏工具的 monitorLogCard 三处都是 querySelector + 判空，取不到就直接 return。
     function buildAboutPane() {
       if (!aboutPane) return;
       aboutPane.dataset.built = '1';
@@ -6441,6 +6443,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
           '<span class="wbs-about-badge" id="wbs-about-badge">本机回环 CDP 注入 · 不改官方安装包</span>' +
           '<div class="wbs-about-desc">一个基于 <b>Chrome DevTools Protocol (CDP)</b> 的 WorkBuddy 桌面端增强工具。零侵入、零重签名——只把界面组件注入到正在运行的 WorkBuddy 渲染进程里。</div>' +
         '</div>' +
+        '<div class="wbs-pcard wbs-about-meta" id="wbs-about-meta">' +
+          '<div class="wbs-about-meta-row"><span class="wbs-about-meta-k">插件版本</span><span class="wbs-about-meta-v" id="wbs-about-meta-ver">—</span></div>' +
+          '<div class="wbs-about-meta-row"><span class="wbs-about-meta-k">注入方式</span><span class="wbs-about-meta-v">本机回环 CDP</span></div>' +
+        '</div>' +
         '<div class="wbs-pcard wbs-settings-card wbs-language-card">' +
           '<div class="wbs-settings-row">' +
             '<span class="wbs-pcard-title">语言</span>' +
@@ -6450,29 +6456,18 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
             '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="wbs-pcard wbs-telemetry-card" id="wbs-telemetry-card">' +
-          '<div class="wbs-telemetry-head">' +
-            '<div class="wbs-telemetry-label"><span class="wbs-pcard-title">发送错误诊断</span><span class="wbs-telemetry-help" tabindex="0" aria-label="查看错误诊断说明"><svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M8.4 7.6a1.8 1.8 0 1 1 2.8 1.45c-.75.48-1.2.85-1.2 1.75M10 13.7v.1"/></svg><span class="wbs-telemetry-tooltip" role="tooltip">仅发送经过脱敏、截断的版本、系统和错误信息，不包含账号、会话内容、Token 或 API Key；可随时关闭。</span></span></div>' +
-            '<div class="wbs-telemetry-ctrl"><span class="wbs-telemetry-reco">推荐开启</span>' +
-            '<label class="wbs-switch wbs-telemetry-switch" title="发送经过脱敏的错误诊断"><input type="checkbox" id="wbs-telemetry-switch" aria-label="发送错误诊断"><span class="wbs-switch-slider"></span></label>' +
-            '</div>' +
-          '</div>' +
-          '<div class="wbs-telemetry-status" id="wbs-telemetry-status" role="status" aria-live="polite">正在读取设置…</div>' +
-        '</div>' +
-        '<div class="wbs-pcard wbs-monitor-log-card" id="wbs-monitor-log-card"' + (hiddenToolsUnlocked ? '' : ' style="display:none"') + '>' +
-          '<div class="wbs-telemetry-head">' +
-            '<div class="wbs-telemetry-label"><span class="wbs-pcard-title">会话监听日志</span><span class="wbs-pcard-sub">仅保存在当前页面内存</span></div>' +
-          '</div>' +
-          '<div class="wbs-monitor-log-inline" id="wbs-monitor-log-inline">' +
-            '<div class="wbs-monitor-log-session-list" aria-label="进行中的会话"></div>' +
-            '<div class="wbs-monitor-log-list" role="log" aria-live="polite">暂无进行中的会话</div>' +
-          '</div>' +
-        '</div>' +
         '';
 
       // 回拉 /api/about 填充信息（失败时保留硬编码占位）
+      // ⚠️ 版本号只认**自己**（LDCodex，88 开头）—— WBS_VERSION 由 daemon 注入，
+      // 未注入时是 '__WBS_VERSION__' 占位符，必须过滤掉，绝不拿 WorkBuddy 客户端版本顶替。
+      function ownVersion(fallback) {
+        return WBS_VERSION && WBS_VERSION.indexOf('__WBS_') !== 0 ? WBS_VERSION : (fallback || '');
+      }
       var ver = aboutPane.querySelector('#wbs-about-ver');
-      if (ver) ver.textContent = 'v' + (WBS_VERSION && WBS_VERSION.indexOf('__WBS_') !== 0 ? WBS_VERSION : '');
+      if (ver) ver.textContent = 'v' + ownVersion();
+      var metaVer = aboutPane.querySelector('#wbs-about-meta-ver');
+      if (metaVer) metaVer.textContent = 'v' + ownVersion();
       api('/api/about').then(function (d) {
         if (!d || !d.ok) return;
         var el;
@@ -6482,8 +6477,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         if (el && d.principle) el.textContent = d.principle;
         el = aboutPane.querySelector('#wbs-about-ver');
         // 运行中的 daemon 注入版本是第一事实来源；旧 app 壳里的 package.json 可能滞后。
-        var runtimeVersion = WBS_VERSION && WBS_VERSION.indexOf('__WBS_') !== 0 ? WBS_VERSION : d.version;
+        var runtimeVersion = ownVersion(d.version);
         if (el && runtimeVersion) el.textContent = 'v' + runtimeVersion;
+        var mv = aboutPane.querySelector('#wbs-about-meta-ver');
+        if (mv && runtimeVersion) mv.textContent = 'v' + runtimeVersion;
         var repo = aboutPane.querySelector('#wbs-about-repo');
         if (repo && d.repository) repo.href = d.repository;
         var issues = aboutPane.querySelector('#wbs-about-issues');
@@ -12001,6 +11998,15 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     '.wbs-about-badge{font-size:11px;font-weight:600;color:var(--wb-button-primary-bg,#1f1f1f);background:rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.08);padding:3px 10px;border-radius:999px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}',
     '.wbs-about-desc{font-size:11.5px;line-height:1.6;color:var(--wb-icon-tertiary,#777);text-align:center;padding:2px 6px 0}',
     '.wbs-about-desc b{color:var(--wb-color-text-primary,#1f1f1f);font-weight:600}',
+    // 88.8.5「关于」页重整：元数据行（插件版本 / 注入方式）用统一的左右对齐排版，
+    // 不再用两张「透明无边框」的调试卡（发送错误诊断 / 会话监听日志，已按用户要求删除）。
+    '.wbs-about-meta{display:flex;flex-direction:column;gap:0;padding:4px 12px 6px}',
+    '.wbs-about-meta-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--wb-border-subtle,rgba(0,0,0,.06))}',
+    '.wbs-about-meta-row:last-child{border-bottom:none}',
+    '.wbs-about-meta-k{font-size:11.5px;color:var(--wb-icon-tertiary,#888);flex:0 0 auto}',
+    '.wbs-about-meta-v{font-family:ui-monospace,SF Mono,Menlo,monospace;font-size:11.5px;color:var(--wb-color-text-primary,#1f1f1f);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.wbs-pane[data-pane="about"] > .wbs-pcard{margin-bottom:10px}',
+    '.wbs-pane[data-pane="about"] > .wbs-pcard:last-child{margin-bottom:0}',
     '.wbs-about-support{display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;box-sizing:border-box;margin-top:3px;padding:9px 0;border-top:1px solid var(--wb-border-default,rgba(0,0,0,.08));border-bottom:1px solid var(--wb-border-default,rgba(0,0,0,.08));flex-wrap:nowrap}',
     '.wbs-about-name-row{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}',
     '.wbs-about-name-row .wbs-about-ver{font-family:ui-monospace,SF Mono,Menlo,monospace;font-size:11px;font-weight:500;color:var(--wb-icon-tertiary,#999);letter-spacing:.3px;margin-top:3px}',

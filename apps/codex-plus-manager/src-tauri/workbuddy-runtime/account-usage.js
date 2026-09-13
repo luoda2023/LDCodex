@@ -33,20 +33,33 @@ const path = require('node:path');
 // 纯本地偏好：导出/导入账号时**不**随账号迁移（换台机器流水归零，符合「本机使用历史」语义）。
 const HISTORY_LIMIT = 50;
 
-// 「下次重置」= 本地次日 00:00（88.8.4）。
+// 「下次生效」= **上次切换的时刻 + 24 小时**（88.8.5）。
 //
-// 用户诉求原话：「就是想知道下次生效是什么时候？因为现在一天后会重置。」
-// 本文件里 accounts[uid].today / day 就是按**本地自然日**切的（与 daemon 的 todayStr 同语义），
-// 所以「一天后重置」的准确落点就是「本地时间跨到明天 00:00 的那一刻」，不是「此刻 +24 小时」。
+// ⚠️⚠️ 语义一改再改，这里把两次都记下来，别再改回去：
+//   【第一版（错）】按本地自然日算，重置点 = 次日 00:00。
+//     用户明确否决：「不是每天0点，是每次我用完后切换的时间」。
+//   【第二版（对）】按**每次切换**算 —— 用完了切到别的号，从切换那一刻起 24 小时后
+//     才能再切回来。所以不存在「全站统一的重置点」，每个「上次切换」都有自己的倒计时。
 //
-// 写成纯函数、时钟由调用方传入，是为了能单测跨天边界（23:59:59.999 → 次日 00:00）。
-// 用 new Date(y, m, d + 1, 0, 0, 0, 0) 而不是 +86400000 —— 后者的语义是「24 小时后」，
-// 遇到夏令时切换会偏一小时，而且读起来会让人误以为重置点是滚动的。
-function nextLocalMidnight(now) {
-  const d = now instanceof Date ? new Date(now.getTime()) : new Date(now);
-  const ms = d.getTime();
-  if (!Number.isFinite(ms)) return NaN;
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0).getTime();
+// 用户诉求原话：「我要你记录每次切换的时间，到时候就可以知道下一次生效是什么时候」
+//            「我的目的很简单：就是想知道下次生效是什么时候？因为现在一天后会重置。」
+//
+// 所以：RESET_WINDOW_MS 是**滚动窗口**（相对时刻），不是日历日。
+// 写成纯函数、时钟由调用方传入，方便单测「刚好 24 小时 / 差 1 毫秒」这类边界。
+const RESET_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function nextEffectiveAt(lastSwitchAt, now) {
+  const last = Number(lastSwitchAt);
+  if (!Number.isFinite(last) || last <= 0) return null;
+  const at = last + RESET_WINDOW_MS;
+  const cur = Number(now);
+  return {
+    lastSwitchAt: last,
+    nextEffectiveAt: at,
+    msToEffective: Number.isFinite(cur) ? Math.max(0, at - cur) : 0,
+    // 已经过了 24 小时 → 现在切回去就生效
+    ready: Number.isFinite(cur) ? at - cur <= 0 : false,
+  };
 }
 
 function createAccountUsageStore(dataDir) {
@@ -196,20 +209,34 @@ function createAccountUsageStore(dataDir) {
     }));
   }
 
-  // 只读：「下次自然日重置」还有多久（88.8.4）。
-  // 返回 { now, day, nextResetAt, msToReset } —— 前端拿 nextResetAt 直接做倒计时，
-  // 不需要自己算时区/跨天。msToReset 只是顺手给的剩余毫秒，永远不会是负数。
-  function resetInfo(now) {
+  // 只读：「下次生效」还有多久（88.8.5）。
+  // ⚠️ 起点是**最后一次切换的时刻**（history 最后一条），不是日历日 00:00 ——
+  // 用户明确说过「不是每天0点，是每次我用完后切换的时间」。
+  // 没有任何切换记录时返回 { lastSwitchAt: null, ... }，前端据此不显示倒计时卡。
+  function effectiveInfo(now) {
     const d = now instanceof Date ? now : now ? new Date(now) : new Date();
     const ms = d.getTime();
-    const at = nextLocalMidnight(d);
-    if (!Number.isFinite(ms) || !Number.isFinite(at)) {
-      return { now: 0, day: '', nextResetAt: 0, msToReset: 0 };
+    const data = readAll();
+    const list = Array.isArray(data.history) ? data.history : [];
+    const last = list.length ? list[list.length - 1] : null;
+    const lastMs = last && typeof last.at === 'string' ? Date.parse(last.at) : NaN;
+    if (!Number.isFinite(lastMs)) {
+      return { now: ms, day: localDay(d), lastSwitchAt: null, nextEffectiveAt: null, msToEffective: 0, ready: true };
     }
-    return { now: ms, day: localDay(d), nextResetAt: at, msToReset: Math.max(0, at - ms) };
+    const r = nextEffectiveAt(lastMs, ms) || {};
+    return {
+      now: ms,
+      day: localDay(d),
+      lastSwitchAt: r.lastSwitchAt,
+      nextEffectiveAt: r.nextEffectiveAt,
+      msToEffective: r.msToEffective,
+      ready: r.ready,
+      fromUid: last && typeof last.fromUid === 'string' ? last.fromUid : '',
+      toUid: last && typeof last.toUid === 'string' ? last.toUid : '',
+    };
   }
 
-  return { noteActive, get, all, history: historyFn, decorate, resetInfo, historyLimit: HISTORY_LIMIT, file };
+  return { noteActive, get, all, history: historyFn, decorate, effectiveInfo, historyLimit: HISTORY_LIMIT, file };
 }
 
-module.exports = { createAccountUsageStore, HISTORY_LIMIT, nextLocalMidnight };
+module.exports = { createAccountUsageStore, HISTORY_LIMIT, RESET_WINDOW_MS, nextEffectiveAt };

@@ -25,6 +25,16 @@ if netstat -ano 2>/dev/null | grep ":$PORT" | grep -qi listening; then
 fi
 echo "端口 $PORT 空闲 ✅"
 
+# account-usage store 单测（切换流水 + 「下次生效」24 小时滚动窗口）。纯函数 + 临时目录，
+# 不依赖 daemon，所以放在最前面跑。
+# ⚠️ 两个坑：
+#   ① 用 `node xxx.test.js` 直接跑，不要加 --test —— node 的 test runner 会再拉一层子进程；
+#   ② 必须放在无头 Chrome 那几轮**之前** —— 实测放在它们后面会挂住不返回（Chrome 跑完
+#      有残留进程/句柄，紧接着起 node 会被拖死）。放在这里稳定 7 秒跑完。
+echo ""
+"$NODE" "$TMP/account-usage.test.js"
+RC4c=$?
+
 # 本机安装状态（信息性，**不参与**下面的成败判定，所以 `|| true`）：
 # 回答「用户机器上跑的到底是哪一版」。历史教训 —— 两次「改了没用」的真实原因
 # 都是「根本没装上」，所以每次跑测试都顺手报一次，别再靠肉眼猜。
@@ -72,11 +82,7 @@ RC4=$?
 echo ""
 "$NODE" "$TMP/verify-fill-panel.mjs"
 RC4b=$?
-# account-usage store 单测（切换流水 + 「下次重置」倒计时）。纯函数、临时目录，
-# 不依赖 daemon，所以在 daemon 起来之前/之后跑都行。
-echo ""
-"$NODE" --test "$TMP/account-usage.test.js"
-RC4c=$?
+# （account-usage 单测已移到脚本最前面，见上方注释说明为什么不能放在这里）
 # 结束隔离 daemon。⚠️ kill 有时不生效（MSYS pid 与 Windows pid 不是一回事，进程也可能忽略
 # 信号）：实测残留的 daemon 会一直 LISTEN 在 47999，下一轮的端口预检直接 exit 2，
 # 而且 Bash 任务会被这个子进程吊住不结束。所以再按「端口占用者」兜底强杀，最多等 10 秒。

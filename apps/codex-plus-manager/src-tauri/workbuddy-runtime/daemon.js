@@ -8169,18 +8169,18 @@ function handleApi(req, res) {
     });
   }
 
-  // 88.8.4 起：账号使用概览 —— 切换流水 + 「下次重置」倒计时，一个请求拿全。
+  // 88.8.5 起：账号使用概览 —— 切换流水 + 「下次生效」倒计时，一个请求拿全。
   //   ?uid=A  过滤流水：只返回 fromUid 或 toUid 等于 A 的项
   // 流水里只有 uid 没有 nickname —— 前端拿到账号列表（/api/accounts）后用 decorate() 拼上 nickname。
   //
-  // nextResetAt 是**服务端按本地时区算出的「明天 00:00」时间戳**，前端不要自己算：
-  // 前端本地时区与 daemon 可能不同（极少见但存在），而且自己算容易写成「此刻 +24h」——
-  // 那是「24 小时后」不是「自然日重置」，会跟 accounts 里 today 字段的归零时刻对不上。
+  // ⚠️ 「下次生效」= **最后一次切换的时刻 + 24 小时**（滚动窗口），不是日历日 00:00。
+  // 用户明确说过：「不是每天0点，是每次我用完后切换的时间」。
+  // 所以 nextEffectiveAt 由 daemon 算好下发，前端只倒数，别自己按自然日推。
   if (req.method === 'GET' && p === '/api/account/usage/summary') {
     const uid = (req.query && typeof req.query.uid === 'string') ? req.query.uid.trim() : '';
     return json(res, 200, Object.assign(
       { ok: true, history: accountUsageStore.history(uid) },
-      accountUsageStore.resetInfo(),
+      accountUsageStore.effectiveInfo(),
     ));
   }
 

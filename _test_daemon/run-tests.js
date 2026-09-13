@@ -841,43 +841,81 @@ function extractRustFn(src, name) {
     /min-height\s*:\s*calc\(\s*100vh\s*-\s*150px\s*\)/.test(fillBlock),
     '内容少时仍要至少撑到「视口高 - 标题栏/顶栏/页签/状态区」的高度，别因为修 overflow 把这个下限也丢了');
 
-  // ── T23 账号切换流水 +「下次重置」倒计时（88.8.5，用户诉求：想知道下次什么时候生效）──
+  // ── T23 账号切换流水 +「下次生效」倒计时（88.8.5，用户诉求：想知道下次什么时候生效）──
   // 用户原话：「我要你记录每次切换的时间，到时候就可以知道下一次生效是什么时候」
   //        「我的目的很简单：就是想知道下次生效是什么时候？因为现在一天后会重置。」
-  // 两条硬语义，写错了功能直接失效，所以各用源码级断言钉住：
-  //   ① 重置点 = 本地自然日次日 00:00，不是「此刻 +24h」—— 用 new Date(y,m,d+1,…)
-  //      表达，不允许出现 86400000 / 24 * 3600 * 1000 这类滚动写法；
-  //   ② account-usage 的 localDay 必须与 daemon 的 todayStr **逐字符同格式** ——
-  //      2026-09-13 真实事故：漏了 '-' 拼成 "2026-0913"，自写自读看不出来，
-  //      但 daemon 是 store.all(todayStr()) 调用的 → today 恒为 0。
-  section('T23 账号切换流水 / 下次重置倒计时（88.8.5）');
+  //        ⚠️ 并且**明确否决过日历日方案**：「不是每天0点，是每次我用完后切换的时间」。
+  // 所以语义钉死为：**下次生效 = 最后一次切换的时刻 + 24 小时**（滚动窗口）。
+  // 第一版曾按「本地自然日 00:00」实现，被用户当场否掉 —— 这里必须守住，
+  // 不许再改回 setHours(24) / new Date(y, m, d + 1) 那套日历日写法。
+  // 另外顺带守住 localDay 与 daemon todayStr 的格式一致（88.8.5 真实事故：
+  // 漏了 '-' 拼成 "2026-0913"，导致「今日切换 N 次」恒为 0）。
+  section('T23 账号切换流水 / 下次生效倒计时（88.8.5）');
   const accountUsageSrc = fs.readFileSync(path.join(RUNTIME, 'account-usage.js'), 'utf8');
   const daemonSrcT23 = fs.readFileSync(path.join(RUNTIME, 'daemon.js'), 'utf8');
   const appSrcT23 = fs.readFileSync(path.join(RUNTIME, '..', '..', 'src', 'App.tsx'), 'utf8');
 
-  rec('T23a daemon 必须提供 /api/account/usage/summary 且下发 nextResetAt',
-    /p === '\/api\/account\/usage\/summary'/.test(daemonSrcT23) && /accountUsageStore\.resetInfo\(/.test(daemonSrcT23),
-    '前端倒计时全靠这个端点；少了它「下次重置」卡片直接不显示');
+  rec('T23a daemon 必须提供 /api/account/usage/summary 且下发 nextEffectiveAt',
+    /p === '\/api\/account\/usage\/summary'/.test(daemonSrcT23) && /accountUsageStore\.effectiveInfo\(/.test(daemonSrcT23),
+    '前端倒计时全靠这个端点；少了它「下次生效」卡片直接不显示');
   // ⚠️ 剥注释再断言（第三次踩这个坑）：account-usage.js 的注释里**特意写了**
-  // "+86400000" 来说明「为什么不这么写」，不剥注释会被自己的否定断言命中。
+  // 「不是每天 0 点」等说明文字，不剥注释会被自己的否定断言命中。
   const accountUsageCode = accountUsageSrc.split(/\r?\n/).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
-  rec('T23b 重置点必须按「次日 00:00」算（new Date(y, m, d + 1, …)），不能是 +24h',
-    /new Date\(\s*d\.getFullYear\(\)\s*,\s*d\.getMonth\(\)\s*,\s*d\.getDate\(\)\s*\+\s*1\s*,/.test(accountUsageCode)
-      && !/86400000|24\s*\*\s*3600\s*\*\s*1000/.test(accountUsageCode),
-    '"一天后重置"指的是自然日跨到 00:00，不是此刻 +24 小时；写成 +24h 会跟 today 归零时刻对不上');
+  rec('T23b 生效点必须按「上次切换 + RESET_WINDOW_MS」算，不能按日历日 00:00 算',
+    /RESET_WINDOW_MS/.test(accountUsageCode) && /last\s*\+\s*RESET_WINDOW_MS/.test(accountUsageCode)
+      && !/setHours\(\s*24|getDate\(\)\s*\+\s*1/.test(accountUsageCode),
+    '用户明确说过「不是每天0点，是每次我用完后切换的时间」—— 起点是切换时刻，滚动 24 小时');
+  rec('T23b2 RESET_WINDOW_MS 必须是 24 小时（24 * 60 * 60 * 1000）',
+    /const RESET_WINDOW_MS\s*=\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000\s*;/.test(accountUsageCode),
+    '窗口写错成 12/48 小时，用户就会早切或白等');
   rec('T23c account-usage 的 localDay 必须与 daemon todayStr 同格式（YYYY-MM-DD 两个连字符）',
     /d\.getFullYear\(\)\s*\+\s*'-'\s*\+\s*z\(d\.getMonth\(\)\s*\+\s*1\)\s*\+\s*'-'\s*\+\s*z\(d\.getDate\(\)\)/.test(accountUsageSrc)
       && /d\.getFullYear\(\)\s*\+\s*'-'\s*\+\s*z\(d\.getMonth\(\)\s*\+\s*1\)\s*\+\s*'-'\s*\+\s*z\(d\.getDate\(\)\)/.test(daemonSrcT23),
     '两边格式一旦漂移，/api/accounts 的 today 恒为 0、「今日切换 N 次」永远显示 0 次（已发生过一次）');
-  rec('T23d nextLocalMidnight 必须从模块导出（单测要能直接测跨天边界）',
-    /module\.exports\s*=\s*\{[^}]*nextLocalMidnight/.test(accountUsageSrc),
-    '不导出就只能靠 store 间接测，23:59:59.999 这种边界测不到');
-  rec('T23e 前端必须拉 summary 端点并用 nextResetAt 做倒计时（不是自己本地算）',
-    /"\/api\/account\/usage\/summary"/.test(appSrcT23) && /nextResetAt/.test(appSrcT23),
-    '前端自己算容易写成「此刻 +24h」，且与 daemon 时区可能不一致');
+  rec('T23d nextEffectiveAt 与 RESET_WINDOW_MS 必须从模块导出（单测要能直接测边界）',
+    /module\.exports\s*=\s*\{[^}]*nextEffectiveAt/.test(accountUsageSrc)
+      && /module\.exports\s*=\s*\{[^}]*RESET_WINDOW_MS/.test(accountUsageSrc),
+    '不导出就只能靠 store 间接测，「差 1 毫秒到 24 小时」这种边界测不到');
+  rec('T23e 前端必须拉 summary 端点并用 nextEffectiveAt 做倒计时（不是自己本地算）',
+    /"\/api\/account\/usage\/summary"/.test(appSrcT23) && /nextEffectiveAt/.test(appSrcT23)
+      && !/nextResetAt/.test(appSrcT23),
+    '前端自己算容易又写回「自然日 00:00」那套被否掉的方案');
+  rec('T23g 前端必须显示「上次切换」时间（用户要看从哪一刻起算的）',
+    /上次切换：\{0\}/.test(appSrcT23),
+    '只给倒计时不给起点，用户没法核对「是不是我记的那次切换」');
   rec('T23f 前端倒计时必须按秒 tick 并在离开账号页时停掉定时器',
     /setInterval\(/.test(appSrcT23) && /clearInterval\(/.test(appSrcT23),
     '不 tick 就是死数字；不停定时器会在别的页签持续空转');
+
+  // ── T24 插件「关于」页重整 + 版本号只显示自己（88.8.5，用户要求）──
+  // 用户原话：「国内版和国际版插件的『关于』页排版重新整理」
+  //        「『推荐开启』和左侧的『发送错误诊断』等，删除」
+  //        「插件对话框左上角版本号只写自己 88 开头的版本号」
+  // ⚠️ 断言范围必须限定在 buildAboutPane() 里 —— inject.js 的 i18n 词典仍保留
+  //    「发送错误诊断 / 推荐开启」词条（那是英文映射表，不是页面结构），
+  //    全文件搜会一直命中，断言形同虚设。
+  section('T24 插件关于页重整 / 版本号只显示自己（88.8.5）');
+  const injectSrcT24 = fs.readFileSync(path.join(RUNTIME, 'inject.js'), 'utf8');
+  const aboutStart = injectSrcT24.indexOf('function buildAboutPane()');
+  const aboutEnd = injectSrcT24.indexOf('function wireTelemetrySettings()');
+  const aboutBlock = aboutStart > -1 && aboutEnd > aboutStart ? injectSrcT24.slice(aboutStart, aboutEnd) : '';
+  rec('T24a 能定位 buildAboutPane 区块（断言前提）', aboutBlock.length > 500, '长度 ' + aboutBlock.length);
+  rec('T24b 关于页已删除「发送错误诊断」与「推荐开启」',
+    aboutBlock.length > 0 && !/发送错误诊断/.test(aboutBlock) && !/推荐开启/.test(aboutBlock),
+    '这两块是开发期调试项，放在「关于」页对用户是噪音；删了要连带确认 wireTelemetrySettings 等处判空');
+  rec('T24c 关于页已删除「会话监听日志」调试卡',
+    !/wbs-monitor-log-card/.test(aboutBlock), '隐藏工具入口仍会 querySelector 取它，取不到即 return');
+  rec('T24d 关于页改用统一的元数据行排版（wbs-about-meta）',
+    /wbs-about-meta-ver/.test(aboutBlock) && /wbs-about-meta-row/.test(aboutBlock),
+    '删完调试卡后「关于」页要有正经信息（插件版本 / 注入方式），不能只剩一句话');
+  // ⚠️ 又是「注释里写了被禁用的标识符」这个坑（第四次）：inject.js 的注释里特意写了
+  // 「删掉了 wbsClientVersion()」来说明为什么移除，不剥注释会被自己的否定断言命中。
+  const injectCodeT24 = injectSrcT24.split(/\r?\n/).filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  rec('T24e 插件面板左上角版本行只显示 LDCodex 自己的版本号',
+    !/wbsClientVersion/.test(injectCodeT24),
+    'wbsClientVersion 已从 UA 抠 WorkBuddy 客户端版本的 helper，整函数删除；左上角不能再混客户端版本');
+  rec('T24f 版本号必须过滤 __WBS_VERSION__ 占位符（未注入时不能显示 v__WBS_VERSION__）',
+    /WBS_VERSION\.indexOf\('__WBS_'\)/.test(injectSrcT24), '占位符没过滤会直接把模板串显示给用户');
 
   // ── T20 安装版本核验脚本的不变量（verify-installed-version.mjs）──
   // 用户两次质问「你怎么回事？你没有构建出来新版本吗还是原来的那一版」，

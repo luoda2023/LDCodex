@@ -17,7 +17,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const REPO = 'D:/LUODA/LDcodex/apps/codex-plus-manager/src-tauri/workbuddy-runtime';
-const { createAccountUsageStore, HISTORY_LIMIT, nextLocalMidnight } = require(path.join(REPO, 'account-usage.js'));
+const { createAccountUsageStore, HISTORY_LIMIT, RESET_WINDOW_MS, nextEffectiveAt } = require(path.join(REPO, 'account-usage.js'));
 
 function tmpDir() {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'account-usage-test-'));
@@ -167,102 +167,84 @@ test('写盘失败（目录不存在 → 抛错）不影响 noteActive 返回值
     assert.ok(r && typeof r.total === 'number');
   } finally { rimraf(dir); }
 });
-// ── 88.8.4 「下次重置」倒计时 ──
-// 用户诉求原话：「就是想知道下次生效是什么时候？因为现在一天后会重置。」
-// 语义必须是「本地自然日跨到明天 00:00」，不是「此刻 +24 小时」—— 这两者在
-// 23:59 和 00:00 附近差一整天，写错了就会让用户白等 / 白切。
+// ── 88.8.5 「下次生效」倒计时 ──
+// 用户诉求原话：「我要你记录每次切换的时间，到时候就可以知道下一次生效是什么时候」
+//            「我的目的很简单：就是想知道下次生效是什么时候？因为现在一天后会重置。」
+// 并且**明确否决了日历日方案**：「不是每天0点，是每次我用完后切换的时间」。
+// 所以起点 = 最后一次切换的时刻，窗口 = 24 小时（滚动），与 00:00 无关。
 
-test('nextLocalMidnight：普通时刻 → 当天 24:00（即次日 00:00）', () => {
-  const now = new Date(2026, 8, 13, 20, 45, 34, 500); // 2026-09-13 20:45:34.500 本地
-  const at = nextLocalMidnight(now);
-  const d = new Date(at);
-  assert.equal(d.getFullYear(), 2026);
-  assert.equal(d.getMonth(), 8);
+test('nextEffectiveAt：下次生效 = 上次切换 + 24 小时（滚动窗口）', () => {
+  const last = new Date(2026, 8, 13, 20, 45, 34, 0).getTime();
+  const now = new Date(2026, 8, 13, 22, 0, 0, 0).getTime();
+  const r = nextEffectiveAt(last, now);
+  assert.equal(r.lastSwitchAt, last);
+  assert.equal(r.nextEffectiveAt, last + RESET_WINDOW_MS);
+  assert.equal(r.msToEffective, last + RESET_WINDOW_MS - now);
+  assert.equal(r.ready, false);
+  // 生效时刻必须是「明天同一时刻」，不是「明天 00:00」
+  const d = new Date(r.nextEffectiveAt);
   assert.equal(d.getDate(), 14);
-  assert.equal(d.getHours(), 0);
-  assert.equal(d.getMinutes(), 0);
-  assert.equal(d.getSeconds(), 0);
-  assert.equal(d.getMilliseconds(), 0);
+  assert.equal(d.getHours(), 20);
+  assert.equal(d.getMinutes(), 45);
 });
 
-test('nextLocalMidnight：23:59:59.999 只差 1ms 就跨天 —— 必须落在次日 00:00，不是 +24h', () => {
-  const now = new Date(2026, 8, 13, 23, 59, 59, 999);
-  const at = nextLocalMidnight(now);
-  assert.equal(at - now.getTime(), 1); // 关键：只剩 1 毫秒，不是 86400000
-  assert.equal(new Date(at).getDate(), 14);
+test('nextEffectiveAt：跨过 24 小时 → ready=true、msToEffective=0（不会给负数）', () => {
+  const last = new Date(2026, 8, 13, 20, 45, 34, 0).getTime();
+  const now = new Date(2026, 8, 14, 20, 45, 35, 0).getTime();
+  const r = nextEffectiveAt(last, now);
+  assert.equal(r.ready, true);
+  assert.equal(r.msToEffective, 0);
 });
 
-test('nextLocalMidnight：正好 00:00:00.000 → 还得等整整 24 小时（明天 00:00）', () => {
-  const now = new Date(2026, 8, 13, 0, 0, 0, 0);
-  const at = nextLocalMidnight(now);
-  assert.equal(at - now.getTime(), 24 * 3600 * 1000);
-  assert.equal(new Date(at).getDate(), 14);
+test('nextEffectiveAt：差 1 毫秒到 24 小时 → 仍未生效（边界不能提前放行）', () => {
+  const last = new Date(2026, 8, 13, 20, 45, 34, 0).getTime();
+  const now = last + RESET_WINDOW_MS - 1;
+  const r = nextEffectiveAt(last, now);
+  assert.equal(r.ready, false);
+  assert.equal(r.msToEffective, 1);
 });
 
-test('nextLocalMidnight：月末 / 年末进位（12-31 → 次年 01-01）', () => {
-  const at = nextLocalMidnight(new Date(2026, 11, 31, 18, 0, 0, 0));
-  const d = new Date(at);
-  assert.equal(d.getFullYear(), 2027);
-  assert.equal(d.getMonth(), 0);
-  assert.equal(d.getDate(), 1);
+test('nextEffectiveAt：lastSwitchAt 非法 / 为空 → 返回 null（前端据此不显示卡片）', () => {
+  assert.equal(nextEffectiveAt(NaN, Date.now()), null);
+  assert.equal(nextEffectiveAt(0, Date.now()), null);
+  assert.equal(nextEffectiveAt('', Date.now()), null);
+  assert.equal(nextEffectiveAt(null, Date.now()), null);
 });
 
-test('resetInfo：返回 now / day / nextResetAt / msToReset 且 msToReset 不为负', () => {
+test('effectiveInfo：没有任何切换记录 → lastSwitchAt 为 null', () => {
   const dir = tmpDir();
   try {
     const store = createAccountUsageStore(dir);
-    const now = new Date(2026, 8, 13, 20, 45, 34, 0);
-    const info = store.resetInfo(now);
-    assert.equal(info.now, now.getTime());
-    assert.equal(info.day, '2026-09-13');
-    assert.equal(info.nextResetAt, nextLocalMidnight(now));
-    assert.equal(info.msToReset, nextLocalMidnight(now) - now.getTime());
-    assert.ok(info.msToReset > 0);
+    const info = store.effectiveInfo(new Date(2026, 8, 13, 20, 0, 0));
+    assert.equal(info.lastSwitchAt, null);
+    assert.equal(info.nextEffectiveAt, null);
   } finally { rimraf(dir); }
 });
 
-test('resetInfo：不传参数也能用（读真实时钟），且 msToReset 永不为负', () => {
+test('effectiveInfo：起点取**最后一次**切换（中间切过几次不算）', () => {
   const dir = tmpDir();
   try {
     const store = createAccountUsageStore(dir);
-    const info = store.resetInfo();
-    assert.ok(Number.isFinite(info.nextResetAt) && info.nextResetAt > 0);
-    assert.ok(info.msToReset >= 0);
+    store.noteActive('A', { at: new Date(2026, 8, 13, 8, 0, 0) });
+    const second = new Date(2026, 8, 13, 15, 30, 0);
+    store.noteActive('B', { at: second, fromUid: 'A' });
+    const info = store.effectiveInfo(new Date(2026, 8, 13, 16, 0, 0));
+    assert.equal(info.lastSwitchAt, second.getTime());
+    assert.equal(info.nextEffectiveAt, second.getTime() + RESET_WINDOW_MS);
+    assert.equal(info.fromUid, 'A');
+    assert.equal(info.toUid, 'B');
+    assert.equal(info.ready, false);
   } finally { rimraf(dir); }
 });
 
-test('localDay 格式必须是 YYYY-MM-DD（与 daemon todayStr 逐字符一致）', () => {
-  // 88.8.4 真实事故：这里曾拼成 "2026-0913"（月和日之间漏了 '-'）。
-  // 自己写自己读格式一致、单测很容易漏；但 daemon 是 store.all(todayStr()) 调用的，
-  // 两边一旦不一致，/api/accounts 返回的 today 恒为 0 —— 「今日切换 N 次」永远显示 0 次。
+test('effectiveInfo：切完号后已经过了 24 小时 → ready=true', () => {
   const dir = tmpDir();
   try {
     const store = createAccountUsageStore(dir);
-    store.noteActive('A', { at: new Date(2026, 0, 5, 10, 0, 0) });
-    const all = store.all('2026-01-05');
-    assert.equal(all.A.today, 1, 'daemon 用 todayStr() 的格式查，必须能命中');
-    // 直接校验落盘的 day 字符串形态（一位数的月/日要补零）
-    const raw = JSON.parse(fs.readFileSync(path.join(dir, 'account-usage.json'), 'utf8'));
-    assert.match(raw.accounts.A.day, /^\d{4}-\d{2}-\d{2}$/);
-    assert.equal(raw.accounts.A.day, '2026-01-05');
-  } finally { rimraf(dir); }
-});
-
-test('localDay 与 daemon todayStr 对同一时刻返回相同字符串', () => {
-  // 直接把 daemon.js 里的 todayStr 抠出来对比 —— 这是防止两边再各自漂移的最硬的一条断言。
-  const daemonSrc = fs.readFileSync(path.join(REPO, 'daemon.js'), 'utf8');
-  const fn = daemonSrc.match(/function todayStr\(d\)\s*\{[\s\S]*?\n\}/);
-  assert.ok(fn, 'daemon.js 里找不到 todayStr');
-  const z = (n) => String(n).padStart(2, '0');
-  // eslint-disable-next-line no-new-func
-  const todayStr = new Function('d', 'z', fn[0] + '; return todayStr(d);');
-  const dir = tmpDir();
-  try {
-    const store = createAccountUsageStore(dir);
-    for (const d of [new Date(2026, 0, 5, 10, 0, 0), new Date(2026, 10, 30, 23, 59, 59), new Date()]) {
-      const mine = store.resetInfo(d).day;
-      const theirs = todayStr(d, z);
-      assert.equal(mine, theirs, `格式漂移：account-usage=${mine} daemon=${theirs}`);
-    }
+    store.noteActive('A', { at: new Date(2026, 8, 12, 9, 0, 0) });
+    store.noteActive('B', { at: new Date(2026, 8, 12, 10, 0, 0), fromUid: 'A' });
+    const info = store.effectiveInfo(new Date(2026, 8, 13, 12, 0, 0));
+    assert.equal(info.ready, true);
+    assert.equal(info.msToEffective, 0);
   } finally { rimraf(dir); }
 });

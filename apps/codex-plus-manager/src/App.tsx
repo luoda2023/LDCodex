@@ -12596,21 +12596,27 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
   // 88.8.4：账号切换流水（最近 50 条，最新在前）—— 切完账号后立刻显示「刚刚从 A 切到 B」，
   // 让用户能立刻看到「这次切换何时发生」。空时不显示卡片。
   const [switchHistory, setSwitchHistory] = useState<Array<{ fromUid: string; toUid: string; at: string }>>([]);
-  // 88.8.4：「下次生效（重置）是什么时候」—— nextResetAt 由守护进程按本地时区算好（明天 00:00），
-  // 前端只负责按秒倒数，绝不自己推算重置点（「此刻 +24h」与自然日归零不是一回事）。
-  const [resetInfo, setResetInfo] = useState<{ nextResetAt: number; msToReset: number } | null>(null);
+  // 88.8.5：「下次生效是什么时候」—— 起点是**最后一次切换的时刻**（+24 小时），
+  // 不是日历日 00:00（用户明确说过「不是每天0点，是每次我用完后切换的时间」）。
+  // nextEffectiveAt 由守护进程算好下发，前端只按秒倒数，绝不自己推算。
+  const [effective, setEffective] = useState<{
+    lastSwitchAt: number;
+    nextEffectiveAt: number;
+    ready: boolean;
+    fromUid: string;
+    toUid: string;
+  } | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
-  // 倒计时归零后自动重新拉一次（跨过 00:00 后重置点会顺延到后天 00:00）。
-  // 用 ref 兜一次，避免每秒 tick 都触发请求。
+  // 倒计时归零后自动重新拉一次（切一次号后起点就变了）。用 ref 兜一次，避免每秒都发请求。
   const [usageNonce, setUsageNonce] = useState(0);
   const resetFiredRef = useRef(false);
   useEffect(() => {
     if (tab !== "account") {
       setSwitchHistory([]);
-      setResetInfo(null);
+      setEffective(null);
       return;
     }
-    if (!status?.running) { setSwitchHistory([]); setResetInfo(null); return; }
+    if (!status?.running) { setSwitchHistory([]); setEffective(null); return; }
     let cancelled = false;
     call("/api/account/usage/summary", undefined, status?.apiToken)
       .then((res: unknown) => {
@@ -12620,27 +12626,38 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
           ? (obj.history as Array<{ fromUid: string; toUid: string; at: string }>)
           : [];
         setSwitchHistory(list);
-        const at = Number(obj.nextResetAt);
-        setResetInfo(Number.isFinite(at) && at > 0 ? { nextResetAt: at, msToReset: Number(obj.msToReset) || 0 } : null);
+        const last = Number(obj.lastSwitchAt);
+        const next = Number(obj.nextEffectiveAt);
+        setEffective(
+          Number.isFinite(last) && last > 0 && Number.isFinite(next) && next > 0
+            ? {
+                lastSwitchAt: last,
+                nextEffectiveAt: next,
+                ready: obj.ready === true,
+                fromUid: String(obj.fromUid || ""),
+                toUid: String(obj.toUid || ""),
+              }
+            : null,
+        );
         resetFiredRef.current = false;
       })
-      .catch(() => { if (!cancelled) { setSwitchHistory([]); setResetInfo(null); } });
+      .catch(() => { if (!cancelled) { setSwitchHistory([]); setEffective(null); } });
     return () => { cancelled = true; };
   }, [tab, status?.running, status?.apiToken, usageNonce]);
-  // 只在账号页且拿到重置点时按秒 tick —— 离开页签/没数据时不起定时器（省电、不打断别的页面）。
+  // 只在账号页且拿到生效点时按秒 tick —— 离开页签/没数据时不起定时器（省电、不打断别的页面）。
   useEffect(() => {
-    if (tab !== "account" || !resetInfo) return;
+    if (tab !== "account" || !effective) return;
     const timer = window.setInterval(() => setNowTick(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [tab, resetInfo]);
-  // 跨过重置点后重拉一次：nextResetAt 会顺延到「明天 00:00」，倒计时不会停在 0。
+  }, [tab, effective]);
+  // 到点后重拉一次：再切一次号，起点就变成新的切换时刻，倒计时不会停在 0。
   useEffect(() => {
-    if (!resetInfo) return;
+    if (!effective) return;
     if (resetFiredRef.current) return;
-    if (resetInfo.nextResetAt - Date.now() > 0) return;
+    if (!effective.ready && effective.nextEffectiveAt - Date.now() > 0) return;
     resetFiredRef.current = true;
     setUsageNonce((n) => n + 1);
-  }, [resetInfo, nowTick]);
+  }, [effective, nowTick]);
 
   // 两个档案的守护进程监听不同端口（国内版 47832 / 国际版 47833）。
   // 状态还没读回来时先用本档案的固定端口兜底，避免第一次请求打错端口。
@@ -13400,20 +13417,26 @@ onChange={(event) =>
             <p className="muted-text">{t("还没有备份账号。WorkBuddy 登录后会自动备份，之后就能一键切换。")}</p>
           )}
         </div>
-        {/* 88.8.4 「下次生效是什么时候」：重置点由守护进程按本地时区算好（明天 00:00），
-            这里只按秒倒数。用户原话「因为现在一天后会重置」—— 自然日跨到 00:00 即重置。 */}
-        {resetInfo ? (
+        {/* 88.8.5 「下次生效是什么时候」：起点是**最后一次切换的时刻 + 24 小时**
+            （用户明确说过「不是每天0点，是每次我用完后切换的时间」），
+            这里只按秒倒数。没切过号就没有「上次切换」，自然不显示这张卡。 */}
+        {effective ? (
           <div className="workbuddy-card">
             <div className="workbuddy-card-head">
-              <strong>{t("下次重置")}</strong>
-              <small className="muted-text">{t("按本地自然日重置：到点后「今日切换次数」归零、当日额度恢复。")}</small>
+              <strong>{t("下次生效")}</strong>
+              <small className="muted-text">{t("从上次切换起 24 小时后生效；再切一次号，计时重新开始。")}</small>
             </div>
             <div className="workbuddy-list">
               <div className="workbuddy-row">
                 <div className="workbuddy-row-main">
-                  <strong className="workbuddy-mono">{workBuddyFormatTime(resetInfo.nextResetAt)}</strong>
-                  <small className="workbuddy-usage">
-                    {tf("距重置还有 {0}", [workBuddyFormatCountdown(resetInfo.nextResetAt - nowTick)])}
+                  <small className="muted-text">
+                    {tf("上次切换：{0}", [workBuddyFormatTime(effective.lastSwitchAt)])}
+                  </small>
+                  <strong className="workbuddy-mono">{workBuddyFormatTime(effective.nextEffectiveAt)}</strong>
+                  <small className={effective.ready || effective.nextEffectiveAt - nowTick <= 0 ? "workbuddy-usage" : "workbuddy-usage is-idle"}>
+                    {effective.ready || effective.nextEffectiveAt - nowTick <= 0
+                      ? t("已生效，现在切回去即可")
+                      : tf("距生效还有 {0}", [workBuddyFormatCountdown(effective.nextEffectiveAt - nowTick)])}
                   </small>
                 </div>
               </div>
