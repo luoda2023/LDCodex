@@ -25,9 +25,9 @@
 | 插件面板布局实测（`verify-plugin-layout.mjs`，账号 / 会话 / 增强 三页签） | **47 / 47 全部通过** ✅ |
 | 本机安装版本核验（`verify-installed-version.mjs`） | **7 / 7 ✅ 全部通过**（88.8.4 已装上，见「一之零F」） |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
-| 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅ |
-| Rust 单元测试（`cargo test -p codex-plus-manager --lib`） | **70 / 70 全部通过** ✅（含 88.8.4 新增的托盘 tooltip 守卫；另修掉 1 条**早已失效**的断言，见「一之零E」） |
-| Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
+| 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅（88.8.5 复跑） |
+| Rust 单元测试（`cargo test -p codex-plus-manager --lib`） | **70 / 70 全部通过** ✅（88.8.5 复跑，4m45s；含 88.8.4 新增的托盘 tooltip 守卫；另修掉 1 条**早已失效**的断言，见「一之零E」） |
+| Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅（88.8.5 复跑，8m41s；第一次跑因 D 盘写满失败，清出空间后通过，见「一之零I」） |
 | 安装器脚本编译（`makensis installer.nsi`） | 通过（仅 1 个模板自带的无关 warning）✅ |
 | 真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
@@ -85,6 +85,42 @@
 
 `run-tests.js` **144/144**、`account-usage.test.js` **16/16**、no-disturb 16/16、
 布局实测 14/14、插件面板实测 47/47、`.fill` 实测 30/30、`tsc --noEmit` 全绿。
+
+---
+
+## 一之零I、⚠️ D 盘被写满导致 Rust 测试编不过（2026-09-14，88.8.5 出包后）
+
+### 现象
+
+```
+rustc-LLVM ERROR: IO failure on output stream: no space on device
+error: could not compile `codex-plus-core` (lib test)
+```
+
+`df -h`：D 盘 `71G 71G 4.5M 100%`。`target/` 占 **15G**（`debug` 9.8G + `release` 5.1G）。
+
+### 处理（用户选「只清 debug」）
+
+| 步骤 | 结果 |
+|---|---|
+| ① `rm -rf target/debug`（Git Bash） | ❌ 10 分钟没删完，且磁盘反而更满（4.5M → 216K）—— 又慢又占 I/O |
+| ② `mv target/debug target/_trash-debug-<ts>` | ✅ **瞬间完成**，cargo 路径立刻可用 |
+| ③ 用 cmd 的 `rmdir /s /q` 删重命名后的目录 | ✅ `DELETED_OK in 867s`（14m27s），D 盘 212K → **7.7G**（90%） |
+| ④ 重跑 `cargo test -p codex-plus-core --lib windows_integration` | ✅ **2/2** |
+
+### 两个坑
+
+1. **别在 `-e` 里写 cmd 命令**：Git Bash 会把反斜杠路径做 MSYS 转换
+   （`D:\LUODA` → `D:////LUODA`），cmd 直接 `exit 1`。
+   → 写成**脚本文件** + 字面量路径，绕开这层转换。
+2. **`fs.rmSync` 删大目录会「卡住」不抛异常**（catch 接不住，见 MEMORY）
+   → 用 `execFileSync(ComSpec, ['/c','rmdir','/s','/q',dir], { timeout: 25*60*1000 })`。
+
+### 教训
+
+**出包前先看一眼磁盘**：`npm run build`（release）会再吃 5G，
+一个 71G 的盘放 4 个 Rust 项目（LDchat 20G + LDcad 17G + LDcodex 16G + LDFtam 5.2G）很容易顶满。
+「**先重命名再后台删**」是关键一招 —— 重命名是元数据操作，瞬间生效，不会让工作卡住等十几分钟。
 
 ---
 
