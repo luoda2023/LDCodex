@@ -1,8 +1,8 @@
-# LDCodex daemon 1.2.12 功能测试报告
+# LDCodex daemon 88.8.1 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（**88.8.1 版本号统一后全量复跑**）
 - **被测代码**：
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **1.2.12**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.1**）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（1.2.11：上弹面板行内新增常用语；含 1.2.10 的扣费取样范围修复）
   - `crates/codex-plus-core/src/windows_integration.rs`（**1.2.12：窗口激活不再制造幽灵窗口 + 任务栏身份改写默认关闭**）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/automation.js`（抗崩溃加固）
@@ -13,12 +13,36 @@
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **73 / 73 全部通过** ✅ |
+| 功能接口测试（`run-tests.js`） | **79 / 79 全部通过** ✅ |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
 | Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
 | 真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
+
+## 一之零、88.8.1 版本号统一
+
+### 需求（用户原话）
+
+> 软件的版本号统一为：88.8.1，以后每升级一次，升一个。
+
+### 问题：此前版本号各自为政
+
+| 位置 | 改前 |
+|---|---|
+| `Cargo.toml`（`[workspace.package] version`，5 个 Rust crate 继承） | `1.2.56` |
+| `apps/codex-plus-manager/package.json` / `package-lock.json` | `1.2.56` |
+| `apps/codex-plus-manager/src-tauri/tauri.conf.json` | `1.2.56` |
+| `src-tauri/workbuddy-runtime/package.json` | `1.2.11` |
+| `src-tauri/workbuddy-runtime/daemon.js`（`DAEMON_VERSION` / `DAEMON_BUILD_ID`） | `1.2.12` |
+
+同一个安装包里同时存在 `1.2.56`、`1.2.11`、`1.2.12` 三个「版本号」，安装包文件名、管理器「关于」页、daemon 自检上报、更新检查各说各话。
+
+### 改法
+
+全部统一为 **`88.8.1`**，并把「以后每升级一次加 1」写进 `Cargo.toml` 注释与项目记忆作为约定。新增 **T14 系列 6 项**源码级断言，守住「所有版本号来源必须完全一致」，防止后续升级只改一半。
+
+> 说明：`daemon.js` 的历史版本注释（1.2.9 / 1.2.10 / 1.2.11 / 1.2.12）是真实开发记录，保留不动；新增 `88.8.1` 条目说明本次统一。这些 1.2.9–1.2.12 的修复此前**尚未随安装包发布**，将一并随 88.8.1 出包。
 
 ## 一之四、1.2.12 修掉的缺陷：任务栏多出一个「国内版/国际版」图标
 
@@ -513,5 +537,5 @@ cd D:/LUODA/LDcodex/apps/codex-plus-manager && node node_modules/typescript/bin/
 - **daemon 单实例锁存在主/备双锁竞态**（本次实测到同 profile 同时跑了两个 daemon：pid 7872 与 pid 10720）。`acquireDaemonLock()` 的候选是 `[主锁, 备锁]`，两个进程可能各持一个都认为自己独占。未修：改动锁逻辑一旦出错会让 daemon 起不来，需单独设计后验证。
 - **daemon 会继承客户端注入的 `NODE_OPTIONS`**（实测：`--require .../WorkBuddyAI/resources/app.asar.unpacked/cli/vendor/shim/node-language-shim.cjs`）。该 shim 代理 fs 操作，会把部分操作拦成 `EPERM`（如 `mkdir .../automation-agent/inbox`、`watch .../CodeBuddyExtension/.../auth`）。1.2.9 的抗崩溃加固已让 daemon 不再因此退出；彻底规避可在 `spawn_daemon` 里 `env_remove("NODE_OPTIONS")`。
 - **前端 i18n 技术债**：`tools/i18n-verify.mjs` 目前仍报 `plain` 143 MISSING / 156 STALE、`template` 27 MISSING / 24 STALE。成因是「模板键被放进 `EN_PLAIN`」与「字典条目无人引用」两类，属**既有**问题（本轮只归位了账号导出/导入这一区块的 5 条）。建议后续单独跑一轮 `tools/wb-i18n-fill.mjs` + `tools/i18n-codemod.mjs` 统一清理。
-- **安装包需重新构建才能生效**：当前已安装版本是 **1.2.8**，1.2.9 / 1.2.10 / 1.2.11 / 1.2.12 的全部改动（CDP 隔离、弹窗自动点允许修复、上弹面板行内新增常用语、短语随账号同步、任务栏幽灵图标修复）都在源码里，需要 `npm run build` 重新出包并安装后才会生效。安装包还需带上 `windows/hooks.nsh`（安装时自动结束占用进程）。
+- **安装包需重新构建才能生效**：当前已安装版本是 **1.2.8**，而源码里的版本号已统一为 **88.8.1**。1.2.9 / 1.2.10 / 1.2.11 / 1.2.12 的全部改动（CDP 隔离、弹窗自动点允许修复、上弹面板行内新增常用语、短语随账号同步、任务栏幽灵图标修复）都在源码里，需要 `npm run build` 重新出包并安装后才会生效（出包后文件名形如 `LDCodex_88.8.1_x64-setup.exe`）。安装包还需带上 `windows/hooks.nsh`（安装时自动结束占用进程）。
 - **任务栏图标若仍复现**：在出现图标的现场运行 `_test_daemon/diagnose-taskbar.js`，把 `taskbar-diagnose-report.txt` 发回。报告「一」里若出现同一 `WorkBuddyAI.exe` PID 的**多个** no-owner 可见窗口，说明还有别的路径在显示隐藏窗口；若只有一个窗口但任务栏仍有两个图标，则是任务栏身份问题（可试 `LDCODEX_REBRAND_TASKBAR=1` 反向确认）。

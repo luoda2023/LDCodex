@@ -359,8 +359,14 @@ const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.exis
 //         原先对目标进程枚举到的**第一个**顶层窗口无脑 SW_RESTORE，客户端进程里那些隐藏的
 //         辅助窗口（OLE 消息窗口 "OleMainThreadWndName"、Chromium 工具窗口）会被强行显示，
 //         任务栏随之凭空多出图标。现在只恢复「已可见/最小化」或「确认是应用主窗口」的候选。
-const DAEMON_VERSION = '1.2.12';
-const DAEMON_BUILD_ID = 'release-1.2.12-20260913-no-phantom-taskbar-icon';
+// 88.8.1：版本号统一。此前版本号各自为政（安装包 1.2.56 / 运行时 package.json 1.2.11 /
+//         daemon 1.2.12），现全部归一到 88.8.1；约定「以后每升级一次加 1」（88.8.2、88.8.3 …）。
+//         必须与 Cargo.toml（workspace.package.version）、apps/codex-plus-manager/package.json、
+//         src-tauri/tauri.conf.json、src-tauri/workbuddy-runtime/package.json 保持一致。
+//         本版同时包含此前已开发但尚未随安装包发布的 1.2.9–1.2.12 全部修复（CDP 双开隔离、
+//         弹窗自动点允许、上弹面板行内新增常用语 + 短语随账号同步、任务栏幽灵图标）。
+const DAEMON_VERSION = '88.8.1';
+const DAEMON_BUILD_ID = 'release-88.8.1-20260913-unified-version-and-no-phantom-taskbar-icon';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）

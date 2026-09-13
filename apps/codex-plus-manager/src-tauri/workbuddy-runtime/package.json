@@ -1,7 +1,7 @@
 {
   "name": "ldcodex-workbuddy-runtime",
   "private": true,
-  "version": "1.2.11",
+  "version": "88.8.1",
   "description": "LDCodex 内嵌的 WorkBuddy 桌面端增强运行时（本地守护进程 + 注入脚本）。",
   "type": "commonjs",
   "main": "daemon.js",
