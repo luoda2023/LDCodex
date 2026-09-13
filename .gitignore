@@ -54,3 +54,16 @@ build_release*.log
 .freebuff/
 _wbtest/
 WorkDaddy-main/
+
+# _test_daemon 运行产物（每次跑 test-run.sh 都会重建，不入库）
+_test_daemon/data*/
+_test_daemon/mirror/
+_test_daemon/usage-test/
+_test_daemon/not-a-dir
+_test_daemon/*.json
+_test_daemon/*.psm1
+_test_daemon/*.txt
+!_test_daemon/taskbar-diagnose-report.txt
+
+# 临时草稿目录
+_tmp/
