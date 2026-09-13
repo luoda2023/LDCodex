@@ -339,8 +339,11 @@ const primaryAccountStore = createPrimaryAccountStore(DATA_DIR, (uid) => fs.exis
 // 1.2.7：双开隔离加固（CDP 端口/目标归属按 profile 独占，绝不扫到另一个版本的客户端）；
 //         跨版本对话双向复制改为「回写原会话」，来回复制不再产生分身副本；
 //         新增跨版本自动镜像开关，让两个版本持续共用同一批对话。
-const DAEMON_VERSION = '1.2.7';
-const DAEMON_BUILD_ID = 'release-1.2.7-20260913-dual-profile-isolation-and-mirror';
+// 1.2.8：跨版本复制保留消息文件时间戳并只按「文件」比较新旧，修掉自动镜像两端每轮
+//         来回互相回写的 ping-pong（同步完即收敛）；新增 /api/profile/isolation
+//         双开隔离自检，面板可直观看清两版的端口/目录/程序两两不冲突。
+const DAEMON_VERSION = '1.2.8';
+const DAEMON_BUILD_ID = 'release-1.2.8-20260913-cross-profile-mirror-converge-and-isolation-check';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）
@@ -1165,7 +1168,12 @@ function saveSeamlessAccount(tokenData, accData) {
   return { uid, nickname: accData.nickname || '', email: accData.email || '' };
 }
 
-// 轮询一次授权结果：未完成返回 {done:false}；完成则入库并返回账号信息
+// 轮询一次授权结果：未完成返回 {done:false}；完成则入库并返回账号信息。
+// 「添加账号有时候会失败」的两个根因都在这里：
+//   1) 一次网络抖动/服务端 5xx 就让 httpJson 抛错 → 整个轮询接口 502，前端只能干等；
+//   2) 用户已经授权成功，但 login/account 那一刻瞬时失败/返回空 → 直接把整次登录判死。
+// 现在把「暂时性失败」和「确定性失败」分开：暂时性失败只回报进度、下一次继续轮询，
+// 确定性失败才结束并给出可操作提示。
 async function oauthPollOnce(loginId) {
   const info = oauthStates.get(loginId);
   if (!info) return { done: true, error: '登录请求不存在或已过期' };
@@ -1176,26 +1184,68 @@ async function oauthPollOnce(loginId) {
     scheduleOAuthStateCleanup(loginId);
     return { done: true, error: info.error };
   }
-  const tokenResp = await httpJson(
-    `${WB_API_ENDPOINT}${WB_API_PREFIX}/auth/token?state=${encodeURIComponent(info.state)}`,
-    'GET'
-  );
+  info.attempts = (Number(info.attempts) || 0) + 1;
+  const progress = () => ({
+    done: false,
+    retryable: true,
+    attempts: info.attempts,
+    lastError: info.lastError || '',
+  });
+
+  // 1) 取 token：网络抖动按「还没好」处理，下一次轮询继续，不判死。
+  let tokenResp;
+  try {
+    tokenResp = await httpJson(
+      `${WB_API_ENDPOINT}${WB_API_PREFIX}/auth/token?state=${encodeURIComponent(info.state)}`,
+      'GET'
+    );
+  } catch (e) {
+    info.lastError = '授权服务网络异常，正在重试…';
+    log(`[oauth] 轮询 token 网络异常（第 ${info.attempts} 次）: ${e.message}`);
+    return progress();
+  }
   const code = tokenResp && typeof tokenResp.code === 'number' ? tokenResp.code : -1;
-  if (code !== 0 && code !== 200) return { done: false };
+  if (code !== 0 && code !== 200) {
+    // 保守策略：不在这一步提前判死。WorkBuddy 的业务错误码是 5 位数，与 HTTP 状态码
+    // 混在同一字段，无法可靠区分「还没授权」和「授权被拒」；一旦误判就会凭空多出一种
+    // 失败（用户最反感的就是"明明登录成功却提示失败"）。所以这里一律按"还没好"继续轮询，
+    // 只把 code 透出给面板，最终仍由 600s 超时给出确定结论。
+    info.lastError = `等待授权结果（code=${code}）…`;
+    return progress();
+  }
   const data = tokenResp.data || {};
   const accessToken = data.accessToken || data.access_token || '';
-  if (!accessToken) return { done: false };
+  if (!accessToken) return progress();
 
-  // 已授权：拉取账号信息并入库
+  // 2) 已授权：拉取账号信息并入库。这里失败多半是瞬时抖动，最多重试 3 次再判失败，
+  //    避免「明明登录成功却提示添加失败」。
   const accHeaders = { Authorization: `Bearer ${accessToken}` };
   if (data.domain) accHeaders['X-Domain'] = data.domain;
-  const accResp = await httpJson(
-    `${WB_API_ENDPOINT}${WB_API_PREFIX}/login/account?state=${encodeURIComponent(info.state)}`,
-    'GET',
-    null,
-    accHeaders
-  );
-  const accData = (accResp && accResp.data) || {};
+  let accData = {};
+  try {
+    const accResp = await httpJson(
+      `${WB_API_ENDPOINT}${WB_API_PREFIX}/login/account?state=${encodeURIComponent(info.state)}`,
+      'GET',
+      null,
+      accHeaders
+    );
+    accData = (accResp && accResp.data) || {};
+  } catch (e) {
+    accData = {};
+    log(`[oauth] 拉取账号信息异常（第 ${info.attempts} 次）: ${e.message}`);
+  }
+  if (!accData || !accData.uid) {
+    const tries = Number(info.accountTries) || 0;
+    if (tries < 3) {
+      info.accountTries = tries + 1;
+      info.lastError = '已授权，正在获取账号信息…';
+      return progress();
+    }
+    info.done = true;
+    info.error = '官方接口未返回账号信息（uid），请重新发起添加账号';
+    scheduleOAuthStateCleanup(loginId);
+    return { done: true, error: info.error };
+  }
   info.done = true;
   try {
     info.result = saveSeamlessAccount(data, accData);
@@ -3883,6 +3933,32 @@ function crossProfilePathPairs(sourceHome, targetHome, oldId, newId) {
   return pairs;
 }
 
+/**
+ * 把 source 树里每个文件/目录的 mtime 对齐到 target 上的副本。
+ * 为什么必须做：自动镜像靠「两边消息文件 mtime 谁更新」判断方向。若复制后目标
+ * mtime 变成"现在"，目标就会永远显得比源新，两端每轮互相回写（ping-pong），
+ * 既白跑 I/O，也可能把刚产生的新消息覆盖掉。对齐后「同步完成」= 两端 mtime 相等，
+ * 两侧都判定为"无需同步"，链路自然收敛。
+ */
+function alignTreeTimestamps(source, target) {
+  let stat;
+  try { stat = fs.lstatSync(source); } catch (_) { return; }
+  if (stat.isSymbolicLink()) return;
+  if (stat.isFile()) {
+    try { fs.utimesSync(target, stat.atime, stat.mtime); } catch (_) {}
+    return;
+  }
+  if (!stat.isDirectory()) return;
+  let entries = [];
+  try { entries = fs.readdirSync(source, { withFileTypes: true }); } catch (_) { entries = []; }
+  for (const entry of entries) {
+    if (entry.isSymbolicLink()) continue;
+    alignTreeTimestamps(path.join(source, entry.name), path.join(target, entry.name));
+  }
+  // 目录时间最后设置：写子项会刷新父目录 mtime，放在最后才能生效。
+  try { fs.utimesSync(target, stat.atime, stat.mtime); } catch (_) {}
+}
+
 async function copyCrossProfileFiles(sourceHome, targetHome, oldId, newId) {
   const result = { copied: 0, failed: 0 };
   const sourceRoot = path.resolve(sourceHome);
@@ -3901,7 +3977,10 @@ async function copyCrossProfileFiles(sourceHome, targetHome, oldId, newId) {
       const stat = fs.lstatSync(source);
       if (stat.isSymbolicLink()) return;
       fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
-      await fs.promises.cp(source, target, { recursive: true, force: true, dereference: false });
+      // preserveTimestamps 让"复制"不再被镜像误读成"源侧更新"，是防 ping-pong 的第一道闸；
+      // alignTreeTimestamps 兜底处理个别平台/目录时间不被 cp 保留的情况。
+      await fs.promises.cp(source, target, { recursive: true, force: true, dereference: false, preserveTimestamps: true });
+      alignTreeTimestamps(source, target);
       result.copied++;
     } catch (error) {
       result.failed++;
@@ -4023,6 +4102,76 @@ async function copyCrossProfileSessions(sourceProfileId, ids, targetUid, options
     errors: errors.slice(0, MAX_SESSION_IMPORT_ERRORS),
     updated: copied.filter((item) => item.status === 'updated').length,
     refreshed,
+  };
+}
+
+/* ───────────── 双开隔离自检（只读，用于面板确认两版互不影响） ─────────────
+ * 双开时最容易踩的坑就是"两个客户端抢同一份资源"：CDP 端口、UI 端口、数据目录、
+ * 可执行文件、daemon 单实例锁。这里把本 profile 与对端 profile 的关键资源并排列出，
+ * 逐项判断是否重叠，让用户/客服能一眼确认"增强为什么不会互相干扰"。
+ * 纯只读：不写文件、不起进程、不碰对端数据库。
+ */
+function isolationSide(id, definition) {
+  const base = PROFILES[id] || null;
+  const dataDir = profileDataDir(base || definition || { id });
+  let actualCdp = 0;
+  try {
+    actualCdp = Number(JSON.parse(fs.readFileSync(path.join(dataDir, 'cdp-port.json'), 'utf8')).port) || 0;
+  } catch (_) { /* 未写入时留空 */ }
+  let persistedUi = null;
+  try {
+    persistedUi = parseUiPortState(fs.readFileSync(path.join(dataDir, 'ui-port.json'), 'utf8'), id);
+  } catch (_) { /* 未写入时用默认候选 */ }
+  return {
+    id,
+    name: (definition && definition.name) || (base && base.name) || id,
+    kind: (definition && definition.kind) || (base && base.kind) || '',
+    cdpReservedPort: Number(PROFILE_CDP_PORT[id]) || 0,
+    cdpActualPort: actualCdp,
+    uiPorts: profileUiPortCandidates(id, { persistedPort: persistedUi }),
+    dataDir,
+    dataRoot: (definition && definition.dataRoot) || (base && base.dataRoot) || '',
+    binary: (definition && definition.appPath) || (base && base.appPath) || '',
+  };
+}
+
+function buildProfileIsolationReport() {
+  const peerId = crossProfilePeerId();
+  const sides = [isolationSide(PROFILE.id, PROFILE)];
+  if (peerId) {
+    let peerDefinition = null;
+    try { peerDefinition = crossProfileDefinition(peerId); } catch (_) { peerDefinition = null; }
+    sides.push(isolationSide(peerId, peerDefinition));
+  }
+  const conflicts = [];
+  const samePath = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const overlap = (listA, listB) => (listA || []).filter((port) => (listB || []).includes(port));
+  for (let i = 0; i < sides.length; i++) {
+    for (let j = i + 1; j < sides.length; j++) {
+      const a = sides[i];
+      const b = sides[j];
+      const cdpOverlap = overlap(
+        [a.cdpReservedPort, a.cdpActualPort].filter(Boolean),
+        [b.cdpReservedPort, b.cdpActualPort].filter(Boolean),
+      );
+      if (cdpOverlap.length) conflicts.push(`CDP 端口重叠：${cdpOverlap.join('、')}`);
+      const uiOverlap = overlap(a.uiPorts, b.uiPorts);
+      if (uiOverlap.length) conflicts.push(`面板端口重叠：${uiOverlap.join('、')}`);
+      if (a.dataDir && samePath(a.dataDir, b.dataDir)) conflicts.push(`守护进程数据目录共用：${a.dataDir}`);
+      if (a.dataRoot && samePath(a.dataRoot, b.dataRoot)) conflicts.push(`会话数据目录共用：${a.dataRoot}`);
+      if (a.binary && samePath(a.binary, b.binary)) conflicts.push(`可执行文件相同：${a.binary}`);
+    }
+  }
+  return {
+    ok: true,
+    profile: PROFILE.id,
+    profileName: PROFILE.name,
+    peerProfile: peerId || null,
+    sides,
+    isolated: conflicts.length === 0,
+    conflicts,
+    daemonVersion: DAEMON_VERSION,
+    checkedAt: Date.now(),
   };
 }
 
@@ -4201,6 +4350,8 @@ function sessionContentMtime(wbHome, sessionId) {
   const id = String(sessionId || '').trim();
   if (!id) return 0;
   let latest = 0;
+  // 只统计「文件」mtime，目录一律不计入：复制/追加都会刷新父目录 mtime，若把目录算进去，
+  // 刚同步完的一侧会因为目录时间被刷成"现在"而永远显得更新，镜像就会来回震荡。
   const visit = (target) => {
     let stat;
     try { stat = fs.lstatSync(target); } catch (_) { return; }
@@ -7963,6 +8114,15 @@ function handleApi(req, res) {
         const payload = { exportType: 'LDCodex-accounts', version: 2, accounts: items };
         const envelope = createEncryptedExport('accounts', payload, password);
         const filename = 'LDCodex-账号导出-' + new Date().toISOString().slice(0, 10) + '.json';
+        // saveTo：前端「另存为」对话框选好的绝对路径，由 daemon 直接落盘（0600）。
+        // 不传则把加密内容回给前端（兼容旧调用）。
+        const saveTo = body && typeof body.saveTo === 'string' ? body.saveTo.trim() : '';
+        if (saveTo) {
+          fs.writeFileSync(saveTo, envelope, { mode: 0o600 });
+          try { fs.chmodSync(saveTo, 0o600); } catch (_) {}
+          log(`[export] 导出 ${items.length} 个账号 -> ${saveTo}`);
+          return json(res, 200, { ok: true, savedTo: saveTo, count: items.length });
+        }
         log(`[export] 导出 ${items.length} 个账号 -> ${filename}`);
         return json(res, 200, { ok: true, filename, content: envelope, count: items.length });
       } catch (e) {
@@ -7977,7 +8137,16 @@ function handleApi(req, res) {
     return readBody(req).then((body) => {
       try {
         let text = '';
-        if (typeof body === 'string') text = body;
+        // path：前端「打开文件」对话框选中的导出文件路径，由 daemon 直接读盘；
+        // 不传则沿用 content / data 字段（兼容旧调用）。
+        const filePath = body && typeof body.path === 'string' ? body.path.trim() : '';
+        if (filePath) {
+          try {
+            text = fs.readFileSync(filePath, 'utf8');
+          } catch (_) {
+            throw new Error('读取导出文件失败，请确认文件存在且有权限');
+          }
+        } else if (typeof body === 'string') text = body;
         else if (body && typeof body.content === 'string') text = body.content;
         else if (body && typeof body.data === 'string') text = body.data;
         if (!text) throw new Error('未读取到有效内容，请选择导出文件');
@@ -8342,6 +8511,16 @@ function handleApi(req, res) {
         return json(res, 400, { ok: false, error: error.message });
       }
     });
+  }
+
+  // 双开隔离自检：GET /api/profile/isolation
+  // 只读返回本 profile 与对端 profile 的端口/目录/可执行文件，并给出是否互不冲突的结论。
+  if (req.method === 'GET' && p === '/api/profile/isolation') {
+    try {
+      return json(res, 200, buildProfileIsolationReport());
+    } catch (error) {
+      return json(res, 400, { ok: false, error: error.message });
+    }
   }
 
   // 会话空间列表：GET /api/sessions/workspaces

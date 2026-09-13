@@ -8934,6 +8934,41 @@ select {
   font-size: 12px;
 }
 
+/* 授权链接行：链接 + 复制图标 */
+.workbuddy-link-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+
+.workbuddy-link-row > a {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: hsl(var(--primary, var(--foreground)));
+}
+
+.workbuddy-icon-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.workbuddy-icon-button:hover {
+  border-color: hsl(var(--primary, var(--foreground)));
+  color: hsl(var(--foreground));
+}
+
 .workbuddy-meta dd {
   margin: 0;
   font-size: 13px;

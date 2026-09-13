@@ -12536,6 +12536,8 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
   });
   // 复制完成后让目标客户端重新加载页面，否则新会话要等重启才出现在列表里。
   const [crossRefresh, setCrossRefresh] = useState(true);
+  // 双开隔离自检：本版本与另一版本的 CDP/面板端口、数据目录、可执行文件是否两两不冲突。
+  const [isolation, setIsolation] = useState<Record<string, unknown> | null>(null);
   const [askState, setAskState] = useState<Record<string, unknown> | null>(null);
   const [autoContinueState, setAutoContinueState] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -12545,6 +12547,13 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
   // 「添加账号」无感登录：申请授权链接 → 浏览器登录 → 轮询自动入库。
   const [oauth, setOauth] = useState<{ loginId: string; verificationUri: string } | null>(null);
   const [oauthMessage, setOauthMessage] = useState("");
+  const [oauthCopied, setOauthCopied] = useState(false);
+  // 账号导出 / 导入：导出文件是加密的登录凭据，密码必填且丢失后无法恢复。
+  const [transferMode, setTransferMode] = useState<"" | "export" | "import">("");
+  const [transferPassword, setTransferPassword] = useState("");
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [exportUids, setExportUids] = useState<string[]>([]);
+  const [importPaths, setImportPaths] = useState<string[]>([]);
   const oauthPollingRef = useRef(false);
 
   // 两个档案的守护进程监听不同端口（国内版 47832 / 国际版 47833）。
@@ -12898,8 +12907,12 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
             }
             return;
           }
+          // 暂时性失败（网络抖动 / 服务端 5xx / 正在拉账号信息）不是错误：
+          // 把进度提示给用户，下一次轮询继续，避免"看起来卡住没反应"。
+          const hint = String(r?.lastError || "");
+          if (hint) setOauthMessage(hint);
         } catch {
-          /* 网络抖动，继续轮询 */
+          setOauthMessage(t("与增强服务的连接短暂中断，正在重试…"));
         }
         setTimeout(() => void poll(), 2500);
       };
@@ -12927,10 +12940,126 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     }
   };
 
+  /** 复制授权链接：浏览器自动打开失败时，用户可以粘到别的浏览器/别的机器上登录。 */
+  const copyOauthLink = async () => {
+    if (!oauth?.verificationUri) return;
+    try {
+      await navigator.clipboard.writeText(oauth.verificationUri);
+      setOauthCopied(true);
+      window.setTimeout(() => setOauthCopied(false), 2000);
+    } catch {
+      setError(t("复制失败，请手动选中链接复制。"));
+    }
+  };
+
+  /** 导出账号：勾选的（或全部）账号 → 密码加密 → 另存成一个 .json 文件。
+   *  导出文件里是登录凭据，所以密码必填；密码丢了谁也导不回来。 */
+  const exportAccounts = async () => {
+    const password = transferPassword.trim();
+    if (!password) {
+      setError(t("请先设置导出密码：导出文件包含登录凭据，密码丢失将无法导入。"));
+      return;
+    }
+    setTransferBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const target = await saveDialog({
+        title: t("导出账号备份"),
+        defaultPath: `LDCodex-账号导出-${new Date().toISOString().slice(0, 10)}.json`,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (!target) return;
+      const result = await call("/api/accounts/export", {
+        method: "POST",
+        body: JSON.stringify({
+          password,
+          uids: exportUids.length ? exportUids : undefined,
+          saveTo: target,
+        }),
+      });
+      if (result.ok === false) throw new Error(String(result.error || t("导出失败")));
+      setNotice(tf("已导出{0}个账号到：{1}", [String(result.count ?? 0), String(result.savedTo || target)]));
+      setTransferMode("");
+      setTransferPassword("");
+      setExportUids([]);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setTransferBusy(false);
+    }
+  };
+
+  /** 选择要导入的导出文件（可多选，把多台机器导出的账号一次并进来）。 */
+  const pickImportFiles = async () => {
+    try {
+      const picked = (await open({
+        title: t("选择账号导出文件"),
+        multiple: true,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      })) as string | string[] | null;
+      const paths = (Array.isArray(picked) ? picked : picked ? [picked] : []).filter(Boolean);
+      if (paths.length) setImportPaths(paths);
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    }
+  };
+
+  /** 导入账号：写进本版本的备份列表，之后就能和其它账号一样一键切换。 */
+  const confirmImport = async () => {
+    if (!importPaths.length) {
+      setError(t("请先选择账号导出文件。"));
+      return;
+    }
+    setTransferBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      let total = 0;
+      const failed: string[] = [];
+      for (const filePath of importPaths) {
+        const label = filePath.split(/[\\/]/).pop() || filePath;
+        try {
+          const result = await call("/api/accounts/import", {
+            method: "POST",
+            body: JSON.stringify({ path: filePath, password: transferPassword }),
+          });
+          if (result.ok === false) failed.push(`${label}：${String(result.error || t("导入失败"))}`);
+          else total += Number(result.count || 0);
+        } catch (e) {
+          // 单个文件失败不能中断整批：继续导入其余文件，最后统一汇报失败清单。
+          failed.push(`${label}：${friendlyRuntimeError(e)}`);
+        }
+      }
+      if (failed.length) setError(tf("有{0}个文件导入失败：{1}", [String(failed.length), failed.join("；")]));
+      if (total) {
+        setNotice(tf("已导入{0}个账号，现在可以一键切换。", [String(total)]));
+        await loadTab("account");
+        setTransferMode("");
+        setTransferPassword("");
+        setImportPaths([]);
+      }
+      // 全部失败时保留已选文件与输入，方便用户改密码后直接重试。
+    } catch (e) {
+      setError(friendlyRuntimeError(e));
+    } finally {
+      setTransferBusy(false);
+    }
+  };
+
   const renderAccount = () => {
     const current = (payload?.current || {}) as Record<string, unknown>;
-    const accounts = rows(payload?.accounts);
     const hasCurrent = !!current.uid;
+    // 后端按 lastRefreshTime 排序，token 一刷新顺序就变（表现为"刷新一下顺序就乱了"）。
+    // 这里改成稳定顺序：当前登录置顶，其余按 uid，刷新前后位置不变。
+    const currentUid = String(current.uid || "");
+    const accounts = rows(payload?.accounts).sort((a, b) => {
+      const ua = String(a.uid || a.id || "");
+      const ub = String(b.uid || b.id || "");
+      if (ua === currentUid) return -1;
+      if (ub === currentUid) return 1;
+      return ua.localeCompare(ub);
+    });
     return (
       <div className="workbuddy-section">
         <div className="workbuddy-card">
@@ -12950,9 +13079,26 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
           {oauth ? (
             <div>
               <p className="muted-text">{t("正在等待登录完成，不需要扫码截图，也不会打断当前账号。")}</p>
-              <p className="workbuddy-mono" style={{ wordBreak: "break-all" }}>
-                <a href={oauth.verificationUri} rel="noreferrer" target="_blank">{oauth.verificationUri}</a>
-              </p>
+              <div className="workbuddy-link-row">
+                <a
+                  className="workbuddy-mono"
+                  href={oauth.verificationUri}
+                  rel="noreferrer"
+                  style={{ wordBreak: "break-all" }}
+                  target="_blank"
+                >
+                  {oauth.verificationUri}
+                </a>
+                <button
+                  aria-label={t("复制授权链接")}
+                  className="workbuddy-icon-button"
+                  onClick={() => void copyOauthLink()}
+                  title={oauthCopied ? t("授权链接已复制。") : t("复制授权链接")}
+                  type="button"
+                >
+                  {oauthCopied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
               <Button disabled={busy} onClick={() => void reopenOauthPage()} size="sm" type="button" variant="secondary">
                 {t("重新打开授权页面")}
               </Button>
@@ -12993,8 +13139,112 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
         <div className="workbuddy-card">
           <div className="workbuddy-card-head">
             <strong>{tf("已备份账号（{0}）", [String(accounts.length)])}</strong>
-            <small className="muted-text">{t("切换后 WorkBuddy 会重新读取登录信息，无需重新扫码。")}</small>
+            <div className="workbuddy-actions">
+              <Button
+                disabled={busy || transferBusy}
+                onClick={() => {
+                  setTransferMode(transferMode === "export" ? "" : "export");
+                  setTransferPassword("");
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <Download className="h-4 w-4" />
+                {t("导出账号")}
+              </Button>
+              <Button
+                disabled={busy || transferBusy}
+                onClick={() => {
+                  setTransferMode(transferMode === "import" ? "" : "import");
+                  setTransferPassword("");
+                  setImportPaths([]);
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <Upload className="h-4 w-4" />
+                {t("导入账号")}
+              </Button>
+            </div>
           </div>
+          {transferMode === "export" ? (
+            <div className="workbuddy-mirror-bar">
+              <span className="muted-text">
+                {exportUids.length
+                  ? tf("已勾选 {0} 个账号", [String(exportUids.length)])
+                  : t("不勾选则导出全部账号")}
+              </span>
+              <Input
+                autoComplete="new-password"
+                disabled={transferBusy}
+                onChange={(event) => setTransferPassword(event.target.value)}
+                placeholder={t("导出密码（必填）")}
+                style={{ width: 200 }}
+                type="password"
+                value={transferPassword}
+              />
+              <Button disabled={transferBusy} onClick={() => void exportAccounts()} size="sm" type="button" variant="secondary">
+                {transferBusy ? t("导出中…") : t("导出到文件")}
+              </Button>
+              <Button
+                disabled={transferBusy}
+                onClick={() => {
+                  setTransferMode("");
+                  setTransferPassword("");
+                  setExportUids([]);
+                }}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                {t("取消")}
+              </Button>
+            </div>
+          ) : null}
+          {transferMode === "export" ? (
+            <p className="muted-text">
+              {t("导出文件是加密的登录凭据，请保管好文件并记住密码：密码丢失后无法导入。")}
+            </p>
+          ) : null}
+          {transferMode === "import" ? (
+            <div className="workbuddy-mirror-bar">
+              <span className="muted-text">
+                {importPaths.length
+                  ? tf("已选择 {0} 个文件", [String(importPaths.length)])
+                  : t("可选择多个导出文件，一次性合并进来")}
+              </span>
+              <Button disabled={transferBusy} onClick={() => void pickImportFiles()} size="sm" type="button" variant="secondary">
+                {t("选择文件")}
+              </Button>
+              <Input
+                autoComplete="off"
+                disabled={transferBusy}
+                onChange={(event) => setTransferPassword(event.target.value)}
+                placeholder={t("导出时设置的密码")}
+                style={{ width: 200 }}
+                type="password"
+                value={transferPassword}
+              />
+              <Button disabled={transferBusy} onClick={() => void confirmImport()} size="sm" type="button" variant="secondary">
+                {transferBusy ? t("导入中…") : t("开始导入")}
+              </Button>
+              <Button
+                disabled={transferBusy}
+                onClick={() => {
+                  setTransferMode("");
+                  setTransferPassword("");
+                  setImportPaths([]);
+                }}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                {t("取消")}
+              </Button>
+            </div>
+          ) : null}
           {accounts.length ? (
             <div className="workbuddy-list">
               {accounts.map((account, index) => {
@@ -13003,6 +13253,18 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
                 const isCurrent = uid === String(current.uid || "");
                 return (
                   <div className="workbuddy-row" key={uid}>
+                    {transferMode === "export" ? (
+                      <input
+                        aria-label={t("选择要导出的账号")}
+                        checked={exportUids.includes(uid)}
+                        onChange={(event) =>
+                          setExportUids((prev) =>
+                            event.target.checked ? [...prev, uid] : prev.filter((item) => item !== uid),
+                          )
+                        }
+                        type="checkbox"
+                      />
+                    ) : null}
                     <div className="workbuddy-row-main">
                       <strong>
                         {nickname}
@@ -13096,10 +13358,21 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     }
   }, [call, status?.apiToken]);
 
+  /** 读取双开隔离自检（旧守护进程没有该接口，失败即忽略）。 */
+  const loadIsolation = useCallback(async () => {
+    try {
+      const result = await call("/api/profile/isolation", undefined, status?.apiToken ?? undefined);
+      setIsolation(result);
+    } catch {
+      /* 守护进程尚未升级，忽略 */
+    }
+  }, [call, status?.apiToken]);
+
   useEffect(() => {
     if (tab !== "sessions" || !connected) return;
     void loadCrossMirror();
-  }, [tab, connected, loadCrossMirror]);
+    void loadIsolation();
+  }, [tab, connected, loadCrossMirror, loadIsolation]);
 
   const toggleCrossMirror = async () => {
     const next = !crossMirror.enabled;
@@ -13275,8 +13548,71 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
     const peerSessions = rows(crossPayload?.sessions);
     const sessionIds = sessions.map((session) => String(session.id || "")).filter(Boolean);
     const peerSessionIds = peerSessions.map((session) => String(session.id || "")).filter(Boolean);
+    const isolationSides = Array.isArray(isolation?.sides)
+      ? (isolation?.sides as Array<Record<string, unknown>>)
+      : [];
+    const isolationConflicts = Array.isArray(isolation?.conflicts) ? (isolation?.conflicts as string[]) : [];
     return (
       <div className="workbuddy-section">
+        {isolation ? (
+          <div className="workbuddy-card">
+            <div className="workbuddy-card-head">
+              <div>
+                <strong>{t("双开隔离自检")}</strong>
+                <small className="muted-text">
+                  {t("国内版与国际版各用独立的 CDP 端口、面板端口、数据目录和主程序；同时打开也不会互相注入、互相改写。")}
+                </small>
+              </div>
+              <div className="workbuddy-actions">
+                <em className={`workbuddy-badge ${isolation.isolated ? "is-on" : ""}`}>
+                  {isolation.isolated ? t("互不影响") : t("存在冲突")}
+                </em>
+                <Button disabled={busy} onClick={() => void loadIsolation()} size="sm" type="button" variant="ghost">
+                  <RefreshCw className="h-4 w-4" />
+                  {t("重新检查")}
+                </Button>
+              </div>
+            </div>
+            <div className="workbuddy-list">
+              {isolationSides.map((side) => {
+                const sideId = String(side.id || "");
+                const cdpPort = Number(side.cdpActualPort || side.cdpReservedPort || 0);
+                const uiPorts = Array.isArray(side.uiPorts) ? (side.uiPorts as number[]) : [];
+                return (
+                  <div className="workbuddy-row" key={sideId}>
+                    <div className="workbuddy-row-main">
+                      <strong>
+                        {String(side.name || sideId)}
+                        {sideId === String(isolation.profile || "") ? (
+                          <span className="workbuddy-badge">{t("当前版本")}</span>
+                        ) : null}
+                      </strong>
+                      <small className="muted-text">
+                        {tf("CDP 端口 {0} · 面板端口 {1}", [
+                          cdpPort ? String(cdpPort) : "—",
+                          uiPorts.length ? uiPorts.join(" / ") : "—",
+                        ])}
+                      </small>
+                      <small className="workbuddy-mono" title={String(side.dataDir || "")}>
+                        {String(side.dataDir || "—")}
+                      </small>
+                      <small className="workbuddy-mono" title={String(side.binary || "")}>
+                        {String(side.binary || "—")}
+                      </small>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {isolationConflicts.length ? (
+              <p className="field-hint">{tf("检测到资源冲突：{0}", [isolationConflicts.join("；")])}</p>
+            ) : (
+              <p className="field-hint">
+                {t("以上端口与目录两两不重叠，所以增强/注入/主题只会作用于本版本客户端，不会影响另一个版本。")}
+              </p>
+            )}
+          </div>
+        ) : null}
         <div className="workbuddy-card">
           <div className="workbuddy-card-head">
             <div>
