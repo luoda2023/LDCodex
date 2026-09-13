@@ -15,7 +15,7 @@
 | 功能接口测试（`run-tests.js`） | **58 / 58 全部通过** ✅ |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
-| 真实页面 UI 只读验证（`_tmp/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
+| 真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
 
 ## 一之三、1.2.11 新增：上弹面板行内新增常用语 + 短语随账号同步
@@ -293,7 +293,7 @@ if (process.env.WBSWITCH_CDP_PORT) return false;   // 一旦设置，不排除�
 | CN daemon 在 9222 上认领自己的 / 拒绝国际版页面 | ✅ |
 | AI daemon 在本档案保留端口 9223 上认领自己的页面 | ✅ |
 
-## 四之三、真实页面 UI 只读验证（`_tmp/cdp-qp-ui-verify.mjs`）
+## 四之三、真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`）
 
 在**真实运行的 WorkBuddy 客户端页面**（CDP 9222）上核对改造所依赖的锚点与样式假设。**全程只读**：不点击、不落库、不改动既有面板；仅创建一个 `left:-9999px` 的临时容器验证 CSS 解析后立即移除。
 
@@ -355,7 +355,7 @@ bash D:/LUODA/LDcodex/_test_daemon/test-run.sh
 # 自动点允许判定逻辑（纯本地，无需 daemon）
 "C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_test_daemon/verify-no-disturb.js
 # 真实页面 UI 只读验证（需客户端已开 CDP；参数为 CDP 端口，默认 9222）
-"C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_tmp/cdp-qp-ui-verify.mjs 9222
+"C:/Users/Administrator/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe" D:/LUODA/LDcodex/_test_daemon/cdp-qp-ui-verify.mjs 9222
 # 前端类型检查
 cd D:/LUODA/LDcodex/apps/codex-plus-manager && node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json
 ```
