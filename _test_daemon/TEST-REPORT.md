@@ -1,6 +1,6 @@
 # LDCodex daemon 88.8.4 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）；18:45（88.8.3 插件面板布局 + 安装器钩子，118 项 + 布局实测 14 项 + 插件面板实测 47 项）；19:55（88.8.3 出包后复跑，并修掉测试脚手架自身的 3 个 bug，见「一之零D-补」；118 + 16 + 14 + 47，3m39s 干净退出）；20:49（88.8.3 出包后再次复跑 + 新增「本机安装版本核验」，见「一之零D-补二」；118 + 16 + 14 + 47，2m00s 干净退出）；20:52（新增 T20 系列 5 项守卫，安装版本核验脚本接入 test-run.sh；123 + 16 + 14 + 47，1m27s 干净退出）；21:25（88.8.4 托盘悬停提示，见「一之零E」；123 + 16 + 14 + 47 + Rust 70/70 + 前端 159/159 + tsc 全绿）；**21:34（88.8.4 出包并核验产物，见「一之零E-补」）**
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）；18:45（88.8.3 插件面板布局 + 安装器钩子，118 项 + 布局实测 14 项 + 插件面板实测 47 项）；19:55（88.8.3 出包后复跑，并修掉测试脚手架自身的 3 个 bug，见「一之零D-补」；118 + 16 + 14 + 47，3m39s 干净退出）；20:49（88.8.3 出包后再次复跑 + 新增「本机安装版本核验」，见「一之零D-补二」；118 + 16 + 14 + 47，2m00s 干净退出）；20:52（新增 T20 系列 5 项守卫，安装版本核验脚本接入 test-run.sh；123 + 16 + 14 + 47，1m27s 干净退出）；21:25（88.8.4 托盘悬停提示，见「一之零E」；123 + 16 + 14 + 47 + Rust 70/70 + 前端 159/159 + tsc 全绿）；21:34（88.8.4 出包并核验产物，见「一之零E-补」）；**22:48（修掉「安装器把自己杀了」这个致命 bug 并成功装上 88.8.4，见「一之零F」；126/126 + 7/7）**
 - **被测代码**：
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.4**）
   - `apps/codex-plus-manager/src-tauri/src/lib.rs`（**88.8.4：托盘图标新增悬停提示 tooltip**）
@@ -18,11 +18,11 @@
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **123 / 123 全部通过** ✅ |
+| 功能接口测试（`run-tests.js`） | **126 / 126 全部通过** ✅（含 88.8.4 新增 T21 系列 3 项） |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | 布局滚动实测（`verify-layout-scroll.mjs`，无头 Chrome 量真实产物） | **14 / 14 全部通过** ✅ |
 | 插件面板布局实测（`verify-plugin-layout.mjs`，账号 / 会话 / 增强 三页签） | **47 / 47 全部通过** ✅ |
-| 本机安装版本核验（`verify-installed-version.mjs`） | 信息性，**不参与成败判定**（当前 3/7 —— 本机仍是 88.8.1，尚未装上 88.8.4；装上 `LDCodex_88.8.4_x64-setup.exe` 后应变为 **7/7 ✅**，见「一之零D-补二」） |
+| 本机安装版本核验（`verify-installed-version.mjs`） | **7 / 7 ✅ 全部通过**（88.8.4 已装上，见「一之零F」） |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
 | 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅ |
 | Rust 单元测试（`cargo test -p codex-plus-manager --lib`） | **70 / 70 全部通过** ✅（含 88.8.4 新增的托盘 tooltip 守卫；另修掉 1 条**早已失效**的断言，见「一之零E」） |
@@ -92,6 +92,99 @@ commands::tests::update_install_requires_release_payload
 又不会因为文案微调再失效。修完 **70 passed; 0 failed**。
 
 
+
+## 一之零F、🔴 88.8.3 起「根本装不上」的真凶：安装器把自己杀了（2026-09-13 22:48 修复）
+
+### 需求（用户原话）
+
+> 「我都退出了，还是安装不了。**不是我的问题，你代码安装的问题**」—— **用户是对的。**
+
+### 症状（难在**没有任何报错**）
+
+| 运行方式 | 结果 |
+|---|---|
+| `…setup.exe /S /UPDATE` | 4.3 秒后退出，**ExitCode = -1** |
+| `…setup.exe /P /UPDATE` | 5.2 秒后退出，**ExitCode = -1** |
+| 双击（非静默） | 窗口正常弹出、停在欢迎页 → **看起来「完全正常」** |
+
+三者共同点：不弹任何错误窗口、一个文件都没写、注册表不动、
+TEMP 里 `$PLUGINSDIR`（`ns*.tmp`）没被清理、事件日志无崩溃记录。
+
+### 根因
+
+`windows/hooks.nsh` 的 `LDCodexKillOnce` 里那条 PowerShell 兜底：
+
+```powershell
+Get-CimInstance Win32_Process | Where-Object {
+  ($_.Name -eq 'node.exe' -and $_.CommandLine -like '*workbuddy-runtime*')
+  -or ($_.ExecutablePath -like '*LDCodex*')     # ← 匹配到安装程序自己
+} | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+```
+
+安装程序本身叫 `LDCodex_88.8.4_x64-setup.exe`、放在 `D:\LUODA\LDcodex\…` 下，
+路径**必然**含 `LDCodex`（`-like` 不区分大小写）→ **把自己 `Stop-Process -Force` 了**。
+
+它挂在 `NSIS_HOOK_PREINSTALL`，在 `Section Install` 的 `SetOutPath` 之后、
+`CheckIfAppIsRunning` 之前执行 → 自杀发生在写任何文件之前 → 什么都留不下。
+
+**为什么双击看不出来**：非静默停在欢迎页等用户点「下一步」，根本没执行到 `Section Install`。
+
+**影响范围**：`hooks.nsh` 是 **88.8.3 才引入** → 88.8.1 能装，88.8.3 / 88.8.4 第一版全装不上。
+
+### 定位过程（5 步，手法可复用）
+
+1. 排掉常见嫌疑（**全部否掉**）：无进程占用（文件可独占打开）、`$INSTDIR` 正确
+   （`C:\Program Files\LDCodex`）、WebView2 已装（`pv = 131.0.2903.86`，会跳过下载段）、
+   插件齐全（含 `nsis_tauri_utils.dll`）、会话已提权、`cmd/tasklist/find/taskkill/powershell` 都可执行。
+2. 复制 `installer.nsi` → `installer-log.nsi`，各段插 `FileOpen/FileWrite` 打点、改 `OutFile`，
+   `makensis` 重编（1m47s）。⚠️ `LogSet` 用不了（需 NSIS 编译时开 `NSIS_CONFIG_LOG`）。
+3. 打点：最后到达的是 `[Install-SetOutPath-done]`（`OUTDIR=C:\Program Files\LDCodex`、`R0=1` 升级），
+   而 `[CheckIfAppIsRunning-done]` **始终没出现** → 死在两者之间的 `NSIS_HOOK_PREINSTALL`。
+4. 写 30 行 `hook-test.nsi`，只 `!include` 真实 hooks.nsh 跑 `LDCodexDetect` +
+   `LDCodexStopRunningProcesses` → **ExitCode -1，走不到最后一步**，实锤。
+5. 另编 `fp-test.nsi` 调 `nsis_tauri_utils::FindProcess` 实测返回语义：
+   **`1` = 没找到、`0` = 找到**（和直觉相反）。`LDCodexManager.exe` 返回 `1` → 进程检查本该正常通过。
+
+### 修法
+
+```
+-or ($$_.ExecutablePath -like $\'*LDCodex*$\' -and $$_.ExecutablePath -ne $\'$EXEPATH$\')
+```
+
+守护进程那条 `-like '*workbuddy-runtime*'` 不受影响（安装程序命令行不带它）。
+
+### 修复后实测
+
+| 项 | 结果 |
+|---|---|
+| 隔离测试 `hook-test.exe /S` | **ExitCode 0**（修复前 -1），走到第 3 步 ✅ |
+| 重编安装包 | `makensis` 1m47s，53,250,469 字节，22:48 |
+| 实装 `/P /UPDATE` | **19.4 秒装完、ExitCode 0** ✅ |
+| 注册表 `DisplayVersion` | **88.8.4** ✅ |
+| `LDCodexManager.exe` | 46,021,632 字节，版本 **88.8.4** ✅ |
+| `uninstall.exe` | 85,307 字节，版本 **88.8.4**（带修复后的 PREUNINSTALL）✅ |
+| `verify-installed-version.mjs` | **7 / 7 ✅ 全部通过**（38 个运行时文件逐字节一致） |
+| `run-tests.js`（含新增 T21） | **126 / 126 ✅**（原 123 + T21 三项） |
+
+### 回归守卫：T21 系列（3 项）
+
+`run-tests.js` 新增，盯住那条 PowerShell：
+
+| # | 断言 |
+|---|---|
+| T21a | 必须含 `*LDCodex*` + `$EXEPATH` + `-ne`（否则安装程序会自杀，静默退出 -1） |
+| T21b | 排除条件必须**紧贴** `*LDCodex*`，用 `includes` 校验确切形态（**不用正则** —— `$ \ ' *` 全是要转义的元字符，写错不报错） |
+| T21c | `*workbuddy-runtime*` 仍在（不能因为修事故就顺手删掉） |
+
+### 教训
+
+- **「杀进程」脚本必须显式排除自己** —— 只要用路径子串匹配，安装程序几乎必然落在自己的匹配里。
+- **静默/被动模式是最快的体检手段**：`installer.exe /S /UPDATE` 几秒出结果、不用点按钮；
+  非静默会停在欢迎页，掩盖后续一切故障。
+- **ExitCode -1 + 无报错 + 什么都没写** = 进程把自己干掉了。
+- 只看「双击能开窗口」会得出完全错误的结论。
+
+---
 
 ## 一之零E-补、88.8.4 出包并核验产物（2026-09-13 21:34）
 

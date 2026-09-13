@@ -56,13 +56,22 @@ Var /GLOBAL LDCodexKillRound
 ; 关一轮。
 ;   · taskkill /T 能连带结束子进程（WebView2 helper 等）；
 ;   · PowerShell 兜底覆盖「主程序被 /T 漏掉」以及独立跑的 daemon。
+;
+; ⚠️⚠️ 下面那条 PowerShell 必须排除「安装程序自己」—— 2026-09-13 的血案：
+;   过滤器里有 `-like '*LDCodex*'`，而安装程序本身叫 LDCodex_88.8.4_x64-setup.exe、
+;   路径里就带 LDCodex（我这里是 D:\LUODA\LDcodex\... ）→ **它把自己 Stop-Process 掉了**。
+;   表现：静默 /S 与被动 /P 模式都是 3~5 秒后静默退出、退出码 -1、**不弹任何错误**，
+;   文件一个没写、注册表也没动 —— 从 88.8.3（引入本文件）起就再也装不上。
+;   非静默时因为停在欢迎页没走到 Section Install，看起来「一切正常」，所以极难发现。
+;   修法：额外要求 $_.ExecutablePath 不等于 $EXEPATH（NSIS 变量，= 安装程序的完整路径）。
+;   守护进程那条 `-like '*workbuddy-runtime*'` 不受影响（安装程序命令行不带它）。
 !macro LDCodexKillOnce
   nsExec::Exec 'taskkill /IM LDCodexManager.exe /F /T'
   Pop $0
   nsExec::Exec 'taskkill /IM ldcodex.exe /F /T'
   Pop $0
 
-  nsExec::Exec 'powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { ($$_.Name -eq $\'node.exe$\' -and $$_.CommandLine -like $\'*workbuddy-runtime*$\') -or ($$_.ExecutablePath -like $\'*LDCodex*$\') } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }"'
+  nsExec::Exec 'powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { ($$_.Name -eq $\'node.exe$\' -and $$_.CommandLine -like $\'*workbuddy-runtime*$\') -or ($$_.ExecutablePath -like $\'*LDCodex*$\' -and $$_.ExecutablePath -ne $\'$EXEPATH$\') } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }"'
   Pop $0
 !macroend
 

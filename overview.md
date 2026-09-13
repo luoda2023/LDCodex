@@ -1,4 +1,22 @@
-# LDCodex 88.8.4：托盘图标悬停提示 + 插件面板不再顶出窗口 + 安装器不再卡在「无法卸载」
+# LDCodex 88.8.4：托盘图标悬停提示 + 插件面板不再顶出窗口 + **修掉「根本装不上」的自杀 bug**
+
+> ## 🔴 最重要的一条：88.8.3 / 88.8.4 的**第一版**安装包**根本装不上**，已修
+>
+> `windows/hooks.nsh` 里那条 PowerShell 兜底用 `-like '*LDCodex*'` 匹配要结束的进程，
+> 而**安装程序自己就叫 `LDCodex_88.8.4_x64-setup.exe`、路径里必然带 `LDCodex`**
+> → 它把**自己** `Stop-Process` 掉了。
+>
+> 表现（极具迷惑性）：静默 `/S`、被动 `/P` 都是 **3~5 秒后退出、退出码 -1、不弹任何错误**，
+> 一个文件都没写、注册表也没动；而**双击非静默时窗口能正常打开**，因为停在欢迎页、
+> 根本没执行到那一步 —— 所以「能打开窗口」完全不代表安装器是好的。
+>
+> 这个钩子是 **88.8.3 才引入**的，所以 88.8.1 能装、之后全装不上。
+> 用户反复报的「卸载不了 / 装不了」根源就在这里（旧卸载器那条只是障眼法）。
+> **修法**：过滤条件加上 `-and $_.ExecutablePath -ne '$EXEPATH'`。
+> 详见 [第七节 ⑧](#八-88_8_3--88_8_4-装不上的真凶安装器把自己杀了)。
+>
+> 当前 `target/release/bundle/nsis/LDCodex_88.8.4_x64-setup.exe`（22:48 重编）已修复，实测
+> `/P /UPDATE` **19.4 秒装完、ExitCode 0**、`DisplayVersion = 88.8.4`、核验 **7/7 ✅**。
 
 > 本轮改动：`src-tauri/src/lib.rs`（托盘图标补**悬停提示 tooltip**）｜ `src/App.tsx`（英文环境传本地化 tooltip）｜ 版本号 6 处来源统一升到 `88.8.4` ｜ `workbuddy-runtime/inject.js`（插件面板布局 6 处）｜ `src-tauri/windows/hooks.nsh`（安装器钩子重写）｜ `_test_daemon/*`（新增 T18/T19/T20 + 插件面板布局实测脚本与夹具 + 本机安装版本核验脚本）
 > 测试：**123/123 + 16/16 + 布局实测 14/14 + 插件面板实测 47/47 + 前端 159/159 + Rust 单测 + tsc 全绿**
@@ -504,6 +522,76 @@ node _test_daemon/verify-installed-version.mjs --strict   # 不匹配则 exit 1
 > ⚠️ 本机 `reg.exe` 在沙箱程序黑名单里（Node 侧报 `spawnSync reg EPERM`），
 > 脚本会自动降级到 PowerShell `Get-ItemProperty`（实测可行）；两条路都被拦时记 **SKIP 而不是 FAIL**，
 > 避免把「读不到」误报成「版本不对」。运行时终端多出一行沙箱拦截提示属正常。
+
+#### ⑧ 88.8.3 / 88.8.4 装不上的真凶：**安装器把自己杀了**
+
+用户：「我都退出了，还是安装不了。不是我的问题，你代码安装的问题」—— **他是对的。**
+
+**症状**（这条最难的地方是**没有任何报错**）：
+
+```
+LDCodex_88.8.4_x64-setup.exe /S /UPDATE   → 4.3 秒后退出，ExitCode = -1
+LDCodex_88.8.4_x64-setup.exe /P /UPDATE   → 5.2 秒后退出，ExitCode = -1
+  · 不弹任何错误窗口
+  · 一个文件都没写（C:\Program Files\LDCodex 全部保持旧时间戳）
+  · 注册表不动；TEMP 里的 $PLUGINSDIR（ns*.tmp）没被清理
+  · 事件日志无崩溃记录
+非静默（双击）→ 窗口正常弹出、停在欢迎页 → 看起来「完全正常」
+```
+
+**根因**：`src-tauri/windows/hooks.nsh` 的 `LDCodexKillOnce` 里那条 PowerShell 兜底 ——
+
+```powershell
+Get-CimInstance Win32_Process | Where-Object {
+  ($_.Name -eq 'node.exe' -and $_.CommandLine -like '*workbuddy-runtime*')
+  -or ($_.ExecutablePath -like '*LDCodex*')      # ← 匹配到安装程序自己！
+} | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+```
+
+安装程序本身叫 `LDCodex_88.8.4_x64-setup.exe`、放在 `D:\LUODA\LDcodex\…` 下，
+路径**必然**含 `LDCodex`（`-like` 不区分大小写）→ **把自己 `Stop-Process -Force` 了**。
+它挂在 `NSIS_HOOK_PREINSTALL`，在 `Section Install` 的 `SetOutPath` 之后、
+`CheckIfAppIsRunning` 之前执行 —— 自杀发生在写任何文件之前，所以什么都不留。
+
+**为什么双击时看不出来**：非静默会停在欢迎页等用户点「下一步」，根本没执行到 `Section Install`。
+**「双击能打开窗口」完全不能说明安装器是好的。**
+
+**影响范围**：`hooks.nsh` 是 **88.8.3 才引入** → 88.8.1 能装，88.8.3 / 88.8.4 第一版全装不上。
+
+**修法** —— 过滤条件排除自己（`$EXEPATH` 是 NSIS 变量，= 安装程序完整路径）：
+
+```
+-or ($$_.ExecutablePath -like $\'*LDCodex*$\' -and $$_.ExecutablePath -ne $\'$EXEPATH$\')
+```
+
+守护进程那条 `-like '*workbuddy-runtime*'` 不受影响（安装程序命令行不带它）。
+
+**修复后实测**：隔离测试退出码 **0**（修复前 -1）；重编安装包后 `/P /UPDATE`
+**19.4 秒装完、ExitCode 0**，`DisplayVersion = 88.8.4`，核验脚本 **7/7 ✅**。
+
+##### 定位手法（可复用）
+
+| 步骤 | 做什么 |
+|---|---|
+| 1 | 排掉常见嫌疑：进程占用 / `$INSTDIR` / WebView2 / 插件 / 提权 / `cmd·tasklist·find·taskkill·powershell` 可用性 —— **全部否掉** |
+| 2 | 复制 `installer.nsi` → `installer-log.nsi`，在各段插 `FileOpen/FileWrite` 打点、改 `OutFile`，`makensis` 重编（约 2 分钟） |
+| 3 | 打点显示最后到达 `[Install-SetOutPath-done]`，`[CheckIfAppIsRunning-done]` 从不出现 → 死在两者之间的 `NSIS_HOOK_PREINSTALL` |
+| 4 | 写 30 行 `hook-test.nsi` 只 `!include` 真实 hooks.nsh 跑那两个宏 → **ExitCode -1，走不到最后一步**，实锤 |
+| 5 | 另编 `fp-test.nsi` 调 `nsis_tauri_utils::FindProcess`，实测 **`1`=没找到、`0`=找到**（和直觉相反） |
+
+> ⚠️ 三个坑：`LogSet` 用不了（需 NSIS 编译时开 `NSIS_CONFIG_LOG`）；
+> `FileOpen … "a"` 在这台 NSIS 上**不截断**，后写的会覆盖前面留下残尾，
+> 要按「最后出现在文件**开头**的是哪个打点」判断进度；
+> 调非默认目录的插件要先 `!addplugindir`，否则编译期就报 “Plugin not found”。
+
+**回归守卫**：`_test_daemon/run-tests.js` 新增 **T21a/b/c** 三条，盯住那条 PowerShell
+必须含 `*LDCodex*` + `$EXEPATH` + `-ne`，且排除条件必须**紧贴** `*LDCodex*`
+（用 `includes` 校验确切形态 —— 这行 `$ \ ' *` 全是要转义的元字符，**别用正则**）。
+
+> **教训**：**「杀进程」脚本必须显式排除自己** —— 只要用路径子串匹配，
+> 安装程序几乎必然落在自己的匹配里。以后做安装包体检，第一件事就是跑
+> `installer.exe /S /UPDATE`：**几秒出结果、还不用点按钮**；
+> 而非静默会停在欢迎页，掩盖后续一切故障。
 
 ---
 
