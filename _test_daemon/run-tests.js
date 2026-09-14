@@ -916,10 +916,13 @@ function extractRustFn(src, name) {
     'wbsClientVersion 已从 UA 抠 WorkBuddy 客户端版本的 helper，整函数删除；左上角不能再混客户端版本');
   rec('T24f 版本号必须过滤 __WBS_VERSION__ 占位符（未注入时不能显示 v__WBS_VERSION__）',
     /WBS_VERSION\.indexOf\('__WBS_'\)/.test(injectSrcT24), '占位符没过滤会直接把模板串显示给用户');
-  // 卡片删了，但代码里还有 4 处 querySelector 会去取它们（wireTelemetrySettings、
-  // acRenderMonitorLogModal、隐藏工具入口）。现在都判空了能安全 return，
+  // 卡片删了，但代码里仍有几处 querySelector 会去取它们（wireTelemetrySettings、
+  // acRenderMonitorLogModal）。现在都判空了能安全 return，
   // 但以后谁加一句没判空的 `el.textContent = ...` 就会在打开「关于」页时抛 TypeError、
   // 整个插件面板白屏。所以逐条扫：每处取用后面 8 行内必须有 if (!x) / if (x) 判空。
+  // ⚠️ `wbs-monitor-log-card` 原本还有「隐藏工具入口」那一处引用，88.8.5 收尾时整段删掉了
+  //   （元素已不存在，取到 null 也只会被 if 兜住 —— 留着是永远走不到的死代码）。
+  //   本守卫按「源码里实际出现的引用」逐条扫，零引用即通过，所以删掉引用不会让它变红。
   const removedIds = ['wbs-telemetry-switch', 'wbs-telemetry-status', 'wbs-monitor-log-inline', 'wbs-monitor-log-card'];
   const t24Lines = injectCodeT24.split('\n');
   const unguarded = [];

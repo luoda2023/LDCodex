@@ -4371,7 +4371,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     var automationPane = root.querySelector('[data-pane="automations"]');
     var pcPane = root.querySelector('[data-pane="pc"]');
     var aboutPane = root.querySelector('[data-pane="about"]');
-    var hiddenToolsUnlocked = false;
+    // （88.8.5：删掉了 hiddenToolsUnlocked —— 它唯一的用途是给「会话监听日志」卡
+    //  决定是否默认隐藏，那张卡已按用户要求删除，这个标志就没人读了。
+    //  「隐藏工具已解锁」这个状态现在由元素检查按钮的 display 直接表达。）
     var logoutBtn = root.querySelector('[data-act="logout"]');
     var creditTooltip = null;
     var creditTooltipSegment = null;
@@ -7503,10 +7505,11 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         piClickTimer = setBuildTimeout(function () { piClickCount = 0; }, 1200);
         if (piClickCount >= 5) {
           piClickCount = 0;
-          hiddenToolsUnlocked = true;
+          // 88.8.5：「会话监听日志」卡已按用户要求删除，这里不再去找它
+          // （原来会 querySelector('#wbs-monitor-log-card') 再显示出来 —— 现在那元素不存在了，
+          //  留着就是一段永远走不到的死代码，还会让人以为隐藏工具把某张卡放出来了）。
+          // 隐藏工具现在只剩「元素检查」按钮这一项。
           if (piPickBtn) piPickBtn.style.display = '';
-          var monitorLogCard = aboutPane && aboutPane.querySelector('#wbs-monitor-log-card');
-          if (monitorLogCard) monitorLogCard.style.display = '';
           try { toast('隐藏工具已呼出', false, root); } catch (_) {}
         }
       });

@@ -63,6 +63,8 @@ _test_daemon/not-a-dir
 _test_daemon/*.json
 _test_daemon/*.psm1
 _test_daemon/*.txt
+_test_daemon/*.tmp
+_test_daemon/*.marker
 !_test_daemon/taskbar-diagnose-report.txt
 
 # 临时草稿目录
