@@ -989,6 +989,22 @@ function extractRustFn(src, name) {
     !/toISOString\(\)/.test(ivCode),
     '要手工拼本地时间');
 
+  // 🔴 只验 workbuddy-runtime 会给出**假阳性**：只要本次改动没碰 daemon（绝大多数前端 /
+  // 后端改动都不碰），3)~6) 那几项**永远全绿** —— 哪怕已装的 LDCodexManager.exe 还是
+  // 上一轮那个、新功能一个都没有。真事：88.8.6 那轮装之前它报 7/7 全绿，
+  // 但已装 exe 里 `list_workbuddy_sessions` 命中 0。
+  // 所以必须有一项**直接验主程序本体**。判据只能用 dist 的 `index-<hash>.js` 文件名：
+  // Tauri 嵌进 exe 的资源**清单是明文、内容是压缩包**，JS 里的类名/文案搜不到（别再拿
+  // 它们当「前端已更新」的证据，能搜到的 purge_workbuddy_sessions 是 Rust 侧字面量）。
+  // 三条字面量都用 includes 而不是正则：源码里那个 `index-[..]+\.js$` 带反斜杠，
+  // 写成正则要层层转义，极易写成「看起来对但永远不命中」（这次就先踩了一次，
+  // 假 MISS 害得白查十分钟）。直接比字符串，读起来也对得上。
+  rec('T20f 必须直接核验主程序本体（只验 workbuddy-runtime 会永远全绿）',
+    ivCode.includes('LDCodexManager.exe')
+      && ivCode.includes("'dist'") && ivCode.includes("'assets'")
+      && ivCode.includes('index-[A-Za-z0-9_-]+\\.js$'),
+    '缺这条 = 装的还是上一轮的主程序也照样报全绿');
+
   // ── T25 GitHub Release 自动更新（88.8.6，用户诉求：升级后自动检测并自动安装）──
   // 这一节守的是「发版侧」与「客户端侧」两端必须对齐的那几件事。它们有个共同特点：
   // **配错不会报错**，只会静默失效 —— 客户端永远显示「已是最新版本」，

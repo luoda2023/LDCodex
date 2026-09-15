@@ -15,6 +15,12 @@
  * 再读安装目录 daemon.js 的 DAEMON_VERSION / DAEMON_BUILD_ID 与注册表 DisplayVersion。
  * 源码是唯一权威 —— 哈希全等就说明运行时确实吃到了当前源码。
  *
+ * ⚠️🔴 但**只靠上面这些会给出假阳性**：它们只覆盖 workbuddy-runtime + inject.js。
+ *   只要本次改动没碰 daemon（绝大多数前端/后端改动都不碰），这几项**永远全绿** ——
+ *   哪怕已装的 LDCodexManager.exe 还是上一轮那个、新功能一个都没有。
+ *   真事：88.8.6 那轮装之前它报 7/7，但已装 exe 里 `list_workbuddy_sessions` 命中 0。
+ *   所以第 7 项专门验**主程序本体**的前端指纹，见下面「7)」。
+ *
  * 用法：
  *   node _test_daemon/verify-installed-version.mjs            # 诊断模式，永远 exit 0
  *   node _test_daemon/verify-installed-version.mjs --strict   # 不匹配则 exit 1（给 CI / 手动守门用）
@@ -227,6 +233,36 @@ const insHits = countOccurrences(readText(path.join(INSTALL_RUNTIME, 'inject.js'
 rec('安装的 inject.js 含插件面板高度修复标记「' + MARKER + '」（88.8.3 引入）',
   insHits > 0 && insHits === srcHits,
   '安装命中 ' + insHits + ' 处 / 源码 ' + srcHits + ' 处');
+
+// ── 7) 主程序本体：前端指纹（🔴 没有这一项，前面全绿也可能是旧版） ──
+// 为什么这么判：Tauri 把 dist 打进 exe，资源的**文件名清单是明文**，但**内容是压缩包**
+// —— 所以 JS 里的类名 / 中文文案在 exe 里**搜不到**（别再拿它们当证据），
+// 而 `index-<hash>.js` 这个文件名能搜到，且 hash 随前端内容变化 → 天然的版本指纹。
+const DIST_ASSETS = path.join(ROOT, 'apps', 'codex-plus-manager', 'dist', 'assets');
+const INSTALL_EXE = path.join(INSTALL_DIR, 'LDCodexManager.exe');
+let distJs = [];
+try {
+  distJs = fs.readdirSync(DIST_ASSETS)
+    .filter((n) => /^index-[A-Za-z0-9_-]+\.js$/.test(n))
+    .sort();
+} catch (_) { /* 前端还没构建过 */ }
+
+if (!exists(INSTALL_EXE)) {
+  rec('已装主程序存在（' + INSTALL_EXE + '）', false, '不存在');
+} else if (distJs.length === 0) {
+  skip('已装主程序含当前 dist 前端指纹', 'dist/assets 里没有 index-*.js（前端尚未构建，跑一次 npm run build）');
+} else {
+  const exe = fs.readFileSync(INSTALL_EXE);
+  const miss = distJs.filter((n) => exe.indexOf(Buffer.from(n, 'latin1')) === -1);
+  rec('已装主程序含当前 dist 前端指纹（' + distJs.length + ' 个）',
+    miss.length === 0,
+    '命中 ' + (distJs.length - miss.length) + '/' + distJs.length +
+      (miss.length ? '；缺：' + miss.join(', ') : '') + '  【' + distJs.join(', ') + '】');
+  info('已装 exe ' + fs.statSync(INSTALL_EXE).size + ' B / mtime ' + mtime(INSTALL_EXE));
+  if (miss.length) {
+    info('含义：**装的还是上一轮的主程序**（版本号可能对，内容不是这轮的）→ 重跑 npm run build 再装一次。');
+  }
+}
 
 // ── 汇总 ──
 const checked = results.filter((r) => !r.skip);
