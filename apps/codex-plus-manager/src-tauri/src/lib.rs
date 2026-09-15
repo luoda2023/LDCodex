@@ -80,7 +80,12 @@ pub fn run() {
     let _ = commands::startup_should_show_update();
     let app_result = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // 在线更新：endpoints/pubkey/installMode 都在 tauri.conf.json 的 plugins.updater 里。
+        // 命令一律走 Rust 侧调用（commands.rs），因此 capabilities 无需开放 updater 权限，
+        // 前端也拿不到「绕过签名校验」的入口。
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(workbuddy::WorkBuddyRuntimeState::default())
+        .manage(commands::PendingUpdateState::default())
         .setup(move |app| {
             let url = "/index.html";
             let mut main_window_builder =
@@ -190,7 +195,8 @@ pub fn run() {
             commands::remote_plugin_marketplace_status,
             commands::repair_remote_plugin_marketplace,
             commands::check_update,
-            commands::perform_update,
+            commands::download_update,
+            commands::install_update,
             commands::load_watcher_state,
             commands::install_watcher,
             commands::uninstall_watcher,

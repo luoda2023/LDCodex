@@ -413,8 +413,8 @@ function noteAccountUsage(uid, options) {
 //         传本地化措辞（含 {version} 占位符），版本号统一由 Rust 侧从 CARGO_PKG_VERSION 注入
 //         （继承 Cargo.toml 的 workspace version），**不硬编码**，升级时不用回来改。
 //         详见 src-tauri/src/lib.rs 的 tray_tooltip_default / resolve_tray_tooltip。
-const DAEMON_VERSION = '88.8.5';
-const DAEMON_BUILD_ID = 'release-88.8.5-20260913-next-reset-countdown';
+const DAEMON_VERSION = '88.8.6';
+const DAEMON_BUILD_ID = 'release-88.8.6-20260915-github-auto-update';
 configureAutomationRuntime({version: DAEMON_VERSION, profileId: PROFILE.id, platform: process.platform});
 const HOST = '127.0.0.1';
 const IS_WIN = process.platform === 'win32'; // Windows 移植：平台分支开关（macOS 行为保持不变）

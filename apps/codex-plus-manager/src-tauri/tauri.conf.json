@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "LDCodex",
-  "version": "88.8.5",
+  "version": "88.8.6",
   "identifier": "cn.dicad.ldcodex.manager",
   "build": {
     "beforeDevCommand": "npm run workbuddy:prepare && npm run vite:dev",
@@ -36,6 +36,7 @@
     "targets": [
       "nsis"
     ],
+    "createUpdaterArtifacts": true,
     "publisher": "LUODA",
     "homepage": "https://dicad.cn",
     "shortDescription": "LDCodex 管理工具",
@@ -59,6 +60,17 @@
         ],
         "compression": "lzma",
         "startMenuFolder": "LDCodex 管理工具"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/luoda2023/LDCodex/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYyREU5ODY2QjEyQ0Q5OUQKUldTZDJTeXhacGplWWpwZWlRWU9uaEk0T1RYaDBFTHBnUDNmRloxVU1LZmdXRXA5cHZ6WXlDVWkK",
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

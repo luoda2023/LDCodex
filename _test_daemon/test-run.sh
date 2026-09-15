@@ -35,6 +35,24 @@ echo ""
 "$NODE" "$TMP/account-usage.test.js"
 RC4c=$?
 
+# make-latest-json 单测（自动更新的更新源格式）。同样是纯函数 + 临时目录，不依赖 daemon，
+# 所以也放在最前面 —— 与 account-usage 单测同理，必须早于无头 Chrome 那几轮。
+# latest.json 字段写错客户端**不会报错**，只会永远「已是最新版本」，所以这里逐条钉死格式。
+echo ""
+"$NODE" "$TMP/make-latest-json.test.mjs"
+RC4d=$?
+
+# 更新签名链路校验（自动更新最容易「配错不报错」的一环）：公钥能否解析、
+# 配置里的公钥与本地 .key.pub 是否逐字节一致、私钥与公钥是否配对、
+# 以及本机构建产物的 .sig 能否被该公钥验过。纯本地只读，不依赖 daemon，
+# 所以与上面两组同样放在无头 Chrome 之前。
+# ⚠️ 为什么必须有这一组：这一环配错在发版侧**完全看不出来** —— CI 绿、
+#    Release 发出去、latest.json 长得也没问题，只有客户端会验签失败。
+#    缺私钥 / 缺构建产物时脚本内部记 SKIP 并以 0 退出，不会误报失败。
+echo ""
+"$NODE" "$TMP/verify-updater-signature.mjs"
+RC4e=$?
+
 # 本机安装状态（信息性，**不参与**下面的成败判定，所以 `|| true`）：
 # 回答「用户机器上跑的到底是哪一版」。历史教训 —— 两次「改了没用」的真实原因
 # 都是「根本没装上」，所以每次跑测试都顺手报一次，别再靠肉眼猜。
@@ -93,5 +111,5 @@ for _ in $(seq 1 20); do
   MSYS_NO_PATHCONV=1 taskkill /F /PID "$OWNER" >/dev/null 2>&1
   sleep 0.5
 done
-if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ] || [ "$RC3" -ne 0 ] || [ "$RC4" -ne 0 ] || [ "$RC4b" -ne 0 ] || [ "$RC4c" -ne 0 ]; then exit 1; fi
+if [ "$RC" -ne 0 ] || [ "$RC2" -ne 0 ] || [ "$RC3" -ne 0 ] || [ "$RC4" -ne 0 ] || [ "$RC4b" -ne 0 ] || [ "$RC4c" -ne 0 ] || [ "$RC4d" -ne 0 ] || [ "$RC4e" -ne 0 ]; then exit 1; fi
 exit 0

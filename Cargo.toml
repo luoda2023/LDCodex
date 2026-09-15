@@ -13,7 +13,7 @@ members = [
 # 必须与以下文件保持一致：apps/codex-plus-manager/package.json、
 # src-tauri/tauri.conf.json、src-tauri/workbuddy-runtime/package.json、
 # src-tauri/workbuddy-runtime/daemon.js（DAEMON_VERSION / DAEMON_BUILD_ID）。
-version = "88.8.5"
+version = "88.8.6"
 edition = "2024"
 license = "AGPL-3.0-only"
 repository = "https://github.com/luoda2023/LDCodex"

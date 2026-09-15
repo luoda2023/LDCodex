@@ -1,4 +1,269 @@
-# LDCodex 88.8.5：账号「下次重置」倒计时 + 切换流水 + 面板外框跟随内容 + 修掉「根本装不上」的自杀 bug
+# LDCodex 88.8.6：GitHub Release 自动升级（启动静默检测 → 下载 → 问你要不要重启 → 静默安装）
+
+> ## 一句话
+>
+> 从这一版起，**往 GitHub 推一个 tag 就发版**；用户端的 LDCodex 会**自己发现新版本、自己下载、问一句「现在重启安装吗」，点一下就在后台静默装好**。
+> 走的是 Tauri 官方的 `tauri-plugin-updater` + **minisign 签名校验** —— 不是自己搓的下载器。
+
+> ## ⚠️ 需要你手动做一件事（只做一次）
+>
+> 签名私钥**不能进仓库**，得放到 GitHub Secrets 里，否则 CI 出不来 `.sig`，客户端永远装不上：
+>
+> 1. 打开 `https://github.com/luoda2023/LDCodex/settings/secrets/actions`
+> 2. 新建 secret，名字填 **`TAURI_SIGNING_PRIVATE_KEY`**
+> 3. 值 = 本机 `_tmp/updater-keys/ldcodex-updater.key` 的**全文**（348 字节，含两行）
+> 4. （可选）再建一个 **`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`**，本项目密钥**无口令**，留空即可
+>
+> 公钥已经硬编码在 `src-tauri/tauri.conf.json` → `plugins.updater.pubkey` 里了，与私钥成对。
+> **私钥丢了 = 以后没法再发更新**（老客户端只认这一对密钥），建议另外备份一份。
+
+> 本轮改动：`.github/workflows/release.yml`（新增发版流水线）｜ `.github/workflows/release-assets.yml`（上游遗留、会污染更新源，已停用）｜ `tools/make-latest-json.mjs`（新增，生成更新源）｜ `src-tauri/Cargo.toml`（加 `tauri-plugin-updater`）｜ `src-tauri/tauri.conf.json`（updater 配置 + 公钥 + `createUpdaterArtifacts`）｜ `src-tauri/src/lib.rs`（注册插件 + 注入状态）｜ `src-tauri/src/commands.rs`（把占位的更新命令换成真实实现）｜ `src/App.tsx`（真进度条 + 下载/安装拆两步）｜ `src/i18n-en.ts` / `src/styles.css`｜ 版本号 6 处来源统一升到 `88.8.6` ｜ `_test_daemon/*`（新增 T25 系列 25 项 + `make-latest-json.test.mjs` 11 项 + `verify-updater-signature.mjs`）
+> 测试：**run-tests 172/172 + account-usage 16/16 + make-latest-json 11/11 + 签名链路 4/4 + no-disturb 16/16 + 布局实测 14/14 + 插件面板实测 60/60 + .fill 实测 30/30 + 前端 159/159 + Rust 72/72 + 2/2 + tsc 全绿**
+
+---
+
+## 零、需求与四项决定
+
+### 用户原话
+
+> 「应当加入GITHUB自动远程升级功能，每一次升级后上传到指定的GITHUB进行检测自动升级，并且会自动安装。」
+
+拆开就是两件事：**发布侧**（每次升级后自动上传到 GitHub）+ **客户端侧**（自动检测、自动安装）。
+
+### 四项决定（已与你确认）
+
+| 问题 | 选择 | 为什么 |
+|---|---|---|
+| 目标仓库 | **`luoda2023/LDCodex`**（当前 origin） | 客户端读 `releases/latest/download/latest.json`，必须与发版仓库一致 |
+| 签名密钥 | **我生成密钥对** | 公钥入库、私钥你加到 GitHub Secrets；没签名任何人都能伪造一个「通过校验」的更新包 |
+| 升级时机 | **启动静默检查 → 下载完再问是否重启** | 不打断你手上的活；安装要重启程序，必须你点头 |
+| 下载加速 | **只用 GitHub 官方地址** | 不加镜像回退 —— 多一个下载源就多一处「更新包被掉包」的风险 |
+
+---
+
+## 一、发布侧：推一个 tag 就发版
+
+```bash
+# 1) 改版本号（6 处来源，见第六节）
+# 2) 提交
+git add -A && git commit -m "release: 88.8.7 …"
+git push origin main
+# 3) 打 tag 并推 —— 这一步触发发版
+git tag v88.8.7 && git push origin v88.8.7
+```
+
+推上去之后 `.github/workflows/release.yml` 自动跑（Windows runner）：
+
+```
+checkout → setup node 22 → setup rust → cargo cache
+  → 从根 Cargo.toml 的 [workspace.package] version 读版本号   ← 唯一权威来源
+  → 断言 tag == "v<版本号>"                                    ← 不一致直接 fail
+  → npm ci
+  → npm run build（带 TAURI_SIGNING_PRIVATE_KEY，产出 .exe + .exe.sig）
+  → 断言 .exe 与 .exe.sig 都在（.sig 缺失 = 没签上名，绝不能发）
+  → node tools/make-latest-json.mjs 生成 latest.json
+  → softprops/action-gh-release@v2 传三件套
+```
+
+同一个 Release 上挂三个文件，**名字不能改**：
+
+| 文件 | 作用 |
+|---|---|
+| `LDCodex_88.8.6_x64-setup.exe` | 安装包本体 |
+| `LDCodex_88.8.6_x64-setup.exe.sig` | minisign 签名，客户端下载后校验；**缺它更新装不上** |
+| `latest.json` | 更新源，客户端只读这一个地址 |
+
+客户端读的地址（写死在 `tauri.conf.json`）：
+
+```
+https://github.com/luoda2023/LDCodex/releases/latest/download/latest.json
+```
+
+`latest.json` 长这样（字段名是 Tauri 的硬约定）：
+
+```json
+{
+  "version": "88.8.6",
+  "notes": "release: 88.8.6 …",
+  "pub_date": "2026-09-15T14:30:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "<.sig 文件的全文>",
+      "url": "https://github.com/luoda2023/LDCodex/releases/download/v88.8.6/LDCodex_88.8.6_x64-setup.exe"
+    }
+  }
+}
+```
+
+生成器是 `tools/make-latest-json.mjs`（纯函数 + CLI 两用），它守三道防线：
+去掉 `v` 前缀、`encodeURIComponent` 文件名、**`.sig` 不存在就 `exit 1`**。
+
+---
+
+## 二、客户端侧：检测 / 下载 / 安装
+
+### 三个命令（`src-tauri/src/commands.rs`）
+
+| 命令 | 做什么 | 注意 |
+|---|---|---|
+| `check_update` | `app.updater()` → `check()` | 启动时静默跑一次；失败**吞掉**（没网很常见），不弹错 |
+| `download_update` | `update.download(…)` | **验签在这一步**；按整数百分比节流后发 `manager-update-progress` 事件；下完把 `Update` + 字节存进 `PendingUpdateState` |
+| `install_update` | `pending.update.install(&bytes)` | **同步命令**（不是 async）。Windows 上它会 `ShellExecuteW` + `std::process::exit(0)`，**不返回** |
+
+**为什么拆成两个命令**：安装必然要退出程序，所以必须把「下载完」和「现在装」分成两个时间点，中间留给你点「立即重启并安装 / 稍后」。
+
+**为什么全在 Rust 侧调用**：不给前端留任何绕过签名校验的入口，也就不用改 `capabilities/default.json`。
+
+### 界面（`src/App.tsx` 的 `UpdateCard`）
+
+「关于」页 → 「软件更新」卡，一个状态行（`aria-live="polite"`）+ 一条**真实**下载进度条 + 按状态出现的按钮：
+
+```
+idle        启动时会自动检查更新，也可以手动检查。        [检查更新]
+checking    正在检查 GitHub Release…                     [检查更新](禁用)
+available   发现新版本 88.8.7，可以更新。                 [检查更新] [下载更新]
+downloading 正在下载更新包，请保持窗口打开。   ██████░░ 62%  [检查更新](禁用)
+ready       更新包已下载完成。现在重启安装，还是稍后再说？ [立即重启并安装] [稍后]
+installing  正在启动安装程序，应用即将退出并完成安装…
+error       更新过程中出现问题，请稍后重试。              [重新检查]
+```
+
+> ⚠️ 88.8.5 之前这里是个**假的**进度条 —— 用 `window.setInterval` 每秒 `+1%` 从 0 爬到 99。
+> 现在换成 Rust 侧的真实下载进度（按整数百分比节流，避免每个 chunk 都触发一次渲染）。
+
+---
+
+## 三、🔴 五个「配错不报错」的坑
+
+这一节是本次改动里最值钱的部分。下面每一条**配错了都不会有任何报错**，只会表现为「客户端一直说已是最新版本」或者「检测到了但装不上」—— 排查成本极高，所以每条都写了源码级断言（T25a~v）。
+
+### ① `installMode` 必须是 `passive`，不能是 `quiet`
+
+`quiet` 是 `/S`（完全静默、无 GUI），`passive` 是 `/P`（有个进度窗）。
+
+我们的安装器钩子 `LDCodexOnGuiInit`（`MUI_CUSTOMFUNCTION_GUIINIT`）**依赖 GUI 初始化才触发** —— 它负责在覆盖文件之前把正在运行的 `LDCodexManager.exe` 关掉。
+`quiet` 下 GUI 被抑制 → 钩子不跑 → 关不掉 → **安装程序覆盖文件失败**。
+
+所以这里选 `passive`，不是随便挑的。
+
+### ② `latest.json` 的 `version` **不能带 `v` 前缀**
+
+```
+✅ "version": "88.8.6"      ← 客户端拿它跟本地版本做 semver 比较
+❌ "version": "v88.8.6"     ← semver 解析失败，且【不报错】，永远显示「已是最新版本」
+```
+
+### ③ 必须带 `platforms.windows-x86_64.{signature,url}`
+
+Tauri updater 靠 `platforms` 找当前平台的可下载资产。写成 `{version, url, body, assets:[…]}` 这种**自定义格式**，客户端根本找不到能下载的东西 —— 同样不报错。
+
+### ④ 上游遗留的 `release-assets.yml` 会**覆盖**掉正确的那份
+
+它继承自上游 Codex++ 项目，构建的是 `codex-plus-plus.exe`（本 fork 没有这个产物），并且它那个 `latest-json` 任务会往 Release 传一份**自定义格式**的 latest.json（正是上面 ② ③ 说的那种）。
+
+两份 `latest.json` 挂在同一个 Release 上 → 谁覆盖谁看运气 → 自动更新静默失效。
+**处置**：整份停用（保留文件留记录，不再挂任何自动触发器，只留 `workflow_dispatch`）。
+
+### ⑤ 没有 `.sig` 就发版 = 发了也装不上
+
+`TAURI_SIGNING_PRIVATE_KEY` 没配好时，`tauri build` 会**跳过签名**、正常出 `.exe`，只是没有 `.sig`。
+所以流水线里有一条硬断言：`.exe` 和 `.exe.sig` 必须都在，缺一个就 `exit 1`。
+
+### 附带：Tauri v2 的一条编译期约束
+
+```
+error[E0277]: async commands that contain references as inputs must return a Result
+error[E0597]: `__tauri_message__` does not live long enough
+```
+
+`download_update` 一开始收的是 `tauri::State<'_, PendingUpdateState>` —— 引用类型入参 + async 命令 = 编译不过。
+**解法**：只收 owned 的 `tauri::AppHandle`，内部再 `app.state::<T>()`；`install_update` 干脆写成同步命令。
+
+---
+
+## 四、怎么发一版（操作手册）
+
+```bash
+# 0) 先确认磁盘有余量（一次 release 构建会再吃 5G）
+df -h /d
+
+# 1) 升版本号 —— 6 处来源，一处都不能漏（见第六节）
+#    权威来源只有根 Cargo.toml；其余是各生态读取时机不同才各自写死的
+
+# 2) 跑测试（必须走这个脚本，它自己起停隔离 daemon）
+bash _test_daemon/test-run.sh          # 期望：全部组绿，退出码 0
+
+# 3) 本地出包（要带签名私钥，否则没有 .sig）
+cd apps/codex-plus-manager
+TAURI_SIGNING_PRIVATE_KEY="$(cat ../../_tmp/updater-keys/ldcodex-updater.key)" npm run build
+# 产物：target/release/bundle/nsis/LDCodex_88.8.7_x64-setup.exe (+ .sig)
+# ⚠️ 别用 TAURI_SIGNING_PRIVATE_KEY_PATH —— 实测 `tauri build` 的**打包阶段**不认它，
+#    会照样生成 .exe 却报 `A public key has been found, but no private key` 并以退出码 1 收场
+#    （最坑的是安装包已经产出，很容易以为成功了）。CI 里用的是内容式变量，不受影响。
+
+# 4) 提交 + 推 tag（tag 触发 CI 自动发版）
+git add -A && git commit -m "release: 88.8.7 …"
+git push origin main
+git tag v88.8.7 && git push origin v88.8.7
+
+# 5) 等 CI 绿了，去 Release 页确认三个文件都在
+gh release view v88.8.7
+```
+
+> ⚠️ 本地出包时 `Running makensis` 期间**别改 `workbuddy-runtime/`** —— 打包直接读源码目录，改了会打进半新半旧的文件。
+
+---
+
+## 五、测试与产物
+
+| 测试 | 结果 |
+|---|---|
+| 功能接口测试（`run-tests.js`） | **172 / 172 全部通过** ✅（88.8.6 新增 T25 系列 25 项：更新源格式 / 签名 / 安装模式 / 三命令拆分 / 前后端事件名一致 / 发版流水线 / i18n 词条齐全 / 签名校验脚本） |
+| 更新源生成器单测（`make-latest-json.test.mjs`） | **11 / 11 全部通过** ✅（含「`.sig` 不存在必须 exit 1 且不产出文件」「缺环境变量必须 exit 1」） |
+| **更新签名链路校验**（`verify-updater-signature.mjs`） | **4 / 4 全部通过** ✅ 公钥可解析 ／ 配置公钥与本地 `.key.pub` **逐字节一致** ／ 私钥与公钥**实测签验配对** ／ **安装包的 `.sig` 验签通过** |
+| account-usage 存储单测 | **16 / 16 全部通过** ✅ |
+| no-disturb 判定 | **16 / 16 全部通过** ✅ |
+| 布局滚动实测 | **14 / 14 全部通过** ✅ |
+| 插件面板布局实测 | **60 / 60 全部通过** ✅ |
+| .fill 实测 | **30 / 30 全部通过** ✅ |
+| 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅ |
+| 管理器 Rust 单元测试（`cargo test -p codex-plus-manager --lib`） | **72 / 72 全部通过** ✅（88.8.6 删 1 条占位测试、新增 3 条：未下载就安装要报可操作的错 / `PendingUpdate` 只能被取走一次 / 资产名从下载地址反推） |
+| Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
+| 前端类型检查（`tsc --noEmit`） | **全绿** ✅ |
+
+**产物**：`target/release/bundle/nsis/LDCodex_88.8.6_x64-setup.exe`
+
+> ⚠️ 本机安装版本核验（`verify-installed-version.mjs`）在**装上新版之前**会报 4/7 —— 因为安装目录里躺的还是 88.8.5。装上 88.8.6 后即恢复 7/7，这不是测试坏了。
+
+---
+
+## 六、以后怎么升级版本号（照这个做就行）
+
+**约定**：当前基线 `88.8.6`，以后**每升级一次加 1**（`88.8.7`、`88.8.8` ……）。
+
+必须同步的 **6 处**（`Cargo.toml` 是唯一权威来源，其余是各生态读取时机不同才写死的）：
+
+| # | 文件 | 改什么 |
+|---|---|---|
+| 1 | `Cargo.toml` | `[workspace.package] version` ← **唯一权威**，5 个 crate 经 `version.workspace = true` 继承 |
+| 2 | `apps/codex-plus-manager/package.json` | `version` |
+| 3 | 同上 `package-lock.json` | 顶层 + `packages[""]`（**2 处**） |
+| 4 | `apps/codex-plus-manager/src-tauri/tauri.conf.json` | `version`（定安装包名与程序版本信息） |
+| 5 | `apps/codex-plus-manager/src-tauri/workbuddy-runtime/package.json` | `version` |
+| 6 | `.../workbuddy-runtime/daemon.js` | `DAEMON_VERSION` + `DAEMON_BUILD_ID` |
+
+外加测试与文档：
+- `_test_daemon/run-tests.js` → `UNIFIED_VERSION`、T2c、T13i、T14 系列
+- `_test_daemon/TEST-REPORT.md` → **标题行**
+- 本文件（`overview.md`）
+
+> ⚠️ 托盘 tooltip **刻意不是第 7 处** —— 它取 `env!("CARGO_PKG_VERSION")`，编译时自动带上，升级不用改。
+> `commands.rs` 里有断言禁止硬编码版本号。以后新增「显示版本号」的地方一律照此写。
+
+---
+---
+
+# 历史归档：LDCodex 88.8.5 —— 账号「下次重置」倒计时 + 切换流水 + 面板外框跟随内容 + 修掉「根本装不上」的自杀 bug
 
 > ## 🔴 最重要的一条：88.8.3 / 88.8.4 的**第一版**安装包**根本装不上**，已修
 >
