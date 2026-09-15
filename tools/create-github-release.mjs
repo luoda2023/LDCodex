@@ -1,18 +1,28 @@
 /*
- * 建 Release v88.8.6 并上传三个资产（安装包 / .sig / latest.json）。
+ * 建 Release 并上传三个资产（安装包 / .sig / latest.json）。
  *
  * 为什么不走 CI：CI 只是让**以后**发版自动化；首版本地已经有签名好的产物，
  * 直接传上去就行，不必等 Secret 配好。
  *
+ * 用法：
+ *   VERSION=88.8.7 node tools/create-github-release.mjs
+ *   VERSION=88.8.7 LATEST_JSON=dist/release/latest.json node tools/create-github-release.mjs
+ *
  * ⚠️ token 只从 `git remote get-url origin` 里现取，**任何输出都不打印它**。
+ * ⚠️ 路径一律从脚本自身位置推算，**不准写死 `_tmp/`** —— 那是 .gitignore 的临时目录，
+ *    清一次就断链（2026-09-15 真踩过：脚本写死 `_tmp/inst/latest.json`，清完 _tmp 后发版必失败）。
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const REPO = 'luoda2023/LDCodex';
-const TAG = 'v88.8.6';
-const VERSION = '88.8.6';
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(HERE, '..');
+
+const REPO = process.env.REPO || 'luoda2023/LDCodex';
+const VERSION = process.env.VERSION || '88.8.6';
+const TAG = process.env.TAG || 'v' + VERSION;
 
 const remoteUrl = execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8' }).trim();
 const tm = remoteUrl.match(/https:\/\/([^@]+)@/);
@@ -29,11 +39,14 @@ const HDR = {
   'User-Agent': 'ldcodex-release-script',
 };
 
-const NSIS = 'D:/LUODA/LDcodex/target/release/bundle/nsis';
+const NSIS = path.join(ROOT, 'target', 'release', 'bundle', 'nsis');
+const SETUP = 'LDCodex_' + VERSION + '_x64-setup.exe';
+// latest.json 的默认落点与 tools/make-latest-json.mjs 的 OUT 默认值对齐（dist/release/latest.json）。
+const LATEST_JSON = process.env.LATEST_JSON || path.join(ROOT, 'dist', 'release', 'latest.json');
 const ASSETS = [
-  { file: path.join(NSIS, 'LDCodex_88.8.6_x64-setup.exe'), name: 'LDCodex_88.8.6_x64-setup.exe', type: 'application/vnd.microsoft.portable-executable' },
-  { file: path.join(NSIS, 'LDCodex_88.8.6_x64-setup.exe.sig'), name: 'LDCodex_88.8.6_x64-setup.exe.sig', type: 'text/plain' },
-  { file: 'D:/LUODA/LDcodex/_tmp/inst/latest.json', name: 'latest.json', type: 'application/json' },
+  { file: path.join(NSIS, SETUP), name: SETUP, type: 'application/vnd.microsoft.portable-executable' },
+  { file: path.join(NSIS, SETUP + '.sig'), name: SETUP + '.sig', type: 'text/plain' },
+  { file: LATEST_JSON, name: 'latest.json', type: 'application/json' },
 ];
 
 for (const a of ASSETS) {

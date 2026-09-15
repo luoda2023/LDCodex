@@ -24,6 +24,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -33,7 +34,11 @@ const REPO_ROOT = path.resolve(__dirname, "..");
 const APP_DIR = path.join(REPO_ROOT, "apps", "codex-plus-manager");
 const CONF = path.join(APP_DIR, "src-tauri", "tauri.conf.json");
 const BUNDLE_DIR = path.join(REPO_ROOT, "target", "release", "bundle", "nsis");
-const KEY_FILE = path.join(REPO_ROOT, "_tmp", "updater-keys", "ldcodex-updater.key");
+// ⚠️ 私钥 2026-09-15 已从 `_tmp/updater-keys/` 挪到**仓库外**的 D:\LUODA\_LDCodex-keys\
+// —— `_tmp/` 是 .gitignore 的临时目录，清一次磁盘密钥就没了（不可再生）。
+// 换机器用 LDCODEX_UPDATER_KEY_DIR 指过去；找不到就跳过，不误报。
+const KEY_DIR = process.env.LDCODEX_UPDATER_KEY_DIR || "D:\\LUODA\\_LDCodex-keys";
+const KEY_FILE = path.join(KEY_DIR, "ldcodex-updater.key");
 const PUB_KEY_FILE = `${KEY_FILE}.pub`;
 
 // Ed25519 的 SPKI 前缀：Node 的 createPublicKey 不吃裸 32 字节，得手工包成
@@ -141,7 +146,9 @@ if (!fs.existsSync(KEY_FILE)) {
 } else if (!fs.existsSync(cliJs)) {
   skip("找不到 tauri CLI，跳过配对校验");
 } else {
-  const probe = path.join(REPO_ROOT, "_tmp", `updater-probe-${Date.now()}.txt`);
+  // ⚠️ 探针文件放**系统临时目录**，不要放仓库里的 `_tmp/`
+  // —— `_tmp/` 是 .gitignore 的临时目录，被清掉后这里直接 ENOENT（2026-09-15 踩到）。
+  const probe = path.join(os.tmpdir(), `ldcodex-updater-probe-${Date.now()}.txt`);
   try {
     fs.writeFileSync(probe, `ldcodex-updater-probe:${pubKeyId}\n`, "utf8");
     // ⚠️ -f 的路径必须是 **Windows 风格**（`D:/…`）—— Git Bash 的 `/d/…` 会被

@@ -1049,9 +1049,15 @@ function extractRustFn(src, name) {
   // （keyId 只占前 10 字节，错的是后面的密钥本体）—— 只有客户端下载后验签会失败，
   // 而且**不报错**，表现为「点了安装没反应」。排查成本极高。
   // 所以这里直接跟本地 .key.pub 做逐字节比对，抄错一个字符立刻红。
-  const localPubPath = path.join(REPO_ROOT, '_tmp', 'updater-keys', 'ldcodex-updater.key.pub');
+  // ⚠️ 私钥 2026-09-15 已从 `_tmp/updater-keys/` 挪到**仓库外**的 D:\LUODA\_LDCodex-keys\
+  // （`_tmp/` 是 .gitignore 的临时目录，清一次就没）。换机器用 LDCODEX_UPDATER_KEY_DIR 指过去。
+  const keyDir = process.env.LDCODEX_UPDATER_KEY_DIR || 'D:\\LUODA\\_LDCodex-keys';
+  const localPubPath = path.join(keyDir, 'ldcodex-updater.key.pub');
   const localPub = readIfExists(localPubPath);
-  if (localPub === null) {
+  // ⚠️ 判断必须用「空字符串也算没有」：readIfExists 读不到时返回 '' 而不是 null，
+  //    写 `=== null` 会导致永远进不去这个分支，把「没有私钥」误报成「公钥抄错了」
+  //    （2026-09-15 真踩到：清完 _tmp 后 T25c2 直接红）。
+  if (!localPub) {
     // 私钥不入库，别的机器上没有这个文件是正常的 —— 跳过，不误报。
     rec('T25c2 配置公钥 == 本地 .key.pub（本机无私钥，跳过）', true, 'SKIP：无 ' + localPubPath);
   } else {
@@ -1226,6 +1232,49 @@ function extractRustFn(src, name) {
   rec('T26e 跨版本同步的重复判定必须同时认 linkedPeerId 与 linkedTargetId',
     /linkedPeerId/.test(appSrcT26) && /linkedTargetId/.test(appSrcT26),
     '两个接口字段名不同（本端 linkedPeerId / 对端 linkedTargetId），只看一个会导致某一侧永远判不出重复');
+
+  // ── T27 发版工具不变量（tools/make-latest-json.mjs、create/verify-github-release.mjs）──
+  // 2026-09-15 的教训（交付前复验才抓到）：发版脚本把 latest.json 写死在 `_tmp/inst/`，
+  // 而 `_tmp/` 是 .gitignore 的临时目录 —— 清一次磁盘，下次发版直接断链。
+  // 所以：① 工具脚本一律从自身位置推算路径或走环境变量，不准写死临时目录；
+  //      ② latest.json 的线上比对必须忽略 pub_date（它是生成时刻，逐字节比永远不一致）。
+  section('T27 发版工具不变量（tools/*.mjs）');
+  const stripToolsComments = (s) => String(s || '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split(/\r?\n/).filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  const toolsMake = stripToolsComments(readIfExists(path.join(REPO_ROOT, 'tools', 'make-latest-json.mjs')));
+  const toolsCreate = stripToolsComments(readIfExists(path.join(REPO_ROOT, 'tools', 'create-github-release.mjs')));
+  const toolsVerify = stripToolsComments(readIfExists(path.join(REPO_ROOT, 'tools', 'verify-github-release.mjs')));
+
+  rec('T27 前置 三个发版工具源码都可读且非空',
+    toolsMake.length > 1000 && toolsCreate.length > 1000 && toolsVerify.length > 1000,
+    'make=' + toolsMake.length + ' / create=' + toolsCreate.length + ' / verify=' + toolsVerify.length +
+      '（读不到 = 路径算错，下面 T27a~c 的结论都不可信）');
+
+  // ⚠️ 先剥注释再匹配：脚本里特意写了「不准写死 _tmp/」来说明原因，不剥会把注释当成违规。
+  rec('T27a 发版工具不得引用 _tmp/ 之类的临时目录（清一次磁盘就断链）',
+    !/_tmp\//.test(toolsMake) && !/_tmp\//.test(toolsCreate) && !/_tmp\//.test(toolsVerify),
+    '临时目录随时被清，路径必须从脚本自身位置推算或走环境变量');
+
+  // ⚠️ 正则必须排除「前面还有字母」的情况：源码里的正则字面量 `https:\/\/` 含有 `s:\/`，
+  //    直接写 /[A-Za-z]:\\[\\/]/ 会把它误判成盘符（第一次就这么写，守卫自己红了）。
+  const DRIVE_RE = /(^|[^A-Za-z])[A-Za-z]:\\[\\/]/;
+  rec('T27b 发版工具不得写死盘符绝对路径（换机器就废）',
+    !DRIVE_RE.test(toolsMake) && !DRIVE_RE.test(toolsCreate) && !DRIVE_RE.test(toolsVerify),
+    '要用 path.join(ROOT, ...)');
+
+  rec('T27c latest.json 的线上比对必须忽略 pub_date（它是生成时刻）',
+    /pub_date/.test(toolsVerify) && !/remoteTxt\s*===\s*localTxt/.test(toolsVerify),
+    '逐字节比会导致「内容其实一样却永远报不一致」');
+
+  // 同一类断链也发生在测试脚本上：清完 `_tmp/` 后 `verify-updater-signature.mjs`
+  // 往 `_tmp/` 写探针文件 → ENOENT；读本地公钥也从 `_tmp/` 读 → 读到空串。
+  // 所以测试脚本同样不许依赖仓库临时目录（临时文件一律走 os.tmpdir()）。
+  const sigScriptCode = stripToolsComments(readIfExists(path.join(REPO_ROOT, '_test_daemon', 'verify-updater-signature.mjs')));
+  rec('T27d 测试脚本也不得依赖仓库临时目录（临时文件走 os.tmpdir()）',
+    sigScriptCode.length > 1000 && !/_tmp\//.test(sigScriptCode) && /tmpdir\(\)/.test(sigScriptCode),
+    '长度 ' + sigScriptCode.length + '；含 _tmp/ = ' + /_tmp\//.test(sigScriptCode) +
+      ' / 用 os.tmpdir = ' + /tmpdir\(\)/.test(sigScriptCode));
 
   // ── T7 回归 ──
   section('T7 回归');

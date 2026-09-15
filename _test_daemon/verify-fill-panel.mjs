@@ -3,7 +3,7 @@
 // 覆盖：WorkBuddy 国际/国内版 8 个 tab + MCP&插件页面（都用 Panel fill）
 // 反向自检：注入修复前的旧规则必须判 FAIL
 //
-// 用法：node _tmp/measure-pane.mjs
+// 用法：node _test_daemon/verify-fill-panel.mjs
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
