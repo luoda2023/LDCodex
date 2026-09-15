@@ -18,6 +18,8 @@ use codex_plus_core::user_scripts::UserScriptManager;
 use codex_plus_core::zed_remote::{ZedOpenStrategy, ZedRemoteProject};
 use serde::Serialize;
 use serde_json::{Value, json};
+use tauri::{Emitter, Manager};
+use tauri_plugin_updater::UpdaterExt;
 
 use crate::install::{self, InstallActionResult, InstallOptions};
 
@@ -2611,6 +2613,205 @@ pub fn dismiss_pending_provider_import() -> CommandResult<PendingProviderImportP
     }
 }
 
+/* ───────────────────── WorkBuddy 对话（会话）管理 ─────────────────────
+ *
+ * ⚠️ 与上面的 Codex 本地会话**不是一套数据**：那边读 `~/.codex`，
+ * 这里管 WorkBuddy 客户端自己的对话——国内版 `~/.workbuddy`、
+ * 国际版 `~/.workbuddy-ai`。别把两边的 id / 路径混着用。
+ *
+ * 两档删除：
+ *   - `soft_delete_workbuddy_sessions`：只置 `deleted_at`，客户端立刻不显示，文件全留，**可恢复**；
+ *   - `purge_workbuddy_sessions`：删库行 + 正文 + 附属文件，释放空间，**不可恢复**（除非开了备份）。
+ */
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkBuddySessionsRequest {
+    /// 档案 id（`workbuddy-cn` / `workbuddy-ai`）；缺省为国内版。
+    pub profile: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkBuddySessionBatchRequest {
+    pub profile: Option<String>,
+    pub ids: Vec<String>,
+    /// 彻底清除时是否先备份到 `<home>/session-backups/<时间戳>/`；软删与恢复忽略此字段。
+    #[serde(default)]
+    pub backup: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkBuddySessionsPayload {
+    #[serde(flatten)]
+    pub snapshot: codex_plus_core::workbuddy_sessions::WorkBuddySessionsSnapshot,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkBuddySessionOpPayload {
+    #[serde(flatten)]
+    pub outcome: codex_plus_core::workbuddy_sessions::WorkBuddySessionOpOutcome,
+}
+
+/// 解析档案 id；缺省或非法输入一律回落国内版，保持行为可预测。
+fn workbuddy_profile_id(profile: &Option<String>) -> String {
+    profile
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(codex_plus_core::workbuddy_sessions::PROFILE_CN)
+        .to_string()
+}
+
+fn workbuddy_human_bytes(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = 1024 * KB;
+    const GB: u64 = 1024 * MB;
+    if bytes >= GB {
+        format!("{:.2} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.0} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{bytes} B")
+    }
+}
+
+fn workbuddy_op_message(
+    action: &str,
+    outcome: &codex_plus_core::workbuddy_sessions::WorkBuddySessionOpOutcome,
+) -> String {
+    let mut message = format!("{}完成 {} 个。", action, outcome.succeeded.len());
+    if !outcome.failed.is_empty() {
+        let first = outcome
+            .failed
+            .first()
+            .map(|item| item.message.clone())
+            .unwrap_or_default();
+        message.push_str(&format!("失败 {} 个：{}", outcome.failed.len(), first));
+    }
+    if outcome.freed_bytes > 0 {
+        message.push_str(&format!(
+            "释放 {}。",
+            workbuddy_human_bytes(outcome.freed_bytes)
+        ));
+    }
+    if let Some(dir) = &outcome.backup_dir {
+        message.push_str(&format!("备份位置：{dir}"));
+    }
+    message
+}
+
+fn workbuddy_op_payload(
+    outcome: codex_plus_core::workbuddy_sessions::WorkBuddySessionOpOutcome,
+) -> WorkBuddySessionOpPayload {
+    WorkBuddySessionOpPayload { outcome }
+}
+
+#[tauri::command]
+pub fn list_workbuddy_sessions(
+    request: Option<WorkBuddySessionsRequest>,
+) -> CommandResult<WorkBuddySessionsPayload> {
+    let profile = workbuddy_profile_id(&request.and_then(|item| item.profile));
+    match codex_plus_core::workbuddy_sessions::list_sessions(&profile) {
+        Ok(snapshot) => {
+            let count = snapshot.sessions.len();
+            let available = snapshot.available;
+            let warnings = snapshot.warnings.clone();
+            let payload = WorkBuddySessionsPayload { snapshot };
+            if !available {
+                // 库不存在不算失败——只是这个版本的客户端没装过 / 没跑过。
+                ok(&warnings.join("；"), payload)
+            } else if warnings.is_empty() {
+                ok(&format!("已读取 {count} 个对话。"), payload)
+            } else {
+                ok(
+                    &format!("已读取 {count} 个对话（部分目录读取异常）。"),
+                    payload,
+                )
+            }
+        }
+        Err(error) => failed(
+            &error,
+            WorkBuddySessionsPayload {
+                snapshot: codex_plus_core::workbuddy_sessions::unavailable_snapshot(
+                    &profile, &error,
+                ),
+            },
+        ),
+    }
+}
+
+#[tauri::command]
+pub fn soft_delete_workbuddy_sessions(
+    request: WorkBuddySessionBatchRequest,
+) -> CommandResult<WorkBuddySessionOpPayload> {
+    let profile = workbuddy_profile_id(&request.profile);
+    match codex_plus_core::workbuddy_sessions::soft_delete_sessions(&profile, &request.ids) {
+        Ok(outcome) => {
+            let message = workbuddy_op_message("软删除", &outcome);
+            if outcome.failed.is_empty() {
+                ok(&message, workbuddy_op_payload(outcome))
+            } else {
+                failed(&message, workbuddy_op_payload(outcome))
+            }
+        }
+        Err(error) => failed(
+            &error,
+            workbuddy_op_payload(Default::default()),
+        ),
+    }
+}
+
+#[tauri::command]
+pub fn restore_workbuddy_sessions(
+    request: WorkBuddySessionBatchRequest,
+) -> CommandResult<WorkBuddySessionOpPayload> {
+    let profile = workbuddy_profile_id(&request.profile);
+    match codex_plus_core::workbuddy_sessions::restore_sessions(&profile, &request.ids) {
+        Ok(outcome) => {
+            let message = workbuddy_op_message("恢复", &outcome);
+            if outcome.failed.is_empty() {
+                ok(&message, workbuddy_op_payload(outcome))
+            } else {
+                failed(&message, workbuddy_op_payload(outcome))
+            }
+        }
+        Err(error) => failed(&error, workbuddy_op_payload(Default::default())),
+    }
+}
+
+#[tauri::command]
+pub fn purge_workbuddy_sessions(
+    request: WorkBuddySessionBatchRequest,
+) -> CommandResult<WorkBuddySessionOpPayload> {
+    let profile = workbuddy_profile_id(&request.profile);
+    if request.ids.is_empty() {
+        return failed(
+            "请先选择要彻底清除的对话。",
+            workbuddy_op_payload(Default::default()),
+        );
+    }
+    match codex_plus_core::workbuddy_sessions::purge_sessions(
+        &profile,
+        &request.ids,
+        request.backup,
+    ) {
+        Ok(outcome) => {
+            let message = workbuddy_op_message("彻底清除", &outcome);
+            if outcome.failed.is_empty() {
+                ok(&message, workbuddy_op_payload(outcome))
+            } else {
+                failed(&message, workbuddy_op_payload(outcome))
+            }
+        }
+        Err(error) => failed(&error, workbuddy_op_payload(Default::default())),
+    }
+}
+
 #[tauri::command]
 pub fn list_local_sessions(
     request: Option<ListLocalSessionsRequest>,
@@ -4113,40 +4314,295 @@ fn count_skill_files(root: &Path) -> std::io::Result<usize> {
     Ok(total)
 }
 
-#[tauri::command]
-pub async fn check_update() -> CommandResult<Value> {
-    // LDCodex：更新功能已停用（不再访问远端 Release，也不提示新版本）。
+/// 在线更新进度事件名。命名风格与 lib.rs 的 `MANAGER_NAVIGATION_EVENT` 保持一致。
+///
+/// ⚠️ 刻意不用 `ldcodex://` 前缀 —— 那是 main.rs 里的 deep-link 协议 scheme，
+/// 事件名撞上它会让「收到事件」和「被外部链接唤起」两件事难以区分。
+pub const UPDATE_PROGRESS_EVENT: &str = "manager-update-progress";
+
+/// 已下载、等待用户确认重启的更新包。
+///
+/// ⚠️ 必须把 `Update` 本身也存下来，不能只存 bytes —— `Update::install` 是 `&self` 方法，
+/// Windows 上要靠它内部的 installer 参数（`/P /UPDATE /R /ARGS …`）和可执行文件路径
+/// 去 `ShellExecuteW`。虽然重新 `check()` 一次也能重建，但那会多一次网络往返，
+/// 而且万一期间远端又发了新版，就变成「拿旧包配新上下文」，语义不干净。
+pub struct PendingUpdate {
+    update: tauri_plugin_updater::Update,
+    bytes: Vec<u8>,
+}
+
+/// Tauri managed state：暂存已下载的更新包。
+#[derive(Default)]
+pub struct PendingUpdateState(pub Mutex<Option<PendingUpdate>>);
+
+/// 取出待安装的更新包（取出即消费，防止重复安装）。
+///
+/// 抽成自由函数是为了能在没有 Tauri App 的单测里直接验证「取一次就空」。
+fn take_pending_update(state: &PendingUpdateState) -> Option<PendingUpdate> {
+    state.0.lock().ok().and_then(|mut guard| guard.take())
+}
+
+/// 「还没下载就想安装」时的统一失败返回。
+///
+/// 单独抽出来，是为了让 `cargo test` 能在没有 Tauri App 的情况下断言这条语义：
+/// 没有待安装包时必须失败，且文案要明确指向「先去下载」。
+fn no_pending_update_result() -> CommandResult<Value> {
     failed(
-        "此版本不提供在线更新，请从官网 dicad.cn 获取新版本。",
-        json!({
-            "currentVersion": codex_plus_core::version::VERSION,
-            "latestVersion": Value::Null,
-            "releaseSummary": "",
-            "assetName": Value::Null,
-            "assetUrl": Value::Null,
-            "updateAvailable": false,
-            "progress": 0
-        }),
+        "尚未下载更新包，请先点击「下载更新」。",
+        update_payload(None, "", None, None, false, 0, false),
     )
 }
 
+/// 组装前端 `UpdateResult` 需要的 camelCase 载荷。
+fn update_payload(
+    latest_version: Option<&str>,
+    release_summary: &str,
+    asset_name: Option<&str>,
+    asset_url: Option<&str>,
+    update_available: bool,
+    progress: u8,
+    downloaded: bool,
+) -> Value {
+    json!({
+        "currentVersion": codex_plus_core::version::VERSION,
+        "latestVersion": latest_version,
+        "releaseSummary": release_summary,
+        "assetName": asset_name,
+        "assetUrl": asset_url,
+        "updateAvailable": update_available,
+        "progress": progress,
+        "downloaded": downloaded,
+    })
+}
+
+/// 从 `latest.json` 里的下载地址抠出安装包文件名，用于界面展示。
+fn asset_name_from_url(url: &str) -> Option<String> {
+    url.rsplit('/')
+        .next()
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+}
+
 #[tauri::command]
-pub async fn perform_update(
-    _release: Option<codex_plus_core::update::Release>,
-) -> CommandResult<Value> {
-    // LDCodex：更新功能已停用。
-    failed(
-        "此版本不提供在线更新，请从官网 dicad.cn 获取新版本。",
-        json!({
-            "currentVersion": codex_plus_core::version::VERSION,
-            "latestVersion": Value::Null,
-            "releaseSummary": "",
-            "assetName": Value::Null,
-            "assetUrl": Value::Null,
-            "updateAvailable": false,
-            "progress": 0
-        }),
+pub async fn check_update(app: tauri::AppHandle) -> CommandResult<Value> {
+    let updater = match app.updater() {
+        Ok(updater) => updater,
+        Err(error) => {
+            return failed(
+                &format!("初始化更新器失败：{error}"),
+                update_payload(None, "", None, None, false, 0, false),
+            );
+        }
+    };
+
+    match updater.check().await {
+        Ok(Some(update)) => {
+            let latest = update.version.clone();
+            let summary = update.body.clone().unwrap_or_default();
+            let asset_name = asset_name_from_url(update.download_url.as_str());
+            let asset_url = update.download_url.to_string();
+            ok(
+                &format!("发现新版本 {latest}，可以更新。"),
+                update_payload(
+                    Some(&latest),
+                    &summary,
+                    asset_name.as_deref(),
+                    Some(&asset_url),
+                    true,
+                    0,
+                    false,
+                ),
+            )
+        }
+        Ok(None) => ok(
+            "当前已是最新版本。",
+            update_payload(None, "", None, None, false, 0, false),
+        ),
+        Err(error) => failed(
+            &format!("检查更新失败：{error}"),
+            update_payload(None, "", None, None, false, 0, false),
+        ),
+    }
+}
+
+/// 只负责「下载 + 验签 + 暂存」，不安装。
+///
+/// 之所以拆成两步：Windows 上 `Update::install` 会 `ShellExecuteW` 起安装程序后
+/// 立刻 `std::process::exit(0)`。用户要的是「下载完再问是否重启」，
+/// 所以下载与安装必须能分开触发。
+#[tauri::command]
+pub async fn download_update(app: tauri::AppHandle) -> CommandResult<Value> {
+    // ⚠️ 这里刻意**只收 `AppHandle`**，不收 `tauri::State<'_, _>`。
+    //    Tauri v2 有一条硬约束：「async 命令只要带引用类型的入参，就必须返回 Result」
+    //    （`AsyncCommandMustReturnResult`）。收 `State<'_, T>` 会同时触发
+    //    E0277（返回值不是 Result）和 E0597（`__tauri_message__` 活得不够久）。
+    //    `AppHandle` 是 owned + 'static，从它 `app.state::<T>()` 取状态就没这个问题。
+    let updater = match app.updater() {
+        Ok(updater) => updater,
+        Err(error) => {
+            return failed(
+                &format!("初始化更新器失败：{error}"),
+                update_payload(None, "", None, None, false, 0, false),
+            );
+        }
+    };
+
+    let update = match updater.check().await {
+        Ok(Some(update)) => update,
+        Ok(None) => {
+            return failed(
+                "当前已是最新版本，无需下载。",
+                update_payload(None, "", None, None, false, 0, false),
+            );
+        }
+        Err(error) => {
+            return failed(
+                &format!("检查更新失败：{error}"),
+                update_payload(None, "", None, None, false, 0, false),
+            );
+        }
+    };
+
+    let latest = update.version.clone();
+    let summary = update.body.clone().unwrap_or_default();
+    let asset_name = asset_name_from_url(update.download_url.as_str());
+    let asset_url = update.download_url.to_string();
+
+    // 真实下载进度：按「整数百分比」节流后再推给前端。
+    // 一个 53MB 的安装包最多产生 101 条事件 —— 既够顺滑，又不会把 IPC 打爆。
+    let mut downloaded: u64 = 0;
+    let mut last_percent: i64 = -1;
+    let emitter = app.clone();
+    let bytes = update
+        .download(
+            move |chunk_len, content_len| {
+                let previous = downloaded;
+                downloaded = downloaded.saturating_add(chunk_len as u64);
+                let percent = match content_len {
+                    Some(total) if total > 0 => downloaded.saturating_mul(100) / total,
+                    _ => u64::MAX,
+                };
+                let percent = percent.min(100) as i64;
+                // 远端没给 Content-Length 时 percent 恒为 100，退化成「每 512KB 报一次」，
+                // 否则会一条进度都发不出去、界面看起来像卡死。
+                let should_emit = if content_len.is_some() {
+                    percent != last_percent
+                } else {
+                    downloaded / (512 * 1024) != previous / (512 * 1024)
+                };
+                if !should_emit {
+                    return;
+                }
+                last_percent = percent;
+                let _ = emitter.emit(
+                    UPDATE_PROGRESS_EVENT,
+                    json!({
+                        "phase": "downloading",
+                        "downloaded": downloaded,
+                        "total": content_len,
+                        "percent": if content_len.is_some() { percent } else { 0 },
+                    }),
+                );
+            },
+            || {},
+        )
+        .await;
+
+    let bytes = match bytes {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            return failed(
+                &format!("下载更新包失败：{error}"),
+                update_payload(
+                    Some(&latest),
+                    &summary,
+                    asset_name.as_deref(),
+                    Some(&asset_url),
+                    true,
+                    0,
+                    false,
+                ),
+            );
+        }
+    };
+
+    let byte_len = bytes.len();
+    let state = app.state::<PendingUpdateState>();
+    if let Ok(mut guard) = state.0.lock() {
+        *guard = Some(PendingUpdate { update, bytes });
+    }
+
+    ok(
+        &format!(
+            "新版本 {latest}（{:.1} MB）已下载完成，重启后即可完成安装。",
+            byte_len as f64 / 1_048_576.0
+        ),
+        update_payload(
+            Some(&latest),
+            &summary,
+            asset_name.as_deref(),
+            Some(&asset_url),
+            true,
+            100,
+            true,
+        ),
     )
+}
+
+/// 启动安装程序。⚠️ Windows 上成功时**不会返回** —— 进程会被 updater 插件
+/// `std::process::exit(0)` 结束，随后 NSIS 以 `/P /UPDATE /R` 接管安装，
+/// 装完再把本程序重新拉起来。
+#[tauri::command]
+pub fn install_update(app: tauri::AppHandle) -> CommandResult<Value> {
+    // 同步命令（里面没有 await）。与 `download_update` 同理：不收 `State<'_, _>`。
+    let state = app.state::<PendingUpdateState>();
+    let Some(pending) = take_pending_update(&state) else {
+        return no_pending_update_result();
+    };
+
+    let version = pending.update.version.clone();
+    let summary = pending.update.body.clone().unwrap_or_default();
+    let asset_name = asset_name_from_url(pending.update.download_url.as_str());
+    let asset_url = pending.update.download_url.to_string();
+
+    // 先告诉前端「安装程序马上接管」，免得界面停在 99% 让人以为卡住了。
+    let _ = app.emit(
+        UPDATE_PROGRESS_EVENT,
+        json!({ "phase": "installing", "percent": 100 }),
+    );
+
+    match pending.update.install(&pending.bytes) {
+        Ok(()) => ok(
+            "更新安装程序已启动，应用即将退出并完成安装。",
+            update_payload(
+                Some(&version),
+                &summary,
+                asset_name.as_deref(),
+                Some(&asset_url),
+                true,
+                100,
+                true,
+            ),
+        ),
+        Err(error) => {
+            // 安装程序没起来 → 把待安装状态还回去，用户可以直接重试，不必重新下载。
+            if let Ok(mut guard) = state.0.lock() {
+                *guard = Some(pending);
+            }
+            failed(
+                &format!("启动更新安装失败：{error}"),
+                update_payload(
+                    Some(&version),
+                    &summary,
+                    asset_name.as_deref(),
+                    Some(&asset_url),
+                    true,
+                    100,
+                    true,
+                ),
+            )
+        }
+    }
 }
 #[tauri::command]
 pub fn load_watcher_state() -> CommandResult<WatcherPayload> {
@@ -6619,20 +7075,41 @@ mod tests {
     }
 
     #[test]
-    fn update_install_requires_release_payload() {
-        let result = tauri::async_runtime::block_on(perform_update(None));
+    fn install_update_without_download_fails_with_actionable_message() {
+        // 没下载过更新包就点「立即重启安装」时必须失败，且文案要指向「先去下载」——
+        // 只说一句含糊的「失败」用户不知道下一步该干什么。
+        let result = no_pending_update_result();
 
         assert_eq!(result.status, "failed");
-        // ⚠️ 这条断言曾经漏改：`perform_update` 早已被改成「更新功能已停用」，
-        // 文案从「请先检查更新」换成了「此版本不提供在线更新，请从官网 dicad.cn 获取新版本。」，
-        // 但断言还停在旧文案上 —— 于是 `cargo test -p codex-plus-manager --lib`
-        // 一直有一条红的，谁也没注意。断言改宽松成「必须说明不提供在线更新」，
-        // 既守住「没有 release 时必须失败」这个语义，又不会因为文案微调再失效。
         assert!(
-            result.message.contains("不提供在线更新"),
+            result.message.contains("尚未下载"),
             "message = {}",
             result.message
         );
+        assert_eq!(result.payload["updateAvailable"], false);
+        assert_eq!(result.payload["downloaded"], false);
+        assert_eq!(result.payload["currentVersion"], codex_plus_core::version::VERSION);
+    }
+
+    #[test]
+    fn take_pending_update_consumes_state_once() {
+        // 「取出即消费」：第二次必须是 None。否则连点两次「安装」会拿同一个包
+        // 重复启动安装程序（第二次起 NSIS 时文件可能已被前一次装完删掉）。
+        let state = PendingUpdateState::default();
+
+        assert!(take_pending_update(&state).is_none());
+        assert!(take_pending_update(&state).is_none());
+    }
+
+    #[test]
+    fn asset_name_is_derived_from_download_url() {
+        assert_eq!(
+            asset_name_from_url(
+                "https://github.com/luoda2023/LDCodex/releases/download/v88.8.6/LDCodex_88.8.6_x64-setup.exe"
+            ),
+            Some("LDCodex_88.8.6_x64-setup.exe".to_string())
+        );
+        assert_eq!(asset_name_from_url(""), None);
     }
 
     #[test]

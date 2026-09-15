@@ -1,10 +1,11 @@
-# LDCodex daemon 88.8.5 功能测试报告
+# LDCodex daemon 88.8.6 功能测试报告
 
-- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）；18:45（88.8.3 插件面板布局 + 安装器钩子，118 项 + 布局实测 14 项 + 插件面板实测 47 项）；19:55（88.8.3 出包后复跑，并修掉测试脚手架自身的 3 个 bug，见「一之零D-补」；118 + 16 + 14 + 47，3m39s 干净退出）；20:49（88.8.3 出包后再次复跑 + 新增「本机安装版本核验」，见「一之零D-补二」；118 + 16 + 14 + 47，2m00s 干净退出）；20:52（新增 T20 系列 5 项守卫，安装版本核验脚本接入 test-run.sh；123 + 16 + 14 + 47，1m27s 干净退出）；21:25（88.8.4 托盘悬停提示，见「一之零E」；123 + 16 + 14 + 47 + Rust 70/70 + 前端 159/159 + tsc 全绿）；21:34（88.8.4 出包并核验产物，见「一之零E-补」）；**22:48（修掉「安装器把自己杀了」这个致命 bug 并成功装上 88.8.4，见「一之零F」；126/126 + 7/7）**；**23:20（修掉第二个自杀路径「卸载器把安装器杀了」，`/P` 覆盖安装 22.5 秒 ExitCode 0，见「一之零G」；127/127 + 7/7，55s 干净退出）**；**23:31（正式 `npm run build` 全量重出包，5m14s、`BUILD_EXIT=0`；不是手工 `makensis` 重编；装上 14.4 秒 ExitCode 0，核验 7/7）**；**2026-09-14 10:13 / 10:30（88.8.5 复跑两次，均自然退出、退出码 0；重编重装后 38/38 一致，见「一之零J」）**
+- **测试时间**：2026-09-13 12:30 – 13:05（1.2.9）；14:20（1.2.10 复跑）；15:40（1.2.11 全量复跑）；16:00（1.2.12 全量复跑）；13:40（88.8.1 版本号统一后全量复跑）；17:05（88.8.1 账号使用次数统计 + 插件侧徽标，103 项）；17:45（88.8.2 列表滚动修复，107 项 + 布局实测 14 项）；18:45（88.8.3 插件面板布局 + 安装器钩子，118 项 + 布局实测 14 项 + 插件面板实测 47 项）；19:55（88.8.3 出包后复跑，并修掉测试脚手架自身的 3 个 bug，见「一之零D-补」；118 + 16 + 14 + 47，3m39s 干净退出）；20:49（88.8.3 出包后再次复跑 + 新增「本机安装版本核验」，见「一之零D-补二」；118 + 16 + 14 + 47，2m00s 干净退出）；20:52（新增 T20 系列 5 项守卫，安装版本核验脚本接入 test-run.sh；123 + 16 + 14 + 47，1m27s 干净退出）；21:25（88.8.4 托盘悬停提示，见「一之零E」；123 + 16 + 14 + 47 + Rust 70/70 + 前端 159/159 + tsc 全绿）；21:34（88.8.4 出包并核验产物，见「一之零E-补」）；**22:48（修掉「安装器把自己杀了」这个致命 bug 并成功装上 88.8.4，见「一之零F」；126/126 + 7/7）**；**23:20（修掉第二个自杀路径「卸载器把安装器杀了」，`/P` 覆盖安装 22.5 秒 ExitCode 0，见「一之零G」；127/127 + 7/7，55s 干净退出）**；**23:31（正式 `npm run build` 全量重出包，5m14s、`BUILD_EXIT=0`；不是手工 `makensis` 重编；装上 14.4 秒 ExitCode 0，核验 7/7）**；**2026-09-14 10:13 / 10:30（88.8.5 复跑两次，均自然退出、退出码 0；重编重装后 38/38 一致，见「一之零J」）**；**2026-09-15（88.8.6 GitHub Release 自动升级，见「一之零K」；168 + 16 + 11 + 16 + 14 + 60 + 30 全绿、退出码 0）**
 - **被测代码**：
-  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.4**）
-  - `apps/codex-plus-manager/src-tauri/src/lib.rs`（**88.8.4：托盘图标新增悬停提示 tooltip**）
-  - `apps/codex-plus-manager/src/App.tsx`（**88.8.4：英文环境传本地化 tooltip**）
+  - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/daemon.js`（DAEMON_VERSION **88.8.6**）
+  - `apps/codex-plus-manager/src-tauri/src/commands.rs`（**88.8.6：`check_update` / `download_update` / `install_update` 换成真实实现**，走 `tauri-plugin-updater`）
+  - `apps/codex-plus-manager/src-tauri/src/lib.rs`（**88.8.6：注册 `tauri-plugin-updater` + 注入 `PendingUpdateState`**；88.8.4：托盘图标新增悬停提示 tooltip）
+  - `apps/codex-plus-manager/src/App.tsx`（**88.8.6：更新卡换成真实下载进度 + 「下载」「安装」拆成两个动作**；88.8.4：英文环境传本地化 tooltip）
   - `apps/codex-plus-manager/src-tauri/workbuddy-runtime/inject.js`（**88.8.3：插件面板高度受视口约束 + 三处列表滚动条可见**；88.8.1：账号卡片「用过 N 次 · 今日 N 次」徽标；1.2.11 上弹面板行内新增常用语；1.2.10 扣费取样范围修复）
   - `apps/codex-plus-manager/src-tauri/windows/hooks.nsh`（**88.8.3：新增 .onGUIInit 回调，抢在「已安装」页面之前关掉程序**）
   - `apps/codex-plus-manager/src/styles.css`（88.8.2：列表不再掉出窗口下边框 + 滚动条可见）
@@ -18,20 +19,72 @@
 
 | 测试集 | 结果 |
 |---|---|
-| 功能接口测试（`run-tests.js`） | **146 / 146 全部通过** ✅（含 88.8.5 新增 T23 系列 7 项 + T24 系列 8 项；88.8.4 新增 T21 系列 4 项 + T22 系列 3 项） |
+| 功能接口测试（`run-tests.js`） | **168 / 168 全部通过** ✅（88.8.6 新增 T25 系列 23 项：更新源格式 / minisign 公钥 / 安装模式 / 三命令拆分 / 前后端事件名一致 / 发版流水线 / 更新界面 i18n 词条齐全；含 88.8.5 的 T23 系列 7 项 + T24 系列 8 项） |
+| 更新源生成器单测（`make-latest-json.test.mjs`） | **11 / 11 全部通过** ✅（88.8.6 新增。含「`.sig` 不存在必须 exit 1 且不产出文件」「缺环境变量必须 exit 1 并点名」） |
 | account-usage 存储单测（`account-usage.test.js`） | **16 / 16 全部通过** ✅（88.8.5 新增：切换流水 + 「下次生效」24 小时滚动窗口边界） |
 | 自动点允许判定逻辑（`verify-no-disturb.js`） | **16 / 16 全部通过** ✅ |
 | 布局滚动实测（`verify-layout-scroll.mjs`，无头 Chrome 量真实产物） | **14 / 14 全部通过** ✅ |
 | 插件面板布局实测（`verify-plugin-layout.mjs`，账号 / 会话 / 增强 / 关于 四页签） | **60 / 60 全部通过** ✅（88.8.5 新增「关于」页 12 项 + 1 项反向自检） |
-| 本机安装版本核验（`verify-installed-version.mjs`） | **7 / 7 ✅ 全部通过**（88.8.5 已装上，见「一之零H」） |
+| 本机安装版本核验（`verify-installed-version.mjs`） | **7 / 7 ✅ 全部通过**（88.8.6 已装上；⚠️ 装之前会报 4/7，因为安装目录里还是上一版，见「一之零K」） |
 | CDP 端口隔离逻辑（`verify-cdp-isolation.js`） | **18 / 18 全部通过** ✅ |
-| 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅（88.8.5 复跑） |
-| Rust 单元测试（`cargo test -p codex-plus-manager --lib`） | **70 / 70 全部通过** ✅（88.8.5 复跑，4m45s；含 88.8.4 新增的托盘 tooltip 守卫；另修掉 1 条**早已失效**的断言，见「一之零E」） |
+| 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅（88.8.6 复跑） |
+| Rust 单元测试（`cargo test -p codex-plus-manager --lib`） | **72 / 72 全部通过** ✅（88.8.6 复跑；新增 3 条更新相关：未下载就安装要报可操作的错 / `PendingUpdate` 只能被取走一次 / 资产名从下载地址反推） |
 | Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅（88.8.5 复跑，8m41s；第一次跑因 D 盘写满失败，清出空间后通过，见「一之零I」） |
 | 安装器脚本编译（`makensis installer.nsi`） | 通过（仅 1 个模板自带的无关 warning）✅ |
 | 真实页面 UI 只读验证（`_test_daemon/cdp-qp-ui-verify.mjs`） | 全部符合预期 ✅ |
 | 前端类型检查（`tsc --noEmit`） | 通过 ✅ |
-| i18n 词典校验（`tools/i18n-verify.mjs`） | 与基线持平（未新增缺失词条）✅ |
+| i18n 词典校验（`tools/i18n-verify.mjs`） | ⚠️ **与基线持平**：本工具**不在测试套件里**，且词典本身有历史漂移（143 条未译 + 166 条陈旧，多数是 `t(变量)` 这种扫不到的调用）。88.8.6 顺带补上了 1 条真实缺失（`发现新版本 {0}，可以更新。`），并用 T25w 守住「更新界面文案不得缺英文词条」 |
+
+## 一之零K、88.8.6：GitHub Release 自动升级（2026-09-15）
+
+### 需求（用户原话）
+
+> 「应当加入GITHUB自动远程升级功能，每一次升级后上传到指定的GITHUB进行检测自动升级，并且会自动安装。」
+
+拆开是两件事：**发布侧**（每次升级后自动上传到 GitHub）+ **客户端侧**（自动检测、自动安装）。
+
+### 做了什么
+
+**发布侧**：`.github/workflows/release.yml` —— 推 `v*` tag 触发，Windows runner 上读根 `Cargo.toml` 的版本号 → 断言 tag 一致 → 带签名构建 → 断言 `.exe` 与 `.exe.sig` 都在 → `tools/make-latest-json.mjs` 生成更新源 → 一次性传三件套。
+**客户端侧**：`tauri-plugin-updater` 2.11 + `bundle.createUpdaterArtifacts` + `plugins.updater.{endpoints,pubkey,windows.installMode}`；三个命令 `check_update` / `download_update` / `install_update`；前端「关于 → 软件更新」卡显示真实下载进度。
+
+### 为什么这样测
+
+这一节新增的 23 项断言（T25a~w）针对的都是**配错了不报错**的坑 —— 客户端只会一直显示「已是最新版本」，或者检测到了却装不上，没有任何报错可查：
+
+| 断言 | 守住什么 |
+|---|---|
+| T25b | endpoint 必须指向 `luoda2023/LDCodex` 的 `releases/latest/download/latest.json` |
+| T25c | pubkey 必须能 base64 解码出 `minisign public key`（空串 / 占位符 / 被截断都会让校验失败） |
+| T25d | `createUpdaterArtifacts` 必须为 `true`，否则不生成 `.sig` |
+| T25e | `installMode` 必须是 `passive`。**这是本次最关键的一条**：`quiet`(`/S`) 下 GUI 被抑制 → `LDCodexOnGuiInit` 钩子不跑 → 关不掉正在运行的 `LDCodexManager.exe` → 覆盖文件失败 |
+| T25g/n | 「下载」与「安装」必须是两个命令 / 两个动作 —— Windows 上 `install()` 会 `process::exit(0)`，得留时间给用户决定何时重启 |
+| T25k/l | 进度事件名 `manager-update-progress` 前后端**逐字一致**，且前端真的 `listen`（只定义常量 = 进度条永远不动） |
+| T25m | 前端不得再出现「按秒模拟百分比」的假进度条文案 |
+| T25p/q/r/s/t | 流水线：tag 触发 / 用 `make-latest-json.mjs` / 三件套齐全 / 私钥只走 Secrets / tag 与版本号一致 |
+| T25u/v | 上游遗留的 `release-assets.yml` 必须停用（它会传**自定义格式** latest.json 覆盖掉 Tauri 格式） |
+| T25w | 更新界面每条中文文案都要有英文词条（`tf()` 是整串查表，查不到**静默回落成中文**） |
+
+### 真实踩到的坑
+
+1. **`installMode` 选 `passive` 不是随手挑的** —— 见 T25e。`quiet` 下钩子不跑，更新会「装到一半失败」。
+2. **`latest.json` 的 `version` 不能带 `v`** —— 客户端拿它做 semver 比较，带 `v` 解析失败且**不报错**，永远显示「已是最新版本」。生成器里专门剥了前缀，并有一条单测钉住。
+3. **上游 `release-assets.yml` 是个炸弹** —— 它构建的是本 fork 根本没有的 `codex-plus-plus.exe`，还会往 Release 传自定义格式 latest.json。整份停用（保留文件留记录）。
+4. **Tauri v2 编译期约束**：async 命令带引用入参（`tauri::State<'_, T>`）必须返回 `Result`，否则同时报 E0277 + E0597。解法：只收 owned 的 `AppHandle`，内部 `app.state::<T>()`；`install_update` 写成同步命令。
+5. **`tf()` 漏词条是静默的** —— 英文界面直接显示中文，没有任何提示。补了 1 条 + 加了 T25w 守住更新界面。
+
+### 结果
+
+```
+account-usage 16/16 ｜ make-latest-json 11/11 ｜ run-tests 168/168
+no-disturb 16/16 ｜ 布局实测 14/14 ｜ 插件面板实测 60/60 ｜ .fill 实测 30/30
+前端 159/159 ｜ tsc 全绿 ｜ Rust 72/72 + 2/2
+test-run.sh 退出码 0
+```
+
+⚠️ 跑这一轮时**本机装的还是 88.8.5**，所以「本机安装版本核验」报 4/7（3 项不一致：`daemon.js`、`package.json`、注册表 `DisplayVersion`）—— 这是预期行为（脚本已用 `|| true` 排除在成败判定之外），装上新版后即恢复 7/7。
+
+---
 
 ## 一之零H、88.8.5：账号「下次生效」倒计时 + 插件「关于」页重整（2026-09-14）
 

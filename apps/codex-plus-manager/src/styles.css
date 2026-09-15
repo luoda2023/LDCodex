@@ -3065,6 +3065,58 @@ body {
   margin-top: 10px;
 }
 
+/* ──────────────────────────────────────────────────────────────
+   软件更新卡片（GitHub Release 在线更新）
+   状态色只改「文字颜色」，不动背景 —— 保证深/浅两套主题下
+   对比度都 ≥ 4.5:1，且不引入新的色板。
+   ────────────────────────────────────────────────────────────── */
+.update-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.update-status {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.update-card[data-phase="available"] .update-status,
+.update-card[data-phase="ready"] .update-status,
+.update-card[data-phase="installing"] .update-status {
+  color: hsl(var(--foreground));
+}
+
+.update-card[data-phase="error"] .update-status {
+  color: hsl(var(--destructive));
+}
+
+.update-notes {
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: var(--radius-md, 8px);
+  background: hsl(var(--surface-raised) / 0.5);
+  padding: 8px 10px;
+}
+
+.update-notes > summary {
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  font-size: 12.5px;
+}
+
+.update-notes > pre {
+  margin: 8px 0 0;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 1.65;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -9141,4 +9193,166 @@ select {
   color: hsl(var(--muted-foreground));
   font-size: 12px;
   line-height: 1.5;
+}
+
+/* ─────────────── WorkBuddy 对话管理 ───────────────
+ * 注意：这里不给表格设 max-height。整个页面只有 `.screen` 是滚动容器，
+ * 再套一层内部滚动会出现两个滚动条，且高度估值容易踩坑（见 .workspace 的那次）。
+ */
+.workbuddy-sessions-content {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.workbuddy-sessions-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.workbuddy-profile-field {
+  min-width: 210px;
+}
+
+.workbuddy-sessions-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr)) auto;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.workbuddy-filter-field {
+  min-width: 0;
+}
+
+.workbuddy-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.workbuddy-checkbox input,
+.workbuddy-session-check input {
+  accent-color: hsl(var(--primary));
+  cursor: pointer;
+}
+
+.workbuddy-sessions-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.workbuddy-sessions-spacer {
+  flex: 1 1 auto;
+}
+
+.workbuddy-sessions-warning {
+  border: 1px solid hsl(var(--destructive) / 0.45);
+  border-radius: var(--radius-md);
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+
+.workbuddy-sessions-table {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.workbuddy-session-row {
+  display: grid;
+  grid-template-columns: 32px minmax(160px, 1.6fr) minmax(120px, 1.2fr) 90px 126px 84px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 12.5px;
+}
+
+.workbuddy-session-row:last-child {
+  border-bottom: 0;
+}
+
+.workbuddy-session-head {
+  background: hsl(var(--surface-sunken) / 0.5);
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+}
+
+.workbuddy-sessions-table .workbuddy-session-row:not(.workbuddy-session-head):hover {
+  background: hsl(var(--accent) / 0.35);
+}
+
+.workbuddy-session-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workbuddy-session-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.workbuddy-session-active {
+  flex: none;
+  border-radius: 999px;
+  background: hsl(var(--destructive) / 0.14);
+  color: hsl(var(--destructive));
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+.workbuddy-session-cwd {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: hsl(var(--muted-foreground));
+}
+
+.workbuddy-sessions-footer {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+/* 确认框里的附加勾选（例如「连已存在的会话一起更新」） */
+.confirm-modal-option {
+  margin-top: 10px;
+}
+
+/* 跨版本同步：每批数量下拉 */
+.workbuddy-batch-field {
+  min-width: 132px;
+}
+
+@media (max-width: 1120px) {
+  .workbuddy-sessions-filters {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+  }
+
+  .workbuddy-session-row {
+    grid-template-columns: 32px minmax(140px, 1.4fr) 90px 120px 80px;
+  }
+
+  .workbuddy-session-cwd {
+    display: none;
+  }
 }

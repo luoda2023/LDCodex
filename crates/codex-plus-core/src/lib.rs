@@ -57,6 +57,7 @@ pub mod watcher;
 #[cfg(windows)]
 mod windows_integration;
 pub mod window_summon;
+pub mod workbuddy_sessions;
 pub mod zed_remote;
 
 #[cfg(windows)]

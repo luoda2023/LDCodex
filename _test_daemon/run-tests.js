@@ -1,6 +1,6 @@
 'use strict';
 /*
- * LDCodex daemon 88.8.5 功能测试
+ * LDCodex daemon 88.8.6 功能测试
  * 覆盖：双开隔离自检 / 账号导出导入（含安全校验）/ 跨版本镜像收敛 / 抗崩溃 / 鉴权 /
  *       弹窗自动点允许取样范围 / 快捷短语随账号导出导入去重 / 上弹面板行内新增入口 / 回归
  * 另见 verify-no-disturb.js：单独验证「弹窗自动点允许」的判定逻辑（1.2.10 修的积分误杀）
@@ -125,7 +125,7 @@ function extractRustFn(src, name) {
   rec('T2b 返回 sides 数组（本端在首位）', Array.isArray(b.sides) && b.sides.length >= 1 && b.sides[0] && b.sides[0].id === 'workbuddy-cn',
     'sides=' + JSON.stringify((b.sides || []).map((s) => s.id)));
   rec('T2c 含 isolated/conflicts/warnings/daemonVersion',
-    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '88.8.5',
+    typeof b.isolated === 'boolean' && Array.isArray(b.conflicts) && Array.isArray(b.warnings) && b.daemonVersion === '88.8.6',
     'version=' + b.daemonVersion + ', isolated=' + b.isolated + ', conflicts=' + JSON.stringify(b.conflicts) + ', warnings=' + JSON.stringify(b.warnings));
   const s0 = (b.sides && b.sides[0]) || {};
   rec('T2d 本端字段完整（CDP/面板端口/目录/可执行文件）',
@@ -478,16 +478,16 @@ function extractRustFn(src, name) {
     !!fnRestore && /if \(found == IntPtr\.Zero\) return false;/.test(fnRestore)
       && !/if \(owner == targetPid\) \{ ShowWindowAsync\(hWnd, 9\);/.test(fnRestore),
     '已改为先筛选候选再恢复');
-  rec('T13i daemon 版本已统一为 88.8.5',
-    /const DAEMON_VERSION = '88\.8\.5';/.test(daemonSrc), 'DAEMON_VERSION=88.8.5');
+  rec('T13i daemon 版本已统一为 88.8.6',
+    /const DAEMON_VERSION = '88\.8\.6';/.test(daemonSrc), 'DAEMON_VERSION=88.8.6');
 
-  // ── T14 版本号统一（约定：当前基线 88.8.5，以后每升级一次加 1）──
+  // ── T14 版本号统一（约定：当前基线 88.8.6，以后每升级一次加 1）──
   // 背景：用户要求「软件的版本号统一为 88.8.1，以后每升级一次升一个」。此前各生态版本号各自为政
   // （安装包 1.2.56 / 运行时 package.json 1.2.11 / daemon 1.2.12）。这里做源码级
   // 断言，守住「所有版本号来源必须完全一致」这条约定，防止后续升级只改一半。
   // 升级步骤：改下方 UNIFIED_VERSION + 6 处版本号来源，本系列会逐条校验是否漏改。
-  section('T14 版本号统一为 88.8.5');
-  const UNIFIED_VERSION = '88.8.5';
+  section('T14 版本号统一为 88.8.6');
+  const UNIFIED_VERSION = '88.8.6';
   const readJsonVersion = (rel) => {
     try {
       return JSON.parse(fs.readFileSync(path.join(RUNTIME, rel), 'utf8')).version || null;
@@ -988,6 +988,228 @@ function extractRustFn(src, name) {
   rec('T20e 打时间戳不得用 toISOString()（UTC 比北京时间少 8 小时，17:15 会显示成 09:15）',
     !/toISOString\(\)/.test(ivCode),
     '要手工拼本地时间');
+
+  // ── T25 GitHub Release 自动更新（88.8.6，用户诉求：升级后自动检测并自动安装）──
+  // 这一节守的是「发版侧」与「客户端侧」两端必须对齐的那几件事。它们有个共同特点：
+  // **配错不会报错**，只会静默失效 —— 客户端永远显示「已是最新版本」，
+  // 或者检测到了却因为签名对不上而装不上。所以逐条钉死。
+  section('T25 GitHub Release 自动更新（88.8.6）');
+
+  const REPO_ROOT = path.join(TMP, '..');
+  const SRC_TAURI = path.join(RUNTIME, '..');
+  const readIfExists = (p) => {
+    try { return fs.readFileSync(p, 'utf8'); } catch (_) { return ''; }
+  };
+  // ⚠️ 铁律：否定断言必须先剥注释再匹配 —— 注释里特意写了「为什么不能这么写」，
+  // 不剥就会被自己的断言命中（本文件已踩过 5 次）。
+  const stripComments = (src) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, '')
+      .split(/\r?\n/).filter((l) => !/^\s*(\/\/|;|#)/.test(l)).join('\n');
+
+  const tauriConfRaw = readIfExists(path.join(SRC_TAURI, 'tauri.conf.json'));
+  let tauriConf = null;
+  try { tauriConf = JSON.parse(tauriConfRaw); } catch (_) { tauriConf = null; }
+  rec('T25a tauri.conf.json 可解析且含 plugins.updater',
+    !!(tauriConf && tauriConf.plugins && tauriConf.plugins.updater),
+    tauriConf ? '已解析' : '解析失败');
+
+  const updater = (tauriConf && tauriConf.plugins && tauriConf.plugins.updater) || {};
+  const endpoints = Array.isArray(updater.endpoints) ? updater.endpoints : [];
+  rec('T25b endpoint 必须指向 luoda2023/LDCodex 的 releases/latest/download/latest.json',
+    endpoints.some((e) => /^https:\/\/github\.com\/luoda2023\/LDCodex\/releases\/latest\/download\/latest\.json$/.test(String(e))),
+    'endpoints=' + JSON.stringify(endpoints));
+
+  // pubkey 必须是**真的** minisign 公钥。空串 / 占位符 / 被截断都会让客户端校验失败，
+  // 而失败表现同样是「检测到新版本但装不上」，很难查。
+  let pubkeyDecoded = '';
+  try { pubkeyDecoded = Buffer.from(String(updater.pubkey || ''), 'base64').toString('utf8'); } catch (_) { pubkeyDecoded = ''; }
+  rec('T25c pubkey 必须是真正的 minisign 公钥（base64 解码后含 "minisign public key"）',
+    pubkeyDecoded.includes('minisign public key'),
+    '解码后前 48 字符：' + JSON.stringify(pubkeyDecoded.slice(0, 48)));
+
+  // ⚠️⚠️ 这条是**真踩过的坑**，务必保留。
+  // 公钥曾经是手抄进 tauri.conf.json 的，抄错了一个 base64 字符（`3a5e…` 抄成 `38de…`）。
+  // 结果：T25c 照样通过（"minisign public key" 注释行还在）、keyId 也照样对得上
+  // （keyId 只占前 10 字节，错的是后面的密钥本体）—— 只有客户端下载后验签会失败，
+  // 而且**不报错**，表现为「点了安装没反应」。排查成本极高。
+  // 所以这里直接跟本地 .key.pub 做逐字节比对，抄错一个字符立刻红。
+  const localPubPath = path.join(REPO_ROOT, '_tmp', 'updater-keys', 'ldcodex-updater.key.pub');
+  const localPub = readIfExists(localPubPath);
+  if (localPub === null) {
+    // 私钥不入库，别的机器上没有这个文件是正常的 —— 跳过，不误报。
+    rec('T25c2 配置公钥 == 本地 .key.pub（本机无私钥，跳过）', true, 'SKIP：无 ' + localPubPath);
+  } else {
+    rec('T25c2 tauri.conf.json 的 pubkey 必须与本地 .key.pub 逐字节相同（手抄错一个字符就会静默验签失败）',
+      String(updater.pubkey || '').trim() === localPub.trim(),
+      '配置 = ' + JSON.stringify(String(updater.pubkey || '').slice(0, 40)) +
+      ' / 本地 = ' + JSON.stringify(localPub.trim().slice(0, 40)));
+  }
+
+  rec('T25d bundle.createUpdaterArtifacts 必须为 true（否则不会生成 .sig，更新装不上）',
+    !!(tauriConf && tauriConf.bundle && tauriConf.bundle.createUpdaterArtifacts === true),
+    '值 = ' + JSON.stringify(tauriConf && tauriConf.bundle && tauriConf.bundle.createUpdaterArtifacts));
+
+  // ⚠️ 必须是 passive，不能是 quiet。理由很关键：我们那个 LDCodexOnGuiInit 安装钩子
+  // 依赖 GUI 初始化才触发；quiet(/S) 下 GUI 被抑制 → 钩子不跑 → 关不掉正在运行的
+  // LDCodexManager.exe → 安装程序覆盖文件失败。passive(/P) 有进度窗，GUI 存在，钩子必定触发。
+  const installMode = updater.windows && updater.windows.installMode;
+  rec('T25e windows.installMode 必须是 passive（quiet 会让 GUI 钩子不触发、关不掉运行中的程序）',
+    installMode === 'passive',
+    '值 = ' + JSON.stringify(installMode));
+
+  const libSrc = readIfExists(path.join(SRC_TAURI, 'src', 'lib.rs'));
+  rec('T25f lib.rs 必须注册 tauri_plugin_updater 并 manage PendingUpdateState',
+    /tauri_plugin_updater::Builder::new\(\)\.build\(\)/.test(libSrc)
+      && /manage\(commands::PendingUpdateState::default\(\)\)/.test(libSrc),
+    '插件注册 / 状态注入缺一不可');
+
+  const cmdSrc = readIfExists(path.join(SRC_TAURI, 'src', 'commands.rs'));
+  rec('T25g invoke_handler 必须暴露 check_update / download_update / install_update 三个命令',
+    /commands::check_update/.test(libSrc) && /commands::download_update/.test(libSrc)
+      && /commands::install_update/.test(libSrc),
+    '下载与安装必须分开 —— Windows 上 install 会 exit(0)，要留给用户决定何时重启');
+
+  const cmdCode = stripComments(cmdSrc);
+  rec('T25h 更新命令不得再是「不提供在线更新」的占位实现',
+    !/不提供在线更新/.test(cmdCode),
+    '占位文案还在 = 更新功能其实没接上');
+
+  rec('T25i 必须真的调用 updater 插件 API（check / download / install），不是自己搓一套',
+    /app\.updater\(\)/.test(cmdCode) && /\.download\(/.test(cmdCode) && /\.install\(/.test(cmdCode),
+    'updater()/download()/install() 三者缺一即说明实现被换掉了');
+
+  const tauriCargo = readIfExists(path.join(SRC_TAURI, 'Cargo.toml'));
+  rec('T25j src-tauri/Cargo.toml 必须依赖 tauri-plugin-updater',
+    /^tauri-plugin-updater\s*=/m.test(tauriCargo),
+    '缺依赖则上面的 lib.rs 注册直接编译不过');
+
+  // 进度事件名两端必须逐字一致 —— 改一边不改另一边，进度条就永远停在 0%。
+  const rustEvent = (cmdSrc.match(/UPDATE_PROGRESS_EVENT:\s*&str\s*=\s*"([^"]+)"/) || [])[1] || '';
+  const appSrcT25 = readIfExists(path.join(RUNTIME, '..', '..', 'src', 'App.tsx'));
+  const appEvent = (appSrcT25.match(/MANAGER_UPDATE_PROGRESS_EVENT\s*=\s*"([^"]+)"/) || [])[1] || '';
+  rec('T25k 下载进度事件名 Rust 与前端必须逐字一致',
+    rustEvent !== '' && rustEvent === appEvent,
+    'rust=' + JSON.stringify(rustEvent) + ' frontend=' + JSON.stringify(appEvent));
+
+  rec('T25l 前端必须真的监听进度事件（不能只定义常量）',
+    /listen<[\s\S]{0,400}?MANAGER_UPDATE_PROGRESS_EVENT/.test(appSrcT25),
+    '只定义不监听 = 进度条永远不动');
+
+  // 前端不得再用「按秒模拟百分比」的假进度条（88.8.5 之前的实现）。
+  const appCodeT25 = stripComments(appSrcT25);
+  rec('T25m 前端更新进度必须是真实进度，不得再按秒模拟百分比',
+    !/正在获取 GitHub Release 信息…/.test(appCodeT25) && !/正在写入安装包…/.test(appCodeT25),
+    '假进度条文案还在 = 没换成真实下载进度');
+
+  rec('T25n 前端必须把「下载」与「安装」拆成两个动作（下载完再问是否重启）',
+    /actions\.downloadUpdate\(\)/.test(appSrcT25) && /actions\.installUpdate\(\)/.test(appSrcT25),
+    '合成一个动作就没法「下载完再问是否重启」');
+
+  // ── 发版流水线 ──
+  const wfPath = path.join(REPO_ROOT, '.github', 'workflows', 'release.yml');
+  const wf = readIfExists(wfPath);
+  rec('T25o .github/workflows/release.yml 必须存在', wf.length > 500, '长度 ' + wf.length);
+  rec('T25p 发版流水线必须由 v* tag 触发',
+    /^\s{2}push:\s*$/m.test(wf) && /- "v\*"/.test(wf),
+    '没有 tag 触发就只能手工发版，违背「每次升级后自动上传」的诉求');
+  rec('T25q 发版流水线必须用 make-latest-json.mjs 生成更新源（不能自己手搓字段）',
+    /tools\/make-latest-json\.mjs/.test(wf),
+    '手搓 latest.json 极易漏 platforms / 带上 v 前缀');
+  rec('T25r 发版流水线必须上传安装包 + .sig + latest.json 三件套',
+    /LDCodex_\$\{\{\s*steps\.version\.outputs\.value\s*\}\}_x64-setup\.exe/.test(wf)
+      && /_x64-setup\.exe\.sig/.test(wf) && /latest\.json/.test(wf),
+    '缺 .sig 客户端校验不过；缺 latest.json 客户端根本检测不到更新');
+  rec('T25s 签名私钥必须来自 GitHub Secrets，绝不能写进仓库',
+    /TAURI_SIGNING_PRIVATE_KEY:\s*\$\{\{\s*secrets\.TAURI_SIGNING_PRIVATE_KEY\s*\}\}/.test(wf)
+      && !/minisign encrypted secret key/.test(wf),
+    '私钥入库 = 任何人都能伪造一个「通过校验」的更新包');
+  rec('T25t 发版流水线必须校验 tag 与 Cargo.toml 版本号一致',
+    /Assert tag matches the workspace version/.test(wf) && /workspace\.package/.test(wf),
+    '不一致会发出「安装包版本 ≠ 更新源版本」的 Release，客户端静默失效');
+
+  // 上游遗留的 release-assets.yml 会往 Release 传**自定义格式**的 latest.json，
+  // 一旦覆盖掉正确的那份，自动更新静默失效（v 前缀 + 无 platforms）。
+  // 所以它必须停用：不能再挂 release: published 触发器。
+  const legacyWf = readIfExists(path.join(REPO_ROOT, '.github', 'workflows', 'release-assets.yml'));
+  const legacyCode = stripComments(legacyWf);
+  rec('T25u 上游 release-assets.yml 必须已停用（不得再挂 release: published 触发器）',
+    legacyCode.length > 0 && !/types:\s*\[published\]/.test(legacyCode) && !/^\s{2}release:\s*$/m.test(legacyCode),
+    '它会上传自定义格式 latest.json，覆盖掉 Tauri 格式后自动更新静默失效');
+  rec('T25v 停用的 release-assets.yml 不得再生成自定义格式 latest.json',
+    !/assets\s*\)/.test(legacyCode) && !/fs\.writeFileSync\("latest\.json"/.test(legacyCode),
+    '自定义格式 = version 带 v 前缀且没有 platforms');
+
+  // 更新界面的英文词条必须齐全。88.8.6 真实事故：`tf("发现新版本 {0}，可以更新。")`
+  // 漏在 EN_TEMPLATE 里 —— `tf()` 是**整串当 key** 查表，查不到就静默回落成中文，
+  // 既不报错也没有任何提示，只有把界面切成英文才看得出来。
+  const i18nEnSrc = readIfExists(path.join(RUNTIME, '..', '..', 'src', 'i18n-en.ts'));
+  const updateCardBlock = (appSrcT25.match(/function UpdateCard\([\s\S]*?\n\}\n/) || [''])[0];
+  const updateCardCode = stripComments(updateCardBlock);
+  const zhLiterals = [...new Set(
+    [...updateCardCode.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]).filter((s) => /[\u4e00-\u9fff]/.test(s)),
+  )];
+  const missingEn = zhLiterals.filter((k) => !i18nEnSrc.includes('"' + k + '"'));
+  rec('T25w 更新界面的每条中文文案都必须有英文词条（漏了会静默回落成中文）',
+    updateCardBlock.length > 500 && zhLiterals.length >= 12 && missingEn.length === 0,
+    '共 ' + zhLiterals.length + ' 条，缺失 ' + missingEn.length + '：' + JSON.stringify(missingEn));
+
+  // 签名链路必须有一个能真跑起来的校验脚本，且被 test-run.sh 调用。
+  // 这一环配错在发版侧完全看不出来（CI 绿、Release 正常、latest.json 也没问题），
+  // 只有客户端会验签失败 —— 所以必须有人真的去验一次签名。
+  const sigScriptPath = path.join(TMP, 'verify-updater-signature.mjs');
+  const sigScript = readIfExists(sigScriptPath);
+  const testRunSh = readIfExists(path.join(TMP, 'test-run.sh'));
+  rec('T25x 必须存在更新签名校验脚本，且被 test-run.sh 真正调用',
+    sigScript.length > 1500
+      && /verify-updater-signature\.mjs/.test(testRunSh)
+      && /RC4e=\$\?/.test(testRunSh)
+      && /blake2b512/.test(sigScript),
+    '脚本 ' + sigScript.length + ' 字节；test-run.sh 调用=' + /verify-updater-signature\.mjs/.test(testRunSh));
+  // 校验脚本必须按 minisign 的两种模式区分「被签的数据」：`ED` 是预哈希（BLAKE2b-512），
+  // `Ed` 才是签原始字节。不做这层判断会永远验签 false，看起来像「密钥配错了」。
+  rec('T25y 签名校验必须处理 minisign 的预哈希模式（否则永远验不过）',
+    /0x44/.test(sigScript) && /blake2b512/.test(sigScript) && /0x64/.test(sigScript),
+    '需要同时认出 ED(预哈希) 与 Ed(原始字节) 两种算法字节');
+
+  // ── T26 WorkBuddy 对话管理（88.8.6 新增） ──
+  section('T26 WorkBuddy 对话管理');
+  // RUNTIME = apps/codex-plus-manager/src-tauri/workbuddy-runtime，
+  // 要回到仓库根得再上四级（→ src-tauri → codex-plus-manager → apps → 根）。
+  const coreRoot = path.join(RUNTIME, '..', '..', '..', '..', 'crates', 'codex-plus-core', 'src');
+  const wbCoreSrc = readIfExists(path.join(coreRoot, 'workbuddy_sessions.rs'));
+  const coreLibSrc = readIfExists(path.join(coreRoot, 'lib.rs'));
+
+  // 前置：源码必须真读到。`readIfExists` 读不到时返回空串，而否定型断言
+  // （!/xxx/.test('')）在空串上恒为真 —— 路径一错就会"假通过"，比报错更危险。
+  rec('T26 前置 WorkBuddy 会话模块源码必须可读且非空',
+    wbCoreSrc.length > 1000 && coreLibSrc.length > 100,
+    '读不到源码 = coreRoot 路径算错了（RUNTIME 回仓库根要上四级），后续 T26a~e 结论都不可信');
+
+  rec('T26a invoke_handler 必须暴露 4 个 WorkBuddy 对话命令',
+    /commands::list_workbuddy_sessions/.test(libSrc)
+      && /commands::soft_delete_workbuddy_sessions/.test(libSrc)
+      && /commands::restore_workbuddy_sessions/.test(libSrc)
+      && /commands::purge_workbuddy_sessions/.test(libSrc),
+    '少注册一个 = 面板上对应按钮点了没反应');
+
+  rec('T26b core 必须注册 workbuddy_sessions 模块',
+    /pub mod workbuddy_sessions;/.test(coreLibSrc),
+    '模块没注册 = 命令层引用不到');
+
+  // 否定断言必须先剥注释：注释里特意写了被禁用的写法（rsplit_once）。
+  const wbCode = stripComments(wbCoreSrc);
+  rec('T26c 附属文件名必须按**第一个**点切分（rsplit_once 会把 aaaa.meta.json 切成 aaaa.meta）',
+    /split_once/.test(wbCode) && !/rsplit_once/.test(wbCode),
+    '改回 rsplit_once → 附属文件永远匹配不到 id，表现为「彻底清除删不干净、占用统计只算正文」');
+
+  rec('T26d 读 workbuddy.db 必须走临时副本（WAL 库只读打开会 unable to open database file）',
+    /TempDir::new/.test(wbCode) && /fs::copy/.test(wbCode),
+    '直接 open 真实库会跟正在运行的客户端抢锁，且大概率打不开');
+
+  const appSrcT26 = readIfExists(path.join(RUNTIME, '..', '..', 'src', 'App.tsx'));
+  rec('T26e 跨版本同步的重复判定必须同时认 linkedPeerId 与 linkedTargetId',
+    /linkedPeerId/.test(appSrcT26) && /linkedTargetId/.test(appSrcT26),
+    '两个接口字段名不同（本端 linkedPeerId / 对端 linkedTargetId），只看一个会导致某一侧永远判不出重复');
 
   // ── T7 回归 ──
   section('T7 回归');

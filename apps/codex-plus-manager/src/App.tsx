@@ -49,6 +49,7 @@ import {
   Palette,
   Play,
   MessageCircle,
+  MessagesSquare,
   MoreHorizontal,
   PackageOpen,
   Plug2,
@@ -573,6 +574,46 @@ type DeleteLocalSessionResult = CommandResult<{
   backup_path: string | null;
 }>;
 
+/* ─────────── WorkBuddy 对话（会话） ───────────
+ * ⚠️ 与上面的 Codex 本地会话不是一套数据：那边是 ~/.codex，
+ * 这里是 WorkBuddy 客户端自己的对话（国内版 ~/.workbuddy、国际版 ~/.workbuddy-ai）。
+ */
+type WorkBuddySession = {
+  id: string;
+  title: string;
+  cwd: string;
+  status: string;
+  createdAtMs: number;
+  updatedAtMs: number;
+  lastActivityAtMs: number | null;
+  /** 非空 = 已被软删除，界面归入「已删除」分组 */
+  deletedAtMs: number | null;
+  isPlayground: boolean;
+  mode: string | null;
+  model: string | null;
+  rolloutBytes: number;
+  sideFilesBytes: number;
+  rolloutPath: string | null;
+  /** 疑似正在进行的会话，删除前必须二次确认 */
+  maybeActive: boolean;
+};
+
+type WorkBuddySessionsResult = CommandResult<{
+  profile: string;
+  home: string;
+  dbPath: string;
+  available: boolean;
+  sessions: WorkBuddySession[];
+  warnings: string[];
+}>;
+
+type WorkBuddySessionOpResult = CommandResult<{
+  succeeded: string[];
+  failed: Array<{ id: string; message: string }>;
+  freedBytes: number;
+  backupDir: string | null;
+}>;
+
 type ContextEntriesResult = CommandResult<{
   settings: BackendSettings;
   entries: CodexContextEntries;
@@ -782,6 +823,17 @@ type TaskProgress = {
   message: string;
 };
 
+/**
+ * 在线更新的界面状态机。
+ *
+ * idle → checking → available → downloading → ready → installing
+ *
+ * 任何一步出错都落到 `error`；`ready` 表示「已下载、等用户决定是否立刻重启安装」，
+ * 这正是用户要的「下载完再问是否重启」。`installing` 之后进程会被安装程序接管，
+ * 界面基本不会再更新（Windows 上 updater 会直接 `exit(0)`）。
+ */
+type UpdatePhase = "idle" | "checking" | "available" | "downloading" | "ready" | "installing" | "error";
+
 type LogsResult = CommandResult<{
   path: string;
   text: string;
@@ -813,6 +865,8 @@ type UpdateResult = CommandResult<{
   updateAvailable?: boolean;
   installedPath?: string;
   progress?: number;
+  /** Rust 侧是否已经把更新包下载并暂存好，可以走 `install_update` 了。 */
+  downloaded?: boolean;
 }>;
 
 type ScriptMarketItem = {
@@ -914,10 +968,15 @@ type ManagerNavigationIntent = {
   section?: "stepwise";
 };
 
-type Route = "overview" | "relay" | "grok" | "relayEnvironment" | "sessions" | "context" | "skills" | "weixin" | "enhance" | "workbuddy" | "workbuddyIntl" | "dreamSkin" | "zedRemote" | "userScripts" | "maintenance" | "freebuffConfig" | "about" | "settings";
+type Route = "overview" | "relay" | "grok" | "relayEnvironment" | "sessions" | "context" | "skills" | "weixin" | "enhance" | "workbuddy" | "workbuddyIntl" | "workbuddySessions" | "dreamSkin" | "zedRemote" | "userScripts" | "maintenance" | "freebuffConfig" | "about" | "settings";
 type Theme = "dark" | "light";
 
 const MANAGER_NAVIGATION_EVENT = "manager-navigation-requested";
+/**
+ * 在线更新的真实下载进度事件（由 Rust 侧 `commands.rs::UPDATE_PROGRESS_EVENT` 发出）。
+ * ⚠️ 这两个字符串必须逐字一致，改一边不改另一边 = 进度条永远不动。
+ */
+const MANAGER_UPDATE_PROGRESS_EVENT = "manager-update-progress";
 const SETTINGS_STEPWISE_SECTION_ID = "settings-stepwise";
 
 const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string }> = [
@@ -930,6 +989,7 @@ const routes: Array<{ id: Route; label: string; icon: LucideIcon; badge?: string
   { id: "freebuffConfig", label: t("freebuff增强"), icon: Plug2 },
   { id: "workbuddy", label: t("WorkBuddy 国内版"), icon: Bot },
   { id: "workbuddyIntl", label: t("WorkBuddy 国际版"), icon: Globe },
+  { id: "workbuddySessions", label: t("WorkBuddy 对话"), icon: MessagesSquare },
   { id: "dreamSkin", label: t("皮肤管理"), icon: Palette },
   { id: "zedRemote", label: t("Zed 远程项目"), icon: ExternalLink },
   { id: "userScripts", label: t("脚本市场"), icon: FileCode2 },
@@ -946,7 +1006,7 @@ const navigationSections: Array<{ label: string; routes: Route[]; placement?: "b
   },
   {
     label: t("扩展"),
-    routes: ["weixin", "enhance", "freebuffConfig", "workbuddy", "workbuddyIntl", "dreamSkin", "zedRemote", "userScripts"],
+    routes: ["weixin", "enhance", "freebuffConfig", "workbuddy", "workbuddyIntl", "workbuddySessions", "dreamSkin", "zedRemote", "userScripts"],
   },
   {
     label: t("系统"),
@@ -1088,6 +1148,8 @@ export function App() {
   const [ccsProviders, setCcsProviders] = useState<CcsProvidersResult | null>(null);
   const [pendingProviderImport, setPendingProviderImport] = useState<ProviderImportRequest | null>(null);
   const [localSessions, setLocalSessions] = useState<LocalSessionsResult | null>(null);
+  const [workbuddySessions, setWorkbuddySessions] = useState<WorkBuddySessionsResult | null>(null);
+  const [workbuddyProfile, setWorkbuddyProfile] = useState<WorkBuddyProfileId>("workbuddy-cn");
   const [sessionShareUrl, setSessionShareUrl] = useState("");
   const [zedRemoteProjects, setZedRemoteProjects] = useState<ZedRemoteProjectsResult | null>(null);
   const [liveContextEntries, setLiveContextEntries] = useState<CodexContextEntries | null>(null);
@@ -1107,10 +1169,11 @@ export function App() {
   const [dreamSkinUnsavedDialog, setDreamSkinUnsavedDialog] = useState(false);
   const dreamSkinPendingActionRef = useRef<(() => void) | null>(null);
   const [update, setUpdate] = useState<UpdateResult | null>(null);
+  const [updatePhase, setUpdatePhase] = useState<UpdatePhase>("idle");
   const [updateInstallProgress, setUpdateInstallProgress] = useState<TaskProgress>({
     active: false,
     percent: 0,
-    message: t("尚未运行安装包更新。"),
+    message: t("尚未检查更新。"),
   });
   const [scriptMarket, setScriptMarket] = useState<ScriptMarketResult | null>(null);
   const [launchForm, setLaunchForm] = useState({
@@ -1387,6 +1450,94 @@ export function App() {
       if (!silent || !isSuccessStatus(result.status)) showResultNotice(t("会话管理"), result, { silentSuccess: true });
     }
     return result;
+  };
+
+  const refreshWorkBuddySessions = async (silent = false): Promise<WorkBuddySessionsResult | null> => {
+    const result = await run(() =>
+      call<WorkBuddySessionsResult>("list_workbuddy_sessions", {
+        request: { profile: workbuddyProfile },
+      }),
+    );
+    if (result) {
+      setWorkbuddySessions(result);
+      if (!silent || !isSuccessStatus(result.status)) {
+        showResultNotice(t("WorkBuddy 对话"), result, { silentSuccess: true });
+      }
+    }
+    return result;
+  };
+
+  // 切换档案（国内版 ⇄ 国际版）时重新拉取；首次挂载也走这里，省一份初始化逻辑。
+  useEffect(() => {
+    void refreshWorkBuddySessions(true);
+  }, [workbuddyProfile]);
+
+  const softDeleteWorkBuddySessions = async (ids: string[]) => {
+    if (!ids.length) {
+      showNotice(t("WorkBuddy 对话"), t("请先选择要删除的对话。"), "failed");
+      return;
+    }
+    const confirmed = await confirmSessionDelete(
+      t("软删除对话"),
+      tf("把选中的 {0} 个对话标记为已删除？WorkBuddy 里会立刻不再显示，对话文件仍然保留，随时可以恢复。", [
+        ids.length,
+      ]),
+    );
+    if (!confirmed) return;
+    const result = await run(() =>
+      call<WorkBuddySessionOpResult>("soft_delete_workbuddy_sessions", {
+        request: { profile: workbuddyProfile, ids },
+      }),
+    );
+    if (result) showResultNotice(t("软删除对话"), result);
+    await refreshWorkBuddySessions(true);
+  };
+
+  const restoreWorkBuddySessions = async (ids: string[]) => {
+    if (!ids.length) {
+      showNotice(t("WorkBuddy 对话"), t("请先选择要恢复的对话。"), "failed");
+      return;
+    }
+    const result = await run(() =>
+      call<WorkBuddySessionOpResult>("restore_workbuddy_sessions", {
+        request: { profile: workbuddyProfile, ids },
+      }),
+    );
+    if (result) showResultNotice(t("恢复对话"), result);
+    await refreshWorkBuddySessions(true);
+  };
+
+  const purgeWorkBuddySessions = async (ids: string[], backup: boolean) => {
+    if (!ids.length) {
+      showNotice(t("WorkBuddy 对话"), t("请先选择要彻底清除的对话。"), "failed");
+      return;
+    }
+    const known = workbuddySessions?.sessions ?? [];
+    const targets = known.filter((session) => ids.includes(session.id));
+    const activeCount = targets.filter((session) => session.maybeActive).length;
+    const reclaimable = targets.reduce(
+      (sum, session) => sum + session.rolloutBytes + session.sideFilesBytes,
+      0,
+    );
+    let warning = tf(
+      "彻底清除选中的 {0} 个对话？将删除数据库记录、对话正文和附件，约释放 {1}。\n\n此操作不可恢复。",
+      [ids.length, formatBytes(reclaimable)],
+    );
+    if (activeCount > 0) {
+      warning += tf("\n\n⚠️ 其中 {0} 个对话疑似正在进行中，清除后未保存的内容会丢失。", [activeCount]);
+    }
+    warning += backup
+      ? t("\n\n删除前会先备份到该档案的 session-backups 目录。")
+      : t("\n\n未勾选备份，删除后无法找回。");
+    const confirmed = await confirmSessionDelete(t("彻底清除对话"), warning);
+    if (!confirmed) return;
+    const result = await run(() =>
+      call<WorkBuddySessionOpResult>("purge_workbuddy_sessions", {
+        request: { profile: workbuddyProfile, ids, backup },
+      }),
+    );
+    if (result) showResultNotice(t("彻底清除对话"), result);
+    await refreshWorkBuddySessions(true);
   };
 
   const importLocalSession = async () => {
@@ -2317,76 +2468,82 @@ export function App() {
   };
 
   const checkUpdate = async (silent = false) => {
-    const result = await run(() => call<UpdateResult>("check_update"));
-    if (result) {
-      setUpdate(result);
-      if (!silent || result.updateAvailable) {
-        showNotice(t("GitHub Release 检查"), result.message, result.status);
-      }
+    setUpdatePhase("checking");
+    // 启动时的静默检查要吞掉一切错误（没网 / GitHub 不可达都很常见），
+    // 不能因为一次后台探测失败就弹「调用失败」打扰用户。
+    const result = silent
+      ? await call<UpdateResult>("check_update").catch(() => null)
+      : await run(() => call<UpdateResult>("check_update"));
+    if (!result) {
+      setUpdatePhase(silent ? "idle" : "error");
+      return;
+    }
+    setUpdate(result);
+    setUpdatePhase(result.updateAvailable ? "available" : "idle");
+    if (!silent || result.updateAvailable) {
+      showNotice(t("检查更新"), result.message, result.status);
     }
   };
 
-  const performUpdate = async () => {
-    if (updateInstallProgress.active) return;
-    const release =
-      update?.latestVersion && update.assetName && update.assetUrl
-        ? {
-            version: update.latestVersion,
-            url: "",
-            body: update.releaseSummary ?? "",
-            asset_name: update.assetName,
-            asset_url: update.assetUrl,
-          }
-        : null;
+  const downloadUpdate = async () => {
+    if (updatePhase === "downloading" || updatePhase === "installing") return;
+    setUpdatePhase("downloading");
     setUpdateInstallProgress({
       active: true,
-      percent: 8,
-      message: t("正在准备安装包下载…"),
+      percent: 0,
+      message: t("正在从 GitHub Release 下载安装包…"),
     });
-    const startedAt = Date.now();
-    const progressTimer = window.setInterval(() => {
-      setUpdateInstallProgress((current) => {
-        if (!current.active) return current;
-        const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
-        const nextPercent =
-          elapsedSeconds < 3
-            ? Math.min(24, current.percent + 4)
-            : elapsedSeconds < 15
-              ? Math.min(68, current.percent + 3)
-              : elapsedSeconds < 45
-                ? Math.min(86, current.percent + 1)
-                : Math.min(99, current.percent + 0.2);
-        const message =
-          elapsedSeconds < 3
-            ? t("正在获取 GitHub Release 信息…")
-            : elapsedSeconds < 15
-              ? t("正在下载安装包…")
-              : elapsedSeconds < 45
-                ? t("正在写入安装包…")
-                : t("下载或启动耗时较长，请保持窗口打开；完成或失败后会自动更新状态。");
-        return { ...current, percent: nextPercent, message };
-      });
-    }, 500);
-    try {
-      const result = await run(() => call<UpdateResult>("perform_update", { release }));
-      if (result) {
-        setUpdate(result);
-        setUpdateInstallProgress({
-          active: false,
-          percent: result.progress ?? 100,
-          message: result.message,
-        });
-        showNotice(t("更新安装"), result.message, result.status);
-      } else {
-        setUpdateInstallProgress({
-          active: false,
-          percent: 100,
-          message: t("安装包更新失败，请查看错误提示后重试。"),
-        });
-      }
-    } finally {
-      window.clearInterval(progressTimer);
+    const result = await run(() => call<UpdateResult>("download_update"));
+    if (!result) {
+      setUpdatePhase("error");
+      setUpdateInstallProgress((current) => ({
+        ...current,
+        active: false,
+        message: t("下载更新包失败，请稍后重试。"),
+      }));
+      return;
     }
+    setUpdate(result);
+    if (result.status === "ok" && result.downloaded) {
+      setUpdatePhase("ready");
+      setUpdateInstallProgress({ active: false, percent: 100, message: result.message });
+    } else {
+      setUpdatePhase("error");
+      setUpdateInstallProgress({ active: false, percent: 0, message: result.message });
+    }
+    showNotice(t("下载更新"), result.message, result.status);
+  };
+
+  const installUpdate = async () => {
+    if (updatePhase === "installing") return;
+    setUpdatePhase("installing");
+    // 刻意把进度条收起来（active:false + percent:0）—— 安装阶段已经没有下载进度可言，
+    // 留一个「100%」的条只会让人以为还卡在下载。进度信息交给上面的状态文字。
+    setUpdateInstallProgress({
+      active: false,
+      percent: 0,
+      message: t("正在启动安装程序，应用即将退出并完成安装…"),
+    });
+    // ⚠️ 成功时这个调用不会返回 —— Windows 上 updater 会 `std::process::exit(0)`，
+    // 由 NSIS 以 `/P /UPDATE /R` 接管安装，装完再把本程序重新拉起来。
+    const result = await run(() => call<UpdateResult>("install_update"));
+    if (!result) {
+      setUpdatePhase("error");
+      setUpdateInstallProgress((current) => ({
+        ...current,
+        active: false,
+        message: t("启动更新安装失败，请重试或前往项目主页手动下载。"),
+      }));
+      return;
+    }
+    setUpdate(result);
+    setUpdatePhase(result.status === "ok" ? "installing" : "error");
+    setUpdateInstallProgress({
+      active: result.status !== "ok",
+      percent: 100,
+      message: result.message,
+    });
+    showNotice(t("安装更新"), result.message, result.status);
   };
 
   const saveSettings = async () => {
@@ -2947,7 +3104,6 @@ export function App() {
 
   useEffect(() => {
     void (async () => {
-      // LDCodex：不再于启动时检查在线更新。
       const handledNavigation = await consumePendingManagerNavigation();
       await refreshOverview(true);
       if (!handledNavigation) await refreshSettings(true);
@@ -2958,6 +3114,9 @@ export function App() {
       await refreshPendingSessionShare(true);
       await refreshPendingDreamSkinCommunity();
       await refreshRemotePluginMarketplace(true);
+      // 启动时静默检查 GitHub Release 更新：失败一律吞掉（没网 / GitHub 不可达都很常见），
+      // 只有真的发现新版本才会浮出提示。刻意放在最后且不 await，不拖慢启动。
+      void checkUpdate(true);
     })();
   }, []);
 
@@ -2967,6 +3126,52 @@ export function App() {
     void listen(MANAGER_NAVIGATION_EVENT, () => {
       if (!disposed) void consumePendingManagerNavigation();
     }).then((unlisten) => {
+      if (disposed) {
+        unlisten();
+      } else {
+        stopListening = unlisten;
+      }
+    });
+    return () => {
+      disposed = true;
+      stopListening?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    // 在线更新的真实下载进度：Rust 侧按「整数百分比」节流后发事件，这里只负责落到状态里。
+    // ⚠️ 进度事件只在 `downloading` 阶段消费 —— `installing` 阶段的 100% 由
+    // `installUpdate` 自己写，避免事件乱序把界面回退。
+    let disposed = false;
+    let stopListening: (() => void) | undefined;
+    void listen<{ phase?: string; downloaded?: number; total?: number | null; percent?: number }>(
+      MANAGER_UPDATE_PROGRESS_EVENT,
+      (event) => {
+        if (disposed) return;
+        const payload = event.payload ?? {};
+        if (payload.phase === "installing") {
+          setUpdatePhase("installing");
+          setUpdateInstallProgress({
+            active: false,
+            percent: 0,
+            message: t("正在启动安装程序，应用即将退出并完成安装…"),
+          });
+          return;
+        }
+        if (payload.phase !== "downloading") return;
+        const percent = Math.max(0, Math.min(100, Math.round(payload.percent ?? 0)));
+        setUpdateInstallProgress({
+          active: true,
+          percent,
+          message: payload.total
+            ? tf("已下载 {0} / {1}", [
+                formatBytes(payload.downloaded ?? 0),
+                formatBytes(payload.total),
+              ])
+            : tf("已下载 {0}", [formatBytes(payload.downloaded ?? 0)]),
+        });
+      },
+    ).then((unlisten) => {
       if (disposed) {
         unlisten();
       } else {
@@ -3149,7 +3354,8 @@ export function App() {
       uninstallEntrypoints,
       repairShortcuts,
       checkUpdate,
-      performUpdate,
+      downloadUpdate,
+      installUpdate,
       saveSettings,
       saveSettingsValue,
       refreshSettings,
@@ -3301,6 +3507,10 @@ export function App() {
       setSessionShareUrl,
       deleteLocalSession,
       deleteLocalSessions,
+      refreshWorkBuddySessions,
+      softDeleteWorkBuddySessions,
+      restoreWorkBuddySessions,
+      purgeWorkBuddySessions,
       refreshZedRemoteProjects,
       openZedRemoteProject,
       forgetZedRemoteProject,
@@ -3482,6 +3692,14 @@ export function App() {
               actions={actions}
             />
           ) : null}
+          {route === "workbuddySessions" ? (
+            <WorkBuddySessionsScreen
+              sessions={workbuddySessions}
+              profile={workbuddyProfile}
+              onProfileChange={setWorkbuddyProfile}
+              actions={actions}
+            />
+          ) : null}
           {route === "context" ? (
             <ContextScreen
               form={settingsForm}
@@ -3557,7 +3775,15 @@ export function App() {
             />
           ) : null}
           {route === "about" ? (
-            <AboutScreen overview={overview} logs={logs} diagnostics={diagnostics} actions={actions} />
+            <AboutScreen
+              overview={overview}
+              logs={logs}
+              diagnostics={diagnostics}
+              update={update}
+              updatePhase={updatePhase}
+              updateProgress={updateInstallProgress}
+              actions={actions}
+            />
           ) : null}
           {route === "settings" ? (
             <SettingsScreen
@@ -3658,8 +3884,9 @@ type Actions = {
   installEntrypoints: () => Promise<void>;
   uninstallEntrypoints: () => Promise<void>;
   repairShortcuts: () => Promise<void>;
-  checkUpdate: () => Promise<void>;
-  performUpdate: () => Promise<void>;
+  checkUpdate: (silent?: boolean) => Promise<void>;
+  downloadUpdate: () => Promise<void>;
+  installUpdate: () => Promise<void>;
   saveSettings: () => Promise<void>;
   saveSettingsValue: (settings: BackendSettings, silent?: boolean) => Promise<BackendSettings | null>;
   refreshSettings: (silent?: boolean) => Promise<BackendSettings | null>;
@@ -3713,6 +3940,10 @@ type Actions = {
   setSessionShareUrl: (url: string) => void;
   deleteLocalSession: (session: LocalSession) => Promise<void>;
   deleteLocalSessions: (sessions: LocalSession[]) => Promise<void>;
+  refreshWorkBuddySessions: (silent?: boolean) => Promise<WorkBuddySessionsResult | null>;
+  softDeleteWorkBuddySessions: (ids: string[]) => Promise<void>;
+  restoreWorkBuddySessions: (ids: string[]) => Promise<void>;
+  purgeWorkBuddySessions: (ids: string[], backup: boolean) => Promise<void>;
   refreshZedRemoteProjects: () => Promise<ZedRemoteProjectsResult | null>;
   openZedRemoteProject: (project: ZedRemoteProject, strategy?: ZedOpenStrategy) => Promise<void>;
   forgetZedRemoteProject: (project: ZedRemoteProject) => Promise<void>;
@@ -6294,6 +6525,349 @@ function UserScriptsScreen({ settings, market, actions }: { settings: SettingsRe
   );
 }
 
+/** 会话时间展示。手写而不用 toISOString：那是 UTC，显示出来会差 8 小时。 */
+function formatSessionTime(ms: number) {
+  if (!ms) return "—";
+  const date = new Date(ms);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+const WORKBUDDY_PROFILE_OPTIONS: Array<{ value: WorkBuddyProfileId; label: string }> = [
+  { value: "workbuddy-cn", label: "WorkBuddy 国内版" },
+  { value: "workbuddy-ai", label: "WorkBuddy 国际版" },
+];
+
+/** 时间范围筛选项：值为「距今多少天」，`all` 表示不限。 */
+const WORKBUDDY_AGE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "all", label: "全部时间" },
+  { value: "7", label: "7 天前" },
+  { value: "30", label: "30 天前" },
+  { value: "90", label: "90 天前" },
+  { value: "365", label: "1 年前" },
+];
+
+function WorkBuddySessionsScreen({
+  sessions,
+  profile,
+  onProfileChange,
+  actions,
+}: {
+  sessions: WorkBuddySessionsResult | null;
+  profile: WorkBuddyProfileId;
+  onProfileChange: (value: WorkBuddyProfileId) => void;
+  actions: Actions;
+}) {
+  const allSessions = sessions?.sessions ?? [];
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [ageFilter, setAgeFilter] = useState("all");
+  const [keyword, setKeyword] = useState("");
+  const [viewDeleted, setViewDeleted] = useState(false);
+  const [backupOnPurge, setBackupOnPurge] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const projects = useMemo(
+    () => Array.from(new Set(allSessions.map((item) => item.cwd).filter(Boolean))).sort(),
+    [allSessions],
+  );
+  const statuses = useMemo(
+    () => Array.from(new Set(allSessions.map((item) => item.status).filter(Boolean))).sort(),
+    [allSessions],
+  );
+
+  const filtered = useMemo(() => {
+    const cutoff = ageFilter === "all" ? null : Date.now() - Number(ageFilter) * 86_400_000;
+    const needle = keyword.trim().toLowerCase();
+    return allSessions.filter((item) => {
+      // 「只看已删除」与默认视图互斥：默认只看没被软删的。
+      if (viewDeleted ? item.deletedAtMs == null : item.deletedAtMs != null) return false;
+      if (statusFilter !== "all" && item.status !== statusFilter) return false;
+      if (projectFilter !== "all" && item.cwd !== projectFilter) return false;
+      if (cutoff !== null && item.updatedAtMs > cutoff) return false;
+      if (needle) {
+        const haystack = `${item.title} ${item.cwd} ${item.id} ${item.model ?? ""} ${item.mode ?? ""}`.toLowerCase();
+        if (!haystack.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [allSessions, viewDeleted, statusFilter, projectFilter, ageFilter, keyword]);
+
+  // 列表刷新后，已被删掉的会话不该继续留在选中集合里。
+  useEffect(() => {
+    const valid = new Set(allSessions.map((item) => item.id));
+    setSelectedIds((current) => {
+      const next = new Set(Array.from(current).filter((id) => valid.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [allSessions]);
+
+  const selected = filtered.filter((item) => selectedIds.has(item.id));
+  const selectedIdList = selected.map((item) => item.id);
+  const selectedBytes = selected.reduce(
+    (sum, item) => sum + item.rolloutBytes + item.sideFilesBytes,
+    0,
+  );
+  // 进行中的会话**可以**手动勾选删除（客户自己选的就照做），但「全选」会绕开它们
+  // ——一键把正在聊的对话全选上太容易误操作。
+  const activeCount = filtered.filter((item) => item.maybeActive).length;
+  const activeSelected = selected.filter((item) => item.maybeActive).length;
+  const selectableCount = filtered.filter((item) => !item.maybeActive).length;
+  const allSelected = selectableCount > 0 && selected.length === selectableCount;
+
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  // 正在进行的会话不可选：删掉它当下看不出问题（客户端还开着、界面里会话仍在），
+  // 要等重启才发现没了。全选/反选同样要绕开它们。
+  const selectable = (item: WorkBuddySession) => !item.maybeActive;
+  const selectAll = () =>
+    setSelectedIds(new Set(filtered.filter(selectable).map((item) => item.id)));
+  const invertSelection = () =>
+    setSelectedIds(
+      new Set(
+        filtered
+          .filter((item) => selectable(item) && !selectedIds.has(item.id))
+          .map((item) => item.id),
+      ),
+    );
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const runBusy = async (task: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await task();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const totalBytes = filtered.reduce(
+    (sum, item) => sum + item.rolloutBytes + item.sideFilesBytes,
+    0,
+  );
+
+  return (
+    <Panel className="workbuddy-sessions-panel">
+      <CardHead
+        title={t("WorkBuddy 对话")}
+        detail={t("管理 WorkBuddy 客户端自己的对话（与「会话管理」里的 Codex ~/.codex 是两套数据）")}
+      />
+      <CardContent className="workbuddy-sessions-content">
+        <div className="workbuddy-sessions-toolbar">
+          <Field className="workbuddy-profile-field" label={t("档案")}>
+            <AppSelect<WorkBuddyProfileId>
+              value={profile}
+              options={WORKBUDDY_PROFILE_OPTIONS.map((option) => ({
+                value: option.value,
+                label: option.label,
+              }))}
+              onChange={(value) => {
+                clearSelection();
+                onProfileChange(value);
+              }}
+            />
+          </Field>
+          <Button onClick={() => void actions.refreshWorkBuddySessions()} variant="outline" disabled={busy}>
+            <RotateCcw className="h-4 w-4" />
+            {t("刷新")}
+          </Button>
+        </div>
+
+        <div className="session-summary-bar">
+          <div>
+            <span>{t("对话总数")}</span>
+            <strong>{tf("{0} 个", [allSessions.length])}</strong>
+          </div>
+          <div>
+            <span>{t("当前筛选")}</span>
+            <strong>{tf("{0} 个", [filtered.length])}</strong>
+          </div>
+          <div>
+            <span>{t("已选中")}</span>
+            <strong>{tf("{0} 个", [selected.length])}</strong>
+          </div>
+          <div>
+            <span>{t("选中可释放")}</span>
+            <strong>{formatBytes(selectedBytes)}</strong>
+          </div>
+          <div className="session-summary-path">
+            <span>{t("数据库")}</span>
+            <code>{sessions?.dbPath ?? "—"}</code>
+          </div>
+        </div>
+
+        {sessions && !sessions.available ? (
+          <div className="empty">
+            {t("没有读到这个档案的会话库，可能该版本的 WorkBuddy 还没安装或从未启动过。")}
+          </div>
+        ) : null}
+
+        <div className="workbuddy-sessions-filters">
+          <Field className="workbuddy-filter-field" label={t("状态")}>
+            <AppSelect
+              value={statusFilter}
+              options={[
+                { value: "all", label: t("全部状态") },
+                ...statuses.map((status) => ({ value: status, label: status })),
+              ]}
+              onChange={setStatusFilter}
+            />
+          </Field>
+          <Field className="workbuddy-filter-field" label={t("项目目录")}>
+            <AppSelect
+              value={projectFilter}
+              options={[
+                { value: "all", label: t("全部项目") },
+                ...projects.map((cwd) => ({ value: cwd, label: cwd })),
+              ]}
+              onChange={setProjectFilter}
+            />
+          </Field>
+          <Field className="workbuddy-filter-field" label={t("更新时间")}>
+            <AppSelect
+              value={ageFilter}
+              options={WORKBUDDY_AGE_OPTIONS.map((option) => ({
+                value: option.value,
+                label: t(option.label),
+              }))}
+              onChange={setAgeFilter}
+            />
+          </Field>
+          <Field className="workbuddy-filter-field" label={t("关键词")}>
+            <Input
+              value={keyword}
+              placeholder={t("标题 / 目录 / 模型")}
+              onChange={(event) => setKeyword(event.target.value)}
+            />
+          </Field>
+          <label className="workbuddy-checkbox">
+            <input
+              type="checkbox"
+              checked={viewDeleted}
+              onChange={(event) => {
+                setViewDeleted(event.target.checked);
+                clearSelection();
+              }}
+            />
+            <span>{t("只看已软删除的")}</span>
+          </label>
+        </div>
+
+        <div className="workbuddy-sessions-actions">
+          <Button onClick={selectAll} variant="outline" disabled={busy || !selectableCount}>
+            {t("全选")}
+          </Button>
+          <Button onClick={invertSelection} variant="outline" disabled={busy || !selectableCount}>
+            {t("反选")}
+          </Button>
+          <Button onClick={clearSelection} variant="outline" disabled={busy || !selected.length}>
+            {t("清空选择")}
+          </Button>
+          <span className="workbuddy-sessions-spacer" />
+          {viewDeleted ? (
+            <Button
+              onClick={() => void runBusy(() => actions.restoreWorkBuddySessions(selectedIdList))}
+              variant="outline"
+              disabled={busy || !selected.length}
+            >
+              <RotateCcw className="h-4 w-4" />
+              {t("恢复选中")}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => void runBusy(() => actions.softDeleteWorkBuddySessions(selectedIdList))}
+              variant="outline"
+              disabled={busy || !selected.length}
+            >
+              <Trash2 className="h-4 w-4" />
+              {t("软删除选中")}
+            </Button>
+          )}
+          <label className="workbuddy-checkbox">
+            <input
+              type="checkbox"
+              checked={backupOnPurge}
+              onChange={(event) => setBackupOnPurge(event.target.checked)}
+            />
+            <span>{t("清除前备份")}</span>
+          </label>
+          <Button
+            onClick={() => void runBusy(() => actions.purgeWorkBuddySessions(selectedIdList, backupOnPurge))}
+            variant="default"
+            disabled={busy || !selected.length}
+          >
+            <Trash2 className="h-4 w-4" />
+            {t("彻底清除选中")}
+          </Button>
+        </div>
+
+        {activeSelected > 0 ? (
+          <div className="workbuddy-sessions-warning">
+            {tf("已选中 {0} 个正在进行的对话，删除后里面未保存的内容会丢失，请确认。", [activeSelected])}
+          </div>
+        ) : activeCount > 0 ? (
+          <div className="workbuddy-sessions-warning">
+            {tf("列表中有 {0} 个正在进行的对话（标「进行中」）。可以手动勾选删除，「全选」会自动避开它们。", [activeCount])}
+          </div>
+        ) : null}
+
+        {filtered.length ? (
+          <div className="table workbuddy-sessions-table">
+            <div className="workbuddy-session-row workbuddy-session-head">
+              <span />
+              <span>{t("标题")}</span>
+              <span>{t("项目目录")}</span>
+              <span>{t("状态")}</span>
+              <span>{t("更新时间")}</span>
+              <span>{t("占用")}</span>
+            </div>
+            {filtered.map((item) => (
+              <div className="workbuddy-session-row" key={item.id}>
+                <span className="workbuddy-session-check">
+                  <input
+                    checked={selectedIds.has(item.id)}
+                    onChange={(event) => toggleOne(item.id, event.target.checked)}
+                    title={item.maybeActive ? t("正在进行的对话，删除后未保存的内容会丢失") : ""}
+                    type="checkbox"
+                  />
+                </span>
+                <span className="workbuddy-session-title" title={item.id}>
+                  {item.title}
+                  {item.maybeActive ? <span className="workbuddy-session-active">{t("进行中")}</span> : null}
+                </span>
+                <span className="workbuddy-session-cwd" title={item.cwd}>
+                  {item.cwd || "—"}
+                </span>
+                <span>{item.status || "—"}</span>
+                <span>{formatSessionTime(item.updatedAtMs)}</span>
+                <span>{formatBytes(item.rolloutBytes + item.sideFilesBytes)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty">
+            {allSessions.length
+              ? t("没有符合当前筛选条件的对话。")
+              : t("这个档案下还没有对话。")}
+          </div>
+        )}
+
+        <div className="workbuddy-sessions-footer">
+          {tf("当前筛选共 {0} 个对话，合计占用 {1}。", [filtered.length, formatBytes(totalBytes)])}
+        </div>
+      </CardContent>
+    </Panel>
+  );
+}
+
 function SessionsScreen({
   settings,
   form,
@@ -6774,11 +7348,17 @@ function AboutScreen({
   overview,
   logs,
   diagnostics,
+  update,
+  updatePhase,
+  updateProgress,
   actions,
 }: {
   overview: OverviewResult | null;
   logs: LogsResult | null;
   diagnostics: DiagnosticsResult | null;
+  update: UpdateResult | null;
+  updatePhase: UpdatePhase;
+  updateProgress: TaskProgress;
   actions: Actions;
 }) {
   return (
@@ -6804,15 +7384,131 @@ function AboutScreen({
           </Toolbar>
         </CardContent>
       </Panel>
-      <Panel>
-        <CardHead title={t("软件更新")} detail={tf("当前版本 {0}", [overview?.current_version ?? "-"])} />
-        <CardContent>
-          <div className="empty">{t("本版本不提供在线更新。请访问官网 dicad.cn 获取最新版本。")}</div>
-        </CardContent>
-      </Panel>
+      <UpdateCard
+        actions={actions}
+        overview={overview}
+        phase={updatePhase}
+        progress={updateProgress}
+        update={update}
+      />
       <LogsPanel logs={logs} actions={actions} />
       <DiagnosticsPanel diagnostics={diagnostics} actions={actions} />
     </>
+  );
+}
+
+/**
+ * 「软件更新」卡片：GitHub Release 在线更新。
+ *
+ * 流程刻意拆成「检查 → 下载 → 安装」三段，因为 Windows 上 `Update::install`
+ * 起完安装程序就会 `exit(0)` —— 用户要的是「下载完再问是否重启」，
+ * 所以下载完成先停在 `ready`，由用户决定何时重启。
+ *
+ * 无障碍：
+ * - 状态文字挂 `aria-live="polite"`：下载/安装阶段的变化会被读屏播报，但不打断用户。
+ * - 进度条复用 `TaskProgressBox`（内部已是 `role="progressbar"` + `aria-valuenow/min/max`）。
+ * - 所有操作都是真正的 `<button>`（`Button` 组件），Tab 可达，focus-visible 有 3px ring。
+ */
+function UpdateCard({
+  overview,
+  update,
+  phase,
+  progress,
+  actions,
+}: {
+  overview: OverviewResult | null;
+  update: UpdateResult | null;
+  phase: UpdatePhase;
+  progress: TaskProgress;
+  actions: Actions;
+}) {
+  const [restartDeferred, setRestartDeferred] = useState(false);
+  // 用户点了「稍后」之后又把状态走了一遍（重新检查 / 下载了新版本），
+  // 得把「已推迟」复位 —— 否则新的下载完成时不会再问「是否重启」。
+  useEffect(() => {
+    if (phase === "available" || phase === "downloading" || phase === "idle") setRestartDeferred(false);
+  }, [phase]);
+  const busy = phase === "checking" || phase === "downloading" || phase === "installing";
+  const latest = update?.latestVersion ?? null;
+  const currentVersion = overview?.current_version ?? update?.currentVersion ?? "-";
+
+  let statusText: string;
+  switch (phase) {
+    case "checking":
+      statusText = t("正在检查 GitHub Release…");
+      break;
+    case "available":
+      statusText = latest ? tf("发现新版本 {0}，可以更新。", [latest]) : t("发现新版本，可以更新。");
+      break;
+    case "downloading":
+      statusText = t("正在下载更新包，请保持窗口打开。");
+      break;
+    case "ready":
+      statusText = restartDeferred
+        ? t("更新包已就绪，随时可以点「立即重启并安装」完成更新。")
+        : t("更新包已下载完成。现在重启安装，还是稍后再说？");
+      break;
+    case "installing":
+      statusText = t("正在启动安装程序，应用即将退出并完成安装…");
+      break;
+    case "error":
+      statusText = t(update?.message ?? "更新过程中出现问题，请稍后重试。");
+      break;
+    default:
+      statusText = t(update?.message ?? "启动时会自动检查更新，也可以手动检查。");
+  }
+
+  return (
+    <Panel>
+      <CardHead title={t("软件更新")} detail={tf("当前版本 {0}", [currentVersion])} />
+      <CardContent>
+        <div className="update-card" data-phase={phase}>
+          <p aria-live="polite" className="update-status">
+            {statusText}
+          </p>
+          {update?.releaseSummary ? (
+            <details className="update-notes">
+              <summary>{t("查看更新说明")}</summary>
+              <pre>{update.releaseSummary}</pre>
+            </details>
+          ) : null}
+          <TaskProgressBox
+            completedTitle={t("更新包下载结果")}
+            progress={progress}
+            title={t("更新包下载进度")}
+          />
+          <Toolbar>
+            <Button disabled={busy} onClick={() => void actions.checkUpdate()} variant="secondary">
+              <RefreshCw className="h-4 w-4" />
+              {t("检查更新")}
+            </Button>
+            {phase === "available" ? (
+              <Button onClick={() => void actions.downloadUpdate()}>
+                <Download className="h-4 w-4" />
+                {t("下载更新")}
+              </Button>
+            ) : null}
+            {phase === "ready" ? (
+              <Button onClick={() => void actions.installUpdate()}>
+                <RotateCcw className="h-4 w-4" />
+                {t("立即重启并安装")}
+              </Button>
+            ) : null}
+            {phase === "ready" && !restartDeferred ? (
+              <Button onClick={() => setRestartDeferred(true)} variant="ghost">
+                {t("稍后")}
+              </Button>
+            ) : null}
+            {phase === "error" ? (
+              <Button onClick={() => void actions.checkUpdate()}>
+                <RefreshCw className="h-4 w-4" />
+                {t("重新检查")}
+              </Button>
+            ) : null}
+          </Toolbar>
+        </div>
+      </CardContent>
+    </Panel>
   );
 }
 
@@ -9616,10 +10312,21 @@ function ConfirmDialog({
   confirm,
   onConfirm,
   onCancel,
+  onOptionChange,
 }: {
-  confirm: { title: string; message: string; confirmText: string; cancelText: string };
+  confirm: {
+    title: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    /** 可选的附加勾选（例如「连已存在的会话一起更新」）。不传就不显示。 */
+    option?: { label: string; checked: boolean };
+    /** 确认按钮图标，默认垃圾桶（删除语义）。非删除操作应传自己的图标。 */
+    icon?: ReactNode;
+  };
   onConfirm: () => void;
   onCancel: () => void;
+  onOptionChange?: (checked: boolean) => void;
 }) {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -9632,10 +10339,20 @@ function ConfirmDialog({
         </div>
         <div className="confirm-modal-body">
           <p className="modal-message">{confirm.message}</p>
+          {confirm.option ? (
+            <label className="workbuddy-checkbox confirm-modal-option">
+              <input
+                checked={confirm.option.checked}
+                onChange={(event) => onOptionChange?.(event.target.checked)}
+                type="checkbox"
+              />
+              <span>{confirm.option.label}</span>
+            </label>
+          ) : null}
         </div>
         <Toolbar className="confirm-modal-actions">
           <Button onClick={onConfirm}>
-            <Trash2 className="h-4 w-4" />
+            {confirm.icon ?? <Trash2 className="h-4 w-4" />}
             {confirm.confirmText}
           </Button>
           <Button onClick={onCancel} variant="secondary">{confirm.cancelText}</Button>
@@ -9991,6 +10708,7 @@ function routeSubtitle(route: Route) {
     grok: t("管理 Grok CLI 的模型与 API 端点"),
     relayEnvironment: t("排查可能干扰中转站配置的本机环境"),
     sessions: t("查看、删除和修复 Codex 本地会话"),
+    workbuddySessions: t("按时间、项目、状态批量清理 WorkBuddy 的对话"),
     context: t("独立管理 MCP 服务器与插件"),
     skills: t("从 GitHub 仓库安装 Skill 到 Codex"),
     weixin: t("通过个人微信连接本机 Codex 会话"),
@@ -12574,6 +13292,13 @@ function WorkBuddyEnhanceScreen({ actions, profile }: { actions: Actions; profil
   });
   // 复制完成后让目标客户端重新加载页面，否则新会话要等重启才出现在列表里。
   const [crossRefresh, setCrossRefresh] = useState(true);
+  // 每批同步多少个。daemon 侧硬上限是 CROSS_PROFILE_MAX_BATCH=100，这里默认只取 20：
+  // 一批内要复制正文文件 + 写库，批太大界面长时间没反应会被当成卡死，也更容易超时。
+  const [crossBatchSize, setCrossBatchSize] = useState(20);
+  // 跳过已同步过的对话（只同步新增的）。重复的那批默认是"回写更新"，不产生副本。
+  const [crossSkipLinked, setCrossSkipLinked] = useState(false);
+  // 同步进度 { done, total }；null = 当前没在同步。
+  const [crossProgress, setCrossProgress] = useState<{ done: number; total: number } | null>(null);
   // 双开隔离自检：本版本与另一版本的 CDP/面板端口、数据目录、可执行文件是否两两不冲突。
   const [isolation, setIsolation] = useState<Record<string, unknown> | null>(null);
   const [askState, setAskState] = useState<Record<string, unknown> | null>(null);
@@ -13618,42 +14343,198 @@ onChange={(event) =>
     return started.statusDetail;
   };
 
+  // 同步前的确认框。复用全局 ConfirmDialog 的样式，作用域限定在本面板内即可：
+  // 跨版本同步的确认都发生在这里，没必要绕到主组件的 confirmSessionDelete（它固定是删除语义）。
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmText: string;
+    option?: { label: string };
+    resolve: (value: { confirmed: boolean; optionChecked: boolean }) => void;
+  } | null>(null);
+  const [confirmOptionChecked, setConfirmOptionChecked] = useState(false);
+
+  const confirmAction = (options: {
+    title: string;
+    message: string;
+    confirmText: string;
+    option?: { label: string; checked?: boolean };
+  }) =>
+    new Promise<{ confirmed: boolean; optionChecked: boolean }>((resolve) => {
+      setConfirmOptionChecked(options.option?.checked ?? false);
+      setPendingConfirm({
+        title: options.title,
+        message: options.message,
+        confirmText: options.confirmText,
+        option: options.option ? { label: options.option.label } : undefined,
+        resolve,
+      });
+    });
+
   const copyInBatches = async (
     ids: string[],
     copyBatch: (batch: string[]) => Promise<Record<string, unknown>>,
+    onProgress?: (done: number, total: number) => void,
   ) => {
     const unique = Array.from(new Set(ids.filter(Boolean)));
+    // 上限 100 是 daemon 侧 CROSS_PROFILE_MAX_BATCH 的硬限制，超过会直接抛错。
+    const size = Math.max(1, Math.min(100, crossBatchSize));
     let copied = 0;
     let updated = 0;
     let failed = 0;
     const errors: string[] = [];
-    for (let offset = 0; offset < unique.length; offset += 100) {
-      const result = await copyBatch(unique.slice(offset, offset + 100));
+    const batches = Math.ceil(unique.length / size);
+    for (let index = 0; index < batches; index += 1) {
+      const result = await copyBatch(unique.slice(index * size, index * size + size));
       const batchCopied = Array.isArray(result.copied) ? result.copied.length : 0;
       copied += batchCopied;
       updated += Number(result.updated || 0);
       failed += Number(result.failed || 0);
       if (Array.isArray(result.errors)) errors.push(...result.errors.map(String));
+      // 进度按「已提交的会话数」而不是批次数报：用户关心的是还剩多少个没同步。
+      onProgress?.(Math.min((index + 1) * size, unique.length), unique.length);
     }
     return { copied, updated, failed, errors };
+  };
+
+  /**
+   * 挑出「已经同步过」的会话 id。
+   *
+   * 两个列表接口的字段名不一样：本端 `/api/sessions` 给 `linkedPeerId`，
+   * 对端 `/api/sessions/cross-profile` 给 `linkedTargetId`（外加一个 `linkedTarget` 对象）。
+   * 只看一个字段会导致其中一侧永远判不出重复。
+   */
+  const linkedIdSet = (list: Array<Record<string, unknown>>) => {
+    const set = new Set<string>();
+    for (const row of list) {
+      const id = String(row.id || "");
+      if (!id) continue;
+      const target = row.linkedTarget as { targetId?: unknown } | undefined;
+      const linked = String(
+        row.linkedPeerId || row.linkedTargetId || (target ? target.targetId : "") || "",
+      );
+      if (linked) set.add(id);
+    }
+    return set;
+  };
+
+  const normalizeSessionTitle = (row: Record<string, unknown>) =>
+    String(row.custom_title || row.title || "").trim().toLowerCase();
+
+  /**
+   * 判定「源会话在对端是否已经存在」。两种情形都算重复：
+   *   1. 之前同步过（links 里有映射）；
+   *   2. 对端已经有一个**同名**的会话 —— 这正是用户说的「不要复制同名的会话」，
+   *      否则对端会出现两条标题一样的记录。
+   */
+  const duplicateIdSet = (
+    sourceList: Array<Record<string, unknown>>,
+    targetList: Array<Record<string, unknown>>,
+  ) => {
+    const linked = linkedIdSet(sourceList);
+    const targetTitles = new Set(
+      targetList.map(normalizeSessionTitle).filter((value) => value.length > 0),
+    );
+    const set = new Set<string>();
+    for (const row of sourceList) {
+      const id = String(row.id || "");
+      if (!id) continue;
+      if (linked.has(id) || targetTitles.has(normalizeSessionTitle(row))) set.add(id);
+    }
+    return set;
+  };
+
+  /**
+   * 同步前预检：算出重复数、弹出确认，返回真正要同步的 id；用户取消返回 null。
+   *
+   * **重复的默认不复制**（避免对端出现同名副本），但把选择权留给客户：
+   * 确认框里可以勾「同时更新已存在的 N 个」，勾上就连它们一起同步。
+   * 分批是自动的，客户只需要点一次「开始同步」。
+   */
+  const planCrossCopy = async (
+    ids: string[],
+    sourceList: Array<Record<string, unknown>>,
+    targetList: Array<Record<string, unknown>>,
+    title: string,
+  ): Promise<string[] | null> => {
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    if (!unique.length) return [];
+    const duplicates = duplicateIdSet(sourceList, targetList);
+    const duplicated = unique.filter((id) => duplicates.has(id));
+    const fresh = unique.filter((id) => !duplicates.has(id));
+    const size = Math.max(1, Math.min(100, crossBatchSize));
+
+    // 全是重复：明确告诉客户「不会重复复制」，要不要更新由他决定。
+    if (!fresh.length) {
+      const decision = await confirmAction({
+        title,
+        message: tf(
+          "选中的 {0} 个对话在目标版本都已存在（之前同步过，或标题同名），默认不会重复复制。\n\n是否仍要用源版本的最新内容更新它们？",
+          [duplicated.length],
+        ),
+        confirmText: t("更新这些会话"),
+      });
+      return decision.confirmed ? duplicated : null;
+    }
+
+    const batchCount = Math.ceil(fresh.length / size);
+    const lines = [
+      tf("共选中 {0} 个对话：新增 {1} 个，目标版本已存在 {2} 个。", [
+        unique.length,
+        fresh.length,
+        duplicated.length,
+      ]),
+      tf("本次将同步 {0} 个，自动分 {1} 批完成（每批 {2} 个），无需手动分批。", [
+        fresh.length,
+        batchCount,
+        size,
+      ]),
+    ];
+    if (batchCount > 3) lines.push(t("数量较多，同步期间请不要关闭本窗口。"));
+    const decision = await confirmAction({
+      title,
+      message: lines.join("\n\n"),
+      confirmText: t("开始同步"),
+      option: duplicated.length
+        ? {
+            label: tf("同时更新已存在的 {0} 个（不新增副本）", [duplicated.length]),
+            checked: false,
+          }
+        : undefined,
+    });
+    if (!decision.confirmed) return null;
+    return decision.optionChecked ? unique : fresh;
   };
 
   const copySessionsToCurrent = async (ids: string[]) => {
     const selected = Array.from(new Set(ids.filter(Boolean)));
     if (!selected.length) return;
+    // 源 = 对端会话列表，目标 = 本端列表（用来判断有没有同名会话）。
+    const planned = await planCrossCopy(
+      selected,
+      rows(crossPayload?.sessions),
+      rows(payload?.sessions),
+      tf("从{0}同步", [peerLabel]),
+    );
+    if (!planned) return;
     setCrossBusy("peer-to-current");
     setBusy(true);
     setError("");
     setNotice("");
+    setCrossProgress({ done: 0, total: planned.length });
     try {
-      const summary = await copyInBatches(selected, async (batch) => {
-        const result = await call("/api/sessions/cross-profile-copy", {
-          method: "POST",
-          body: JSON.stringify({ sourceProfile: peerProfile, ids: batch, refresh: crossRefresh }),
-        });
-        if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
-        return result;
-      });
+      const summary = await copyInBatches(
+        planned,
+        async (batch) => {
+          const result = await call("/api/sessions/cross-profile-copy", {
+            method: "POST",
+            body: JSON.stringify({ sourceProfile: peerProfile, ids: batch, refresh: crossRefresh }),
+          });
+          if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
+          return result;
+        },
+        (done, total) => setCrossProgress({ done, total }),
+      );
       const detail = summary.failed ? tf("，{0}个文件复制不完整", [String(summary.failed)]) : "";
       setNotice(
         summary.updated
@@ -13666,26 +14547,40 @@ onChange={(event) =>
     } finally {
       setBusy(false);
       setCrossBusy("");
+      setCrossProgress(null);
     }
   };
 
   const copySessionsToPeer = async (ids: string[]) => {
     const selected = Array.from(new Set(ids.filter(Boolean)));
     if (!selected.length) return;
+    // 源 = 本端会话列表，目标 = 对端列表。
+    const planned = await planCrossCopy(
+      selected,
+      rows(payload?.sessions),
+      rows(crossPayload?.sessions),
+      tf("同步到{0}", [peerLabel]),
+    );
+    if (!planned) return;
     setCrossBusy("current-to-peer");
     setBusy(true);
     setError("");
     setNotice("");
+    setCrossProgress({ done: 0, total: planned.length });
     try {
       const peerRuntime = await ensurePeerRuntime();
-      const summary = await copyInBatches(selected, async (batch) => {
-        const result = await callRuntime(peerRuntime, "/api/sessions/cross-profile-copy", {
-          method: "POST",
-          body: JSON.stringify({ sourceProfile: profile, ids: batch, refresh: crossRefresh }),
-        });
-        if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
-        return result;
-      });
+      const summary = await copyInBatches(
+        planned,
+        async (batch) => {
+          const result = await callRuntime(peerRuntime, "/api/sessions/cross-profile-copy", {
+            method: "POST",
+            body: JSON.stringify({ sourceProfile: profile, ids: batch, refresh: crossRefresh }),
+          });
+          if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
+          return result;
+        },
+        (done, total) => setCrossProgress({ done, total }),
+      );
       const detail = summary.failed ? tf("，{0}个文件复制不完整", [String(summary.failed)]) : "";
       setNotice(
         summary.updated
@@ -13698,36 +14593,115 @@ onChange={(event) =>
     } finally {
       setBusy(false);
       setCrossBusy("");
+      setCrossProgress(null);
     }
   };
 
+  /**
+   * 双向同步的预检：两个方向合并成**一个**确认框。
+   * 若沿用 planCrossCopy 会连弹两次确认，客户根本分不清哪次是哪个方向。
+   */
+  const planBothWays = async (): Promise<{ toPeer: string[]; toCurrent: string[] } | null> => {
+    const currentList = rows(payload?.sessions);
+    const peerList = rows(crossPayload?.sessions);
+    const currentIds = currentList.map((session) => String(session.id || "")).filter(Boolean);
+    const peerIds = peerList.map((session) => String(session.id || "")).filter(Boolean);
+    if (!currentIds.length && !peerIds.length) return null;
+    const peerDup = duplicateIdSet(currentList, peerList);
+    const currentDup = duplicateIdSet(peerList, currentList);
+    const freshToPeer = currentIds.filter((id) => !peerDup.has(id));
+    const freshToCurrent = peerIds.filter((id) => !currentDup.has(id));
+    const all = { toPeer: currentIds, toCurrent: peerIds };
+    const freshCount = freshToPeer.length + freshToCurrent.length;
+    const dupCount = currentIds.length + peerIds.length - freshCount;
+    const size = Math.max(1, Math.min(100, crossBatchSize));
+    const batchCount =
+      Math.ceil(freshToPeer.length / size) + Math.ceil(freshToCurrent.length / size);
+
+    if (!freshCount) {
+      const decision = await confirmAction({
+        title: t("双向同步"),
+        message: tf(
+          "两个版本的 {0} 个对话在对方那里都已存在（之前同步过，或标题同名），默认不会重复复制。\n\n是否仍要互相更新它们的最新内容？",
+          [String(dupCount)],
+        ),
+        confirmText: t("更新这些会话"),
+      });
+      return decision.confirmed ? all : null;
+    }
+
+    const lines = [
+      tf("两个版本共 {0} 个对话：新增 {1} 个，对端已存在 {2} 个。", [
+        String(currentIds.length + peerIds.length),
+        String(freshCount),
+        String(dupCount),
+      ]),
+      tf("本次将同步 {0} 个，自动分 {1} 批完成（每批 {2} 个），无需手动分批。", [
+        String(freshCount),
+        String(batchCount),
+        String(size),
+      ]),
+    ];
+    if (batchCount > 3) lines.push(t("数量较多，同步期间请不要关闭本窗口。"));
+    const decision = await confirmAction({
+      title: t("双向同步"),
+      message: lines.join("\n\n"),
+      confirmText: t("开始同步"),
+      option: dupCount
+        ? { label: tf("同时更新已存在的 {0} 个（不新增副本）", [String(dupCount)]), checked: false }
+        : undefined,
+    });
+    if (!decision.confirmed) return null;
+    return decision.optionChecked ? all : { toPeer: freshToPeer, toCurrent: freshToCurrent };
+  };
+
   const syncAllSessionsBothWays = async () => {
-    const currentIds = rows(payload?.sessions).map((session) => String(session.id || "")).filter(Boolean);
-    const peerIds = rows(crossPayload?.sessions).map((session) => String(session.id || "")).filter(Boolean);
-    if (!currentIds.length && !peerIds.length) return;
+    const planned = await planBothWays();
+    if (!planned) return;
+    const grandTotal = planned.toPeer.length + planned.toCurrent.length;
     setCrossBusy("both-ways");
     setBusy(true);
     setError("");
     setNotice("");
+    setCrossProgress({ done: 0, total: grandTotal });
+    // 两个方向并行跑，各自报自己的进度，这里加起来显示。
+    let doneToPeer = 0;
+    let doneToCurrent = 0;
+    const reportProgress = () =>
+      setCrossProgress({ done: doneToPeer + doneToCurrent, total: grandTotal });
     try {
       const peerRuntime = await ensurePeerRuntime();
       const [toPeer, toCurrent] = await Promise.all([
-        copyInBatches(currentIds, async (batch) => {
-          const result = await callRuntime(peerRuntime, "/api/sessions/cross-profile-copy", {
-            method: "POST",
-            body: JSON.stringify({ sourceProfile: profile, ids: batch, refresh: crossRefresh }),
-          });
-          if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
-          return result;
-        }),
-        copyInBatches(peerIds, async (batch) => {
-          const result = await call("/api/sessions/cross-profile-copy", {
-            method: "POST",
-            body: JSON.stringify({ sourceProfile: peerProfile, ids: batch, refresh: crossRefresh }),
-          });
-          if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
-          return result;
-        }),
+        copyInBatches(
+          planned.toPeer,
+          async (batch) => {
+            const result = await callRuntime(peerRuntime, "/api/sessions/cross-profile-copy", {
+              method: "POST",
+              body: JSON.stringify({ sourceProfile: profile, ids: batch, refresh: crossRefresh }),
+            });
+            if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
+            return result;
+          },
+          (done) => {
+            doneToPeer = done;
+            reportProgress();
+          },
+        ),
+        copyInBatches(
+          planned.toCurrent,
+          async (batch) => {
+            const result = await call("/api/sessions/cross-profile-copy", {
+              method: "POST",
+              body: JSON.stringify({ sourceProfile: peerProfile, ids: batch, refresh: crossRefresh }),
+            });
+            if (result.ok === false) throw new Error(String(result.error || t("跨版本复制失败")));
+            return result;
+          },
+          (done) => {
+            doneToCurrent = done;
+            reportProgress();
+          },
+        ),
       ]);
       const total = toPeer.copied + toCurrent.copied;
       const updated = toPeer.updated + toCurrent.updated;
@@ -13743,10 +14717,15 @@ onChange={(event) =>
     } finally {
       setBusy(false);
       setCrossBusy("");
+      setCrossProgress(null);
     }
   };
 
   const renderSessions = () => {
+    const crossPercent =
+      crossProgress && crossProgress.total > 0
+        ? Math.min(100, Math.round((crossProgress.done / crossProgress.total) * 100))
+        : 0;
     const sessions = rows(payload?.sessions);
     const peerSessions = rows(crossPayload?.sessions);
     const sessionIds = sessions.map((session) => String(session.id || "")).filter(Boolean);
@@ -13883,6 +14862,42 @@ onChange={(event) =>
               />
               <span>{t("复制后刷新客户端会话列表")}</span>
             </label>
+            <Field className="workbuddy-batch-field" label={t("每批数量")}>
+              <AppSelect
+                disabled={busy}
+                onChange={(value) => setCrossBatchSize(Number(value) || 20)}
+                options={[
+                  { value: "10", label: t("10 个 / 批") },
+                  { value: "20", label: t("20 个 / 批") },
+                  { value: "50", label: t("50 个 / 批") },
+                ]}
+                title={t("同步会自动分批完成，不需要手动点多次")}
+                value={String(crossBatchSize)}
+              />
+            </Field>
+            <small className="muted-text">
+              {t("重复（之前同步过或标题同名）的会话默认不复制，确认框里可以勾选一并更新。")}
+            </small>
+            {crossProgress ? (
+              <div className="provider-sync-progress cross-sync-progress" data-active="true">
+                <div className="provider-sync-progress-head">
+                  <strong>{t("正在同步对话")}</strong>
+                  <span>{formatProgressPercent(crossPercent)}%</span>
+                </div>
+                <div
+                  aria-valuemax={100}
+                  aria-valuemin={0}
+                  aria-valuenow={crossPercent}
+                  className="provider-sync-progress-bar"
+                  role="progressbar"
+                >
+                  <div className="provider-sync-progress-fill" style={{ width: `${crossPercent}%` }} />
+                </div>
+                <small>
+                  {tf("已完成 {0} / {1} 个", [String(crossProgress.done), String(crossProgress.total)])}
+                </small>
+              </div>
+            ) : null}
             {crossMirror.lastResult ? (
               <small className="muted-text">
                 {tf("上次同步：拉取{0} · 推送{1}", [
@@ -14530,6 +15545,33 @@ onChange={(event) =>
           )}
         </div>
       </CardContent>
+      {/* 同步前的确认框。.modal-backdrop 是 position:fixed，放在这里也能全屏覆盖。 */}
+      {pendingConfirm ? (
+        <ConfirmDialog
+          confirm={{
+            title: pendingConfirm.title,
+            message: pendingConfirm.message,
+            confirmText: pendingConfirm.confirmText,
+            cancelText: t("取消"),
+            option: pendingConfirm.option
+              ? { label: pendingConfirm.option.label, checked: confirmOptionChecked }
+              : undefined,
+            icon: <RefreshCw className="h-4 w-4" />,
+          }}
+          onCancel={() => {
+            const resolve = pendingConfirm.resolve;
+            setPendingConfirm(null);
+            resolve({ confirmed: false, optionChecked: false });
+          }}
+          onConfirm={() => {
+            const resolve = pendingConfirm.resolve;
+            const checked = confirmOptionChecked;
+            setPendingConfirm(null);
+            resolve({ confirmed: true, optionChecked: checked });
+          }}
+          onOptionChange={setConfirmOptionChecked}
+        />
+      ) : null}
     </Panel>
   );
 }
