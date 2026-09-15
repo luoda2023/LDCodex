@@ -14,7 +14,11 @@
 >
 > 1. 打开 `https://github.com/luoda2023/LDCodex/settings/secrets/actions`
 > 2. 新建 secret，名字填 **`TAURI_SIGNING_PRIVATE_KEY`**
-> 3. 值 = 本机 `_tmp/updater-keys/ldcodex-updater.key` 的**全文**（348 字节，含两行）
+> 3. 值 = 本机 `D:\LUODA\_LDCodex-keys\ldcodex-updater.key` 的**全文**（348 字节，单行）
+>
+>    ⚠️ 私钥原来放在 `_tmp/updater-keys/`，2026-09-15 清 `_tmp` 时已挪到仓库外的
+>    `D:\LUODA\_LDCodex-keys\`。**别再放回 `_tmp/`** —— 那是 `.gitignore` 的临时目录，
+>    谁清一次谁就把发版签名能力搞没了（不可再生，丢了要重新生成密钥对并改 `pubkey`）。
 > 4. （可选）再建一个 **`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`**，本项目密钥**无口令**，留空即可
 >
 > 公钥已经硬编码在 `src-tauri/tauri.conf.json` → `plugins.updater.pubkey` 里了，与私钥成对。
@@ -198,7 +202,8 @@ bash _test_daemon/test-run.sh          # 期望：全部组绿，退出码 0
 
 # 3) 本地出包（要带签名私钥，否则没有 .sig）
 cd apps/codex-plus-manager
-TAURI_SIGNING_PRIVATE_KEY="$(cat ../../_tmp/updater-keys/ldcodex-updater.key)" npm run build
+TAURI_SIGNING_PRIVATE_KEY="$(cat /d/LUODA/_LDCodex-keys/ldcodex-updater.key)" npm run build
+#    ⚠️ 私钥在仓库外的 D:\LUODA\_LDCodex-keys\（详见第一节），不在 _tmp 里了
 # 产物：target/release/bundle/nsis/LDCodex_88.8.7_x64-setup.exe (+ .sig)
 # ⚠️ 别用 TAURI_SIGNING_PRIVATE_KEY_PATH —— 实测 `tauri build` 的**打包阶段**不认它，
 #    会照样生成 .exe 却报 `A public key has been found, but no private key` 并以退出码 1 收场
