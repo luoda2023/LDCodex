@@ -1,4 +1,7 @@
-# LDCodex 88.8.6：GitHub Release 自动升级（启动静默检测 → 下载 → 问你要不要重启 → 静默安装）
+# LDCodex 88.8.6：GitHub Release 自动升级 + WorkBuddy 对话管理
+
+> ① **GitHub Release 自动升级**：启动静默检测 → 下载 → 问你要不要重启 → 静默安装
+> ② **WorkBuddy 对话管理**：国内版 / 国际版会话的批量删除、恢复、彻底清除，以及跨版本同步的重复判定与进度控制（见[第五之二节](#五之二workbuddy-对话管理886-新增)）
 
 > ## 一句话
 >
@@ -229,11 +232,75 @@ gh release view v88.8.7
 | 管理器前端单元测试（`npm test`） | **159 / 159 全部通过** ✅ |
 | 管理器 Rust 单元测试（`cargo test -p codex-plus-manager --lib`） | **72 / 72 全部通过** ✅（88.8.6 删 1 条占位测试、新增 3 条：未下载就安装要报可操作的错 / `PendingUpdate` 只能被取走一次 / 资产名从下载地址反推） |
 | Rust 单元测试（`codex-plus-core` windows_integration） | **2 / 2 通过** ✅ |
+| Rust 单元测试（`codex-plus-core` workbuddy_sessions） | **10 / 10 通过** ✅（88.8.6 新增：清单读取 / 软删 / 恢复 / 彻底清除 / 备份 / 空间释放统计 / id 校验 / 附属文件匹配） |
 | 前端类型检查（`tsc --noEmit`） | **全绿** ✅ |
 
 **产物**：`target/release/bundle/nsis/LDCodex_88.8.6_x64-setup.exe`
 
 > ⚠️ 本机安装版本核验（`verify-installed-version.mjs`）在**装上新版之前**会报 4/7 —— 因为安装目录里躺的还是 88.8.5。装上 88.8.6 后即恢复 7/7，这不是测试坏了。
+
+---
+
+## 五之二、WorkBuddy 对话管理（88.8.6 新增）
+
+### 需求原话
+
+> 针对 workbuddy 国内版、国际版的对话里面，可以批量删除会话的功能。
+> 国际版同步到国内版、互相同步时，要加入判断是否重复导入或同步的提示……让客户知道每次同步的进展，应设进度条。如果有重复要提醒客户，不复制同名的会话，让客户自己选。
+> 在批量删除里面，你应该绕开当前正在对话的会话。
+
+### 数据到底在哪（这一段最费时间，别再找第二遍）
+
+| 你以为的 | 实际 |
+|---|---|
+| `~/.workbuddy/sessions/*.json` | ❌ **不是对话**，是运行时心跳注册（pid / lastHeartbeat） |
+| 对话元数据 | ✅ `<home>/workbuddy.db` 的 `sessions` 表（含 `deleted_at` 软删标记） |
+| 正文 / 附件 | ✅ `<home>/projects/<项目 slug>/<id>.jsonl` + `<id>.meta.json` + `<id>.file-rollback.ndjson` + `<id>/` |
+
+- `<home>`：国内版 `~/.workbuddy`，国际版 `~/.workbuddy-ai`。
+- ⚠️ 与 `codex_sqlite` /「会话管理」面板（读 `~/.codex`）**完全是两套数据**，id 和路径都不能混用。
+
+### 两个「配错不报错」的坑
+
+1. 🔴 **读 `workbuddy.db` 必须先复制 `db` + `-wal` 到临时目录再打开**
+   WAL 库只读打开会 `unable to open database file`，而且会跟客户端**抢锁**。
+   （`tempfile` 只是 `codex-plus-core` 的 dev-dependency，所以手写了带 `Drop` 的 `TempDir`，没动 `Cargo.toml`。）
+2. 🔴 **附属文件名必须按第一个点切分**（`split_once('.')`，**不能** `rsplit_once`）
+   `aaaa-1111.meta.json` 用 rsplit 会切成 `aaaa-1111.meta`，附属文件永远匹配不到 id ——
+   表现为「彻底清除删不干净」「统计出来的占用空间是 0」。
+
+### 删除分两档
+
+| 档位 | 行为 | 能否恢复 |
+|---|---|---|
+| 软删 | 只置 `deleted_at` | ✅ 可恢复 |
+| 彻底清除 | 删库行 + 删文件（**先删文件再删行**，顺带清 `session_usage`） | ❌ 除非先勾「备份」→ `<home>/session-backups/<时间戳>/` |
+
+**「正在对话中」的会话怎么处理**（这一条来回改过一次）：
+- 后端**不做硬拦截** —— 客户显式勾选就是意图，后端无从得知他是否确认过。
+- 前端：全选 / 反选**自动跳过** `maybeActive`（`working` 且 30 分钟内有活动），
+  但**手动单选仍然允许**，并在顶部挂警示条 + 在确认框里写明数量。
+  ⚠️ 别再改回「后端强制跳过」，那是把客户的选择权收走了。
+
+### 跨版本同步（国内版 ↔ 国际版）
+
+- **自动分批**，默认 20 条一批（daemon 硬上限 `CROSS_PROFILE_MAX_BATCH=100`），**不让客户点多少**。
+- **进度条**实时显示「第 N 批 / 共 M 批」。
+- **重复判定必须同时认两个字段**：本端 `linkedPeerId`、对端 `linkedTargetId` /
+  `linkedTarget.targetId`。只看一个，会有一侧永远判不出重复。
+- 重复项**默认不复制**，弹确认框列出数量，客户自己勾「同时更新已存在的 N 个（不新增副本）」。
+
+### 关于「让两版共用一个目录」（想过，没做）
+
+两个 profile 的数据格式**确实完全通用**（`sessions` 表 30 个字段名与类型一致，只是列顺序不同；
+jsonl 字段集也一致）。但：
+- `CODEBUDDY_BASE: ".codebuddy"` 是 `app.asar` 里的**硬编码常量，没有环境变量覆盖**；
+- 两个 `app.asar` 里都同时含 `.workbuddy` 和 `.workbuddy-ai` 字样，说明数据目录不是靠它区分的；
+- 真要共用只能用 junction，代价是**两个进程写同一个 `workbuddy.db`**（WAL / 锁 / 损坏风险）、
+  `user_id` 账号命名空间不同导致互相看不见、以及 `settings.json` / `models.json` /
+  `mcp-approvals.json` 配置互相踩、drizzle 迁移冲突。
+
+→ **结论：不做。** 现有的跨 profile 自动镜像在功能上已经等价，而且安全得多。
 
 ---
 
